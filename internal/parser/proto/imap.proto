@@ -1,0 +1,351 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/ProtonMail/gluon/internal/parser/proto";
+
+message Command {
+  oneof command {
+    // 6.1. Client Commands - Any State
+    Capability capability = 2;
+    Noop noop = 3;
+    Logout logout = 4;
+
+    // 6.2. Client Commands - Not Authenticated State
+    StartTLS startTLS = 5;
+    Auth auth = 6;
+    Login login = 7;
+
+    // 6.3. Client Commands - Authenticated State
+    Select select = 8;
+    Examine examine = 9;
+    Create create = 10;
+    Del del = 11;
+    Rename rename = 12;
+    Sub sub = 13;
+    Unsub unsub = 14;
+    List list = 15;
+    Lsub lsub = 16;
+    Status status = 17;
+    Append append = 18;
+
+    // 6.4. Client Commands - Selected State
+    Check check = 19;
+    Close close = 20;
+    Expunge expunge = 21;
+    UIDExpunge uidExpunge = 22;
+    Unselect unselect = 23;
+    Search search = 24;
+    Fetch fetch = 25;
+    Store store = 26;
+    Copy copy = 27;
+    UID uid = 28;
+
+    // RFC2177 Idle command
+    Idle idle = 29;
+    Done done = 30;
+
+    // RFC6851 Move command
+    Move move = 31;
+  }
+}
+
+// 6.1.1 CAPABILITY Command
+message Capability {}
+
+// 6.1.2 NOOP Command
+message Noop {}
+
+// 6.1.3 LOGOUT Command
+message Logout {}
+
+// 6.2.1. STARTTLS Command
+message StartTLS {}
+
+// 6.2.2. AUTHENTICATE Command
+message Auth {
+  string type = 1;
+  repeated string data = 2;
+}
+
+// 6.2.3. LOGIN Command
+message Login {
+  string username = 1;
+  string password = 2;
+}
+
+// 6.3.1. SELECT Command
+message Select {
+  string mailbox = 1;
+}
+
+// 6.3.2. EXAMINE Command
+message Examine {
+  string mailbox = 1;
+}
+
+// 6.3.3. CREATE Command
+message Create {
+  string mailbox = 1;
+}
+
+// 6.3.4. DELETE Command
+message Del {
+  string mailbox = 1;
+}
+
+// 6.3.5. RENAME Command
+message Rename {
+  string mailbox = 1;
+  string newName = 2;
+}
+
+// 6.3.6. SUBSCRIBE Command
+message Sub {
+  string mailbox = 1;
+}
+
+// 6.3.7. UNSUBSCRIBE Command
+message Unsub {
+  string mailbox = 1;
+}
+
+// 6.3.8. LIST Command
+message List {
+  string reference = 1;
+  string mailbox = 2;
+}
+
+// 6.3.9. Lsub Command
+message Lsub {
+  string reference = 1;
+  string mailbox = 2;
+}
+
+// 6.3.10. STATUS Command
+message Status {
+  string mailbox = 1;
+  repeated string attributes = 2;
+}
+
+// 6.3.11. APPEND Command
+message Append {
+  string mailbox = 1;
+  repeated string flags = 2;
+  oneof optionalDateTime { DateTime dateTime = 3; }
+  bytes message = 4;
+}
+
+message DateTime {
+  Date date = 1;
+  Time time = 2;
+  Zone zone = 3;
+}
+
+message Date {
+  int32 day = 1;
+  int32 month = 2;
+  int32 year = 3;
+}
+
+message Time {
+  int32 hour = 1;
+  int32 minute = 2;
+  int32 second = 3;
+}
+
+message Zone {
+  bool sign = 1;
+  int32 hour = 2;
+  int32 minute = 3;
+}
+
+// 6.4.1. CHECK Command
+message Check {}
+
+// 6.4.2. CLOSE Command
+message Close {}
+
+// 6.4.3. EXPUNGE Command
+message Expunge {}
+
+// RFC4315 UIDPLUS Extension
+message UIDExpunge {
+  SequenceSet sequenceSet = 1;
+}
+
+// RFC3691 UNSELECT Extension
+message Unselect {}
+
+// 6.4.4. SEARCH Command
+message Search {
+  oneof optionalCharset { string charset = 1; }
+  repeated SearchKey keys = 2;
+}
+
+message SearchKey {
+  SearchKeyword keyword = 1;
+
+  string      text = 2;
+  string      date = 3;
+  string      flag = 4;
+  string      field = 5;
+  int32       size = 6;
+  SequenceSet sequenceSet = 7;
+  SearchKey   leftOp = 8;
+  SearchKey   rightOp = 9;
+
+  repeated SearchKey children = 10;
+}
+
+enum SearchKeyword {
+  SearchKWAll = 0;
+  SearchKWAnswered = 1;
+  SearchKWBcc = 2;
+  SearchKWBefore = 3;
+  SearchKWBody = 4;
+  SearchKWCc = 5;
+  SearchKWDeleted = 6;
+  SearchKWDraft = 7;
+  SearchKWFlagged = 8;
+  SearchKWFrom = 9;
+  SearchKWHeader = 10;
+  SearchKWKeyword = 11;
+  SearchKWLarger = 12;
+  SearchKWNew = 13;
+  SearchKWNot = 14;
+  SearchKWOld = 15;
+  SearchKWOn = 16;
+  SearchKWOr = 17;
+  SearchKWRecent = 18;
+  SearchKWSeen = 19;
+  SearchKWSentBefore = 20;
+  SearchKWSentOn = 21;
+  SearchKWSentSince = 22;
+  SearchKWSince = 23;
+  SearchKWSmaller = 24;
+  SearchKWSubject = 25;
+  SearchKWText = 26;
+  SearchKWTo = 27;
+  SearchKWUID = 28;
+  SearchKWUnanswered = 29;
+  SearchKWUndeleted = 30;
+  SearchKWUndraft = 31;
+  SearchKWUnflagged = 32;
+  SearchKWUnkeyword = 33;
+  SearchKWUnseen = 34;
+  SearchKWSeqSet = 35;
+  SearchKWList = 36;
+}
+
+// 6.4.5. FETCH Command
+message Fetch {
+  SequenceSet sequenceSet = 1;
+  repeated FetchAttribute attributes = 2;
+}
+
+message SequenceSet {
+  repeated SequenceItem items = 1;
+}
+
+message SequenceItem {
+  oneof item {
+    string number = 1;
+    SequenceRange range = 2;
+  }
+}
+
+message SequenceRange {
+  string begin = 1;
+  string end = 2;
+}
+
+message FetchAttribute {
+  oneof attribute {
+    FetchKeyword keyword = 1;
+    FetchBody body = 2;
+  }
+}
+
+enum FetchKeyword {
+  FetchKWEnvelope = 0;
+  FetchKWFlags = 1;
+  FetchKWInternalDate = 2;
+  FetchKWRFC822 = 3;
+  FetchKWRFC822Header = 4;
+  FetchKWRFC822Size = 5;
+  FetchKWRFC822Text = 6;
+  FetchKWBody = 7;
+  FetchKWBodyStructure = 8;
+  FetchKWUID = 9;
+}
+
+message FetchBody {
+  oneof optionalSection { BodySection section = 1; }
+  oneof optionalPartial { BodyPartial partial = 2; }
+  bool peek = 3;
+}
+
+message BodySection {
+  repeated int32 parts = 1;
+  oneof optionalKeyword { SectionKeyword keyword = 2; }
+  repeated string fields = 3;
+}
+
+enum SectionKeyword {
+  Header = 0;
+  HeaderFields = 1;
+  HeaderFieldsNot = 2;
+  Text = 3;
+  MIME = 4;
+}
+
+message BodyPartial {
+  int32 begin = 1;
+  int32 count = 2;
+}
+
+// 6.4.6. STORE Command
+message Store {
+  SequenceSet sequenceSet = 1;
+  StoreAction action = 2;
+  repeated string flags = 3;
+}
+
+enum Operation {
+  Replace = 0;
+  Add = 1;
+  Remove = 2;
+}
+
+message StoreAction {
+  Operation operation = 1;
+  bool silent = 2;
+}
+
+// 6.4.7. COPY Command
+message Copy {
+  SequenceSet sequenceSet = 1;
+  string mailbox = 2;
+}
+
+// 6.4.8. UID Command
+message UID {
+  oneof command {
+    Copy copy = 1;
+    Fetch fetch = 2;
+    Search search = 3;
+    Store store = 4;
+    Move move = 5;
+  }
+}
+
+// RFC2177 Idle Command
+message Idle {}
+message Done {}
+
+//  RFC6851 Move
+message Move {
+  SequenceSet sequenceSet = 1;
+  string mailbox = 2;
+}

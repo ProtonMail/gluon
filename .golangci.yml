@@ -1,0 +1,14 @@
+run:
+  go: 1.18
+  skip-files:
+    - internal/parser/parser.go
+
+linters:
+  presets:
+    - bugs
+    - comment
+  enable:
+    - wsl
+  disable:
+    - godox # Annoying, we have too many TODOs at the moment :p
+    - scopelint # Deprecated, replaced by exportloopref, which is enabled by default.

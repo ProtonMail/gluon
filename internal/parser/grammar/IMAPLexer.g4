@@ -1,0 +1,117 @@
+lexer grammar IMAPLexer;
+
+// Control (0x00-0x1F + 0x7F)
+U_00: '\u0000';
+U_01: '\u0001';
+U_02: '\u0002';
+U_03: '\u0003';
+U_04: '\u0004';
+U_05: '\u0005';
+U_06: '\u0006';
+U_07: '\u0007';
+U_08: '\u0008';
+U_09: '\u0009';
+LF:   '\u000A';
+U_0B: '\u000B';
+U_0C: '\u000C';
+CR:   '\u000D';
+U_0E: '\u000E';
+U_0F: '\u000F';
+U_10: '\u0010';
+U_11: '\u0011';
+U_12: '\u0012';
+U_13: '\u0013';
+U_14: '\u0014';
+U_15: '\u0015';
+U_16: '\u0016';
+U_17: '\u0017';
+U_18: '\u0018';
+U_19: '\u0019';
+U_1A: '\u001A';
+U_1B: '\u001B';
+U_1C: '\u001C';
+U_1D: '\u001D';
+U_1E: '\u001E';
+U_1F: '\u001F';
+DEL:  '\u007F';
+
+// Printable (0x20-0x7E)
+SP:               '\u0020';
+Exclamation:      '\u0021';
+DQuote:           '\u0022';
+Hash:             '\u0023';
+Dollar:           '\u0024';
+Percent:          '\u0025';
+Ampersand:        '\u0026';
+SQuote:           '\u0027';
+LParen:           '\u0028';
+RParen:           '\u0029';
+Asterisk:         '\u002A';
+Plus:             '\u002B';
+Comma:            '\u002C';
+Minus:            '\u002D';
+Period:           '\u002E';
+Slash:            '\u002F';
+// 0-9            '\u0030'..'\u0039';
+Colon:            '\u003A';
+Semicolon:        '\u003B';
+Less:             '\u003C';
+Equal:            '\u003D';
+Greater:          '\u003E';
+Question:         '\u003F';
+At:               '\u0040';
+// A-Z            '\u0041'..'\u005A';
+LBracket:         '\u005B';
+Backslash:        '\u005C';
+RBracket:         '\u005D';
+Caret:            '\u005E';
+Underscore:       '\u005F';
+Backtick:         '\u0060';
+// a-z            '\u0061'..'\u007A';
+LCurly:           '\u007B';
+Pipe:             '\u007C';
+RCurly:           '\u007D';
+Tilde:            '\u007E';
+
+// Digits
+N0: '0';
+N1: '1';
+N2: '2';
+N3: '3';
+N4: '4';
+N5: '5';
+N6: '6';
+N7: '7';
+N8: '8';
+N9: '9';
+
+// Case insensitive chars
+A: 'A'|'a';
+B: 'B'|'b';
+C: 'C'|'c';
+D: 'D'|'d';
+E: 'E'|'e';
+F: 'F'|'f';
+G: 'G'|'g';
+H: 'H'|'h';
+I: 'I'|'i';
+J: 'J'|'j';
+K: 'K'|'k';
+L: 'L'|'l';
+M: 'M'|'m';
+N: 'N'|'n';
+O: 'O'|'o';
+P: 'P'|'p';
+Q: 'Q'|'q';
+R: 'R'|'r';
+S: 'S'|'s';
+T: 'T'|'t';
+U: 'U'|'u';
+V: 'V'|'v';
+W: 'W'|'w';
+X: 'X'|'x';
+Y: 'Y'|'y';
+Z: 'Z'|'z';
+
+// Recognize up to 0xFF
+Rest: '\u0080'..'\u00FF';

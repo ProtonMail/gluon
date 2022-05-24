@@ -1,0 +1,10 @@
+{
+    "name": "gomsrv-parser",
+    "version-string": "0.1.0",
+    "dependencies" : [
+        "protobuf",
+        "gtest",
+        "nlohmann-json",
+        "antlr4"
+    ]
+}

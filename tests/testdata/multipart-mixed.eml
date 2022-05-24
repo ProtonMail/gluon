@@ -1,0 +1,57 @@
+Return-Path: <somebody@gmail.com>
+Received: from [10.1.1.121] ([185.159.157.131])
+        by smtp.gmail.com with ESMTPSA id t8sm14889112wrr.10.2021.03.26.12.01.23
+        for <somebody@gmail.com>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 26 Mar 2021 12:01:24 -0700 (PDT)
+To: somebody@gmail.com
+From: BQA <somebody@gmail.com>
+Subject: Simple test mail
+Message-ID: <d3b6e735-8fb4-9bde-1063-049b97f8f3ca@gmail.com>
+Date: Fri, 26 Mar 2021 20:01:23 +0100
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:78.0)
+ Gecko/20100101 Thunderbird/78.8.1
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="------------4AC5F36D876D5EED478B5FF9"
+Content-Language: en-US
+
+This is a multi-part message in MIME format.
+--------------4AC5F36D876D5EED478B5FF9
+Content-Type: multipart/alternative;
+ boundary="------------62DCF50B21CF279F489F0184"
+
+
+--------------62DCF50B21CF279F489F0184
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+
+*this */is**/_html_
+**
+
+--------------62DCF50B21CF279F489F0184
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 7bit
+
+<html>
+  <head>
+
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  </head>
+  <body>
+    <b>this </b><i>is<b> </b></i><u>html</u><br>
+    <b></b>
+  </body>
+</html>
+
+--------------62DCF50B21CF279F489F0184--
+
+--------------4AC5F36D876D5EED478B5FF9
+Content-Type: text/plain; charset=UTF-8; x-mac-type="0"; x-mac-creator="0";
+ name="thing.txt"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="thing.txt"
+
+dGhpcyBpcyBteSBhdHRhY2htZW50Cg==
+--------------4AC5F36D876D5EED478B5FF9--

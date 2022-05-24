@@ -1,0 +1,117 @@
+name: Build and release
+
+on: [push]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-12, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Get sources
+        uses: actions/checkout@v3
+
+      - name: Init submodules
+        run: git submodule update --init --recursive
+
+      - name: Set up Go 1.18
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.18'
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'microsoft'
+
+      - name: Set up Ninja
+        uses: ashutoshvarma/setup-ninja@master
+        with:
+          version: 1.10.0
+
+      - name: Set up MinGW
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: egor-tensin/setup-mingw@v2
+
+      - name: Bootstrap vcpkg
+        run: internal/parser/extern/vcpkg/bootstrap-vcpkg.sh
+
+      - name: Load vcpkg build cache (windows)
+        uses: actions/cache@v3
+        if: ${{ matrix.os == 'windows-latest' }}
+        with:
+          path: ~/AppData/Local/vcpkg
+          key: ${{ runner.os }}-${{ hashFiles('internal/parser/vcpkg.json') }}
+
+      - name: Load vcpkg build cache (not windows)
+        uses: actions/cache@v3
+        if: ${{ matrix.os != 'windows-latest' }}
+        with:
+          path: ~/.cache/vcpkg
+          key: ${{ runner.os }}-${{ hashFiles('internal/parser/vcpkg.json') }}
+
+      - name: Delete old static libs
+        run: rm -r internal/parser/lib
+
+      - name: Configure CMake project (windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: cmake -B ${{ runner.temp }} -S internal/parser -G Ninja -D CMAKE_BUILD_TYPE=Release -D VCPKG_TARGET_TRIPLET=x64-mingw-static -W no-dev
+
+      - name: Configure CMake project (not windows)
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: cmake -B ${{ runner.temp }} -S internal/parser -G Ninja -D CMAKE_BUILD_TYPE=Release -W no-dev
+
+      - name: Build the parser
+        run: cmake --build ${{ runner.temp }}
+
+      - name: Test the parser
+        run: ctest --test-dir ${{ runner.temp }}
+
+      - name: Deinit submodules
+        run: git submodule deinit -f --all
+
+      - name: Run go vet
+        run: go vet $(go list ./... | grep -v internal/parser)
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Upload static libs
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.os }}-libs
+          path: internal/parser/lib/*
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Get sources
+        uses: actions/checkout@v3
+
+      - name: Download linux static libs
+        uses: actions/download-artifact@v3
+        with:
+          name: ubuntu-latest-libs
+          path: internal/parser/lib
+
+      - name: Download macOS static libs
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-12-libs
+          path: internal/parser/lib
+
+      - name: Download windows static libs
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-latest-libs
+          path: internal/parser/lib
+
+      - uses: cycjimmy/semantic-release-action@v3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
