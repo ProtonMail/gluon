@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/extern/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "toolchain")
 
-project(IMAPParser VERSION 0.1.0 LANGUAGES CXX)
+project(Gluon VERSION 0.1.0 LANGUAGES CXX)
 
 enable_testing()
 

@@ -1,78 +1,65 @@
-name: Build and release
+name: Build, test and release
 
 on: [push]
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changed.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - id: changed
+        uses: tj-actions/changed-files@v21
+        with:
+          files: internal/parser
+
   build:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-12, windows-latest]
-
     runs-on: ${{ matrix.os }}
-
+    needs: check
     steps:
       - name: Get sources
         uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
 
-      - name: Init submodules
-        run: git submodule update --init --recursive
+      - name: Build parser if modified
+        if: needs.check.outputs.changed == 'true'
+        uses: ./.github/actions/build-parser
+        with:
+          artifact-name: ${{ matrix.os }}-libs
+
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-12, windows-latest]
+    runs-on: ${{ matrix.os }}
+    needs: build
+    steps:
+      - name: Get sources
+        uses: actions/checkout@v3
 
       - name: Set up Go 1.18
         uses: actions/setup-go@v3
         with:
           go-version: '1.18'
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'microsoft'
-
-      - name: Set up Ninja
-        uses: ashutoshvarma/setup-ninja@master
-        with:
-          version: 1.10.0
-
-      - name: Set up MinGW
-        if: ${{ matrix.os == 'windows-latest' }}
-        uses: egor-tensin/setup-mingw@v2
-
-      - name: Bootstrap vcpkg
-        run: internal/parser/extern/vcpkg/bootstrap-vcpkg.sh
-
-      - name: Load vcpkg build cache (windows)
-        uses: actions/cache@v3
-        if: ${{ matrix.os == 'windows-latest' }}
-        with:
-          path: ~/AppData/Local/vcpkg
-          key: ${{ runner.os }}-${{ hashFiles('internal/parser/vcpkg.json') }}
-
-      - name: Load vcpkg build cache (not windows)
-        uses: actions/cache@v3
-        if: ${{ matrix.os != 'windows-latest' }}
-        with:
-          path: ~/.cache/vcpkg
-          key: ${{ runner.os }}-${{ hashFiles('internal/parser/vcpkg.json') }}
-
-      - name: Delete old static libs
+      - name: Remove old static libs if modified
+        if: needs.check.outputs.changed == 'true'
         run: rm -r internal/parser/lib
 
-      - name: Configure CMake project (windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: cmake -B ${{ runner.temp }} -S internal/parser -G Ninja -D CMAKE_BUILD_TYPE=Release -D VCPKG_TARGET_TRIPLET=x64-mingw-static -W no-dev
-
-      - name: Configure CMake project (not windows)
-        if: ${{ matrix.os != 'windows-latest' }}
-        run: cmake -B ${{ runner.temp }} -S internal/parser -G Ninja -D CMAKE_BUILD_TYPE=Release -W no-dev
-
-      - name: Build the parser
-        run: cmake --build ${{ runner.temp }}
-
-      - name: Test the parser
-        run: ctest --test-dir ${{ runner.temp }}
-
-      - name: Deinit submodules
-        run: git submodule deinit -f --all
+      - name: Download new static libs if modified
+        if: needs.check.outputs.changed == 'true'
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ matrix.os }}-libs
+          path: internal/parser/lib
 
       - name: Run go vet
         run: go vet $(go list ./... | grep -v internal/parser)
@@ -80,33 +67,33 @@ jobs:
       - name: Run tests
         run: go test -v ./...
 
-      - name: Upload static libs
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.os }}-libs
-          path: internal/parser/lib/*
-
   release:
-    name: Release
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: test
     steps:
       - name: Get sources
         uses: actions/checkout@v3
 
+      - name: Remove old static libs
+        if: needs.check.outputs.changed == 'true'
+        run: rm -r internal/parser/lib
+
       - name: Download linux static libs
+        if: needs.check.outputs.changed == 'true'
         uses: actions/download-artifact@v3
         with:
           name: ubuntu-latest-libs
           path: internal/parser/lib
 
       - name: Download macOS static libs
+        if: needs.check.outputs.changed == 'true'
         uses: actions/download-artifact@v3
         with:
           name: macos-12-libs
           path: internal/parser/lib
 
       - name: Download windows static libs
+        if: needs.check.outputs.changed == 'true'
         uses: actions/download-artifact@v3
         with:
           name: windows-latest-libs
