@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	entgo.io/ent v0.10.1
+	github.com/ProtonMail/gopenpgp/v2 v2.4.7
 	github.com/bradenaw/juniper v0.6.0
 	github.com/emersion/go-imap v1.2.1-0.20220429085312-746087b7a317
 	github.com/emersion/go-imap-uidplus v0.0.0-20200503180755-e75854c361e9
@@ -15,11 +16,14 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
 	golang.org/x/exp v0.0.0-20220217172124-1812c5b45e43
+	golang.org/x/text v0.3.7
 	google.golang.org/protobuf v1.27.1
 )
 
 require (
 	ariga.io/atlas v0.3.7-0.20220303204946-787354f533c3 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20220113124808-70ae35bab23f // indirect
+	github.com/ProtonMail/go-mime v0.0.0-20220302105931-303f85f7fe0f // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -32,9 +36,9 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/zclconf/go-cty v1.8.0 // indirect
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20211013180041-c96bc1413d57 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d // indirect
-	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
