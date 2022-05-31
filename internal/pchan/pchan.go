@@ -178,13 +178,21 @@ func (ch *PChan[T]) pop() (T, bool) {
 
 //nolint:gosec
 func (ch *PChan[T]) getPosition(prio int) int {
-	lo := slices.BinarySearchFunc(ch.items, func(item *item[T]) bool {
+	lo := slices.IndexFunc(ch.items, func(item *item[T]) bool {
 		return item.prio <= prio
 	})
 
-	hi := slices.BinarySearchFunc(ch.items, func(item *item[T]) bool {
+	if lo < 0 {
+		lo = len(ch.items)
+	}
+
+	hi := slices.IndexFunc(ch.items, func(item *item[T]) bool {
 		return item.prio < prio
 	})
+
+	if hi < 0 {
+		hi = len(ch.items)
+	}
 
 	if lo == hi {
 		return lo
