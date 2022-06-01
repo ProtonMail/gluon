@@ -41,24 +41,46 @@ runs:
 
     - name: Configure CMake project (windows)
       if: ${{ runner.os == 'Windows' }}
-      run: cmake -B build -S internal/parser -G Ninja -W no-dev -D CMAKE_BUILD_TYPE=Release -D VCPKG_TARGET_TRIPLET=x64-mingw-static 
+      run: cmake -B build -S internal/parser -G Ninja -W no-dev -DCMAKE_BUILD_TYPE=Release -DVCPKG_TARGET_TRIPLET=x64-mingw-static -DVCPKG_BUILD_TYPE=release
       shell: bash
 
-    - name: Configure CMake project (not windows)
-      if: ${{ runner.os != 'Windows' }}
-      run: cmake -B build -S internal/parser -G Ninja -W no-dev -D CMAKE_BUILD_TYPE=Release 
+    - name: Configure CMake project (mac)
+      if: ${{ runner.os == 'macOS' }}
+      run: |
+        cmake -B build-x64 -S internal/parser -G Ninja -W no-dev -DCMAKE_BUILD_TYPE=Release -DVCPKG_TARGET_TRIPLET=x64-osx -DCMAKE_OSX_ARCHITECTURES=x86_64 -DVCPKG_OSX_ARCHITECTURES=x86_64 -DVCPKG_BUILD_TYPE=release
+        cmake -B build-arm64 -S internal/parser -G Ninja -W no-dev -DCMAKE_BUILD_TYPE=Release -DVCPKG_TARGET_TRIPLET=arm64-osx -DCMAKE_OSX_ARCHITECTURES=arm64 -DVCPKG_OSX_ARCHITECTURES=arm64 -DVCPKG_BUILD_TYPE=release
+      shell: bash
+
+    - name: Configure CMake project (not windows & not mac)
+      if: ${{ (runner.os != 'Windows') && (runner.os != 'macOS') }}
+      run: cmake -B build -S internal/parser -G Ninja -W no-dev -DCMAKE_BUILD_TYPE=Release -DVCPKG_BUILD_TYPE=release
       shell: bash
 
     - name: Delete the old parser
       run: rm -r internal/parser/lib
       shell: bash
 
-    - name: Build the new parser
+    - name: Build the new parser (not mac)
+      if: ${{ runner.os != 'macOS' }}
       run: cmake --build build
       shell: bash
 
-    - name: Test the new parser
+    - name: Test the new parser (not mac)
+      if: ${{ runner.os != 'macOS' }}
       run: ctest --test-dir build
+      shell: bash
+
+    - name: Build the new parser (mac)
+      if: ${{ runner.os == 'macOS' }}
+      run: |
+        cmake --build build-x64
+        cmake --build build-arm64
+      shell: bash
+
+    - name: Test the new parser (mac)
+      if: ${{ runner.os == 'macOS' }}
+      # only run tests on x64 since the build env does not have arm64 CPUs
+      run: ctest --test-dir build-x64
       shell: bash
 
     - name: Upload static libs

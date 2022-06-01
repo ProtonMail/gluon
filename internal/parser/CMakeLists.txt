@@ -13,7 +13,17 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS YES)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/${CMAKE_SYSTEM_NAME}/${CMAKE_SYSTEM_PROCESSOR})
+
+if (APPLE)
+  # Can't rely only on CMake's system information as it is possible to cross-compile for both x64 and arm64 on mac OS
+  if ("${VCPKG_TARGET_TRIPLET}" STREQUAL "x64-osx")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/Darwin/x86_64)
+  else()
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/Darwin/arm64)
+  endif()
+else()
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/${CMAKE_SYSTEM_NAME}/${CMAKE_SYSTEM_PROCESSOR})
+endif()
 
 add_subdirectory(grammar)
 add_subdirectory(proto)
