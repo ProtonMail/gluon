@@ -26,6 +26,8 @@ func main() {
 	server := gluon.New(filepath.Join(dir, "server"))
 
 	connector := connector.NewDummy(
+		"user@example.com",
+		"password",
 		time.Second,
 		imap.NewFlagSet(),
 		imap.NewFlagSet(),
@@ -37,17 +39,17 @@ func main() {
 		logrus.WithError(err).Fatal("Failed to create store")
 	}
 
-	if err := server.AddUser(
-		"userID",
-		"username",
-		"password",
+	userID, err := server.AddUser(
 		connector,
 		store,
 		dialect.SQLite,
 		fmt.Sprintf("file:%v?cache=shared&_fk=1", filepath.Join(dir, fmt.Sprintf("%v.db", "userID"))),
-	); err != nil {
+	)
+	if err != nil {
 		logrus.WithError(err).Fatal("Failed to add user")
 	}
+
+	logrus.WithField("userID", userID).Info("User added to server")
 
 	listener, err := net.Listen("tcp", ":1143")
 	if err != nil {

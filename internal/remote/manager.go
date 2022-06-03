@@ -32,7 +32,7 @@ func New(dir string) *Manager {
 
 // AddUser adds the remote user with the given (IMAP) credentials to the remote manager.
 // The user interacts with the remote via the given connector.
-func (m *Manager) AddUser(userID, username, password string, conn connector.Connector) (*User, error) {
+func (m *Manager) AddUser(userID string, conn connector.Connector) (*User, error) {
 	m.usersLock.Lock()
 	defer m.usersLock.Unlock()
 
@@ -41,7 +41,7 @@ func (m *Manager) AddUser(userID, username, password string, conn connector.Conn
 		return nil, err
 	}
 
-	user, err := newUser(userID, username, password, path, conn)
+	user, err := newUser(userID, path, conn)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (m *Manager) GetUserID(username, password string) (string, error) {
 	defer m.usersLock.Unlock()
 
 	for _, user := range m.users {
-		if user.username == username && user.password == password {
+		if user.conn.Authorize(username, password) {
 			return user.userID, nil
 		}
 	}

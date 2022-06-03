@@ -65,22 +65,22 @@ func New(dir string, withOpt ...Option) *Server {
 }
 
 // AddUser makes a user available to the mailserver.
-func (s *Server) AddUser(userID, username, password string, conn connector.Connector, store store.Store, driver, source string) error {
+func (s *Server) AddUser(conn connector.Connector, store store.Store, driver, source string) (string, error) {
 	client, err := ent.Open(driver, source)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	if err := s.backend.AddUser(userID, username, password, conn, store, client); err != nil {
-		return err
+	userID, err := s.backend.AddUser(conn, store, client)
+	if err != nil {
+		return "", err
 	}
 
 	s.publish(events.EventUserAdded{
-		UserID:   userID,
-		Username: username,
+		UserID: userID,
 	})
 
-	return nil
+	return userID, nil
 }
 
 // AddWatcher adds a new watcher.
