@@ -13,7 +13,6 @@ import (
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
@@ -50,24 +49,25 @@ func runServer(tb testing.TB, credentials map[string]string, delim string, tests
 	userIDs := make(map[string]string)
 	conns := make(map[string]Connector)
 
-	for user, pass := range credentials {
-		userID := utils.NewRandomUserID()
-
+	for username, password := range credentials {
 		conn := connector.NewDummy(
+			username,
+			password,
 			defaultPeriod,
 			defaultFlags,
 			defaultPermanentFlags,
 			defaultAttributes,
 		)
 
-		store, err := store.NewOnDiskStore(tb.TempDir(), []byte("passphrase"))
+		store, err := store.NewOnDiskStore(tb.TempDir(), []byte(password))
 		require.NoError(tb, err)
 
-		require.NoError(tb, server.AddUser(userID, user, pass, conn, store, dialect.SQLite, getEntPath(tb.TempDir(), userID)))
+		userID, err := server.AddUser(conn, store, dialect.SQLite, getEntPath(tb.TempDir()))
+		require.NoError(tb, err)
 
 		require.NoError(tb, conn.Sync(ctx))
 
-		userIDs[user] = userID
+		userIDs[username] = userID
 		conns[userID] = conn
 	}
 
@@ -125,6 +125,6 @@ func withData(s *testSession, username string, tests func(string, string)) {
 	tests(mbox, mboxID)
 }
 
-func getEntPath(dir, userID string) string {
-	return fmt.Sprintf("file:%v?cache=shared&_fk=1", filepath.Join(dir, fmt.Sprintf("%v.db", userID)))
+func getEntPath(dir string) string {
+	return fmt.Sprintf("file:%v?cache=shared&_fk=1", filepath.Join(dir, fmt.Sprintf("%v.db", uuid.NewString())))
 }

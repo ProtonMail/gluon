@@ -18,6 +18,8 @@ var (
 
 func TestDummyConnector_ValidateCreate(t *testing.T) {
 	conn := NewDummy(
+		"username",
+		"password",
 		defaultPeriod,
 		defaultFlags,
 		defaultPermanentFlags,
@@ -67,6 +69,8 @@ func TestDummyConnector_ValidateCreate(t *testing.T) {
 
 func TestDummyConnector_ValidateUpdate(t *testing.T) {
 	conn := NewDummy(
+		"username",
+		"password",
 		defaultPeriod,
 		defaultFlags,
 		defaultPermanentFlags,
@@ -97,6 +101,8 @@ func TestDummyConnector_ValidateUpdate(t *testing.T) {
 
 func TestDummyConnector_ValidateDelete(t *testing.T) {
 	conn := NewDummy(
+		"username",
+		"password",
 		defaultPeriod,
 		defaultFlags,
 		defaultPermanentFlags,

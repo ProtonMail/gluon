@@ -13,9 +13,7 @@ import (
 
 // User performs operations against a remote server using a connector.
 type User struct {
-	userID   string
-	username string
-	password string
+	userID string
 
 	// path is the path at which the operation queue will be saved to disk.
 	path string
@@ -40,11 +38,9 @@ type User struct {
 // newUser constructs a new user with the given (IMAP) credentials.
 // It serializes its operation queue to a file at the given filepath,
 // and performs remote operations using the given connector.
-func newUser(userID, username, password, path string, conn connector.Connector) (*User, error) {
+func newUser(userID, path string, conn connector.Connector) (*User, error) {
 	user := &User{
 		userID:    userID,
-		username:  username,
-		password:  password,
 		path:      path,
 		conn:      conn,
 		updatesCh: make(chan imap.Update),

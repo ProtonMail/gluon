@@ -9,6 +9,9 @@ import (
 
 // Connector connects the gluon server to a remote mail store.
 type Connector interface {
+	// Authorize returns whether the given username/password combination are valid for this connector.
+	Authorize(username, password string) bool
+
 	// GetUpdates returns a stream of updates that the gluon server should apply.
 	GetUpdates() <-chan imap.Update
 

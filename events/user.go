@@ -1,8 +1,7 @@
 package events
 
 type EventUserAdded struct {
-	UserID   string
-	Username string
+	UserID string
 }
 
 func (EventUserAdded) _isEvent() {}

@@ -21,6 +21,9 @@ type Dummy struct {
 	// state holds the fake connector state.
 	state *dummyState
 
+	// username and password are the credentials for this connector.
+	username, password string
+
 	// These hold the default flags/attributes given to mailboxes.
 	flags, permFlags, attrs imap.FlagSet
 
@@ -38,9 +41,11 @@ type Dummy struct {
 	queueLock sync.Mutex
 }
 
-func NewDummy(period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
+func NewDummy(username, password string, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
 	conn := &Dummy{
 		state:     newDummyState(flags, permFlags, attrs),
+		username:  username,
+		password:  password,
 		flags:     flags,
 		permFlags: permFlags,
 		attrs:     attrs,
@@ -60,6 +65,10 @@ func NewDummy(period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy
 	conn.state.createLabel([]string{imap.Inbox}, false)
 
 	return conn
+}
+
+func (conn *Dummy) Authorize(username, password string) bool {
+	return username == conn.username && password == conn.password
 }
 
 func (conn *Dummy) GetUpdates() <-chan imap.Update {
