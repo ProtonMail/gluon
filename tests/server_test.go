@@ -84,6 +84,11 @@ func runServer(tb testing.TB, credentials map[string]string, delim string, tests
 		conn.Flush()
 	}
 
+	// Remove all users before shutdown.
+	for _, userID := range userIDs {
+		require.NoError(tb, server.RemoveUser(ctx, userID))
+	}
+
 	// Expect the server to shut down successfully when closed.
 	require.NoError(tb, server.Close(ctx))
 	require.NoError(tb, <-errCh)

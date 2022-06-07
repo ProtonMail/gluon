@@ -16,6 +16,7 @@ type PChan[T any] struct {
 	ready chan struct{}
 	done  chan struct{}
 	lock  sync.Mutex
+	wg    sync.WaitGroup
 }
 
 type item[T any] struct {
@@ -46,6 +47,7 @@ func (ch *PChan[T]) Push(val T, withPrio ...int) chan struct{} {
 		panic("channel is closed")
 
 	default:
+		// ...
 	}
 
 	var prio int
@@ -66,7 +68,51 @@ func (ch *PChan[T]) Push(val T, withPrio ...int) chan struct{} {
 
 	go func() { ch.ready <- struct{}{} }()
 
+	ch.wg.Add(1)
+
 	return done
+}
+
+// Pop blocks until an item is available, then returns that item.
+// If the channel is already closed, the call returns immediately and the bool value is false.
+func (ch *PChan[T]) Pop() (t T, ok bool) {
+	select {
+	case <-ch.ready:
+		// ...
+
+	case <-ch.done:
+		// ...
+	}
+
+	ch.lock.Lock()
+	defer ch.lock.Unlock()
+
+	if len(ch.items) == 0 {
+		return t, false
+	}
+
+	var item *item[T]
+
+	item, ch.items = ch.items[0], ch.items[1:]
+
+	defer close(item.done)
+
+	ch.wg.Done()
+
+	return item.val, true
+}
+
+// Peek returns the highest priority item, if any.
+// The bool is true if an item was available.
+func (ch *PChan[T]) Peek() (t T, ok bool) {
+	ch.lock.Lock()
+	defer ch.lock.Unlock()
+
+	if len(ch.items) == 0 {
+		return t, false
+	}
+
+	return ch.items[0].val, true
 }
 
 // Len returns the number of items queued.
@@ -75,30 +121,6 @@ func (ch *PChan[T]) Len() int {
 	defer ch.lock.Unlock()
 
 	return len(ch.items)
-}
-
-// Pop blocks until an item is available, then returns that item.
-// If the channel is already closed, the call returns immediately and the bool value is false.
-func (ch *PChan[T]) Pop() (T, bool) {
-	select {
-	case <-ch.ready:
-	case <-ch.done:
-	}
-
-	return ch.pop()
-}
-
-// Peek returns the highest priority item, if any.
-// The bool is true if an item was available.
-func (ch *PChan[T]) Peek() (T, bool) {
-	ch.lock.Lock()
-	defer ch.lock.Unlock()
-
-	if len(ch.items) == 0 {
-		return *new(T), false
-	}
-
-	return ch.items[0].val, true
 }
 
 // Range repeatedly calls the callback with items as they are pushed onto the channel.
@@ -125,6 +147,11 @@ func (ch *PChan[T]) Apply(fn func(T)) {
 	}
 }
 
+// Wait blocks until the queue is empty.
+func (ch *PChan[T]) Wait() {
+	ch.wg.Wait()
+}
+
 // Close closes the channel, returning whatever was still queued on the channel.
 func (ch *PChan[T]) Close() []T {
 	ch.lock.Lock()
@@ -135,6 +162,7 @@ func (ch *PChan[T]) Close() []T {
 		panic("channel is closed")
 
 	default:
+		// ...
 	}
 
 	for range ch.items {
@@ -157,23 +185,6 @@ func (ch *PChan[T]) String() string {
 	}
 
 	return res
-}
-
-func (ch *PChan[T]) pop() (T, bool) {
-	ch.lock.Lock()
-	defer ch.lock.Unlock()
-
-	if len(ch.items) == 0 {
-		return *new(T), false
-	}
-
-	var item *item[T]
-
-	item, ch.items = ch.items[0], ch.items[1:]
-
-	defer close(item.done)
-
-	return item.val, true
 }
 
 //nolint:gosec

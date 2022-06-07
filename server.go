@@ -83,6 +83,19 @@ func (s *Server) AddUser(conn connector.Connector, store store.Store, driver, so
 	return userID, nil
 }
 
+// RemoveUser removes a user from the mailserver.
+func (s *Server) RemoveUser(ctx context.Context, userID string) error {
+	if err := s.backend.RemoveUser(ctx, userID); err != nil {
+		return err
+	}
+
+	s.publish(events.EventUserRemoved{
+		UserID: userID,
+	})
+
+	return nil
+}
+
 // AddWatcher adds a new watcher.
 func (s *Server) AddWatcher() chan events.Event {
 	s.watchersLock.Lock()

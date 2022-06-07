@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -49,6 +50,34 @@ func (m *Manager) AddUser(userID string, conn connector.Connector) (*User, error
 	m.users[userID] = user
 
 	return user, nil
+}
+
+// RemoveUser removes the user with the given ID from the remote manager.
+// It waits until all the user's queued operations have been performed.
+// TODO: Find a better way to flush the operation queue?
+func (m *Manager) RemoveUser(ctx context.Context, userID string) error {
+	m.usersLock.Lock()
+	defer m.usersLock.Unlock()
+
+	user, ok := m.users[userID]
+	if !ok {
+		return ErrNoSuchUser
+	}
+
+	user.queue.Wait()
+
+	path, err := m.getQueuePath(userID)
+	if err != nil {
+		return err
+	}
+
+	if err := os.Remove(path); err != nil {
+		return err
+	}
+
+	delete(m.users, userID)
+
+	return nil
 }
 
 // GetUserID returns the user ID of the user with the given credentials.
