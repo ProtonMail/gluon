@@ -28,8 +28,13 @@ var (
 	defaultAttributes     = imap.NewFlagSet()
 )
 
+type credentials struct {
+	usernames []string
+	password  string
+}
+
 // runServer initializes and starts the mailserver.
-func runServer(tb testing.TB, credentials map[string]string, delim string, tests func(*testSession)) {
+func runServer(tb testing.TB, creds []credentials, delim string, tests func(*testSession)) {
 	server := gluon.New(
 		tb.TempDir(),
 		gluon.WithDelimiter(delim),
@@ -49,17 +54,17 @@ func runServer(tb testing.TB, credentials map[string]string, delim string, tests
 	userIDs := make(map[string]string)
 	conns := make(map[string]Connector)
 
-	for username, password := range credentials {
+	for _, creds := range creds {
 		conn := connector.NewDummy(
-			username,
-			password,
+			creds.usernames,
+			creds.password,
 			defaultPeriod,
 			defaultFlags,
 			defaultPermanentFlags,
 			defaultAttributes,
 		)
 
-		store, err := store.NewOnDiskStore(tb.TempDir(), []byte(password))
+		store, err := store.NewOnDiskStore(tb.TempDir(), []byte(creds.password))
 		require.NoError(tb, err)
 
 		userID, err := server.AddUser(conn, store, dialect.SQLite, getEntPath(tb.TempDir()))
@@ -67,7 +72,10 @@ func runServer(tb testing.TB, credentials map[string]string, delim string, tests
 
 		require.NoError(tb, conn.Sync(ctx))
 
-		userIDs[username] = userID
+		for _, username := range creds.usernames {
+			userIDs[username] = userID
+		}
+
 		conns[userID] = conn
 	}
 

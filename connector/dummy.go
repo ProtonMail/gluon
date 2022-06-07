@@ -9,6 +9,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ticker"
 	"github.com/bradenaw/juniper/xslices"
+	"golang.org/x/exp/slices"
 )
 
 var (
@@ -21,8 +22,11 @@ type Dummy struct {
 	// state holds the fake connector state.
 	state *dummyState
 
-	// username and password are the credentials for this connector.
-	username, password string
+	// usernames holds usernames that can be used for authorization.
+	usernames []string
+
+	// password holds the password that can be used for authorization.
+	password string
 
 	// These hold the default flags/attributes given to mailboxes.
 	flags, permFlags, attrs imap.FlagSet
@@ -41,10 +45,10 @@ type Dummy struct {
 	queueLock sync.Mutex
 }
 
-func NewDummy(username, password string, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
+func NewDummy(usernames []string, password string, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
 	conn := &Dummy{
 		state:     newDummyState(flags, permFlags, attrs),
-		username:  username,
+		usernames: usernames,
 		password:  password,
 		flags:     flags,
 		permFlags: permFlags,
@@ -68,7 +72,11 @@ func NewDummy(username, password string, period time.Duration, flags, permFlags,
 }
 
 func (conn *Dummy) Authorize(username, password string) bool {
-	return username == conn.username && password == conn.password
+	if password != conn.password {
+		return false
+	}
+
+	return slices.Contains(conn.usernames, username)
 }
 
 func (conn *Dummy) GetUpdates() <-chan imap.Update {

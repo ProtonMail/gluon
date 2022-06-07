@@ -12,7 +12,10 @@ import (
 
 // runOneToOneTest runs a test with one account and one connection.
 func runOneToOneTest(tb testing.TB, username, password, delimiter string, tests func(*testConnection, *testSession)) {
-	runTest(tb, map[string]string{username: password}, delimiter, []int{1}, func(c map[int]*testConnection, s *testSession) {
+	runTest(tb, []credentials{{
+		usernames: []string{username},
+		password:  password,
+	}}, delimiter, []int{1}, func(c map[int]*testConnection, s *testSession) {
 		tests(c[1], s)
 	})
 }
@@ -39,7 +42,10 @@ func runOneToOneTestWithData(tb testing.TB, username, password, delimiter string
 
 // runManyToOneTest runs a test with one account and multiple connections.
 func runManyToOneTest(tb testing.TB, username, password, delimiter string, connIDs []int, tests func(map[int]*testConnection, *testSession)) {
-	runTest(tb, map[string]string{username: password}, delimiter, connIDs, func(c map[int]*testConnection, s *testSession) {
+	runTest(tb, []credentials{{
+		usernames: []string{username},
+		password:  password,
+	}}, delimiter, connIDs, func(c map[int]*testConnection, s *testSession) {
 		tests(c, s)
 	})
 }
@@ -69,8 +75,8 @@ func runManyToOneTestWithData(tb testing.TB, username, password, delimiter strin
 }
 
 // runTest runs the mailserver and creates test connections to it.
-func runTest(tb testing.TB, credentials map[string]string, delimiter string, connIDs []int, tests func(map[int]*testConnection, *testSession)) {
-	runServer(tb, credentials, delimiter, func(s *testSession) {
+func runTest(tb testing.TB, creds []credentials, delimiter string, connIDs []int, tests func(map[int]*testConnection, *testSession)) {
+	runServer(tb, creds, delimiter, func(s *testSession) {
 		withConnections(tb, s, connIDs, func(c map[int]*testConnection) {
 			tests(c, s)
 		})
@@ -80,8 +86,8 @@ func runTest(tb testing.TB, credentials map[string]string, delimiter string, con
 // -- IMap client test helpers
 
 // runTestClient runs the mailserver and creates test connections to it using an imap client.
-func runTestClient(tb testing.TB, credentials map[string]string, delimiter string, connIDs []int, tests func(map[int]*client.Client, *testSession)) {
-	runServer(tb, credentials, delimiter, func(s *testSession) {
+func runTestClient(tb testing.TB, creds []credentials, delimiter string, connIDs []int, tests func(map[int]*client.Client, *testSession)) {
+	runServer(tb, creds, delimiter, func(s *testSession) {
 		withClients(tb, s, connIDs, func(clientMap map[int]*client.Client) {
 			tests(clientMap, s)
 		})
@@ -90,7 +96,10 @@ func runTestClient(tb testing.TB, credentials map[string]string, delimiter strin
 
 // runOneToOneTestClient runs a test with one account and one connection using an imap client.
 func runOneToOneTestClient(tb testing.TB, username, password, delimiter string, test func(*client.Client, *testSession)) {
-	runTestClient(tb, map[string]string{username: password}, delimiter, []int{1}, func(c map[int]*client.Client, s *testSession) {
+	runTestClient(tb, []credentials{{
+		usernames: []string{username},
+		password:  password,
+	}}, delimiter, []int{1}, func(c map[int]*client.Client, s *testSession) {
 		test(c[1], s)
 	})
 }

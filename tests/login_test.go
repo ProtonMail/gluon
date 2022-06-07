@@ -28,7 +28,10 @@ func TestLoginLiteral(t *testing.T) {
 }
 
 func TestLoginMultiple(t *testing.T) {
-	runTest(t, map[string]string{"user1": "pass1", "user2": "pass2"}, "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runTest(t, []credentials{
+		{usernames: []string{"user1"}, password: "pass1"},
+		{usernames: []string{"user2"}, password: "pass2"},
+	}, "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		// Login as the first user.
 		c[1].C("A001 login user1 pass1").OK("A001")
 
@@ -40,6 +43,25 @@ func TestLoginMultiple(t *testing.T) {
 
 		// Logout the second user.
 		c[2].C("B002 logout").OK("B002")
+	})
+}
+
+func TestLoginAlias(t *testing.T) {
+	runTest(t, []credentials{{
+		usernames: []string{"alias1", "alias2"},
+		password:  "pass",
+	}}, "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+		// Login as each alias.
+		c[1].C("tag1 login alias1 pass").OK("tag1")
+		c[2].C("tag2 login alias2 pass").OK("tag2")
+
+		// Create a message with each alias.
+		c[1].C("tag3 append inbox {11}\r\nTo: 1@pm.me").OK("tag3")
+		c[2].C("tag4 append inbox {11}\r\nTo: 2@pm.me").OK("tag4")
+
+		// Both messages should be visible to both clients.
+		c[1].C("tag5 status inbox (messages)").Sx("MESSAGES 2").OK("tag5")
+		c[2].C("tag6 status inbox (messages)").Sx("MESSAGES 2").OK("tag6")
 	})
 }
 

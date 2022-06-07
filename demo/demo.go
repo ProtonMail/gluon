@@ -26,7 +26,7 @@ func main() {
 	server := gluon.New(filepath.Join(dir, "server"))
 
 	connector := connector.NewDummy(
-		"user@example.com",
+		[]string{"user@example.com", "alias@example.com"},
 		"password",
 		time.Second,
 		imap.NewFlagSet(),
