@@ -2,6 +2,7 @@ package remote
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -70,7 +71,7 @@ func (user *User) GetUpdates() <-chan imap.Update {
 func (user *User) Close() error {
 	ops, err := user.closeQueue()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to close queue: %w", err)
 	}
 
 	if user.lastOp != nil {
@@ -79,15 +80,11 @@ func (user *User) Close() error {
 
 	b, err := saveOps(ops)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to serialize operations: %w", err)
 	}
 
 	if err := os.WriteFile(user.path, b, 0o600); err != nil {
-		return err
-	}
-
-	if err := user.conn.Close(); err != nil {
-		return err
+		return fmt.Errorf("failed to save operations: %w", err)
 	}
 
 	return nil

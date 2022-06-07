@@ -49,7 +49,7 @@ func TestErrorsWhenAuthenticated(t *testing.T) {
 	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
 		for i, command := range notAuthenticatedCommands {
 			c.C(fmt.Sprintf("%d %v", i, command))
-			c.Sx(fmt.Sprintf("%d BAD %v", i, session.ErrAlreadyAuthenticated.Error()))
+			c.Sx(fmt.Sprintf("%d BAD %v", i, session.ErrAlreadyAuthenticated))
 		}
 	})
 }
@@ -58,14 +58,14 @@ func TestErrorsWhenNotAuthenticated(t *testing.T) {
 	runOneToOneTest(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
 		for i, command := range append(authenticatedCommands, selectedCommands...) {
 			c.C(fmt.Sprintf("%d %v", i, command))
-			c.Sx(fmt.Sprintf("%d NO %v", i, session.ErrNotAuthenticated.Error()))
+			c.Sx(fmt.Sprintf("%d NO %v", i, session.ErrNotAuthenticated))
 		}
 
 		// Currently, the parser requires to read the message content before the error can be reported.
 		c.C(`A001 APPEND INBOX {2}`)
 		c.Sx(`\+ `)
 		c.C(`12`)
-		c.Sx(session.ErrNotAuthenticated.Error())
+		c.Sx(fmt.Sprintf("NO %v", session.ErrNotAuthenticated))
 	})
 }
 
@@ -73,7 +73,7 @@ func TestErrorsWhenNotSelected(t *testing.T) {
 	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
 		for i, command := range selectedCommands {
 			c.C(fmt.Sprintf("%d %v", i, command))
-			c.Sx(fmt.Sprintf("%d NO %v", i, backend.ErrSessionIsNotSelected.Error()))
+			c.Sx(fmt.Sprintf("%d NO %v", i, backend.ErrSessionNotSelected))
 		}
 	})
 }

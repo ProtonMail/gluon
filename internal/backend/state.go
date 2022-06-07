@@ -260,7 +260,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 
 func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error {
 	if !state.IsSelected() {
-		return ErrSessionIsNotSelected
+		return ErrSessionNotSelected
 	}
 
 	return state.tx(ctx, func(tx *ent.Tx) error {

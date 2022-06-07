@@ -58,6 +58,28 @@ func (b *Backend) AddUser(conn connector.Connector, store store.Store, client *e
 	return userID, nil
 }
 
+func (b *Backend) RemoveUser(ctx context.Context, userID string) error {
+	b.usersLock.Lock()
+	defer b.usersLock.Unlock()
+
+	user, ok := b.users[userID]
+	if !ok {
+		return ErrNoSuchUser
+	}
+
+	if err := user.close(ctx); err != nil {
+		return fmt.Errorf("failed to close backend user: %w", err)
+	}
+
+	if err := b.remote.RemoveUser(ctx, userID); err != nil {
+		return fmt.Errorf("failed to remove remote user: %w", err)
+	}
+
+	delete(b.users, userID)
+
+	return nil
+}
+
 func (b *Backend) GetState(username, password string) (*State, error) {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
@@ -79,10 +101,12 @@ func (b *Backend) Close(ctx context.Context) error {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
-	for _, user := range b.users {
+	for userID, user := range b.users {
 		if err := user.close(ctx); err != nil {
-			return fmt.Errorf("failed to close backend user: %w", err)
+			return fmt.Errorf("failed to close backend user (%v): %w", userID, err)
 		}
+
+		delete(b.users, userID)
 	}
 
 	logrus.Debug("Backend was closed")

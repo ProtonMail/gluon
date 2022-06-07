@@ -83,7 +83,7 @@ func runTest(tb testing.TB, creds []credentials, delimiter string, connIDs []int
 	})
 }
 
-// -- IMap client test helpers
+// -- IMAP client test helpers
 
 // runTestClient runs the mailserver and creates test connections to it using an imap client.
 func runTestClient(tb testing.TB, creds []credentials, delimiter string, connIDs []int, tests func(map[int]*client.Client, *testSession)) {

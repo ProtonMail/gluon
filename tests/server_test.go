@@ -87,9 +87,10 @@ func runServer(tb testing.TB, creds []credentials, delim string, tests func(*tes
 	// Run the test against the server.
 	tests(newTestSession(tb, listener, server, userIDs, conns))
 
-	// Flush before shutdown.
-	for _, conn := range conns {
+	// Flush and remove user before shutdown.
+	for userID, conn := range conns {
 		conn.Flush()
+		require.NoError(tb, server.RemoveUser(ctx, userID))
 	}
 
 	// Expect the server to shut down successfully when closed.
