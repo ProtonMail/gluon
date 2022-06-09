@@ -8,6 +8,12 @@ import (
 )
 
 func (s *Session) handleLogout(ctx context.Context, tag string, cmd *proto.Logout) error {
+	s.userLock.Lock()
+	defer s.userLock.Unlock()
+
+	s.capsLock.Lock()
+	defer s.capsLock.Unlock()
+
 	if err := response.Bye().Send(s); err != nil {
 		return err
 	}

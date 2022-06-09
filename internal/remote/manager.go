@@ -24,11 +24,15 @@ type Manager struct {
 }
 
 // New returns a new manager which stores serialized operation queues for users in the given base directory.
-func New(dir string) *Manager {
+func New(dir string) (*Manager, error) {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
+
 	return &Manager{
 		dir:   dir,
 		users: make(map[string]*User),
-	}
+	}, nil
 }
 
 // AddUser adds the remote user with the given (IMAP) credentials to the remote manager.
@@ -96,9 +100,5 @@ func (m *Manager) GetUserID(username, password string) (string, error) {
 
 // getQueuePath returns a path for the user with the given ID to store its serialized operation queue.
 func (m *Manager) getQueuePath(userID string) (string, error) {
-	if err := os.MkdirAll(m.dir, 0o700); err != nil {
-		return "", err
-	}
-
 	return filepath.Join(m.dir, fmt.Sprintf("%v.queue", userID)), nil
 }

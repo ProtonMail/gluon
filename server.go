@@ -49,9 +49,14 @@ type Server struct {
 
 // New creates a new server with the given options.
 // It stores data in the given directory.
-func New(dir string, withOpt ...Option) *Server {
+func New(dir string, withOpt ...Option) (*Server, error) {
+	backend, err := backend.New(dir)
+	if err != nil {
+		return nil, err
+	}
+
 	server := &Server{
-		backend:   backend.New(dir),
+		backend:   backend,
 		listeners: make(map[net.Listener]struct{}),
 		sessions:  make(map[int]*session.Session),
 		watchers:  make(map[chan events.Event]struct{}),
@@ -61,7 +66,7 @@ func New(dir string, withOpt ...Option) *Server {
 		opt.config(server)
 	}
 
-	return server
+	return server, nil
 }
 
 // AddUser makes a user available to the mailserver.

@@ -3,6 +3,7 @@ package remote
 import "encoding/gob"
 
 type OpMailboxUpdate struct {
+	OperationBase
 	MBoxID string
 	Name   []string
 }

@@ -23,7 +23,10 @@ func main() {
 		logrus.WithError(err).Fatal("Failed to make temporary directory")
 	}
 
-	server := gluon.New(filepath.Join(dir, "server"))
+	server, err := gluon.New(filepath.Join(dir, "server"))
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to create server")
+	}
 
 	connector := connector.NewDummy(
 		[]string{"user@example.com", "alias@example.com"},

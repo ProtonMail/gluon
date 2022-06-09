@@ -35,7 +35,7 @@ type credentials struct {
 
 // runServer initializes and starts the mailserver.
 func runServer(tb testing.TB, creds []credentials, delim string, tests func(*testSession)) {
-	server := gluon.New(
+	server, err := gluon.New(
 		tb.TempDir(),
 		gluon.WithDelimiter(delim),
 		gluon.WithTLS(&tls.Config{
@@ -47,6 +47,7 @@ func runServer(tb testing.TB, creds []credentials, delim string, tests func(*tes
 			logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
 		),
 	)
+	require.NoError(tb, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

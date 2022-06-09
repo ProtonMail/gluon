@@ -13,7 +13,7 @@ import (
 )
 
 func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name string) (*ent.Mailbox, error) {
-	res, err := state.remote.CreateMailbox(ctx, strings.Split(name, state.delimiter))
+	res, err := state.remote.CreateMailbox(state.metadataID, strings.Split(name, state.delimiter))
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name st
 
 // TODO(REFACTOR): What if another client is selected in the same mailbox -- should we send expunge updates?
 func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID, name string) error {
-	if err := state.remote.DeleteMailbox(ctx, mboxID, strings.Split(name, state.delimiter)); err != nil {
+	if err := state.remote.DeleteMailbox(state.metadataID, mboxID, strings.Split(name, state.delimiter)); err != nil {
 		return err
 	}
 
@@ -36,7 +36,7 @@ func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID,
 
 func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID, oldName, newName string) error {
 	if err := state.remote.UpdateMailbox(
-		ctx,
+		state.metadataID,
 		mboxID,
 		strings.Split(oldName, state.delimiter),
 		strings.Split(newName, state.delimiter),
@@ -48,7 +48,7 @@ func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID,
 }
 
 func (state *State) actionCreateMessage(ctx context.Context, tx *ent.Tx, mboxID string, literal []byte, flags imap.FlagSet, date time.Time) (int, error) {
-	res, err := state.remote.CreateMessage(ctx, mboxID, literal, flags, date)
+	res, err := state.remote.CreateMessage(state.metadataID, mboxID, literal, flags, date)
 	if err != nil {
 		return 0, err
 	}
@@ -91,7 +91,7 @@ func (state *State) actionAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, 
 		}
 	}
 
-	if err := state.remote.AddMessagesToMailbox(ctx, messageIDs, mboxID); err != nil {
+	if err := state.remote.AddMessagesToMailbox(state.metadataID, messageIDs, mboxID); err != nil {
 		return nil, err
 	}
 
@@ -117,7 +117,7 @@ func (state *State) actionRemoveMessagesFromMailbox(ctx context.Context, tx *ent
 		return slices.Contains(haveMessageIDs, messageID)
 	})
 
-	if err := state.remote.RemoveMessagesFromMailbox(ctx, messageIDs, mboxID); err != nil {
+	if err := state.remote.RemoveMessagesFromMailbox(state.metadataID, messageIDs, mboxID); err != nil {
 		return err
 	}
 
@@ -139,7 +139,7 @@ func (state *State) actionAddMessageFlags(ctx context.Context, tx *ent.Tx, messa
 
 	// If setting messages as seen, only set those messages that aren't currently seen.
 	if addFlags.Contains(imap.FlagSeen) {
-		if err := state.remote.SetMessagesSeen(ctx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := state.remote.SetMessagesSeen(state.metadataID, xslices.Filter(messageIDs, func(messageID string) bool {
 			return !curFlags[messageID].Contains(imap.FlagSeen)
 		}), true); err != nil {
 			return nil, err
@@ -148,7 +148,7 @@ func (state *State) actionAddMessageFlags(ctx context.Context, tx *ent.Tx, messa
 
 	// If setting messages as flagged, only set those messages that aren't currently flagged.
 	if addFlags.Contains(imap.FlagFlagged) {
-		if err := state.remote.SetMessagesFlagged(ctx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := state.remote.SetMessagesFlagged(state.metadataID, xslices.Filter(messageIDs, func(messageID string) bool {
 			return !curFlags[messageID].Contains(imap.FlagFlagged)
 		}), true); err != nil {
 			return nil, err
@@ -183,7 +183,7 @@ func (state *State) actionRemoveMessageFlags(ctx context.Context, tx *ent.Tx, me
 
 	// If setting messages as unseen, only set those messages that are currently seen.
 	if remFlags.Contains(imap.FlagSeen) {
-		if err := state.remote.SetMessagesSeen(ctx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := state.remote.SetMessagesSeen(state.metadataID, xslices.Filter(messageIDs, func(messageID string) bool {
 			return curFlags[messageID].Contains(imap.FlagSeen)
 		}), false); err != nil {
 			return nil, err
@@ -192,7 +192,7 @@ func (state *State) actionRemoveMessageFlags(ctx context.Context, tx *ent.Tx, me
 
 	// If setting messages as unflagged, only set those messages that are currently flagged.
 	if remFlags.Contains(imap.FlagFlagged) {
-		if err := state.remote.SetMessagesFlagged(ctx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := state.remote.SetMessagesFlagged(state.metadataID, xslices.Filter(messageIDs, func(messageID string) bool {
 			return curFlags[messageID].Contains(imap.FlagFlagged)
 		}), false); err != nil {
 			return nil, err
@@ -231,13 +231,13 @@ func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messa
 
 	// If setting messages as seen, only set those messages that aren't currently seen.
 	if setFlags.Contains(imap.FlagSeen) {
-		if err := state.remote.SetMessagesSeen(ctx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := state.remote.SetMessagesSeen(state.metadataID, xslices.Filter(messageIDs, func(messageID string) bool {
 			return !curFlags[messageID].Contains(imap.FlagSeen)
 		}), true); err != nil {
 			return err
 		}
 	} else {
-		if err := state.remote.SetMessagesSeen(ctx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := state.remote.SetMessagesSeen(state.metadataID, xslices.Filter(messageIDs, func(messageID string) bool {
 			return curFlags[messageID].Contains(imap.FlagSeen)
 		}), false); err != nil {
 			return err
@@ -246,13 +246,13 @@ func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messa
 
 	// If setting messages as flagged, only set those messages that aren't currently flagged.
 	if setFlags.Contains(imap.FlagFlagged) {
-		if err := state.remote.SetMessagesFlagged(ctx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := state.remote.SetMessagesFlagged(state.metadataID, xslices.Filter(messageIDs, func(messageID string) bool {
 			return !curFlags[messageID].Contains(imap.FlagFlagged)
 		}), true); err != nil {
 			return err
 		}
 	} else {
-		if err := state.remote.SetMessagesFlagged(ctx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := state.remote.SetMessagesFlagged(state.metadataID, xslices.Filter(messageIDs, func(messageID string) bool {
 			return curFlags[messageID].Contains(imap.FlagFlagged)
 		}), false); err != nil {
 			return err
