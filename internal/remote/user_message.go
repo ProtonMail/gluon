@@ -1,7 +1,6 @@
 package remote
 
 import (
-	"context"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -9,15 +8,16 @@ import (
 )
 
 // CreateMessage appends a message literal to the mailbox with the given ID.
-func (user *User) CreateMessage(ctx context.Context, mboxID string, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, error) {
+func (user *User) CreateMessage(metadataID ConnMetadataID, mboxID string, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, error) {
 	tempID := uuid.NewString()
 
 	if err := user.pushOp(&OpMessageCreate{
-		TempID:  tempID,
-		MBoxID:  mboxID,
-		Literal: literal,
-		Flags:   flags,
-		Date:    date,
+		OperationBase: OperationBase{MetadataID: metadataID},
+		TempID:        tempID,
+		MBoxID:        mboxID,
+		Literal:       literal,
+		Flags:         flags,
+		Date:          date,
 	}); err != nil {
 		return imap.Message{}, err
 	}
@@ -30,33 +30,37 @@ func (user *User) CreateMessage(ctx context.Context, mboxID string, literal []by
 }
 
 // AddMessageToMailbox adds the message with the given ID to the mailbox with the given ID.
-func (user *User) AddMessagesToMailbox(ctx context.Context, messageIDs []string, mboxID string) error {
+func (user *User) AddMessagesToMailbox(metadataID ConnMetadataID, messageIDs []string, mboxID string) error {
 	return user.pushOp(&OpMessageAdd{
-		MessageIDs: messageIDs,
-		MBoxID:     mboxID,
+		OperationBase: OperationBase{MetadataID: metadataID},
+		MessageIDs:    messageIDs,
+		MBoxID:        mboxID,
 	})
 }
 
 // RemoveMessageFromMailbox removes the message with the given ID from the mailbox with the given ID.
-func (user *User) RemoveMessagesFromMailbox(ctx context.Context, messageIDs []string, mboxID string) error {
+func (user *User) RemoveMessagesFromMailbox(metadataID ConnMetadataID, messageIDs []string, mboxID string) error {
 	return user.pushOp(&OpMessageRemove{
-		MessageIDs: messageIDs,
-		MBoxID:     mboxID,
+		OperationBase: OperationBase{MetadataID: metadataID},
+		MessageIDs:    messageIDs,
+		MBoxID:        mboxID,
 	})
 }
 
 // SetMessageSeen marks the message with the given ID as seen or unseen.
-func (user *User) SetMessagesSeen(ctx context.Context, messageIDs []string, seen bool) error {
+func (user *User) SetMessagesSeen(metadataID ConnMetadataID, messageIDs []string, seen bool) error {
 	return user.pushOp(&OpMessageSeen{
-		MessageIDs: messageIDs,
-		Seen:       seen,
+		OperationBase: OperationBase{MetadataID: metadataID},
+		MessageIDs:    messageIDs,
+		Seen:          seen,
 	})
 }
 
 // SetMessageFlagged marks the message with the given ID as seen or unseen.
-func (user *User) SetMessagesFlagged(ctx context.Context, messageIDs []string, flagged bool) error {
+func (user *User) SetMessagesFlagged(metadataID ConnMetadataID, messageIDs []string, flagged bool) error {
 	return user.pushOp(&OpMessageFlagged{
-		MessageIDs: messageIDs,
-		Flagged:    flagged,
+		OperationBase: OperationBase{MetadataID: metadataID},
+		MessageIDs:    messageIDs,
+		Flagged:       flagged,
 	})
 }

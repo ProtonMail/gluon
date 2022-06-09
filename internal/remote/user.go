@@ -1,6 +1,8 @@
 package remote
 
 import (
+	"bytes"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
@@ -34,6 +36,8 @@ type User struct {
 	// closed holds whether the operation queue has been closed.
 	closed     bool
 	closedLock sync.RWMutex
+
+	connMetadataStore connMetadataStore
 }
 
 // newUser constructs a new user with the given (IMAP) credentials.
@@ -41,11 +45,12 @@ type User struct {
 // and performs remote operations using the given connector.
 func newUser(userID, path string, conn connector.Connector) (*User, error) {
 	user := &User{
-		userID:    userID,
-		path:      path,
-		conn:      conn,
-		updatesCh: make(chan imap.Update),
-		queue:     pchan.New[operation](),
+		userID:            userID,
+		path:              path,
+		conn:              conn,
+		updatesCh:         make(chan imap.Update),
+		queue:             pchan.New[operation](),
+		connMetadataStore: newConnMetadataStore(),
 	}
 
 	// load any saved operations that were not processed fully before.
@@ -78,13 +83,21 @@ func (user *User) Close() error {
 		ops = append([]operation{user.lastOp}, ops...)
 	}
 
-	b, err := saveOps(ops)
-	if err != nil {
-		return fmt.Errorf("failed to serialize operations: %w", err)
+	// Append delete operations to make sure that when we reprocess the queue after loading from disk, the
+	// stored values in connMetadataStore get erased and don't conflict with new sessions
+	for _, id := range user.connMetadataStore.GetActiveStoreIDs() {
+		ops = append(ops, &OpConnMetadataStoreDelete{
+			OperationBase: OperationBase{MetadataID: id},
+		})
 	}
 
-	if err := os.WriteFile(user.path, b, 0o600); err != nil {
-		return fmt.Errorf("failed to save operations: %w", err)
+	serializeData := userSerializedData{
+		PendingOps:        ops,
+		ConnMetadataStore: user.connMetadataStore,
+	}
+
+	if err := serializeData.saveToFile(user.path); err != nil {
+		return err
 	}
 
 	return nil
@@ -108,7 +121,68 @@ func (user *User) send(update imap.Update, withBlock ...bool) {
 
 // load reads queued remote operations from disk and fills the operation queue with them.
 func (user *User) load() error {
-	f, err := os.Open(user.path)
+	serializedData := userSerializedData{
+		PendingOps:        []operation{},
+		ConnMetadataStore: newConnMetadataStore(),
+	}
+
+	if err := serializedData.loadFromFile(user.path); err != nil {
+		return err
+	}
+
+	if err := os.Remove(user.path); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+	}
+
+	for _, op := range serializedData.PendingOps {
+		if err := user.pushOp(op); err != nil {
+			return err
+		}
+	}
+
+	user.connMetadataStore = serializedData.ConnMetadataStore
+
+	return nil
+}
+
+type userSerializedData struct {
+	PendingOps        []operation
+	ConnMetadataStore connMetadataStore
+}
+
+func (usd *userSerializedData) saveToFile(path string) error {
+	b, err := usd.saveToBytes()
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (usd *userSerializedData) saveToBytes() ([]byte, error) {
+	buf := new(bytes.Buffer)
+
+	if err := gob.NewEncoder(buf).Encode(usd); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (usd *userSerializedData) loadFromBytes(data []byte) error {
+	return gob.NewDecoder(bytes.NewReader(data)).Decode(usd)
+}
+
+func (usd *userSerializedData) loadFromFile(path string) error {
+	f, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	} else if err != nil {
@@ -117,6 +191,7 @@ func (user *User) load() error {
 
 	b, err := io.ReadAll(f)
 	if err != nil {
+		f.Close()
 		return err
 	}
 
@@ -124,19 +199,8 @@ func (user *User) load() error {
 		return err
 	}
 
-	ops, err := loadOps(b)
-	if err != nil {
+	if err := usd.loadFromBytes(b); err != nil {
 		return err
-	}
-
-	if err := os.Remove(user.path); err != nil {
-		return err
-	}
-
-	for _, op := range ops {
-		if err := user.pushOp(op); err != nil {
-			return err
-		}
 	}
 
 	return nil

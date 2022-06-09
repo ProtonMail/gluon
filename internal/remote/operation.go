@@ -8,7 +8,17 @@ import (
 type operation interface {
 	merge(op operation) (operation, bool)
 
+	getConnMetadataID() ConnMetadataID
+
 	_isOperation()
+}
+
+type OperationBase struct {
+	MetadataID ConnMetadataID
+}
+
+func (c *OperationBase) getConnMetadataID() ConnMetadataID {
+	return c.MetadataID
 }
 
 type mailboxOperation interface {

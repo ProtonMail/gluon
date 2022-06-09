@@ -3,6 +3,7 @@ package remote
 import "encoding/gob"
 
 type OpMailboxDelete struct {
+	OperationBase
 	MBoxID string
 }
 

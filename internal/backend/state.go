@@ -2,12 +2,14 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
+	"github.com/ProtonMail/gluon/internal/remote"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/bradenaw/juniper/sets"
 	"github.com/bradenaw/juniper/xslices"
@@ -25,6 +27,8 @@ type State struct {
 
 	snap *snapshot
 	ro   bool
+
+	metadataID remote.ConnMetadataID
 }
 
 func (state *State) UserID() string {
@@ -465,6 +469,10 @@ func (state *State) close(ctx context.Context, tx *ent.Tx) error {
 		if err := state.pool.expungeSnap(ctx, tx, state.snap); err != nil {
 			return err
 		}
+	}
+
+	if err := state.remote.DeleteConnMetadataStore(state.metadataID); err != nil {
+		return fmt.Errorf("failed to delete conn metadata store: %w", err)
 	}
 
 	state.snap = nil

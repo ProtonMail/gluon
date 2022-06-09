@@ -5,6 +5,7 @@ import (
 )
 
 type OpMailboxCreate struct {
+	OperationBase
 	TempID string
 	Name   []string
 }

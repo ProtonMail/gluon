@@ -25,12 +25,17 @@ type Backend struct {
 	usersLock sync.Mutex
 }
 
-func New(dir string) *Backend {
+func New(dir string) (*Backend, error) {
+	manager, err := remote.New(dir)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Backend{
-		remote: remote.New(dir),
+		remote: manager,
 		delim:  "/",
 		users:  make(map[string]*user),
-	}
+	}, nil
 }
 
 func (b *Backend) SetDelimiter(delim string) {
@@ -80,7 +85,7 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (b *Backend) GetState(username, password string) (*State, error) {
+func (b *Backend) GetState(username, password string, sessionID int) (*State, error) {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
@@ -89,12 +94,17 @@ func (b *Backend) GetState(username, password string) (*State, error) {
 		return nil, err
 	}
 
+	state, err := b.users[userID].newState(remote.ConnMetadataID(sessionID))
+	if err != nil {
+		return nil, err
+	}
+
 	logrus.
 		WithField("userID", userID).
 		WithField("username", username).
-		Debug("Creating new IMAP state")
+		Debug("Created new IMAP state")
 
-	return b.users[userID].newState()
+	return state, nil
 }
 
 func (b *Backend) Close(ctx context.Context) error {

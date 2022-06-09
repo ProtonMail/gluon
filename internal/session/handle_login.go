@@ -21,7 +21,7 @@ func (s *Session) handleLogin(ctx context.Context, tag string, cmd *proto.Login,
 		return response.Bad(tag).WithError(ErrAlreadyAuthenticated)
 	}
 
-	state, err := s.backend.GetState(cmd.GetUsername(), cmd.GetPassword())
+	state, err := s.backend.GetState(cmd.GetUsername(), cmd.GetPassword(), s.sessionID)
 	if err != nil {
 		return err
 	}

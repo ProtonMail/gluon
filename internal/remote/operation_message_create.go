@@ -8,6 +8,7 @@ import (
 )
 
 type OpMessageCreate struct {
+	OperationBase
 	TempID  string
 	MBoxID  string
 	Literal []byte

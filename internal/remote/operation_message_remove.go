@@ -3,6 +3,7 @@ package remote
 import "encoding/gob"
 
 type OpMessageRemove struct {
+	OperationBase
 	MessageIDs []string
 	MBoxID     string
 }
@@ -14,7 +15,7 @@ func init() {
 func (op *OpMessageRemove) merge(other operation) (operation, bool) {
 	switch other := other.(type) {
 	case *OpMessageRemove:
-		if op.MBoxID != other.MBoxID {
+		if op.MBoxID != other.MBoxID || op.MetadataID != other.MetadataID {
 			return nil, false
 		}
 
@@ -39,6 +40,10 @@ func (op *OpMessageRemove) setMessageID(tempID, messageID string) {
 			op.MessageIDs[idx] = messageID
 		}
 	}
+}
+
+func (op *OpMessageRemove) getConnMetadataID() ConnMetadataID {
+	return op.MetadataID
 }
 
 func (OpMessageRemove) _isOperation() {}

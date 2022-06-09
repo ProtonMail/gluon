@@ -46,8 +46,7 @@ func (ch *PChan[T]) Push(val T, withPrio ...int) chan struct{} {
 	case <-ch.done:
 		panic("channel is closed")
 
-	default:
-		// ...
+	default: // ...
 	}
 
 	var prio int
@@ -77,11 +76,9 @@ func (ch *PChan[T]) Push(val T, withPrio ...int) chan struct{} {
 // If the channel is already closed, the call returns immediately and the bool value is false.
 func (ch *PChan[T]) Pop() (t T, ok bool) {
 	select {
-	case <-ch.ready:
-		// ...
+	case <-ch.ready: // ...
 
-	case <-ch.done:
-		// ...
+	case <-ch.done: // ...
 	}
 
 	ch.lock.Lock()
@@ -161,13 +158,14 @@ func (ch *PChan[T]) Close() []T {
 	case <-ch.done:
 		panic("channel is closed")
 
-	default:
-		// ...
+	default: // ...
 	}
 
-	for range ch.items {
-		<-ch.ready
-	}
+	go func() {
+		for range ch.items {
+			<-ch.ready
+		}
+	}()
 
 	close(ch.done)
 

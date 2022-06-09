@@ -3,17 +3,22 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/internal/remote"
 
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/maps"
 )
 
-func (user *user) newState() (*State, error) {
+func (user *user) newState(metadataID remote.ConnMetadataID) (*State, error) {
 	user.statesLock.Lock()
 	defer user.statesLock.Unlock()
 
-	state := &State{user: user}
+	if err := user.remote.CreateConnMetadataStore(metadataID); err != nil {
+		return nil, err
+	}
+
+	state := &State{user: user, metadataID: metadataID}
 
 	user.states[user.stateID] = state
 	user.stateID++
@@ -27,7 +32,7 @@ func (user *user) closeState(ctx context.Context, state *State) error {
 		defer user.statesLock.Unlock()
 
 		if err := state.close(ctx, tx); err != nil {
-			return err
+			return fmt.Errorf("failed to close state: %w", err)
 		}
 
 		delete(user.states, user.stateID)

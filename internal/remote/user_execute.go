@@ -33,6 +33,15 @@ func (user *User) execute(ctx context.Context, op operation) error {
 	case *OpMessageFlagged:
 		return user.executeMessageFlagged(ctx, op)
 
+	case *OpConnMetadataStoreDelete:
+		return user.executeConnMetadataStoreDelete(ctx, op)
+
+	case *OpConnMetadataStoreCreate:
+		return user.executeConnMetadataStoreCreate(ctx, op)
+
+	case *OpConnMetadataStoreSetValue:
+		return user.executeConnMetadataStoreSetValue(ctx, op)
+
 	default:
 		panic(fmt.Sprintf("bad operation: %v", op))
 	}
@@ -129,6 +138,26 @@ func (user *User) refresh(ctx context.Context, messageIDs []string, mboxIDs ...s
 			mailbox.ID,
 			mailbox.Name,
 		), true)
+	}
+
+	return nil
+}
+
+func (user *User) executeConnMetadataStoreCreate(ctx context.Context, op *OpConnMetadataStoreCreate) error {
+	user.connMetadataStore.CreateStore(op.MetadataID)
+
+	return nil
+}
+
+func (user *User) executeConnMetadataStoreDelete(ctx context.Context, op *OpConnMetadataStoreDelete) error {
+	user.connMetadataStore.DeleteStore(op.MetadataID)
+
+	return nil
+}
+
+func (user *User) executeConnMetadataStoreSetValue(ctx context.Context, op *OpConnMetadataStoreSetValue) error {
+	if ok := user.connMetadataStore.SetValue(op.MetadataID, op.Key, op.Value); !ok {
+		return fmt.Errorf("Failed to set value for ConnMetadata with ID=%v", op.MetadataID)
 	}
 
 	return nil

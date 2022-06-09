@@ -3,6 +3,7 @@ package remote
 import "encoding/gob"
 
 type OpMessageFlagged struct {
+	OperationBase
 	MessageIDs []string
 	Flagged    bool
 }
@@ -14,7 +15,7 @@ func init() {
 func (op *OpMessageFlagged) merge(other operation) (operation, bool) {
 	switch other := other.(type) {
 	case *OpMessageFlagged:
-		if op.Flagged != other.Flagged {
+		if op.Flagged != other.Flagged || op.MetadataID != other.MetadataID {
 			return nil, false
 		}
 
