@@ -13,6 +13,8 @@ var ErrQueueClosed = errors.New("the queue is closed")
 // TODO: What should we do with operations that failed to execute due to auth reasons?
 // We might want to save them somewhere so we can try again after the user has logged back in.
 func (user *User) process() {
+	defer user.processWG.Done()
+
 	for {
 		op, ok := user.popOp()
 		if !ok {
