@@ -19,25 +19,25 @@ func (user *user) apply(ctx context.Context, tx *ent.Tx, update imap.Update) err
 	logrus.WithField("update", update).Debug("Applying update")
 
 	switch update := update.(type) {
-	case imap.MailboxCreated:
+	case *imap.MailboxCreated:
 		return user.applyMailboxCreated(ctx, tx, update)
 
-	case imap.MailboxDeleted:
+	case *imap.MailboxDeleted:
 		return user.applyMailboxDeleted(ctx, tx, update)
 
-	case imap.MailboxUpdated:
+	case *imap.MailboxUpdated:
 		return user.applyMailboxUpdated(ctx, tx, update)
 
-	case imap.MailboxIDChanged:
+	case *imap.MailboxIDChanged:
 		return user.applyMailboxIDChanged(ctx, tx, update)
 
-	case imap.MessageCreated:
-		return user.applyMessageCreated(ctx, tx, update)
+	case *imap.MessagesCreated:
+		return user.applyMessagesCreated(ctx, tx, update)
 
-	case imap.MessageUpdated:
+	case *imap.MessageUpdated:
 		return user.applyMessageUpdated(ctx, tx, update)
 
-	case imap.MessageIDChanged:
+	case *imap.MessageIDChanged:
 		return user.applyMessageIDChanged(ctx, tx, update)
 
 	default:
@@ -46,7 +46,7 @@ func (user *user) apply(ctx context.Context, tx *ent.Tx, update imap.Update) err
 }
 
 // applyMailboxCreated applies a MailboxCreated update.
-func (user *user) applyMailboxCreated(ctx context.Context, tx *ent.Tx, update imap.MailboxCreated) error {
+func (user *user) applyMailboxCreated(ctx context.Context, tx *ent.Tx, update *imap.MailboxCreated) error {
 	if exists, err := txMailboxExists(ctx, tx, update.Mailbox.ID); err != nil {
 		return err
 	} else if exists {
@@ -69,7 +69,7 @@ func (user *user) applyMailboxCreated(ctx context.Context, tx *ent.Tx, update im
 }
 
 // applyMailboxDeleted applies a MailboxDeleted update.
-func (user *user) applyMailboxDeleted(ctx context.Context, tx *ent.Tx, update imap.MailboxDeleted) error {
+func (user *user) applyMailboxDeleted(ctx context.Context, tx *ent.Tx, update *imap.MailboxDeleted) error {
 	if exists, err := txMailboxExists(ctx, tx, update.MailboxID); err != nil {
 		return err
 	} else if !exists {
@@ -80,7 +80,7 @@ func (user *user) applyMailboxDeleted(ctx context.Context, tx *ent.Tx, update im
 }
 
 // applyMailboxUpdated applies a MailboxUpdated update.
-func (user *user) applyMailboxUpdated(ctx context.Context, tx *ent.Tx, update imap.MailboxUpdated) error {
+func (user *user) applyMailboxUpdated(ctx context.Context, tx *ent.Tx, update *imap.MailboxUpdated) error {
 	if exists, err := txMailboxExists(ctx, tx, update.MailboxID); err != nil {
 		return err
 	} else if !exists {
@@ -100,7 +100,7 @@ func (user *user) applyMailboxUpdated(ctx context.Context, tx *ent.Tx, update im
 }
 
 // applyMailboxIDChanged applies a MailboxIDChanged update.
-func (user *user) applyMailboxIDChanged(ctx context.Context, tx *ent.Tx, update imap.MailboxIDChanged) error {
+func (user *user) applyMailboxIDChanged(ctx context.Context, tx *ent.Tx, update *imap.MailboxIDChanged) error {
 	user.pool.updateMailboxID(update.OldID, update.NewID)
 
 	if err := user.forStateInMailbox(update.OldID, func(state *State) error {
@@ -112,37 +112,66 @@ func (user *user) applyMailboxIDChanged(ctx context.Context, tx *ent.Tx, update 
 	return txUpdateMailboxID(ctx, tx, update.OldID, update.NewID)
 }
 
-// applyMessageCreated applies a MessageCreated update.
-func (user *user) applyMessageCreated(ctx context.Context, tx *ent.Tx, update imap.MessageCreated) error {
-	if exists, err := txMessageExists(ctx, tx, update.Message.ID); err != nil {
-		return err
-	} else if exists {
-		return nil
+// applyMessagesCreated applies a MessagesCreated update.
+func (user *user) applyMessagesCreated(ctx context.Context, tx *ent.Tx, update *imap.MessagesCreated) error {
+	var updates []*imap.MessageCreated
+
+	for _, update := range update.Messages {
+		if exists, err := txMessageExists(ctx, tx, update.Message.ID); err != nil {
+			return err
+		} else if !exists {
+			updates = append(updates, update)
+		}
 	}
 
-	internalID := uuid.NewString()
+	var reqs []*txCreateMessageReq
 
-	literal, err := rfc822.SetHeaderValue(update.Literal, InternalIDKey, internalID)
-	if err != nil {
-		return fmt.Errorf("failed to set internal ID: %w", err)
+	for _, update := range updates {
+		internalID := uuid.NewString()
+
+		literal, err := rfc822.SetHeaderValue(update.Literal, InternalIDKey, internalID)
+		if err != nil {
+			return fmt.Errorf("failed to set internal ID: %w", err)
+		}
+
+		if err := user.store.Set(update.Message.ID, literal); err != nil {
+			return fmt.Errorf("failed to store message literal: %w", err)
+		}
+
+		reqs = append(reqs, &txCreateMessageReq{
+			message:    update.Message,
+			literal:    literal,
+			body:       update.Body,
+			structure:  update.Structure,
+			envelope:   update.Envelope,
+			internalID: internalID,
+		})
 	}
 
-	if _, err := txCreateMessage(ctx, tx, update.Message, literal, update.Body, update.Structure, update.Envelope, internalID); err != nil {
+	if _, err := txCreateMessages(ctx, tx, reqs...); err != nil {
 		return fmt.Errorf("failed to create message: %w", err)
 	}
 
-	if err := user.store.Set(update.Message.ID, literal); err != nil {
-		return fmt.Errorf("failed to store message literal: %w", err)
+	messageIDs := make(map[string][]string)
+
+	for _, update := range updates {
+		for _, mailboxID := range update.MailboxIDs {
+			if !slices.Contains(messageIDs[mailboxID], update.Message.ID) {
+				messageIDs[mailboxID] = append(messageIDs[mailboxID], update.Message.ID)
+			}
+		}
 	}
 
-	for _, mboxID := range update.MailboxIDs {
-		messageUIDs, err := txAddMessagesToMailbox(ctx, tx, []string{update.Message.ID}, mboxID)
+	for mailboxID, messageIDs := range messageIDs {
+		messageUIDs, err := txAddMessagesToMailbox(ctx, tx, messageIDs, mailboxID)
 		if err != nil {
 			return err
 		}
 
-		if err := user.forStateInMailbox(mboxID, func(state *State) error {
-			return state.pushResponder(ctx, tx, newExists(update.Message.ID, messageUIDs[update.Message.ID]))
+		if err := user.forStateInMailbox(mailboxID, func(state *State) error {
+			return state.pushResponder(ctx, tx, xslices.Map(messageIDs, func(messageID string) responder {
+				return newExists(messageID, messageUIDs[messageID])
+			})...)
 		}); err != nil {
 			return err
 		}
@@ -152,7 +181,7 @@ func (user *user) applyMessageCreated(ctx context.Context, tx *ent.Tx, update im
 }
 
 // applyMessageUpdated applies a MessageUpdated update.
-func (user *user) applyMessageUpdated(ctx context.Context, tx *ent.Tx, update imap.MessageUpdated) error {
+func (user *user) applyMessageUpdated(ctx context.Context, tx *ent.Tx, update *imap.MessageUpdated) error {
 	if exists, err := txMessageExists(ctx, tx, update.MessageID); err != nil {
 		return err
 	} else if !exists {
@@ -171,7 +200,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, tx *ent.Tx, update im
 }
 
 // applyMessageIDChanged applies a MessageIDChanged update.
-func (user *user) applyMessageIDChanged(ctx context.Context, tx *ent.Tx, update imap.MessageIDChanged) error {
+func (user *user) applyMessageIDChanged(ctx context.Context, tx *ent.Tx, update *imap.MessageIDChanged) error {
 	user.pool.updateMessageID(update.OldID, update.NewID)
 
 	if err := user.forState(func(state *State) error {

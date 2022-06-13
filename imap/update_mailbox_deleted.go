@@ -12,15 +12,15 @@ type MailboxDeleted struct {
 	MailboxID string
 }
 
-func NewMailboxDeleted(mailboxID string) MailboxDeleted {
-	return MailboxDeleted{
+func NewMailboxDeleted(mailboxID string) *MailboxDeleted {
+	return &MailboxDeleted{
 		updateWaiter: newUpdateWaiter(),
 		MailboxID:    mailboxID,
 	}
 }
 
-func (u MailboxDeleted) String() string {
+func (u *MailboxDeleted) String() string {
 	return fmt.Sprintf("MailboxDeleted: MailboxID = %v", utils.ShortID(u.MailboxID))
 }
 
-func (MailboxDeleted) _isUpdate() {}
+func (*MailboxDeleted) _isUpdate() {}

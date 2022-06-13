@@ -53,8 +53,9 @@ func (state *State) actionCreateMessage(ctx context.Context, tx *ent.Tx, mboxID 
 		return 0, err
 	}
 
-	update, err := imap.NewMessageCreated(res, literal, []string{mboxID})
-	if err != nil {
+	update := imap.NewMessagesCreated()
+
+	if err := update.Add(res, literal, []string{mboxID}); err != nil {
 		return 0, err
 	}
 
