@@ -13,7 +13,7 @@
 
 The demo server can be started with:
 
-```bash
+```
 $ go run demo/demo.go
 INFO[0000] User added to server                          userID=d5a706ae-c7bf-4cfd-bad3-982eafcdfe39
 INFO[0000] User added to server                          userID=622e121e-c9c7-43f9-b0ee-22bf868e8429
@@ -25,7 +25,7 @@ the first has addresses `user1@example.com` and `alias1@example.com` and passwor
 the second has addresses `user2@example.com` and `alias2@example.com` and password `password2`:
 
 ```
-telnet 127.0.0.1 1143
+$ telnet 127.0.0.1 1143
 Trying 127.0.0.1...
 Connected to 127.0.0.1.
 Escape character is '^]'.
