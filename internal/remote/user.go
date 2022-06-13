@@ -38,6 +38,9 @@ type User struct {
 	closedLock sync.RWMutex
 
 	connMetadataStore connMetadataStore
+
+	// processWG is used to ensure we wait until the process goroutine has finished executing after we close the queue.
+	processWG sync.WaitGroup
 }
 
 // newUser constructs a new user with the given (IMAP) credentials.
@@ -61,6 +64,7 @@ func newUser(userID, path string, conn connector.Connector) (*User, error) {
 	// send connector updates along to the mailserver.
 	go user.forward(conn.GetUpdates())
 
+	user.processWG.Add(1)
 	// process remote operations on the operation queue.
 	go user.process()
 
@@ -78,6 +82,9 @@ func (user *User) Close() error {
 	if err != nil {
 		return fmt.Errorf("failed to close queue: %w", err)
 	}
+
+	// Wait until any remaining operations popped by the process go routine finish executing
+	user.processWG.Wait()
 
 	if user.lastOp != nil {
 		ops = append([]operation{user.lastOp}, ops...)
