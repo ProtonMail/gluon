@@ -36,18 +36,18 @@ func (m *MockConnector) EXPECT() *MockConnectorMockRecorder {
 	return m.recorder
 }
 
-// Close mocks base method.
-func (m *MockConnector) Close() error {
+// Authorize mocks base method.
+func (m *MockConnector) Authorize(arg0, arg1 string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Close")
-	ret0, _ := ret[0].(error)
+	ret := m.ctrl.Call(m, "Authorize", arg0, arg1)
+	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// Close indicates an expected call of Close.
-func (mr *MockConnectorMockRecorder) Close() *gomock.Call {
+// Authorize indicates an expected call of Authorize.
+func (mr *MockConnectorMockRecorder) Authorize(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockConnector)(nil).Close))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authorize", reflect.TypeOf((*MockConnector)(nil).Authorize), arg0, arg1)
 }
 
 // CreateLabel mocks base method.

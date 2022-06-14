@@ -103,7 +103,7 @@ func (user *user) close(ctx context.Context) error {
 		return fmt.Errorf("failed to close user states: %w", err)
 	}
 
-	if err := user.remote.Close(); err != nil {
+	if err := user.remote.CloseAndSerializeOperationQueue(); err != nil {
 		return fmt.Errorf("failed to close user remote: %w", err)
 	}
 

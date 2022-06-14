@@ -58,7 +58,6 @@ func (m *Manager) AddUser(userID string, conn connector.Connector) (*User, error
 
 // RemoveUser removes the user with the given ID from the remote manager.
 // It waits until all the user's queued operations have been performed.
-// TODO: Find a better way to flush the operation queue?
 func (m *Manager) RemoveUser(ctx context.Context, userID string) error {
 	m.usersLock.Lock()
 	defer m.usersLock.Unlock()
@@ -68,7 +67,7 @@ func (m *Manager) RemoveUser(ctx context.Context, userID string) error {
 		return ErrNoSuchUser
 	}
 
-	user.queue.Wait()
+	user.CloseAndFlushOperationQueue()
 
 	path, err := m.getQueuePath(userID)
 	if err != nil {

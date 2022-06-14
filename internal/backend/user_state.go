@@ -3,9 +3,9 @@ package backend
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/internal/remote"
 
 	"github.com/ProtonMail/gluon/internal/backend/ent"
+	"github.com/ProtonMail/gluon/internal/remote"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/maps"
 )

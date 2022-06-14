@@ -39,7 +39,7 @@ func (m *MockConnector) EXPECT() *MockConnectorMockRecorder {
 // Close mocks base method.
 func (m *MockConnector) Close() error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Close")
+	ret := m.ctrl.Call(m, "CloseAndSerializeOperationQueue")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -47,7 +47,7 @@ func (m *MockConnector) Close() error {
 // Close indicates an expected call of Close.
 func (mr *MockConnectorMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockConnector)(nil).Close))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseAndSerializeOperationQueue", reflect.TypeOf((*MockConnector)(nil).Close))
 }
 
 // CreateLabel mocks base method.

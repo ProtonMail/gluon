@@ -11,7 +11,6 @@ import (
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/pchan"
 )
 
 // User performs operations against a remote server using a connector.
@@ -27,15 +26,11 @@ type User struct {
 	// updatesCh is the channel that delivers API updates to the mailserver.
 	updatesCh chan imap.Update
 
-	// queue is channel of operations that must be performed on the API.
-	queue *pchan.PChan[operation]
+	// Pending operation queue
+	opQueue userOpQueue
 
 	// lastOp holds an operation while it has been popped off the queue but not yet executed.
 	lastOp operation
-
-	// closed holds whether the operation queue has been closed.
-	closed     bool
-	closedLock sync.RWMutex
 
 	connMetadataStore connMetadataStore
 
@@ -52,7 +47,7 @@ func newUser(userID, path string, conn connector.Connector) (*User, error) {
 		path:              path,
 		conn:              conn,
 		updatesCh:         make(chan imap.Update),
-		queue:             pchan.New[operation](),
+		opQueue:           newUserOpQueue(),
 		connMetadataStore: newConnMetadataStore(),
 	}
 
@@ -76,9 +71,16 @@ func (user *User) GetUpdates() <-chan imap.Update {
 	return user.updatesCh
 }
 
-// Close closes the remote user.
-func (user *User) Close() error {
-	ops, err := user.closeQueue()
+func (user *User) CloseAndFlushOperationQueue() {
+	user.opQueue.closeQueue()
+
+	// Wait until any remaining operations popped by the process go routine finish executing
+	user.processWG.Wait()
+}
+
+// CloseAndSerializeOperationQueue closes the remote user.
+func (user *User) CloseAndSerializeOperationQueue() error {
+	ops, err := user.opQueue.closeQueueAndRetrieveRemaining()
 	if err != nil {
 		return fmt.Errorf("failed to close queue: %w", err)
 	}
