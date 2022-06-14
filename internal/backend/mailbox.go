@@ -280,5 +280,9 @@ func (m *Mailbox) Flush(ctx context.Context, permitExpunge bool) ([]response.Res
 }
 
 func (m *Mailbox) Close(ctx context.Context) error {
+	if err := m.state.deleteConnMetadata(); err != nil {
+		return err
+	}
+
 	return m.state.close(ctx, m.tx)
 }

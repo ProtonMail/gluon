@@ -31,6 +31,10 @@ func (user *user) closeState(ctx context.Context, state *State) error {
 		user.statesLock.Lock()
 		defer user.statesLock.Unlock()
 
+		if err := state.deleteConnMetadata(); err != nil {
+			return err
+		}
+
 		if err := state.close(ctx, tx); err != nil {
 			return fmt.Errorf("failed to close state: %w", err)
 		}
@@ -47,6 +51,10 @@ func (user *user) closeStates(ctx context.Context) error {
 		defer user.statesLock.Unlock()
 
 		for stateID, state := range user.states {
+			if err := state.deleteConnMetadata(); err != nil {
+				return err
+			}
+
 			if err := state.close(ctx, tx); err != nil {
 				return fmt.Errorf("failed to close state: %w", err)
 			}
