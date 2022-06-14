@@ -466,15 +466,19 @@ func (state *State) updateMessageID(oldID, newID string) error {
 	return nil
 }
 
+func (state *State) deleteConnMetadata() error {
+	if err := state.remote.DeleteConnMetadataStore(state.metadataID); err != nil {
+		return fmt.Errorf("failed to delete conn metadata store: %w", err)
+	}
+
+	return nil
+}
+
 func (state *State) close(ctx context.Context, tx *ent.Tx) error {
 	if state.snap != nil && state.pool.hasSnap(state.snap) {
 		if err := state.pool.expungeSnap(ctx, tx, state.snap); err != nil {
 			return err
 		}
-	}
-
-	if err := state.remote.DeleteConnMetadataStore(state.metadataID); err != nil {
-		return fmt.Errorf("failed to delete conn metadata store: %w", err)
 	}
 
 	state.snap = nil
