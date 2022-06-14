@@ -11,33 +11,42 @@ import (
 	"github.com/bradenaw/juniper/xslices"
 )
 
-func txCreateMessage(
-	ctx context.Context,
-	tx *ent.Tx,
-	message imap.Message,
-	literal []byte,
-	body, structure, envelope string,
-	internalID string,
-) (*ent.Message, error) {
-	builders := xslices.Map(message.Flags.ToSlice(), func(flag string) *ent.MessageFlagCreate {
-		return tx.MessageFlag.Create().SetValue(flag)
-	})
+type txCreateMessageReq struct {
+	message    imap.Message
+	literal    []byte
+	body       string
+	structure  string
+	envelope   string
+	internalID string
+}
 
-	entFlags, err := tx.MessageFlag.CreateBulk(builders...).Save(ctx)
-	if err != nil {
-		return nil, err
+func txCreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*txCreateMessageReq) ([]*ent.Message, error) {
+	flags := make(map[string][]*ent.MessageFlag)
+
+	for _, req := range reqs {
+		builders := xslices.Map(req.message.Flags.ToSlice(), func(flag string) *ent.MessageFlagCreate {
+			return tx.MessageFlag.Create().SetValue(flag)
+		})
+
+		entFlags, err := tx.MessageFlag.CreateBulk(builders...).Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		flags[req.message.ID] = entFlags
 	}
 
-	return tx.Message.Create().
-		SetMessageID(message.ID).
-		SetInternalID(internalID).
-		SetDate(message.Date).
-		SetBody(body).
-		SetBodyStructure(structure).
-		SetEnvelope(envelope).
-		SetSize(len(literal)).
-		AddFlags(entFlags...).
-		Save(ctx)
+	return tx.Message.CreateBulk(xslices.Map(reqs, func(req *txCreateMessageReq) *ent.MessageCreate {
+		return tx.Message.Create().
+			SetMessageID(req.message.ID).
+			SetInternalID(req.internalID).
+			SetDate(req.message.Date).
+			SetBody(req.body).
+			SetBodyStructure(req.structure).
+			SetEnvelope(req.envelope).
+			SetSize(len(req.literal)).
+			AddFlags(flags[req.message.ID]...)
+	})...).Save(ctx)
 }
 
 func txAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []string, mboxID string) (map[string]int, error) {

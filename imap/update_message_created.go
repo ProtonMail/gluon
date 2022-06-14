@@ -3,13 +3,16 @@ package imap
 import (
 	"fmt"
 
-	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/rfc822"
 )
 
-type MessageCreated struct {
+type MessagesCreated struct {
 	*updateWaiter
 
+	Messages []*MessageCreated
+}
+
+type MessageCreated struct {
 	Message    Message
 	Literal    []byte
 	MailboxIDs []string
@@ -19,30 +22,34 @@ type MessageCreated struct {
 	Envelope  string
 }
 
-func NewMessageCreated(message Message, literal []byte, mailboxIDs []string) (MessageCreated, error) {
+func NewMessagesCreated() *MessagesCreated {
+	return &MessagesCreated{
+		updateWaiter: newUpdateWaiter(),
+	}
+}
+
+func (u *MessagesCreated) Add(message Message, literal []byte, mailboxIDs []string) error {
 	root, err := rfc822.Parse(literal)
 	if err != nil {
-		return MessageCreated{}, fmt.Errorf("failed to parse message literal: %w", err)
+		return fmt.Errorf("failed to parse message literal: %w", err)
 	}
 
 	body, err := Structure(root, false)
 	if err != nil {
-		return MessageCreated{}, fmt.Errorf("failed to build message body: %w", err)
+		return fmt.Errorf("failed to build message body: %w", err)
 	}
 
 	structure, err := Structure(root, true)
 	if err != nil {
-		return MessageCreated{}, fmt.Errorf("failed to build message body structure: %w", err)
+		return fmt.Errorf("failed to build message body structure: %w", err)
 	}
 
 	envelope, err := Envelope(root.ParseHeader())
 	if err != nil {
-		return MessageCreated{}, fmt.Errorf("failed to build message envelope: %w", err)
+		return fmt.Errorf("failed to build message envelope: %w", err)
 	}
 
-	return MessageCreated{
-		updateWaiter: newUpdateWaiter(),
-
+	u.Messages = append(u.Messages, &MessageCreated{
 		Message:    message,
 		Literal:    literal,
 		MailboxIDs: mailboxIDs,
@@ -50,11 +57,13 @@ func NewMessageCreated(message Message, literal []byte, mailboxIDs []string) (Me
 		Body:      body,
 		Structure: structure,
 		Envelope:  envelope,
-	}, nil
+	})
+
+	return nil
 }
 
-func (u MessageCreated) String() string {
-	return fmt.Sprintf("MessageCreated: Message.ID = %v, MailboxIDs = %v", utils.ShortID(u.Message.ID), u.MailboxIDs)
+func (u *MessagesCreated) String() string {
+	return fmt.Sprintf("MessagesCreated (length = %v)", len(u.Messages))
 }
 
-func (MessageCreated) _isUpdate() {}
+func (*MessagesCreated) _isUpdate() {}

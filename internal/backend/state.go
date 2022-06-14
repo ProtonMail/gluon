@@ -363,31 +363,33 @@ func (state *State) flushResponses(ctx context.Context, tx *ent.Tx, permitExpung
 	return responses, nil
 }
 
-func (state *State) pushResponder(ctx context.Context, tx *ent.Tx, responder responder) error {
+func (state *State) pushResponder(ctx context.Context, tx *ent.Tx, responder ...responder) error {
 	state.idleLock.RLock()
 	defer state.idleLock.RUnlock()
 
 	if state.idleCh == nil {
-		return state.queueResponder(ctx, tx, responder)
+		return state.queueResponder(ctx, tx, responder...)
 	}
 
-	res, err := responder.handle(ctx, tx, state.snap)
-	if err != nil {
-		return err
-	}
+	for _, responder := range responder {
+		res, err := responder.handle(ctx, tx, state.snap)
+		if err != nil {
+			return err
+		}
 
-	for _, res := range res {
-		state.idleCh <- res
+		for _, res := range res {
+			state.idleCh <- res
+		}
 	}
 
 	return nil
 }
 
-func (state *State) queueResponder(ctx context.Context, tx *ent.Tx, responder responder) error {
+func (state *State) queueResponder(ctx context.Context, tx *ent.Tx, responder ...responder) error {
 	state.resLock.Lock()
 	defer state.resLock.Unlock()
 
-	state.res = append(state.res, responder)
+	state.res = append(state.res, responder...)
 
 	return nil
 }

@@ -179,8 +179,9 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID string, literal []b
 		date,
 	)
 
-	update, err := imap.NewMessageCreated(message, literal, []string{mboxID})
-	if err != nil {
+	update := imap.NewMessagesCreated()
+
+	if err := update.Add(message, literal, []string{mboxID}); err != nil {
 		return imap.Message{}, err
 	}
 
@@ -254,14 +255,15 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 		conn.updateCh <- imap.NewMailboxCreated(mailbox)
 	}
 
+	update := imap.NewMessagesCreated()
+
 	for _, message := range conn.state.getMessages() {
-		update, err := imap.NewMessageCreated(message, conn.state.getLiteral(message.ID), conn.state.getLabelIDs(message.ID))
-		if err != nil {
+		if err := update.Add(message, conn.state.getLiteral(message.ID), conn.state.getLabelIDs(message.ID)); err != nil {
 			return err
 		}
-
-		conn.updateCh <- update
 	}
+
+	conn.updateCh <- update
 
 	return nil
 }
@@ -303,10 +305,10 @@ func (conn *Dummy) pushUpdate(update imap.Update) {
 	// We mimic the behaviour of the Proton sever. if several update to a message or mailbox happen in between
 	// two event polls, we only get one refresh update with the latest state.
 	switch update := update.(type) {
-	case imap.MessageUpdated:
+	case *imap.MessageUpdated:
 		conn.queue = removeMessageUpdatedFromSlice(conn.queue, update.MessageID)
 
-	case imap.MailboxUpdated:
+	case *imap.MailboxUpdated:
 		conn.queue = removeMailboxUpdatedFromSlice(conn.queue, update.MailboxID)
 	}
 
@@ -326,7 +328,7 @@ func (conn *Dummy) popUpdates() []imap.Update {
 
 func removeMessageUpdatedFromSlice(updates []imap.Update, messageID string) []imap.Update {
 	return xslices.Filter(updates, func(update imap.Update) bool {
-		u, ok := update.(imap.MessageUpdated)
+		u, ok := update.(*imap.MessageUpdated)
 
 		return (!ok) || (u.MessageID != messageID)
 	})
@@ -334,7 +336,7 @@ func removeMessageUpdatedFromSlice(updates []imap.Update, messageID string) []im
 
 func removeMailboxUpdatedFromSlice(updates []imap.Update, mailboxID string) []imap.Update {
 	return xslices.Filter(updates, func(update imap.Update) bool {
-		u, ok := update.(imap.MailboxUpdated)
+		u, ok := update.(*imap.MailboxUpdated)
 
 		return (!ok) || (u.MailboxID != mailboxID)
 	})

@@ -16,8 +16,8 @@ type MessageUpdated struct {
 	Seen, Flagged bool
 }
 
-func NewMessageUpdated(messageID string, mailboxIDs []string, seen, flagged bool) MessageUpdated {
-	return MessageUpdated{
+func NewMessageUpdated(messageID string, mailboxIDs []string, seen, flagged bool) *MessageUpdated {
+	return &MessageUpdated{
 		updateWaiter: newUpdateWaiter(),
 		MessageID:    messageID,
 		MailboxIDs:   mailboxIDs,
@@ -26,7 +26,7 @@ func NewMessageUpdated(messageID string, mailboxIDs []string, seen, flagged bool
 	}
 }
 
-func (u MessageUpdated) String() string {
+func (u *MessageUpdated) String() string {
 	return fmt.Sprintf(
 		"MessageUpdated: MessageID = %v, MailboxIDs = %v, seen = %v, flagged = %v",
 		utils.ShortID(u.MessageID),
@@ -36,4 +36,4 @@ func (u MessageUpdated) String() string {
 	)
 }
 
-func (MessageUpdated) _isUpdate() {}
+func (*MessageUpdated) _isUpdate() {}

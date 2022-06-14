@@ -71,8 +71,9 @@ func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs 
 		labelIDs: labelIDs,
 	}
 
-	update, err := imap.NewMessageCreated(message, literal, mboxIDs)
-	if err != nil {
+	update := imap.NewMessagesCreated()
+
+	if err := update.Add(message, literal, mboxIDs); err != nil {
 		return err
 	}
 

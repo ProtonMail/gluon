@@ -13,14 +13,14 @@ type MailboxCreated struct {
 	Mailbox Mailbox
 }
 
-func NewMailboxCreated(mailbox Mailbox) MailboxCreated {
-	return MailboxCreated{
+func NewMailboxCreated(mailbox Mailbox) *MailboxCreated {
+	return &MailboxCreated{
 		updateWaiter: newUpdateWaiter(),
 		Mailbox:      mailbox,
 	}
 }
 
-func (u MailboxCreated) String() string {
+func (u *MailboxCreated) String() string {
 	return fmt.Sprintf(
 		"MailboxCreated: Mailbox.ID = %v, Mailbox.Name = %v",
 		utils.ShortID(u.Mailbox.ID),
@@ -28,4 +28,4 @@ func (u MailboxCreated) String() string {
 	)
 }
 
-func (MailboxCreated) _isUpdate() {}
+func (*MailboxCreated) _isUpdate() {}
