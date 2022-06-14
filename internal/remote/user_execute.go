@@ -53,7 +53,7 @@ func (user *User) executeMailboxCreate(ctx context.Context, op *OpMailboxCreate)
 		return err
 	}
 
-	user.setMailboxID(op.TempID, mbox.ID)
+	user.opQueue.setMailboxID(op.TempID, mbox.ID)
 
 	user.send(imap.NewMailboxIDChanged(op.TempID, mbox.ID), true)
 
@@ -74,7 +74,7 @@ func (user *User) executeMessageCreate(ctx context.Context, op *OpMessageCreate)
 		return err
 	}
 
-	user.setMessageID(op.TempID, msg.ID)
+	user.opQueue.setMessageID(op.TempID, msg.ID)
 
 	user.send(imap.NewMessageIDChanged(op.TempID, msg.ID), true)
 
