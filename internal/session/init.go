@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	logIMAPNameLimit = "GOMSRV_LOG_IMAP_NAME_LIMIT"
-	logIMAPLineLimit = "GOMSRV_LOG_IMAP_LINE_LIMIT"
+	logIMAPNameLimit = "GLUON_LOG_IMAP_NAME_LIMIT"
+	logIMAPLineLimit = "GLUON_LOG_IMAP_LINE_LIMIT"
 )
 
 var (

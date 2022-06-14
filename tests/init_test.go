@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	if level, err := logrus.ParseLevel(os.Getenv("GOMSRV_LOG_LEVEL")); err == nil {
+	if level, err := logrus.ParseLevel(os.Getenv("GLUON_LOG_LEVEL")); err == nil {
 		logrus.SetLevel(level)
 	}
 }

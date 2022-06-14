@@ -238,7 +238,7 @@ func TestFetchBodyMultiPart(t *testing.T) {
 			require.NoError(t, err)
 			fullMessage := string(fullMessageBytes)
 			builder.ignoreFlags()
-			builder.wantSectionAndSkipGOMSRVHeader("BODY[]", fullMessage)
+			builder.wantSectionAndSkipGLUONHeader("BODY[]", fullMessage)
 		}).check()
 
 		// Get first message part
@@ -318,7 +318,7 @@ func TestFetchBodyEmbedded(t *testing.T) {
 			require.NoError(t, err)
 			fullMessage := string(fullMessageBytes)
 			builder.ignoreFlags()
-			builder.wantSectionAndSkipGOMSRVHeader("BODY[]", fullMessage)
+			builder.wantSectionAndSkipGLUONHeader("BODY[]", fullMessage)
 		}).check()
 
 		// Get first message part
@@ -377,7 +377,7 @@ func TestFetchBodyPlain(t *testing.T) {
 			require.NoError(t, err)
 			fullMessage := string(fullMessageBytes)
 			builder.ignoreFlags()
-			builder.wantSectionAndSkipGOMSRVHeader("BODY[]", fullMessage)
+			builder.wantSectionAndSkipGLUONHeader("BODY[]", fullMessage)
 		}).check()
 
 		// Get first message part
@@ -448,7 +448,7 @@ func TestFetchHeaderMultiPart(t *testing.T) {
 
 		newFetchCommand(t, client).withItems("BODY[HEADER]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 			builder.ignoreFlags()
-			builder.wantSectionAndSkipGOMSRVHeader("BODY[HEADER]",
+			builder.wantSectionAndSkipGLUONHeader("BODY[HEADER]",
 				`Return-Path: <somebody@gmail.com>`,
 				`Received: from [10.1.1.121] ([185.159.157.131])`,
 				`        by smtp.gmail.com with ESMTPSA id t8sm14889112wrr.10.2021.03.26.12.01.23`,
@@ -522,7 +522,7 @@ func TestFetchHeaderFieldsMultiPart(t *testing.T) {
 		fillAndSelectMultiPartMessage(t, client)
 
 		newFetchCommand(t, client).withItems("BODY[HEADER.FIELDS (To From Date)]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
-			builder.wantSectionAndSkipGOMSRVHeader("BODY[HEADER.FIELDS (To From Date)]",
+			builder.wantSectionAndSkipGLUONHeader("BODY[HEADER.FIELDS (To From Date)]",
 				`To: somebody@gmail.com`,
 				`From: BQA <somebody@gmail.com>`,
 				`Date: Fri, 26 Mar 2021 20:01:23 +0100`,
@@ -533,7 +533,7 @@ func TestFetchHeaderFieldsMultiPart(t *testing.T) {
 
 		newFetchCommand(t, client).withItems("BODY[HEADER.FIELDS.NOT (To From Date)]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 			builder.ignoreFlags()
-			builder.wantSectionAndSkipGOMSRVHeader("BODY[HEADER.FIELDS.NOT (To From Date)]",
+			builder.wantSectionAndSkipGLUONHeader("BODY[HEADER.FIELDS.NOT (To From Date)]",
 				`Return-Path: <somebody@gmail.com>`,
 				`Received: from [10.1.1.121] ([185.159.157.131])`,
 				`        by smtp.gmail.com with ESMTPSA id t8sm14889112wrr.10.2021.03.26.12.01.23`,
@@ -561,7 +561,7 @@ func TestFetchHeaderFieldsEmbedded(t *testing.T) {
 
 		newFetchCommand(t, client).withItems("BODY[2.HEADER.FIELDS (To)]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 			builder.ignoreFlags()
-			builder.wantSectionAndSkipGOMSRVHeader("BODY[2.HEADER.FIELDS (To)]",
+			builder.wantSectionAndSkipGLUONHeader("BODY[2.HEADER.FIELDS (To)]",
 				`To: someone`,
 				``,
 				``,
@@ -570,7 +570,7 @@ func TestFetchHeaderFieldsEmbedded(t *testing.T) {
 
 		newFetchCommand(t, client).withItems("BODY[2.HEADER.FIELDS.NOT (To)]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 			builder.ignoreFlags()
-			builder.wantSectionAndSkipGOMSRVHeader("BODY[2.HEADER.FIELDS.NOT (To)]",
+			builder.wantSectionAndSkipGLUONHeader("BODY[2.HEADER.FIELDS.NOT (To)]",
 				`Subject: Fwd: embedded`,
 				`Content-type: multipart/mixed; boundary="embedded-boundary"`,
 				``,

@@ -69,7 +69,7 @@ func TestFetchRFC822(t *testing.T) {
 		newFetchCommand(t, client).withItems(goimap.FetchRFC822).fetch("1").forSeqNum(1, func(validator *validatorBuilder) {
 			validator.ignoreFlags()
 			validator.wantSectionString(goimap.FetchRFC822, func(t testing.TB, literal string) {
-				messageFromSection := skipGOMSRVHeader(literal)
+				messageFromSection := skipGLUONHeader(literal)
 				require.Equal(t, fullMessage, messageFromSection)
 			})
 		}).checkAndRequireMessageCount(1)
@@ -89,7 +89,7 @@ func TestFetchRFC822Header(t *testing.T) {
 		newFetchCommand(t, client).withItems(goimap.FetchRFC822Header).fetch("1").forSeqNum(1, func(validator *validatorBuilder) {
 			validator.ignoreFlags()
 			validator.wantSectionString(goimap.FetchRFC822Header, func(t testing.TB, literal string) {
-				messageFromSection := skipGOMSRVHeader(literal)
+				messageFromSection := skipGLUONHeader(literal)
 				require.True(t, strings.HasPrefix(fullMessage, messageFromSection))
 			})
 		}).checkAndRequireMessageCount(1)
@@ -120,7 +120,7 @@ func TestFetchRFC822Text(t *testing.T) {
 		newFetchCommand(t, client).withItems(goimap.FetchRFC822Text).fetch("1").forSeqNum(1, func(validator *validatorBuilder) {
 			validator.ignoreFlags()
 			validator.wantSectionString(goimap.FetchRFC822Text, func(t testing.TB, literal string) {
-				messageFromSection := skipGOMSRVHeader(literal)
+				messageFromSection := skipGLUONHeader(literal)
 				require.True(t, strings.HasSuffix(fullMessage, messageFromSection))
 			})
 		}).checkAndRequireMessageCount(1)

@@ -478,7 +478,7 @@ func getBodySection(message *goimap.Message, section *goimap.BodySectionName) go
 	return nil
 }
 
-func skipGOMSRVHeader(message string) string {
+func skipGLUONHeader(message string) string {
 	if keyIndex := strings.Index(message, backend.InternalIDKey); keyIndex != -1 {
 		message = message[0:keyIndex] + message[keyIndex+backend.InternalIDHeaderLengthWithNewLine:]
 	}
@@ -517,7 +517,7 @@ func (vb *validatorBuilder) wantSectionEmpty(sectionStr goimap.FetchItem) *valid
 	return vb
 }
 
-func (vb *validatorBuilder) wantSectionAndSkipGOMSRVHeader(sectionStr goimap.FetchItem, expected ...string) *validatorBuilder {
+func (vb *validatorBuilder) wantSectionAndSkipGLUONHeader(sectionStr goimap.FetchItem, expected ...string) *validatorBuilder {
 	section, err := goimap.ParseBodySectionName(sectionStr)
 	if err != nil {
 		panic("Failed to parse section string")
@@ -528,7 +528,7 @@ func (vb *validatorBuilder) wantSectionAndSkipGOMSRVHeader(sectionStr goimap.Fet
 		require.NotNil(t, literal)
 		bytes, err := ioutil.ReadAll(literal)
 		require.NoError(t, err)
-		require.Equal(t, skipGOMSRVHeader(string(bytes)), strings.Join(expected, "\r\n"))
+		require.Equal(t, skipGLUONHeader(string(bytes)), strings.Join(expected, "\r\n"))
 	})
 
 	return vb

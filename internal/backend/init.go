@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-const fetchConcurrency = "GOMSRV_FETCH_CONCURRENCY"
+const fetchConcurrency = "GLUON_FETCH_CONCURRENCY"
 
 func init() {
 	if val, ok := os.LookupEnv(fetchConcurrency); ok {
