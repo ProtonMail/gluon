@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -466,9 +467,17 @@ func (state *State) updateMessageID(oldID, newID string) error {
 	return nil
 }
 
+func (state *State) SetConnMetadataKeyValue(key string, value any) error {
+	return state.remote.SetConnMetadataValue(state.metadataID, key, value)
+}
+
 func (state *State) deleteConnMetadata() error {
 	if err := state.remote.DeleteConnMetadataStore(state.metadataID); err != nil {
-		return fmt.Errorf("failed to delete conn metadata store: %w", err)
+		// We don't want the queue closed to be reported as an error. User will clean up existing
+		// metadata entries by itself when closed.
+		if !errors.Is(err, remote.ErrQueueClosed) {
+			return fmt.Errorf("failed to delete conn metadata store: %w", err)
+		}
 	}
 
 	return nil
