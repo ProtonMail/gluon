@@ -12,13 +12,14 @@ import (
 
 func _uidFetchFlags(t *testing.T, client *client.Client, first int, last int, flags []string) {
 	const sectionStr = "FLAGS"
+	nbRes := (last - first) + 1
 	seqSet := fmt.Sprint(first)
 	if first != last {
 		seqSet += ":" + fmt.Sprint(last)
 	}
 	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
-	fetchResult.checkAndRequireMessageCount((last - first) + 1)
-	for i := first; i <= last; i++ {
+	fetchResult.checkAndRequireMessageCount(nbRes)
+	for i := 1; i <= nbRes; i++ {
 		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
 			for _, flag := range flags {
 				builder.wantFlags(flag)
@@ -27,15 +28,16 @@ func _uidFetchFlags(t *testing.T, client *client.Client, first int, last int, fl
 	}
 }
 
-func _fetchMailHeader(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
+func _uidFetchMailHeader(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
 	const sectionStr = "BODY.PEEK[HEADER.FIELDS (DATE FROM Subject)]"
+	nbRes := (last - first) + 1
 	seqSet := fmt.Sprint(first)
 	if first != last {
 		seqSet += ":" + fmt.Sprint(last)
 	}
 	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
-	fetchResult.checkAndRequireMessageCount((last - first) + 1)
-	for i := first; i <= last; i++ {
+	fetchResult.checkAndRequireMessageCount(nbRes)
+	for i := 1; i <= nbRes; i++ {
 		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
 			builder.ignoreFlags()
 			if expectAfternoon {
@@ -53,15 +55,16 @@ func _fetchMailHeader(t *testing.T, client *client.Client, first int, last int, 
 	}
 }
 
-func _fetchMailContent(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
+func _uidFetchMailContent(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
 	const sectionStr = "BODY[TEXT]"
+	nbRes := (last - first) + 1
 	seqSet := fmt.Sprint(first)
 	if first != last {
 		seqSet += ":" + fmt.Sprint(last)
 	}
 	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
-	fetchResult.checkAndRequireMessageCount((last - first) + 1)
-	for i := first; i <= last; i++ {
+	fetchResult.checkAndRequireMessageCount(nbRes)
+	for i := 1; i <= nbRes; i++ {
 		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
 			builder.ignoreFlags()
 			if expectAfternoon {
@@ -118,8 +121,8 @@ func TestSimpleMailCopy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
 		// read the mail
-		_fetchMailHeader(t, client, 1, 1, true)
-		_fetchMailContent(t, client, 1, 1, true)
+		_uidFetchMailHeader(t, client, 1, 1, true)
+		_uidFetchMailContent(t, client, 1, 1, true)
 
 		// copy it to INBOX
 		require.NoError(t, client.Copy(createSeqSet("1"), "INBOX"))
@@ -128,8 +131,8 @@ func TestSimpleMailCopy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
 		// read the same mail
-		_fetchMailHeader(t, client, 1, 1, true)
-		_fetchMailContent(t, client, 1, 1, true)
+		_uidFetchMailHeader(t, client, 1, 1, true)
+		_uidFetchMailContent(t, client, 1, 1, true)
 	})
 }
 
@@ -230,8 +233,8 @@ func TestMorningFiltering(t *testing.T) {
 		for i := 1; i <= 100; i++ {
 			strId := fmt.Sprint(i)
 			// read the content
-			_fetchMailHeader(t, client, i, i, false)
-			_fetchMailContent(t, client, i, i, false)
+			_uidFetchMailHeader(t, client, i, i, false)
+			_uidFetchMailContent(t, client, i, i, false)
 			switch i % 3 {
 			case 0:
 				// either Delete
@@ -266,6 +269,11 @@ func TestMorningFiltering(t *testing.T) {
 			mailboxStatus, err := client.Status("ReadLater", []goimap.StatusItem{goimap.StatusMessages})
 			require.NoError(t, err)
 			require.Equal(t, uint32(nbUnseen), mailboxStatus.Messages)
+
+		}
+		{
+			mailboxStatus, err := client.Select("ReadLater", false)
+			require.NoError(t, err)
 			require.Equal(t, uint32(nbUnseen), mailboxStatus.Unseen)
 		}
 	})
