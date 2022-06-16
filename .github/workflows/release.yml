@@ -1,6 +1,10 @@
 name: Build, test and release
 
-on: [push]
+on:
+  push:
+    branches: master
+  pull_request:
+    types: [opened, reopened]
 
 jobs:
   check:
