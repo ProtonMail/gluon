@@ -22,6 +22,11 @@ string
 	| literal		# stringLit
 	;
 
+nstring
+    : string
+    | N I L
+    ;
+
 quoted: DQuote quotedChar* DQuote;
 
 quotedChar
@@ -45,7 +50,7 @@ astring
 command: ((tag SP (commandAny | commandNonAuth | commandAuth | commandSelected)) | done) crlf EOF;
 
 // 6.1. Client Commands - Any State
-commandAny: capability | noop | logout;
+commandAny: capability | noop | logout | id;
 
 // 6.1.1 CAPABILITY Command
 capability: C A P A B I L I T Y;
@@ -335,6 +340,26 @@ move: M O V E SP seqSet SP mailbox;
 
 // 6.4.8. UID Command
 uid: U I D SP (copy | fetch | search | store | move);
+
+// RFC 2971: IMAP ID extension
+id: I D SP id_param_list;
+
+id_param_list
+    : id_nil_param
+    | id_params
+    ;
+
+id_nil_param: N I L;
+
+                // Restrict parsing rule to 30 fields
+id_params : LParen (c+=id_param_key_pair SP?)* {$c.size() <=30}? RParen ;
+
+id_param_key_pair: string SP id_param_key_value;
+
+id_param_key_value
+    : id_nil_param
+    | nstring
+    ;
 
 // Common
 digit: N0 | N1 | N2 | N3 | N4 | N5 | N6 | N7 | N8 | N9;

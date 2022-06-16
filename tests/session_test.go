@@ -35,6 +35,8 @@ type Connector interface {
 
 	Sync(context.Context) error
 	Flush()
+
+	GetLastRecordedIMAPID() imap.ID
 }
 
 type testSession struct {

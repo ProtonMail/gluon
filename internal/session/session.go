@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ProtonMail/gluon/internal"
+
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
@@ -58,9 +60,15 @@ type Session struct {
 
 	// tlsConfig holds TLS information (used, for example, for STARTTLS).
 	tlsConfig *tls.Config
+
+	// imapID holds the IMAP ID extension data for this client. This is necessary, since this information may arrive
+	// before the client logs in or selects a mailbox.
+	imapID imap.ID
+
+	version *internal.VersionInfo
 }
 
-func New(conn net.Conn, backend *backend.Backend, sessionID int, eventCh chan<- events.Event) *Session {
+func New(conn net.Conn, backend *backend.Backend, sessionID int, versionInfo *internal.VersionInfo, eventCh chan<- events.Event) *Session {
 	return &Session{
 		conn:      conn,
 		liner:     liner.New(conn),
@@ -68,6 +76,7 @@ func New(conn net.Conn, backend *backend.Backend, sessionID int, eventCh chan<- 
 		caps:      []imap.Capability{imap.IMAP4rev1, imap.IDLE, imap.UNSELECT, imap.UIDPLUS, imap.MOVE},
 		sessionID: sessionID,
 		eventCh:   eventCh,
+		version:   versionInfo,
 	}
 }
 
@@ -240,6 +249,6 @@ func (s *Session) greet() error {
 
 	return response.Ok().
 		WithItems(response.ItemCapability(s.caps...)).
-		WithMessage(fmt.Sprintf("gluon session ID %v", s.sessionID)).
+		WithMessage(fmt.Sprintf("%v %v - gluon session ID %v", s.version.Name, s.version.Version.String(), s.sessionID)).
 		Send(s)
 }

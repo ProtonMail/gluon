@@ -23,6 +23,7 @@ class Visitor : public imap::IMAPParserBaseVisitor {
   antlrcpp::Any visitLiteral(imap::IMAPParser::LiteralContext*) override;
   antlrcpp::Any visitAstringRaw(imap::IMAPParser::AstringRawContext*) override;
   antlrcpp::Any visitAstringStr(imap::IMAPParser::AstringStrContext*) override;
+  antlrcpp::Any visitNstring(imap::IMAPParser::NstringContext*) override;
 
   // 6. Client Commands
   antlrcpp::Any visitCommand(imap::IMAPParser::CommandContext*) override;
@@ -57,6 +58,13 @@ class Visitor : public imap::IMAPParserBaseVisitor {
   // RFC2177 Idle Command
   antlrcpp::Any visitIdle(imap::IMAPParser::IdleContext*) override;
   antlrcpp::Any visitDone(imap::IMAPParser::DoneContext*) override;
+
+  // RFC2971 ID Command
+  antlrcpp::Any visitId(imap::IMAPParser::IdContext*) override;
+  antlrcpp::Any visitId_param_list(imap::IMAPParser::Id_param_listContext*) override;
+  antlrcpp::Any visitId_param_key_pair(imap::IMAPParser::Id_param_key_pairContext* ctx) override;
+  antlrcpp::Any visitId_params(imap::IMAPParser::Id_paramsContext* ctx) override;
+  antlrcpp::Any visitId_param_key_value(imap::IMAPParser::Id_param_key_valueContext* ctx) override;
 
   antlrcpp::Any visitFlagList(imap::IMAPParser::FlagListContext*) override;
   antlrcpp::Any visitDateTime(imap::IMAPParser::DateTimeContext*) override;

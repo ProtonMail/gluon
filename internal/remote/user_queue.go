@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/sirupsen/logrus"
 )
@@ -73,6 +74,17 @@ func (uoq *userOpQueue) tryGetNextOp() operation {
 	return nil
 }
 
+func (user *User) newContextWithIMAPID(ctx context.Context, id ConnMetadataID) context.Context {
+	if v := user.connMetadataStore.GetValue(id, imap.IMAPIDConnMetadataKey); v != nil {
+		switch x := v.(type) {
+		case imap.ID:
+			ctx = imap.NewContextWithIMAPID(ctx, x)
+		}
+	}
+
+	return ctx
+}
+
 // process repeatedly pulls items off the operation queue and executes them.
 // TODO: What should we do with operations that failed to execute due to auth reasons?
 // We might want to save them somewhere so we can try again after the user has logged back in.
@@ -82,6 +94,7 @@ func (user *User) process() {
 	for {
 		// Pops the next remote operation off the queue.
 		op := user.opQueue.popAndMerge()
+
 		if op == nil {
 			return
 		}
@@ -91,7 +104,7 @@ func (user *User) process() {
 		}
 
 		user.lastOp = op
-		if err := user.execute(context.Background(), op); err != nil {
+		if err := user.execute(user.newContextWithIMAPID(context.Background(), op.getConnMetadataID()), op); err != nil {
 			logrus.WithField("op", op).WithError(err).Error("Error handling remote operation")
 		}
 

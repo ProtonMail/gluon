@@ -1583,3 +1583,58 @@ TEST_F(ParserTest, SyntaxErrorWithoutTag) {
   EXPECT_TRUE(result.tag.empty());
   EXPECT_TRUE(result.json.empty());
 }
+
+TEST_F(ParserTest, IdNil) {
+  auto result = parse("a002 ID NIL", {});
+
+  EXPECT_EQ(result.tag, "a002");
+  EXPECT_EQ(result.json, R"({
+  "idGet": {}
+})");
+}
+
+TEST_F(ParserTest, IdWithOneField) {
+  auto result = parse(R"(a002 ID ("name" "foo"))", {});
+
+  EXPECT_EQ(result.tag, "a002");
+  EXPECT_EQ(result.json, R"({
+  "idSet": {
+    "keys": {
+      "name": "foo"
+    }
+  }
+})");
+}
+
+TEST_F(ParserTest, IdMoreThan30FieldsFails) {
+  auto result = parse(
+      R"(a002 ID ("bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo")",
+      {});
+
+  EXPECT_EQ(result.tag, "a002");
+  EXPECT_TRUE(result.json.empty());
+}
+
+TEST_F(ParserTest, IdEmptyFields) {
+  auto result = parse(R"(a002 ID ())", {});
+
+  EXPECT_EQ(result.tag, "a002");
+  EXPECT_EQ(result.json, R"({
+  "idSet": {
+    "keys": {}
+  }
+})");
+}
+
+TEST_F(ParserTest, IdNilField) {
+  auto result = parse(R"(a002 ID ("foo" NIL))", {});
+
+  EXPECT_EQ(result.tag, "a002");
+  EXPECT_EQ(result.json, R"({
+  "idSet": {
+    "keys": {
+      "foo": ""
+    }
+  }
+})");
+}
