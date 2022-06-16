@@ -1,6 +1,7 @@
 package connector
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -13,8 +14,9 @@ import (
 type dummyState struct {
 	flags, permFlags, attrs imap.FlagSet
 
-	messages map[string]*dummyMessage
-	labels   map[string]*dummyLabel
+	messages   map[string]*dummyMessage
+	labels     map[string]*dummyLabel
+	lastIMAPID imap.ID
 
 	lock sync.RWMutex
 }
@@ -35,11 +37,20 @@ type dummyMessage struct {
 
 func newDummyState(flags, permFlags, attrs imap.FlagSet) *dummyState {
 	return &dummyState{
-		flags:     flags,
-		permFlags: permFlags,
-		attrs:     attrs,
-		messages:  make(map[string]*dummyMessage),
-		labels:    make(map[string]*dummyLabel),
+		flags:      flags,
+		permFlags:  permFlags,
+		attrs:      attrs,
+		messages:   make(map[string]*dummyMessage),
+		labels:     make(map[string]*dummyLabel),
+		lastIMAPID: imap.NewID(),
+	}
+}
+
+func (state *dummyState) recordIMAPID(ctx context.Context) {
+	if id, ok := imap.GetIMAPIDFromContext(ctx); ok {
+		state.lock.Lock()
+		defer state.lock.Unlock()
+		state.lastIMAPID = id
 	}
 }
 

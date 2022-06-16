@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ProtonMail/gluon/internal"
+
 	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
@@ -33,6 +35,15 @@ type credentials struct {
 	password  string
 }
 
+var (
+	TestServerVersionInfo = internal.VersionInfo{
+		Name:       "gluon-test-server",
+		Version:    internal.Version{Major: 1, Minor: 1, Patch: 1},
+		Vendor:     "Proton",
+		SupportURL: "",
+	}
+)
+
 // runServer initializes and starts the mailserver.
 func runServer(tb testing.TB, creds []credentials, delim string, tests func(*testSession)) {
 	server, err := gluon.New(
@@ -46,6 +57,8 @@ func runServer(tb testing.TB, creds []credentials, delim string, tests func(*tes
 			logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
 			logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
 		),
+		gluon.WithVersionInfo(TestServerVersionInfo.Version.Major, TestServerVersionInfo.Version.Minor, TestServerVersionInfo.Version.Patch,
+			TestServerVersionInfo.Name, TestServerVersionInfo.Vendor, TestServerVersionInfo.SupportURL),
 	)
 	require.NoError(tb, err)
 

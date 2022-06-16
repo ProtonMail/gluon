@@ -9,6 +9,8 @@ import (
 	"net"
 	"sync"
 
+	"github.com/ProtonMail/gluon/internal"
+
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/internal/backend"
@@ -45,6 +47,8 @@ type Server struct {
 	// watchers holds streams of events.
 	watchers     map[chan events.Event]struct{}
 	watchersLock sync.RWMutex
+
+	versionInfo internal.VersionInfo
 }
 
 // New creates a new server with the given options.
@@ -159,6 +163,10 @@ func (s *Server) Close(ctx context.Context) error {
 	return nil
 }
 
+func (s *Server) GetVersionInfo() internal.VersionInfo {
+	return s.versionInfo
+}
+
 func (s *Server) addListener(l net.Listener) {
 	s.listenersLock.Lock()
 	defer s.listenersLock.Unlock()
@@ -202,7 +210,7 @@ func (s *Server) addSession(conn net.Conn) (*session.Session, int) {
 
 	nextID := s.getNextID()
 
-	s.sessions[nextID] = session.New(conn, s.backend, nextID, s.newEventCh())
+	s.sessions[nextID] = session.New(conn, s.backend, nextID, &s.versionInfo, s.newEventCh())
 
 	if s.tlsConfig != nil {
 		s.sessions[nextID].SetTLSConfig(s.tlsConfig)

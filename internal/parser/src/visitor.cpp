@@ -43,6 +43,10 @@ antlrcpp::Any Visitor::visitAstringStr(imap::IMAPParser::AstringStrContext* ctx)
   return visit(ctx->string());
 }
 
+antlrcpp::Any Visitor::visitNstring(imap::IMAPParser::NstringContext* ctx) {
+  return ctx->string() != nullptr ? visit(ctx->string()) : antlrcpp::Any(std::string("NIL"));
+}
+
 antlrcpp::Any Visitor::visitCommand(imap::IMAPParser::CommandContext* ctx) {
   proto::Command command;
 
@@ -55,6 +59,14 @@ antlrcpp::Any Visitor::visitCommand(imap::IMAPParser::CommandContext* ctx) {
       command.set_allocated_noop(visit(cmd->noop()).as<proto::Noop*>());
     } else if (cmd->logout()) {
       command.set_allocated_logout(visit(cmd->logout()).as<proto::Logout*>());
+    } else if (cmd->id()) {
+      auto idCtx = cmd->id();
+      auto value = visit(idCtx->id_param_list());
+      if (idCtx->id_param_list()->id_nil_param() != nullptr) {
+        command.set_allocated_id_get(value.as<proto::IDGet*>());
+      } else {
+        command.set_allocated_id_set(value.as<proto::IDSet*>());
+      }
     }
   } else if (ctx->commandNonAuth()) {
     auto cmd = ctx->commandNonAuth();
@@ -403,6 +415,46 @@ antlrcpp::Any Visitor::visitIdle(imap::IMAPParser::IdleContext* ctx) {
 antlrcpp::Any Visitor::visitDone(imap::IMAPParser::DoneContext* ctx) {
   return new proto::Done;
 }
+
+antlrcpp::Any Visitor::visitId(imap::IMAPParser::IdContext* ctx) {
+  return visit(ctx->id_param_list());
+}
+
+antlrcpp::Any Visitor::visitId_param_list(imap::IMAPParser::Id_param_listContext* ctx) {
+  if (ctx->id_nil_param() != nullptr) {
+    return new proto::IDGet();
+  } else {
+    return visit(ctx->id_params());
+  }
+}
+
+antlrcpp::Any Visitor::visitId_param_key_pair(imap::IMAPParser::Id_param_key_pairContext* ctx) {
+  namespace proto = google::protobuf;
+  return proto::MapPair<std::string, std::string>{visit(ctx->string()).as<std::string>(),
+                                                  visit(ctx->id_param_key_value()).as<std::string>()};
+}
+
+antlrcpp::Any Visitor::visitId_params(imap::IMAPParser::Id_paramsContext* ctx) {
+  namespace protobuf = google::protobuf;
+  protobuf::Map<std::string, std::string> keys;
+
+  for (const auto& keyPair : ctx->id_param_key_pair()) {
+    keys.insert(visit(keyPair).as<protobuf::MapPair<std::string, std::string>>());
+  }
+
+  auto result = new proto::IDSet();
+  *result->mutable_keys() = std::move(keys);
+  return result;
+}
+
+antlrcpp::Any Visitor::visitId_param_key_value(imap::IMAPParser::Id_param_key_valueContext* ctx) {
+  if (ctx->id_nil_param() != nullptr) {
+    return std::string();
+  } else {
+    return visit(ctx->nstring()).as<std::string>();
+  }
+}
+
 
 antlrcpp::Any Visitor::visitFlagList(imap::IMAPParser::FlagListContext* ctx) {
   auto flags = std::vector<std::string>{};

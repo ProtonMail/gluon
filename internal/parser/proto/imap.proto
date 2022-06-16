@@ -47,6 +47,10 @@ message Command {
 
     // RFC6851 Move command
     Move move = 31;
+
+    // RFC2971
+    IDSet id_set = 32;
+    IDGet id_get = 33;
   }
 }
 
@@ -349,3 +353,10 @@ message Move {
   SequenceSet sequenceSet = 1;
   string mailbox = 2;
 }
+
+// RFC2971
+message IDSet {
+  map<string, string> keys = 1;
+}
+
+message IDGet {}

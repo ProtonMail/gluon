@@ -171,6 +171,10 @@ func (conn *Dummy) GetMessage(ctx context.Context, messageID string) (imap.Messa
 }
 
 func (conn *Dummy) CreateMessage(ctx context.Context, mboxID string, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, error) {
+	// NOTE: We are only recording this here since it was the easiest command to verify the data has been record properly
+	// in the context, as APPEND will always require a communication with the remote connector.
+	conn.state.recordIMAPID(ctx)
+
 	message := conn.state.createMessage(
 		mboxID,
 		literal,
@@ -266,6 +270,10 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 	conn.updateCh <- update
 
 	return nil
+}
+
+func (conn *Dummy) GetLastRecordedIMAPID() imap.ID {
+	return conn.state.lastIMAPID
 }
 
 func (conn *Dummy) validateName(name []string) (bool, error) {

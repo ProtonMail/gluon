@@ -3,6 +3,8 @@ package session
 import (
 	"context"
 
+	"github.com/ProtonMail/gluon/imap"
+
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -35,5 +37,7 @@ func (s *Session) handleLogin(ctx context.Context, tag string, cmd *proto.Login,
 		UserID:    state.UserID(),
 	}
 
-	return nil
+	// We set the IMAP id extension value after login, since it's possible that the client may have sent it before. This
+	// ensures that the ID is correctly set for the connection.
+	return state.SetConnMetadataKeyValue(imap.IMAPIDConnMetadataKey, s.imapID)
 }

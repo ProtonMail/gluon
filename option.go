@@ -3,6 +3,8 @@ package gluon
 import (
 	"crypto/tls"
 	"io"
+
+	"github.com/ProtonMail/gluon/internal"
 )
 
 // Option represents a type that can be used to configure the server.
@@ -55,4 +57,27 @@ type withLogger struct {
 func (opt withLogger) config(server *Server) {
 	server.inLogger = opt.in
 	server.outLogger = opt.out
+}
+
+type withVersionInfo struct {
+	versionInfo internal.VersionInfo
+}
+
+func (vi *withVersionInfo) config(server *Server) {
+	server.versionInfo = vi.versionInfo
+}
+
+func WithVersionInfo(vmajor, vminor, vpatch int, name, vendor, supportURL string) Option {
+	return &withVersionInfo{
+		versionInfo: internal.VersionInfo{
+			Name: name,
+			Version: internal.Version{
+				Major: vmajor,
+				Minor: vminor,
+				Patch: vpatch,
+			},
+			Vendor:     vendor,
+			SupportURL: supportURL,
+		},
+	}
 }

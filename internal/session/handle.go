@@ -29,6 +29,8 @@ func (s *Session) handleCommand(ctx context.Context, cmd *IMAPCommand, ch chan r
 	switch {
 	case
 		cmd.GetCapability() != nil,
+		cmd.GetIdGet() != nil,
+		cmd.GetIdSet() != nil,
 		cmd.GetNoop() != nil:
 		return s.handleAnyCommand(ctx, cmd, ch)
 
@@ -79,6 +81,13 @@ func (s *Session) handleAnyCommand(ctx context.Context, cmd *IMAPCommand, ch cha
 	case cmd.GetNoop() != nil:
 		// 6.1.2 NOOP Command
 		return s.handleNoop(ctx, cmd.tag, cmd.GetNoop(), ch)
+
+	case cmd.GetIdSet() != nil:
+		// RFC 2971 ID
+		return s.handleIDSet(ctx, cmd.tag, cmd.GetIdSet(), ch)
+	case cmd.GetIdGet() != nil:
+		// RFC 2971 ID
+		return s.handleIDGet(ctx, cmd.tag, ch)
 
 	default:
 		panic("bad command")
