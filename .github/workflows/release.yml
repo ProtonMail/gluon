@@ -4,7 +4,7 @@ on:
   push:
     branches: master
   pull_request:
-    types: [opened, reopened]
+    branches: master
 
 jobs:
   check:
@@ -20,6 +20,9 @@ jobs:
         uses: tj-actions/changed-files@v21
         with:
           files: internal/parser
+          files_ignore: |
+            *.a
+            *.lib
 
   build:
     strategy:
@@ -67,6 +70,13 @@ jobs:
 
       - name: Run go vet
         run: go vet $(go list ./... | grep -v internal/parser)
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.45.2
+          args: --timeout=60s
+          skip-cache: true
 
       - name: Run tests
         run: go test -v ./...
