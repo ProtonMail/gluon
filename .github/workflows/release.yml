@@ -24,6 +24,10 @@ jobs:
             *.a
             *.lib
 
+      - name: List change detection output
+        run: |
+          echo "Files changed?: ${{ steps.changed.outputs.any_changed }}"
+
   build:
     strategy:
       matrix:
@@ -36,8 +40,12 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: List change detection output
+        run: |
+          echo "Files changed?: ${{ needs.check.outputs.changed }}"
+
       - name: Build parser if modified
-        if: ${{ job.check.outputs.changed }} == 'true'
+        if: needs.check.outputs.changed == 'true'
         uses: ./.github/actions/build-parser
         with:
           artifact-name: ${{ matrix.os }}-libs
@@ -58,11 +66,12 @@ jobs:
           go-version: '1.18'
 
       - name: Remove old static libs if modified
-        if: ${{ job.check.outputs.changed }} == 'true'
-        run: rm -r internal/parser/lib
+        if: needs.check.outputs.changed  == 'true'
+        run: |
+          rm -r internal/parser/lib
 
       - name: Download new static libs if modified
-        if: ${{ job.check.outputs.changed }} == 'true'
+        if: needs.check.outputs.changed == 'true'
         uses: actions/download-artifact@v3
         with:
           name: ${{ matrix.os }}-libs
@@ -89,25 +98,25 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Remove old static libs
-        if: ${{ job.check.outputs.changed }} == 'true'
+        if: needs.check.outputs.changed == 'true'
         run: rm -r internal/parser/lib
 
       - name: Download linux static libs
-        if: ${{ job.check.outputs.changed }} == 'true'
+        if: needs.check.outputs.changed == 'true'
         uses: actions/download-artifact@v3
         with:
           name: ubuntu-latest-libs
           path: internal/parser/lib
 
       - name: Download macOS static libs
-        if: ${{ job.check.outputs.changed }} == 'true'
+        if: needs.check.outputs.changed == 'true'
         uses: actions/download-artifact@v3
         with:
           name: macos-12-libs
           path: internal/parser/lib
 
       - name: Download windows static libs
-        if: ${{ job.check.outputs.changed }} == 'true'
+        if: needs.check.outputs.changed == 'true'
         uses: actions/download-artifact@v3
         with:
           name: windows-latest-libs
