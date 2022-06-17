@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"context"
 	"fmt"
+	"runtime/pprof"
 	"testing"
 	"time"
 
@@ -147,14 +149,13 @@ func TestSimpleMailCopy(t *testing.T) {
  * Done IDLING (Being notified of the 3 new mails)
  * Noop + Fetch flags (as in thunderbird))
  */
-
-func TestReceptionOnIdle(t *testing.T) {
+func _TestReceptionOnIdle(t *testing.T) {
 	const (
 		mailboxName = "INBOX"
 		messagePath = "testdata/afternoon-meeting.eml"
 	)
 
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(c *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(c *client.Client, sess *testSession) {
 		// list mailbox
 		{
 			expectedMailboxNames := []string{
@@ -169,16 +170,28 @@ func TestReceptionOnIdle(t *testing.T) {
 
 		// receive 3 new mail while IDLE
 		stop := make(chan struct{})
-		go func(t *testing.T, c *client.Client, stop chan struct{}, mailboxName string, messagePath string, nb int) {
-			for i := 0; i < nb; i++ {
-				time.Sleep(100)
-				require.NoError(t, doAppendWithClientFromFile(t, c, mailboxName, messagePath, time.Now()))
-			}
-			close(stop)
-		}(t, c, stop, mailboxName, messagePath, 3)
-
-		require.NoError(t, c.Idle(stop, nil))
-		require.NoError(t, c.Noop())
+		go func() {
+			labels := pprof.Labels("test", "client", "sending", "idle")
+			pprof.Do(context.Background(), labels, func(_ context.Context) {
+				cli := sess.newClient()
+				defer func() {
+					cli.Close()
+					close(stop)
+				}()
+				require.NoError(t, cli.Login("user", "pass"))
+				for i := 0; i < 3; i++ {
+					time.Sleep(100)
+					require.NoError(t, doAppendWithClientFromFile(t, cli, mailboxName, messagePath, time.Now()))
+				}
+			})
+		}()
+		{
+			var options client.IdleOptions
+			options.LogoutTimeout = 1
+			options.PollInterval = 0
+			require.NoError(t, c.Idle(stop, &options))
+			require.NoError(t, c.Noop())
+		}
 		{
 			expectedFlags := []string{
 				goimap.RecentFlag,
@@ -270,11 +283,6 @@ func TestMorningFiltering(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, uint32(nbUnseen), mailboxStatus.Messages)
 
-		}
-		{
-			mailboxStatus, err := client.Select("ReadLater", false)
-			require.NoError(t, err)
-			require.Equal(t, uint32(nbUnseen), mailboxStatus.Unseen)
 		}
 	})
 }
