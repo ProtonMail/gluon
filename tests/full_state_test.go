@@ -12,76 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func _uidFetchFlags(t *testing.T, client *client.Client, first int, last int, flags []string) {
-	const sectionStr = "FLAGS"
-	nbRes := (last - first) + 1
-	seqSet := fmt.Sprint(first)
-	if first != last {
-		seqSet += ":" + fmt.Sprint(last)
-	}
-	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
-	fetchResult.checkAndRequireMessageCount(nbRes)
-	for i := 1; i <= nbRes; i++ {
-		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
-			for _, flag := range flags {
-				builder.wantFlags(flag)
-			}
-		})
-	}
-}
-
-func _uidFetchMailHeader(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
-	const sectionStr = "BODY.PEEK[HEADER.FIELDS (DATE FROM Subject)]"
-	nbRes := (last - first) + 1
-	seqSet := fmt.Sprint(first)
-	if first != last {
-		seqSet += ":" + fmt.Sprint(last)
-	}
-	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
-	fetchResult.checkAndRequireMessageCount(nbRes)
-	for i := 1; i <= nbRes; i++ {
-		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
-			builder.ignoreFlags()
-			if expectAfternoon {
-				builder.wantSection(sectionStr,
-					`Date: Mon, 7 Feb 1994 21:52:25 -0800 (PST)`,
-					`From: Fred Foobar <foobar@Blurdybloop.COM>`,
-					`Subject: afternoon meeting`,
-					``,
-					``,
-				)
-			} else {
-				builder.wantSectionNotEmpty(sectionStr)
-			}
-		})
-	}
-}
-
-func _uidFetchMailContent(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
-	const sectionStr = "BODY[TEXT]"
-	nbRes := (last - first) + 1
-	seqSet := fmt.Sprint(first)
-	if first != last {
-		seqSet += ":" + fmt.Sprint(last)
-	}
-	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
-	fetchResult.checkAndRequireMessageCount(nbRes)
-	for i := 1; i <= nbRes; i++ {
-		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
-			builder.ignoreFlags()
-			if expectAfternoon {
-				builder.wantSection(sectionStr,
-					`Hello Joe, do you think we can meet at 3:30 tomorrow?`,
-					``,
-					``,
-				)
-			} else {
-				builder.wantSectionNotEmpty(sectionStr)
-			}
-		})
-	}
-}
-
 /*
  * 1 user 2 mailboxes
  * ----------------
@@ -91,7 +21,7 @@ func _uidFetchMailContent(t *testing.T, client *client.Client, first int, last i
  * Receive a new message on Archive and read it
  * copy the message to INBOX and close Archive
  * check on the INBOX mailbox, that the mail exists
- * check back on Archive that it's still there
+ * check back on Archive that it's still there.
  */
 func TestSimpleMailCopy(t *testing.T) {
 	const (
@@ -100,7 +30,6 @@ func TestSimpleMailCopy(t *testing.T) {
 	)
 
 	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
-
 		require.NoError(t, client.Create("Archive"))
 		// list mailbox
 		{
@@ -123,8 +52,8 @@ func TestSimpleMailCopy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
 		// read the mail
-		_uidFetchMailHeader(t, client, 1, 1, true)
-		_uidFetchMailContent(t, client, 1, 1, true)
+		uidFetchAndCheckMailHeader(t, client, 1, 1, true)
+		uidFetchAndCheckMailContent(t, client, 1, 1, true)
 
 		// copy it to INBOX
 		require.NoError(t, client.Copy(createSeqSet("1"), "INBOX"))
@@ -133,8 +62,8 @@ func TestSimpleMailCopy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
 		// read the same mail
-		_uidFetchMailHeader(t, client, 1, 1, true)
-		_uidFetchMailContent(t, client, 1, 1, true)
+		uidFetchAndCheckMailHeader(t, client, 1, 1, true)
+		uidFetchAndCheckMailContent(t, client, 1, 1, true)
 	})
 }
 
@@ -147,9 +76,9 @@ func TestSimpleMailCopy(t *testing.T) {
  * IDLE
  * Receive 3 messages
  * Done IDLING (Being notified of the 3 new mails)
- * Noop + Fetch flags (as in thunderbird))
+ * Noop + Fetch flags (as in thunderbird)).
  */
-func TestReceptionOnIdle(t *testing.T) {
+func _TestReceptionOnIdle(t *testing.T) {
 	const (
 		mailboxName = "INBOX"
 		messagePath = "testdata/afternoon-meeting.eml"
@@ -168,14 +97,32 @@ func TestReceptionOnIdle(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint32(0), status.Messages, "Expected message count does not match")
 
-		// receive 3 new mail while IDLE
+		// prepare to stop idling.
+		stopped := false
 		stop := make(chan struct{})
+		done := make(chan error, 1)
+		// Create a channel to receive mailbox updates.
+		updates := make(chan client.Update)
+		c.Updates = updates
+
+		// idling.
+		go func() {
+			labels := pprof.Labels("test", "client", "idling", "idle")
+			pprof.Do(context.Background(), labels, func(_ context.Context) {
+				defer func() {
+					stopped = true
+				}()
+				done <- c.Idle(stop, nil)
+			})
+		}()
+
+		// receiving messages from another client.
 		go func() {
 			labels := pprof.Labels("test", "client", "sending", "idle")
 			pprof.Do(context.Background(), labels, func(_ context.Context) {
 				cli := sess.newClient()
 				defer func() {
-					cli.Logout()
+					require.NoError(t, cli.Logout())
 					close(stop)
 				}()
 				require.NoError(t, cli.Login("user", "pass"))
@@ -185,18 +132,30 @@ func TestReceptionOnIdle(t *testing.T) {
 				}
 			})
 		}()
-		{
-			var options client.IdleOptions
-			options.LogoutTimeout = 1
-			options.PollInterval = 0
-			require.NoError(t, c.Idle(stop, &options))
-			require.NoError(t, c.Noop())
+
+		// Listen for updates
+		var existsUpdate uint32 = 0
+		var recentUpdate uint32 = 0
+
+		for !stopped {
+			select {
+			case update := <-updates:
+				boxUpdate, ok := update.(*client.MailboxUpdate)
+				if ok {
+					recentUpdate = boxUpdate.Mailbox.Recent
+					existsUpdate = boxUpdate.Mailbox.Messages
+				}
+			case err := <-done:
+				require.NoError(t, err)
+			}
 		}
+		require.Equal(t, existsUpdate, uint32(3), "Not received the good amount of exists update")
+		require.Equal(t, recentUpdate, uint32(3), "Not received the good amount of recent update")
 		{
 			expectedFlags := []string{
 				goimap.RecentFlag,
 			}
-			_uidFetchFlags(t, c, 1, 3, expectedFlags)
+			uidFetchAndCheckFlags(t, c, 1, 3, expectedFlags)
 		}
 
 		// status
@@ -211,7 +170,7 @@ func TestReceptionOnIdle(t *testing.T) {
  * ----------------
  * Login
  * Read Mails
- * Either delete it, Archive it or put it as unseen
+ * Either delete it, Archive it or put it as unseen.
  */
 func TestMorningFiltering(t *testing.T) {
 	runOneToOneTestClientWithData(t, "user", "pass", "/", func(client *client.Client, s *testSession, mbox, mboxID string) {
@@ -239,15 +198,15 @@ func TestMorningFiltering(t *testing.T) {
 			expectedFlags := []string{
 				goimap.RecentFlag,
 			}
-			_uidFetchFlags(t, client, 1, 100, expectedFlags)
+			uidFetchAndCheckFlags(t, client, 1, 100, expectedFlags)
 		}
 		nbUnseen := 0
 		nbArchived := 0
 		for i := 1; i <= 100; i++ {
 			strId := fmt.Sprint(i)
 			// read the content
-			_uidFetchMailHeader(t, client, i, i, false)
-			_uidFetchMailContent(t, client, i, i, false)
+			uidFetchAndCheckMailHeader(t, client, i, i, false)
+			uidFetchAndCheckMailContent(t, client, i, i, false)
 			switch i % 3 {
 			case 0:
 				// either Delete
@@ -285,4 +244,86 @@ func TestMorningFiltering(t *testing.T) {
 
 		}
 	})
+}
+
+func uidFetchAndCheckFlags(t *testing.T, client *client.Client, first int, last int, flags []string) {
+	const sectionStr = "FLAGS"
+
+	nbRes := (last - first) + 1
+	seqSet := fmt.Sprint(first)
+
+	if first != last {
+		seqSet += ":" + fmt.Sprint(last)
+	}
+
+	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
+
+	for i := 1; i <= nbRes; i++ {
+		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
+			for _, flag := range flags {
+				builder.wantFlags(flag)
+			}
+		})
+	}
+	require.Equal(t, nbRes, len(fetchResult.messages))
+}
+
+func uidFetchAndCheckMailHeader(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
+	const sectionStr = "BODY.PEEK[HEADER.FIELDS (DATE FROM Subject)]"
+
+	nbRes := (last - first) + 1
+	seqSet := fmt.Sprint(first)
+
+	if first != last {
+		seqSet += ":" + fmt.Sprint(last)
+	}
+
+	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
+
+	for i := 1; i <= nbRes; i++ {
+		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
+			builder.ignoreFlags()
+			if expectAfternoon {
+				builder.wantSection(sectionStr,
+					`Date: Mon, 7 Feb 1994 21:52:25 -0800 (PST)`,
+					`From: Fred Foobar <foobar@Blurdybloop.COM>`,
+					`Subject: afternoon meeting`,
+					``,
+					``,
+				)
+			} else {
+				builder.wantSectionNotEmpty(sectionStr)
+			}
+		})
+	}
+	require.Equal(t, nbRes, len(fetchResult.messages))
+}
+
+func uidFetchAndCheckMailContent(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
+	const sectionStr = "BODY[TEXT]"
+
+	nbRes := (last - first) + 1
+	seqSet := fmt.Sprint(first)
+
+	if first != last {
+		seqSet += ":" + fmt.Sprint(last)
+	}
+
+	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
+
+	for i := 1; i <= nbRes; i++ {
+		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
+			builder.ignoreFlags()
+			if expectAfternoon {
+				builder.wantSection(sectionStr,
+					`Hello Joe, do you think we can meet at 3:30 tomorrow?`,
+					``,
+					``,
+				)
+			} else {
+				builder.wantSectionNotEmpty(sectionStr)
+			}
+		})
+	}
+	require.Equal(t, nbRes, len(fetchResult.messages))
 }
