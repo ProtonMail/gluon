@@ -273,9 +273,11 @@ func uidFetchAndCheckFlags(t *testing.T, client *client.Client, first int, last 
 }
 
 func uidFetchAndCheckMailHeader(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
-	const sectionStr = "BODY.PEEK[HEADER.FIELDS (DATE FROM Subject)]"
+	const sectionStr = "BODY.PEEK[HEADER.FIELDS (Date From Subject)]"
 
-	//nbRes := (last - first) + 1
+	const sectionNotPeekStr = "BODY[HEADER.FIELDS (Date From Subject)]"
+
+	nbRes := (last - first) + 1
 	seqSet := fmt.Sprint(first)
 
 	if first != last {
@@ -287,17 +289,19 @@ func uidFetchAndCheckMailHeader(t *testing.T, client *client.Client, first int, 
 		fetchResult.forUid(uint32(i), func(builder *validatorBuilder) {
 			builder.ignoreFlags()
 			if expectAfternoon {
-				builder.wantEnvelope(func(builder2 *envelopeValidatorBuilder) {
-					builder2.wantFrom("Fred Foobar <foobar@Blurdybloop.COM>")
-					builder2.wantDateTime("Mon, 7 Feb 1994 21:52:25 -0800 (PST)")
-					builder2.wantSubject("afternoon meeting")
-				})
+				builder.wantSection(sectionNotPeekStr,
+					`Date: Mon, 7 Feb 1994 21:52:25 -0800 (PST)`,
+					`From: Fred Foobar <foobar@Blurdybloop.COM>`,
+					`Subject: afternoon meeting`,
+					``,
+					``,
+				)
 			} else {
-				builder.wantSectionNotEmpty(sectionStr)
+				builder.wantSectionNotEmpty(sectionNotPeekStr)
 			}
 		})
 	}
-	//fetchResult.checkAndRequireMessageCount(nbRes)
+	fetchResult.checkAndRequireMessageCount(nbRes)
 }
 
 func uidFetchAndCheckMailContent(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
