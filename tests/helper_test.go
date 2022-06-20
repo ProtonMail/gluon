@@ -83,6 +83,19 @@ func listMailboxesClient(t testing.TB, client *client.Client, reference string, 
 	return iterator.Collect(iterator.Chan(mailboxesChannel))
 }
 
+func checkMailboxesMatchNamesAndAttributes(t *testing.T, client *client.Client, reference string, expression string, expectedNames []string, expectedAttributes []string) {
+	mailboxes := listMailboxesClient(t, client, "", "*")
+
+	var actualMailboxNames []string
+
+	for _, mailbox := range mailboxes {
+		actualMailboxNames = append(actualMailboxNames, mailbox.Name)
+		require.ElementsMatch(t, mailbox.Attributes, expectedAttributes)
+	}
+
+	require.ElementsMatch(t, actualMailboxNames, expectedNames)
+}
+
 func getMailboxNamesClient(t testing.TB, client *client.Client, reference string, expression string) []string {
 	mailboxes := listMailboxesClient(t, client, reference, expression)
 
@@ -512,6 +525,20 @@ func (vb *validatorBuilder) wantSectionEmpty(sectionStr goimap.FetchItem) *valid
 	vb.validateBody = append(vb.validateBody, func(t testing.TB, message *goimap.Message) {
 		literal := getBodySection(message, section)
 		require.Nil(t, literal)
+	})
+
+	return vb
+}
+
+func (vb *validatorBuilder) wantSectionNotEmpty(sectionStr goimap.FetchItem) *validatorBuilder {
+	section, err := goimap.ParseBodySectionName(sectionStr)
+	if err != nil {
+		panic("Failed to parse section string")
+	}
+
+	vb.validateBody = append(vb.validateBody, func(t testing.TB, message *goimap.Message) {
+		literal := getBodySection(message, section)
+		require.NotEmpty(t, literal)
 	})
 
 	return vb
