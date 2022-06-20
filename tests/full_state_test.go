@@ -78,7 +78,7 @@ func TestSimpleMailCopy(t *testing.T) {
  * Done IDLING (Being notified of the 3 new mails)
  * Noop + Fetch flags (as in thunderbird)).
  */
-func _TestReceptionOnIdle(t *testing.T) {
+func TestReceptionOnIdle(t *testing.T) {
 	const (
 		mailboxName = "INBOX"
 		messagePath = "testdata/afternoon-meeting.eml"
@@ -149,6 +149,11 @@ func _TestReceptionOnIdle(t *testing.T) {
 				require.NoError(t, err)
 			}
 		}
+
+		c.Updates = nil
+		close(updates)
+		close(done)
+
 		require.Equal(t, existsUpdate, uint32(3), "Not received the good amount of exists update")
 		require.Equal(t, recentUpdate, uint32(3), "Not received the good amount of recent update")
 		{
