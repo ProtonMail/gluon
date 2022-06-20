@@ -8,6 +8,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Get sources
+        uses: actions/checkout@v3
+
       - uses: cycjimmy/semantic-release-action@v3
         env:
           GITHUB_TOKEN: ${{ github.token }}
