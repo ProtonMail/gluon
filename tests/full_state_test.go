@@ -246,7 +246,6 @@ func TestMorningFiltering(t *testing.T) {
 			mailboxStatus, err := client.Status("ReadLater", []goimap.StatusItem{goimap.StatusMessages})
 			require.NoError(t, err)
 			require.Equal(t, uint32(nbUnseen), mailboxStatus.Messages)
-
 		}
 	})
 }
@@ -263,20 +262,20 @@ func uidFetchAndCheckFlags(t *testing.T, client *client.Client, first int, last 
 
 	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
 
-	for i := 1; i <= nbRes; i++ {
-		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
+	for i := first; i <= last; i++ {
+		fetchResult.forUid(uint32(i), func(builder *validatorBuilder) {
 			for _, flag := range flags {
 				builder.wantFlags(flag)
 			}
 		})
 	}
-	require.Equal(t, nbRes, len(fetchResult.messages))
+	fetchResult.checkAndRequireMessageCount(nbRes)
 }
 
 func uidFetchAndCheckMailHeader(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
 	const sectionStr = "BODY.PEEK[HEADER.FIELDS (DATE FROM Subject)]"
 
-	nbRes := (last - first) + 1
+	//nbRes := (last - first) + 1
 	seqSet := fmt.Sprint(first)
 
 	if first != last {
@@ -284,24 +283,21 @@ func uidFetchAndCheckMailHeader(t *testing.T, client *client.Client, first int, 
 	}
 
 	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
-
-	for i := 1; i <= nbRes; i++ {
-		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
+	for i := first; i <= last; i++ {
+		fetchResult.forUid(uint32(i), func(builder *validatorBuilder) {
 			builder.ignoreFlags()
 			if expectAfternoon {
-				builder.wantSection(sectionStr,
-					`Date: Mon, 7 Feb 1994 21:52:25 -0800 (PST)`,
-					`From: Fred Foobar <foobar@Blurdybloop.COM>`,
-					`Subject: afternoon meeting`,
-					``,
-					``,
-				)
+				builder.wantEnvelope(func(builder2 *envelopeValidatorBuilder) {
+					builder2.wantFrom("Fred Foobar <foobar@Blurdybloop.COM>")
+					builder2.wantDateTime("Mon, 7 Feb 1994 21:52:25 -0800 (PST)")
+					builder2.wantSubject("afternoon meeting")
+				})
 			} else {
 				builder.wantSectionNotEmpty(sectionStr)
 			}
 		})
 	}
-	require.Equal(t, nbRes, len(fetchResult.messages))
+	//fetchResult.checkAndRequireMessageCount(nbRes)
 }
 
 func uidFetchAndCheckMailContent(t *testing.T, client *client.Client, first int, last int, expectAfternoon bool) {
@@ -316,8 +312,8 @@ func uidFetchAndCheckMailContent(t *testing.T, client *client.Client, first int,
 
 	fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid(seqSet)
 
-	for i := 1; i <= nbRes; i++ {
-		fetchResult.forSeqNum(uint32(i), func(builder *validatorBuilder) {
+	for i := first; i <= last; i++ {
+		fetchResult.forUid(uint32(i), func(builder *validatorBuilder) {
 			builder.ignoreFlags()
 			if expectAfternoon {
 				builder.wantSection(sectionStr,
@@ -330,5 +326,5 @@ func uidFetchAndCheckMailContent(t *testing.T, client *client.Client, first int,
 			}
 		})
 	}
-	require.Equal(t, nbRes, len(fetchResult.messages))
+	fetchResult.checkAndRequireMessageCount(nbRes)
 }
