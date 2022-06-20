@@ -8,19 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func checkMailboxesMatchNamesAndAttributes(t *testing.T, client *client.Client, reference string, expression string, expectedNames []string, expectedAttributes []string) {
-	mailboxes := listMailboxesClient(t, client, "", "*")
-
-	var actualMailboxNames []string
-
-	for _, mailbox := range mailboxes {
-		actualMailboxNames = append(actualMailboxNames, mailbox.Name)
-		require.ElementsMatch(t, mailbox.Attributes, expectedAttributes)
-	}
-
-	require.ElementsMatch(t, actualMailboxNames, expectedNames)
-}
-
 func TestDelete(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, "user", "pass", ".", func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("blurdybloop"))
