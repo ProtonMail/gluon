@@ -1,0 +1,89 @@
+name: Build and push parser libs
+
+on:
+  push:
+    branches: dev
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changed.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - id: changed
+        uses: tj-actions/changed-files@v21
+        with:
+          files: internal/parser
+          files_ignore: |
+            *.a
+            *.lib
+
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-12, windows-latest]
+    runs-on: ${{ matrix.os }}
+    needs: check
+    steps:
+      - name: Get sources
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Build parser if modified
+        if: needs.check.outputs.changed == 'true'
+        uses: ./.github/actions/build-parser
+        with:
+          artifact-name: ${{ matrix.os }}-libs
+
+  commit:
+    runs-on: ubuntu-latest
+    needs: [build, check]
+    steps:
+      - name: Get sources
+        uses: actions/checkout@v3
+
+      - name: Remove old static libs
+        if: needs.check.outputs.changed == 'true'
+        run: rm -r internal/parser/lib
+
+      - name: Download linux static libs
+        if: needs.check.outputs.changed == 'true'
+        uses: actions/download-artifact@v3
+        with:
+          name: ubuntu-latest-libs
+          path: internal/parser/lib
+
+      - name: Download macOS static libs
+        if: needs.check.outputs.changed == 'true'
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-12-libs
+          path: internal/parser/lib
+
+      - name: Download windows static libs
+        if: needs.check.outputs.changed == 'true'
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-latest-libs
+          path: internal/parser/lib
+
+      - name: Commit files
+        if: needs.check.outputs.changed == 'true'
+        run : |
+          git config --local user.email "gluon-github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "gluon-github-actions[bot]"
+          git add internal/parser/lib
+          git commit -m "[AUTO] Parser libraries update]"
+
+      - name: Push
+        if: needs.check.outputs.changed == 'true'
+        uses: ad-m/github-push-action@master
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          branch: ${{ github.ref }}

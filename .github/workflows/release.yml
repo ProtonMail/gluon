@@ -1,127 +1,13 @@
-name: Build, test and release
+name: Release workflow
 
 on:
   push:
     branches: master
-  pull_request:
-    branches: master
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.changed.outputs.any_changed }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 2
-
-      - id: changed
-        uses: tj-actions/changed-files@v21
-        with:
-          files: internal/parser
-          files_ignore: |
-            *.a
-            *.lib
-
-      - name: List change detection output
-        run: |
-          echo "Files changed?: ${{ steps.changed.outputs.any_changed }}"
-
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-12, windows-latest]
-    runs-on: ${{ matrix.os }}
-    needs: check
-    steps:
-      - name: Get sources
-        uses: actions/checkout@v3
-        with:
-          submodules: 'recursive'
-
-      - name: List change detection output
-        run: |
-          echo "Files changed?: ${{ needs.check.outputs.changed }}"
-
-      - name: Build parser if modified
-        if: needs.check.outputs.changed == 'true'
-        uses: ./.github/actions/build-parser
-        with:
-          artifact-name: ${{ matrix.os }}-libs
-
-  test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-12, windows-latest]
-    runs-on: ${{ matrix.os }}
-    needs: build
-    steps:
-      - name: Get sources
-        uses: actions/checkout@v3
-
-      - name: Set up Go 1.18
-        uses: actions/setup-go@v3
-        with:
-          go-version: '1.18'
-
-      - name: Remove old static libs if modified
-        if: needs.check.outputs.changed  == 'true'
-        run: |
-          rm -r internal/parser/lib
-
-      - name: Download new static libs if modified
-        if: needs.check.outputs.changed == 'true'
-        uses: actions/download-artifact@v3
-        with:
-          name: ${{ matrix.os }}-libs
-          path: internal/parser/lib
-
-      - name: Run go vet
-        run: go vet $(go list ./... | grep -v internal/parser)
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.45.2
-          args: --timeout=60s
-          skip-cache: true
-
-      - name: Run tests
-        run: go test -v ./...
-
   release:
     runs-on: ubuntu-latest
-    needs: test
     steps:
-      - name: Get sources
-        uses: actions/checkout@v3
-
-      - name: Remove old static libs
-        if: needs.check.outputs.changed == 'true'
-        run: rm -r internal/parser/lib
-
-      - name: Download linux static libs
-        if: needs.check.outputs.changed == 'true'
-        uses: actions/download-artifact@v3
-        with:
-          name: ubuntu-latest-libs
-          path: internal/parser/lib
-
-      - name: Download macOS static libs
-        if: needs.check.outputs.changed == 'true'
-        uses: actions/download-artifact@v3
-        with:
-          name: macos-12-libs
-          path: internal/parser/lib
-
-      - name: Download windows static libs
-        if: needs.check.outputs.changed == 'true'
-        uses: actions/download-artifact@v3
-        with:
-          name: windows-latest-libs
-          path: internal/parser/lib
-
       - uses: cycjimmy/semantic-release-action@v3
         env:
           GITHUB_TOKEN: ${{ github.token }}
