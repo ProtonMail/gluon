@@ -170,9 +170,8 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			} else if exists {
 				if superior == oldName {
 					return ErrExistingMailbox
-				} else {
-					continue
 				}
+				continue
 			}
 
 			if _, err := state.actionCreateMailbox(ctx, tx, superior); err != nil {
