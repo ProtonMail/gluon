@@ -11,15 +11,15 @@ import (
 func TestLsub(t *testing.T) {
 	assert.Equal(
 		t,
-		`* LSUB (\NoSelect) "/" "~/Mail/foo"`,
-		Lsub().WithAttributes(imap.NewFlagSet(`\NoSelect`)).WithDelimiter("/").WithName(`~/Mail/foo`).String(),
+		`* LSUB (\Noselect) "/" "~/Mail/foo"`,
+		Lsub().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithDelimiter("/").WithName(`~/Mail/foo`).String(),
 	)
 }
 
 func TestLsubNilDelimiter(t *testing.T) {
 	assert.Equal(
 		t,
-		`* LSUB (\NoSelect) NIL "Mail"`,
-		Lsub().WithAttributes(imap.NewFlagSet(`\NoSelect`)).WithName(`Mail`).String(),
+		`* LSUB (\Noselect) NIL "Mail"`,
+		Lsub().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithName(`Mail`).String(),
 	)
 }

@@ -39,14 +39,13 @@ func TestDelete(t *testing.T) {
 				if mailbox.Name == "INBOX" {
 					require.ElementsMatch(t, mailbox.Attributes, []string{goimap.UnmarkedAttr})
 				} else if mailbox.Name == "foo" {
-					// Case conflict , goimap.NoSelectAttr is "Noselect"
-					require.ElementsMatch(t, mailbox.Attributes, []string{"\\NoSelect"})
+					require.ElementsMatch(t, mailbox.Attributes, []string{goimap.NoSelectAttr})
 				} else {
 					require.Fail(t, "Unexpected mailbox name")
 				}
 			}
 		}
-		// deleting mailboxes with \NoSelect Attribute is an error
+		// deleting mailboxes with \Noselect Attribute is an error
 		require.Error(t, client.Delete("foo"))
 	})
 }
