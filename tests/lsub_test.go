@@ -37,7 +37,7 @@ func TestLsub(t *testing.T) {
 		c.S(`A006 OK (^_^)`)
 
 		c.C(`A007 LSUB "#news." "comp.%"`)
-		c.S(`* LSUB (\NoSelect) "." "#news.comp.mail"`)
+		c.S(`* LSUB (\Noselect) "." "#news.comp.mail"`)
 		c.S(`A007 OK (^_^)`)
 	})
 }

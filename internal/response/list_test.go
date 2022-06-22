@@ -11,15 +11,15 @@ import (
 func TestList(t *testing.T) {
 	assert.Equal(
 		t,
-		`* LIST (\NoSelect) "/" "~/Mail/foo"`,
-		List().WithAttributes(imap.NewFlagSet(`\NoSelect`)).WithDelimiter("/").WithName(`~/Mail/foo`).String(),
+		`* LIST (\Noselect) "/" "~/Mail/foo"`,
+		List().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithDelimiter("/").WithName(`~/Mail/foo`).String(),
 	)
 }
 
 func TestListNilDelimiter(t *testing.T) {
 	assert.Equal(
 		t,
-		`* LIST (\NoSelect) NIL "Mail"`,
-		List().WithAttributes(imap.NewFlagSet(`\NoSelect`)).WithName(`Mail`).String(),
+		`* LIST (\Noselect) NIL "Mail"`,
+		List().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithName(`Mail`).String(),
 	)
 }
