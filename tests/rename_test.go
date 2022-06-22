@@ -91,6 +91,7 @@ func TestRenameBadHierarchy(t *testing.T) {
 		require.NoError(t, client.Create("foo.bar"))
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "foo", "foo.bar"})
 		require.Error(t, client.Rename("foo", "foo.foo"))
+		require.Error(t, client.Rename("foo", "foo.foo.foo"))
 		require.Error(t, client.Rename("foo", "foo.bar"))
 		require.NoError(t, client.Rename("foo", "bar.foo"))
 	})
