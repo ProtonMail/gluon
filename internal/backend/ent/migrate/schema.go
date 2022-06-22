@@ -93,6 +93,7 @@ var (
 		{Name: "body", Type: field.TypeString},
 		{Name: "body_structure", Type: field.TypeString},
 		{Name: "envelope", Type: field.TypeString},
+		{Name: "deleted", Type: field.TypeBool, Default: false},
 	}
 	// MessagesTable holds the schema information for the "messages" table.
 	MessagesTable = &schema.Table{

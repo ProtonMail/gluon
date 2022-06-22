@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
@@ -487,6 +489,10 @@ func (state *State) deleteConnMetadata() error {
 }
 
 func (state *State) close(ctx context.Context, tx *ent.Tx) error {
+	if err := state.deleteUnusedMessagesMarkedDeleted(ctx, tx, state); err != nil {
+		logrus.WithError(err).Errorf("Failed to delete unused messages marked for delete")
+	}
+
 	state.snap = nil
 
 	state.res = nil

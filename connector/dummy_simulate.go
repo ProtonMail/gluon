@@ -134,6 +134,12 @@ func (conn *Dummy) MessageFlagged(messageID string, flagged bool) error {
 	return nil
 }
 
+func (conn *Dummy) MessageDeleted(messageID string) error {
+	conn.pushUpdate(imap.NewMessagesDeleted(messageID))
+
+	return nil
+}
+
 func (conn *Dummy) Flush() {
 	conn.ticker.Poll()
 }

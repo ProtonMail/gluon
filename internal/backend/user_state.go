@@ -132,3 +132,48 @@ func (user *user) forStateInMailboxWithMessage(mboxID, messageID string, fn func
 		return nil
 	})
 }
+
+// use by any other states associated with this user.
+// WARNING: This function needs to called from a within a user.stateLock scope.
+func (user *user) collectUnusedMessagesMarkedForDelete(ctx context.Context, tx *ent.Tx, excludedState *State) ([]string, error) {
+	messageIDsMarkForDelete, err := txGetMessageIDsMarkedDeleted(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	messageIDsToDelete := xslices.Filter(messageIDsMarkForDelete, func(id string) bool {
+		for _, st := range user.states {
+			if st == excludedState || st.snap == nil {
+				continue
+			}
+			if st.snap.hasMessage(id) {
+				return false
+			}
+		}
+
+		return true
+	})
+
+	return messageIDsToDelete, nil
+}
+
+// deleteUnusedMessagesMarkedDeleted Will delete all messages that have been marked for deletion that have are not in
+// use by any other states associated with this user.
+// WARNING: This function needs to called from a within a user.stateLock scope.
+func (user *user) deleteUnusedMessagesMarkedDeleted(ctx context.Context, tx *ent.Tx, state *State) error {
+	// Don't run this code if the context has been cancelled (e.g: Server shutdown).
+	if ctx.Err() != nil {
+		return nil
+	}
+
+	messageIDsToDelete, err := user.collectUnusedMessagesMarkedForDelete(ctx, tx, state)
+	if err != nil {
+		return err
+	}
+
+	if err := txDeleteMessages(ctx, tx, messageIDsToDelete...); err != nil {
+		return err
+	}
+
+	return user.store.Delete(messageIDsToDelete...)
+}

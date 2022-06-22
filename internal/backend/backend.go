@@ -42,7 +42,7 @@ func (b *Backend) SetDelimiter(delim string) {
 	b.delim = delim
 }
 
-func (b *Backend) AddUser(conn connector.Connector, store store.Store, client *ent.Client) (string, error) {
+func (b *Backend) AddUser(ctx context.Context, conn connector.Connector, store store.Store, client *ent.Client) (string, error) {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
@@ -53,7 +53,7 @@ func (b *Backend) AddUser(conn connector.Connector, store store.Store, client *e
 		return "", err
 	}
 
-	user, err := newUser(userID, client, remote, store, b.delim)
+	user, err := newUser(ctx, userID, client, remote, store, b.delim)
 	if err != nil {
 		return "", err
 	}

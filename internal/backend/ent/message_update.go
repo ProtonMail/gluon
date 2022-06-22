@@ -79,6 +79,20 @@ func (mu *MessageUpdate) SetEnvelope(s string) *MessageUpdate {
 	return mu
 }
 
+// SetDeleted sets the "Deleted" field.
+func (mu *MessageUpdate) SetDeleted(b bool) *MessageUpdate {
+	mu.mutation.SetDeleted(b)
+	return mu
+}
+
+// SetNillableDeleted sets the "Deleted" field if the given value is not nil.
+func (mu *MessageUpdate) SetNillableDeleted(b *bool) *MessageUpdate {
+	if b != nil {
+		mu.SetDeleted(*b)
+	}
+	return mu
+}
+
 // AddFlagIDs adds the "flags" edge to the MessageFlag entity by IDs.
 func (mu *MessageUpdate) AddFlagIDs(ids ...int) *MessageUpdate {
 	mu.mutation.AddFlagIDs(ids...)
@@ -284,6 +298,13 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: message.FieldEnvelope,
 		})
 	}
+	if value, ok := mu.mutation.Deleted(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: message.FieldDeleted,
+		})
+	}
 	if mu.mutation.FlagsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -457,6 +478,20 @@ func (muo *MessageUpdateOne) SetBodyStructure(s string) *MessageUpdateOne {
 // SetEnvelope sets the "Envelope" field.
 func (muo *MessageUpdateOne) SetEnvelope(s string) *MessageUpdateOne {
 	muo.mutation.SetEnvelope(s)
+	return muo
+}
+
+// SetDeleted sets the "Deleted" field.
+func (muo *MessageUpdateOne) SetDeleted(b bool) *MessageUpdateOne {
+	muo.mutation.SetDeleted(b)
+	return muo
+}
+
+// SetNillableDeleted sets the "Deleted" field if the given value is not nil.
+func (muo *MessageUpdateOne) SetNillableDeleted(b *bool) *MessageUpdateOne {
+	if b != nil {
+		muo.SetDeleted(*b)
+	}
 	return muo
 }
 
@@ -687,6 +722,13 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 			Type:   field.TypeString,
 			Value:  value,
 			Column: message.FieldEnvelope,
+		})
+	}
+	if value, ok := muo.mutation.Deleted(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: message.FieldDeleted,
 		})
 	}
 	if muo.mutation.FlagsCleared() {

@@ -4,6 +4,7 @@ package ent
 
 import (
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
+	"github.com/ProtonMail/gluon/internal/backend/ent/message"
 	"github.com/ProtonMail/gluon/internal/backend/ent/schema"
 	"github.com/ProtonMail/gluon/internal/backend/ent/uid"
 )
@@ -26,6 +27,12 @@ func init() {
 	mailboxDescSubscribed := mailboxFields[4].Descriptor()
 	// mailbox.DefaultSubscribed holds the default value on creation for the Subscribed field.
 	mailbox.DefaultSubscribed = mailboxDescSubscribed.Default.(bool)
+	messageFields := schema.Message{}.Fields()
+	_ = messageFields
+	// messageDescDeleted is the schema descriptor for Deleted field.
+	messageDescDeleted := messageFields[7].Descriptor()
+	// message.DefaultDeleted holds the default value on creation for the Deleted field.
+	message.DefaultDeleted = messageDescDeleted.Default.(bool)
 	uidFields := schema.UID{}.Fields()
 	_ = uidFields
 	// uidDescDeleted is the schema descriptor for Deleted field.
