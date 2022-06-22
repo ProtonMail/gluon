@@ -1,8 +1,8 @@
 package imap
 
 const (
-	AttrNoSelect    = `\NoSelect`
-	AttrNoInferiors = `\NoInferiors`
+	AttrNoSelect    = `\Noselect`
+	AttrNoInferiors = `\Noinferiors`
 	AttrMarked      = `\Marked`
 	AttrUnmarked    = `\Unmarked`
 )
