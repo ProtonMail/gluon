@@ -2,8 +2,11 @@ package tests
 
 import (
 	"testing"
+	"time"
 
+	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,6 +37,66 @@ func TestRenameHierarchy(t *testing.T) {
 	})
 }
 
+func TestRenameAddHierarchy(t *testing.T) {
+	type renameTC struct {
+		src       string
+		dest      string
+		result    []string
+		newFolder string
+	}
+
+	testCases := []renameTC{
+		// 0 - rename the first level.
+		{"foo", "bar.foo",
+			[]string{"INBOX", "bar", "bar.foo", "bar.foo.bar"}, "bar"},
+		// 1 - rename the last level.
+		{"foo.bar", "foo.rag.bar",
+			[]string{"INBOX", "foo", "foo.rag", "foo.rag.bar"}, "foo.rag"},
+	}
+	initialMailbox := []string{"INBOX", "foo", "foo.bar"}
+
+	const messagePath = "testdata/afternoon-meeting.eml"
+
+	for i, tc := range testCases {
+		logrus.Trace(" --- test case ", i, " ---")
+		runOneToOneTestClientWithAuth(t, "user", "pass", ".", func(client *client.Client, _ *testSession) {
+			require.NoError(t, client.Create("foo.bar"))
+			matchMailboxNamesClient(t, client, "", "*", initialMailbox)
+
+			// add a mail to every existing mailbox.
+			for _, box := range initialMailbox {
+				require.NoError(t, doAppendWithClientFromFile(t, client, box, messagePath, time.Now()))
+			}
+
+			// rename.
+			require.NoError(t, client.Rename(tc.src, tc.dest))
+			matchMailboxNamesClient(t, client, "", "*", tc.result)
+
+			// all box except new one should have a mail
+			for _, name := range tc.result {
+				currStatus, err := client.Status(name, []imap.StatusItem{imap.StatusMessages})
+				require.NoError(t, err)
+				if name == tc.newFolder {
+					require.Equal(t, uint32(0), currStatus.Messages, "Expected no message in the new folder %v", name)
+				} else {
+					require.Equal(t, uint32(1), currStatus.Messages, "Expected message to be kept in %v", name)
+				}
+			}
+		})
+	}
+}
+
+func TestRenameBadHierarchy(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, "user", "pass", ".", func(client *client.Client, _ *testSession) {
+		require.NoError(t, client.Create("foo.bar"))
+		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "foo", "foo.bar"})
+		require.Error(t, client.Rename("foo", "foo.foo"))
+		require.Error(t, client.Rename("foo", "foo.foo.foo"))
+		require.Error(t, client.Rename("foo", "foo.bar"))
+		require.NoError(t, client.Rename("foo", "bar.foo"))
+	})
+}
+
 func TestRenameInbox(t *testing.T) {
 	runOneToOneTestWithData(t, "user", "pass", "/", func(c *testConnection, s *testSession, mbox, mboxID string) {
 		// Put all the 100 messages into the inbox.
@@ -58,5 +121,14 @@ func TestRenameInbox(t *testing.T) {
 		c.C("tag status inbox (messages)").Sxe("MESSAGES 0").OK("tag")
 		c.C("tag status some/other/mailbox (messages)").Sxe("MESSAGES 0").OK("tag")
 		c.C("tag status yet/another/mailbox (messages)").Sxe("MESSAGES 100").OK("tag")
+	})
+
+	runOneToOneTestClientWithAuth(t, "user", "pass", ".", func(client *client.Client, _ *testSession) {
+		require.NoError(t, client.Create("INBOX.foo.bar"))
+		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "INBOX.foo", "INBOX.foo.bar"})
+
+		// rename.
+		require.NoError(t, client.Rename("INBOX", "bar"))
+		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "bar", "INBOX.foo", "INBOX.foo.bar"})
 	})
 }
