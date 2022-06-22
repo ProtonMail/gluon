@@ -168,7 +168,11 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			if exists, err := tx.Mailbox.Query().Where(mailbox.Name(superior)).Exist(ctx); err != nil {
 				return err
 			} else if exists {
-				continue
+				if superior == oldName {
+					return ErrExistingMailbox
+				} else {
+					continue
+				}
 			}
 
 			if _, err := state.actionCreateMailbox(ctx, tx, superior); err != nil {

@@ -88,8 +88,7 @@ func TestRenameAddHierarchy(t *testing.T) {
 	}
 }
 
-// todo : GODT-1637.
-func _TestRenameBadHierarchy(t *testing.T) {
+func TestRenameBadHierarchy(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, "user", "pass", ".", func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("foo.bar"))
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "foo", "foo.bar"})
