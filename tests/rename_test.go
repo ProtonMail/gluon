@@ -5,10 +5,8 @@ import (
 	"time"
 
 	"github.com/emersion/go-imap"
-
-	"github.com/sirupsen/logrus"
-
 	"github.com/emersion/go-imap/client"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
