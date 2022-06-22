@@ -74,13 +74,13 @@ func New(dir string, withOpt ...Option) (*Server, error) {
 }
 
 // AddUser makes a user available to the mailserver.
-func (s *Server) AddUser(conn connector.Connector, store store.Store, driver, source string) (string, error) {
+func (s *Server) AddUser(ctx context.Context, conn connector.Connector, store store.Store, driver, source string) (string, error) {
 	client, err := ent.Open(driver, source)
 	if err != nil {
 		return "", err
 	}
 
-	userID, err := s.backend.AddUser(conn, store, client)
+	userID, err := s.backend.AddUser(ctx, conn, store, client)
 	if err != nil {
 		return "", err
 	}
@@ -115,6 +115,17 @@ func (s *Server) AddWatcher() chan events.Event {
 	s.watchers[eventCh] = struct{}{}
 
 	return eventCh
+}
+
+// RemoveWatcher removes the watcher from the server and closes the channel.
+func (s *Server) RemoveWatcher(ch chan events.Event) {
+	s.watchersLock.Lock()
+	defer s.watchersLock.Unlock()
+
+	if _, ok := s.watchers[ch]; ok {
+		close(ch)
+		delete(s.watchers, ch)
+	}
 }
 
 // Serve serves connections accepted from the given listener.

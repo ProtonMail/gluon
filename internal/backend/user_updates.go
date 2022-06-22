@@ -40,6 +40,9 @@ func (user *user) apply(ctx context.Context, tx *ent.Tx, update imap.Update) err
 	case *imap.MessageIDChanged:
 		return user.applyMessageIDChanged(ctx, tx, update)
 
+	case *imap.MessageDeleted:
+		return user.applyMessageDeleted(ctx, tx, update)
+
 	default:
 		panic("bad update")
 	}
@@ -334,5 +337,15 @@ func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID 
 		}
 
 		return state.pushResponder(ctx, tx, newFetch(messageID, snapFlags.Remove(flag), isUID(ctx), isSilent(ctx)))
+	})
+}
+
+func (user *user) applyMessageDeleted(ctx context.Context, tx *ent.Tx, update *imap.MessageDeleted) error {
+	if err := txMarkMessageAsDeleted(ctx, tx, update.MessageID); err != nil {
+		return err
+	}
+
+	return user.forStateWithMessage(update.MessageID, func(state *State) error {
+		return state.actionRemoveMessagesFromMailbox(ctx, tx, []string{update.MessageID}, state.snap.mboxID)
 	})
 }

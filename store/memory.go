@@ -52,3 +52,14 @@ func (c *inMemoryStore) Update(oldID, newID string) error {
 
 	return nil
 }
+
+func (c *inMemoryStore) Delete(ids ...string) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	for _, id := range ids {
+		delete(c.data, id)
+	}
+
+	return nil
+}

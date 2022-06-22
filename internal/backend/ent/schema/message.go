@@ -22,6 +22,7 @@ func (Message) Fields() []ent.Field {
 		field.String("Body"),
 		field.String("BodyStructure"),
 		field.String("Envelope"),
+		field.Bool("Deleted").Default(false),
 	}
 }
 

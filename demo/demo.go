@@ -18,16 +18,18 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	server, err := gluon.New(temp())
+
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to create server")
 	}
 
-	if err := addUser(server, []string{"user1@example.com", "alias1@example.com"}, "password1"); err != nil {
+	if err := addUser(ctx, server, []string{"user1@example.com", "alias1@example.com"}, "password1"); err != nil {
 		logrus.WithError(err).Fatal("Failed to add user")
 	}
 
-	if err := addUser(server, []string{"user2@example.com", "alias2@example.com"}, "password2"); err != nil {
+	if err := addUser(ctx, server, []string{"user2@example.com", "alias2@example.com"}, "password2"); err != nil {
 		logrus.WithError(err).Fatal("Failed to add user")
 	}
 
@@ -38,12 +40,12 @@ func main() {
 
 	logrus.Infof("Server is listening on %v", listener.Addr())
 
-	for err := range server.Serve(context.Background(), listener) {
+	for err := range server.Serve(ctx, listener) {
 		logrus.WithError(err).Error("Error while serving")
 	}
 }
 
-func addUser(server *gluon.Server, addresses []string, password string) error {
+func addUser(ctx context.Context, server *gluon.Server, addresses []string, password string) error {
 	connector := connector.NewDummy(
 		addresses,
 		password,
@@ -59,6 +61,7 @@ func addUser(server *gluon.Server, addresses []string, password string) error {
 	}
 
 	userID, err := server.AddUser(
+		ctx,
 		connector,
 		store,
 		dialect.SQLite,

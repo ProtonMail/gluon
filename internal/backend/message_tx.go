@@ -359,3 +359,30 @@ func txUpdateMessageID(ctx context.Context, tx *ent.Tx, oldID, newID string) err
 
 	return nil
 }
+
+func txMarkMessageAsDeleted(ctx context.Context, tx *ent.Tx, messageID string) error {
+	if _, err := tx.Message.Update().Where(message.MessageID(messageID)).SetDeleted(true).Save(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func txDeleteMessages(ctx context.Context, tx *ent.Tx, messageIDs ...string) error {
+	if _, err := tx.Message.Delete().Where(message.MessageIDIn(messageIDs...)).Exec(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func txGetMessageIDsMarkedDeleted(ctx context.Context, tx *ent.Tx) ([]string, error) {
+	messages, err := tx.Message.Query().Where(message.Deleted(true)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return xslices.Map(messages, func(t *ent.Message) string {
+		return t.MessageID
+	}), nil
+}

@@ -358,3 +358,127 @@ func TestNoopReceivesPendingDeletionUpdates(t *testing.T) {
 		c.Sx(`A002 OK`)
 	})
 }
+
+func TestMessageErasedFromDB(t *testing.T) {
+	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+		// Create a mailbox.
+		mailboxID := s.mailboxCreated("user", []string{"mbox"})
+
+		// Create some messages in the mailbox.
+		messageID1 := s.messageCreatedFromFile("user", mailboxID, "testdata/multipart-mixed.eml")
+		messageID2 := s.messageCreatedFromFile("user", mailboxID, "testdata/afternoon-meeting.eml")
+
+		// Create a snapshot by selecting in the mailbox.
+		c.C(`A001 select mbox`).OK(`A001`)
+
+		dbCheckUserMessageCount(s, "user", 2)
+
+		// Messages marked for deletion externally
+		s.messageDeleted("user", messageID1)
+		s.messageDeleted("user", messageID2)
+
+		waiter := newEventWaiter(s.server)
+		defer waiter.close()
+
+		// Noop should process their deletion.
+		c.C(`A002 LOGOUT`)
+		c.S(`* BYE (^_^)/~`)
+		c.Sx(`A002 OK`)
+
+		waiter.waitEndOfSession()
+		dbCheckUserMessageCount(s, "user", 0)
+	})
+}
+
+func TestMessageErasedFromDBOnStartup(t *testing.T) {
+	// This test checks whether any messages from a previous server that are written to the db and are cleared
+	// on the next startup. We force the server to use the same directories and state to check for this.
+	pathGenerator := newFixedPathGenerator(
+		t.TempDir(),
+		t.TempDir(),
+		t.TempDir(),
+	)
+
+	creds := []credentials{{usernames: []string{"user"}, password: "pass"}}
+
+	runServer := func(fn func(c *testConnection, s *testSession)) {
+		runServerWithPaths(t, creds, "/", pathGenerator, func(s *testSession) {
+			withConnections(t, s, []int{1}, func(c map[int]*testConnection) {
+				fn(c[1], s)
+			})
+		})
+	}
+
+	runServer(func(c *testConnection, s *testSession) {
+		// Create a mailbox.
+		mailboxID := s.mailboxCreated("user", []string{"mbox"})
+
+		// Create some messages in the mailbox.
+		messageID1 := s.messageCreatedFromFile("user", mailboxID, "testdata/multipart-mixed.eml")
+
+		waiter := newEventWaiter(s.server)
+		defer waiter.close()
+
+		// Noop should process their deletion.
+		c.C(`A002 LOGOUT`)
+		c.S(`* BYE (^_^)/~`)
+		c.Sx(`A002 OK`)
+		waiter.waitEndOfSession()
+		dbCheckUserMessageCount(s, "user", 1)
+
+		// delete message
+		s.messageDeleted("user", messageID1)
+		dbCheckUserMessageCount(s, "user", 1)
+	})
+
+	runServer(func(c *testConnection, s *testSession) {
+		// Message should have been removed now.
+		dbCheckUserMessageCount(s, "user", 0)
+	})
+}
+
+func TestMessageErasedFromDBWithMany(t *testing.T) {
+	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+		// Create a mailbox.
+		mailboxID := s.mailboxCreated("user", []string{"mbox"})
+
+		// Create some messages in the mailbox.
+		messageID1 := s.messageCreatedFromFile("user", mailboxID, "testdata/multipart-mixed.eml")
+		s.messageCreatedFromFile("user", mailboxID, "testdata/afternoon-meeting.eml")
+
+		// Create a snapshot by selecting in the mailbox.
+		c[1].C("A002 SELECT mbox").OK("A002")
+		c[2].C("A002 SELECT mbox").OK("A002")
+
+		dbCheckUserMessageCount(s, "user", 2)
+
+		// Message marked for deletion externally
+		s.messageDeleted("user", messageID1)
+
+		waiter := newEventWaiter(s.server)
+		defer waiter.close()
+
+		// Logout client 1.
+		c[1].C(`A002 LOGOUT`)
+		c[1].S(`* BYE (^_^)/~`)
+		c[1].Sx(`A002 OK`)
+
+		// Ensure session is properly finished its exit work to ensure the database writes take place.
+		waiter.waitEndOfSession()
+
+		// Message should still be in the db as the other client still has an active state instance.
+		dbCheckUserMessageCount(s, "user", 2)
+
+		c[2].C(`A002 LOGOUT`)
+		//c[2].S(`* 2 EXISTS`)
+		//c[2].S(`* 1 RECENT`)
+		c[2].S(`* BYE (^_^)/~`)
+		c[2].Sx(`A002 OK`)
+
+		// Ensure session is properly finished its exit work to ensure the database writes take place.
+		waiter.waitEndOfSession()
+
+		// The message should now be deleted.
+		dbCheckUserMessageCount(s, "user", 1)
+	})
+}

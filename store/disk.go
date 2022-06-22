@@ -109,3 +109,18 @@ func (c *onDiskStore) Update(oldID, newID string) error {
 		filepath.Join(c.path, hashString(newID)),
 	)
 }
+
+func (c *onDiskStore) Delete(ids ...string) error {
+	if c.sem != nil {
+		c.sem.Lock()
+		defer c.sem.Unlock()
+	}
+
+	for _, id := range ids {
+		if err := os.RemoveAll(filepath.Join(c.path, hashString(id))); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

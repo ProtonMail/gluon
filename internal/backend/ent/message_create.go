@@ -64,6 +64,20 @@ func (mc *MessageCreate) SetEnvelope(s string) *MessageCreate {
 	return mc
 }
 
+// SetDeleted sets the "Deleted" field.
+func (mc *MessageCreate) SetDeleted(b bool) *MessageCreate {
+	mc.mutation.SetDeleted(b)
+	return mc
+}
+
+// SetNillableDeleted sets the "Deleted" field if the given value is not nil.
+func (mc *MessageCreate) SetNillableDeleted(b *bool) *MessageCreate {
+	if b != nil {
+		mc.SetDeleted(*b)
+	}
+	return mc
+}
+
 // AddFlagIDs adds the "flags" edge to the MessageFlag entity by IDs.
 func (mc *MessageCreate) AddFlagIDs(ids ...int) *MessageCreate {
 	mc.mutation.AddFlagIDs(ids...)
@@ -105,6 +119,7 @@ func (mc *MessageCreate) Save(ctx context.Context) (*Message, error) {
 		err  error
 		node *Message
 	)
+	mc.defaults()
 	if len(mc.hooks) == 0 {
 		if err = mc.check(); err != nil {
 			return nil, err
@@ -162,6 +177,14 @@ func (mc *MessageCreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (mc *MessageCreate) defaults() {
+	if _, ok := mc.mutation.Deleted(); !ok {
+		v := message.DefaultDeleted
+		mc.mutation.SetDeleted(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (mc *MessageCreate) check() error {
 	if _, ok := mc.mutation.MessageID(); !ok {
@@ -184,6 +207,9 @@ func (mc *MessageCreate) check() error {
 	}
 	if _, ok := mc.mutation.Envelope(); !ok {
 		return &ValidationError{Name: "Envelope", err: errors.New(`ent: missing required field "Message.Envelope"`)}
+	}
+	if _, ok := mc.mutation.Deleted(); !ok {
+		return &ValidationError{Name: "Deleted", err: errors.New(`ent: missing required field "Message.Deleted"`)}
 	}
 	return nil
 }
@@ -268,6 +294,14 @@ func (mc *MessageCreate) createSpec() (*Message, *sqlgraph.CreateSpec) {
 		})
 		_node.Envelope = value
 	}
+	if value, ok := mc.mutation.Deleted(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: message.FieldDeleted,
+		})
+		_node.Deleted = value
+	}
 	if nodes := mc.mutation.FlagsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -323,6 +357,7 @@ func (mcb *MessageCreateBulk) Save(ctx context.Context) ([]*Message, error) {
 	for i := range mcb.builders {
 		func(i int, root context.Context) {
 			builder := mcb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*MessageMutation)
 				if !ok {

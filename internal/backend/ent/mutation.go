@@ -1924,6 +1924,7 @@ type MessageMutation struct {
 	_Body          *string
 	_BodyStructure *string
 	_Envelope      *string
+	_Deleted       *bool
 	clearedFields  map[string]struct{}
 	flags          map[int]struct{}
 	removedflags   map[int]struct{}
@@ -2306,6 +2307,42 @@ func (m *MessageMutation) ResetEnvelope() {
 	m._Envelope = nil
 }
 
+// SetDeleted sets the "Deleted" field.
+func (m *MessageMutation) SetDeleted(b bool) {
+	m._Deleted = &b
+}
+
+// Deleted returns the value of the "Deleted" field in the mutation.
+func (m *MessageMutation) Deleted() (r bool, exists bool) {
+	v := m._Deleted
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeleted returns the old "Deleted" field's value of the Message entity.
+// If the Message object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageMutation) OldDeleted(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeleted is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeleted requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeleted: %w", err)
+	}
+	return oldValue.Deleted, nil
+}
+
+// ResetDeleted resets all changes to the "Deleted" field.
+func (m *MessageMutation) ResetDeleted() {
+	m._Deleted = nil
+}
+
 // AddFlagIDs adds the "flags" edge to the MessageFlag entity by ids.
 func (m *MessageMutation) AddFlagIDs(ids ...int) {
 	if m.flags == nil {
@@ -2433,7 +2470,7 @@ func (m *MessageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MessageMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m._MessageID != nil {
 		fields = append(fields, message.FieldMessageID)
 	}
@@ -2454,6 +2491,9 @@ func (m *MessageMutation) Fields() []string {
 	}
 	if m._Envelope != nil {
 		fields = append(fields, message.FieldEnvelope)
+	}
+	if m._Deleted != nil {
+		fields = append(fields, message.FieldDeleted)
 	}
 	return fields
 }
@@ -2477,6 +2517,8 @@ func (m *MessageMutation) Field(name string) (ent.Value, bool) {
 		return m.BodyStructure()
 	case message.FieldEnvelope:
 		return m.Envelope()
+	case message.FieldDeleted:
+		return m.Deleted()
 	}
 	return nil, false
 }
@@ -2500,6 +2542,8 @@ func (m *MessageMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldBodyStructure(ctx)
 	case message.FieldEnvelope:
 		return m.OldEnvelope(ctx)
+	case message.FieldDeleted:
+		return m.OldDeleted(ctx)
 	}
 	return nil, fmt.Errorf("unknown Message field %s", name)
 }
@@ -2557,6 +2601,13 @@ func (m *MessageMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEnvelope(v)
+		return nil
+	case message.FieldDeleted:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeleted(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Message field %s", name)
@@ -2642,6 +2693,9 @@ func (m *MessageMutation) ResetField(name string) error {
 		return nil
 	case message.FieldEnvelope:
 		m.ResetEnvelope()
+		return nil
+	case message.FieldDeleted:
+		m.ResetDeleted()
 		return nil
 	}
 	return fmt.Errorf("unknown Message field %s", name)

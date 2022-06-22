@@ -21,6 +21,8 @@ const (
 	FieldBodyStructure = "body_structure"
 	// FieldEnvelope holds the string denoting the envelope field in the database.
 	FieldEnvelope = "envelope"
+	// FieldDeleted holds the string denoting the deleted field in the database.
+	FieldDeleted = "deleted"
 	// EdgeFlags holds the string denoting the flags edge name in mutations.
 	EdgeFlags = "flags"
 	// EdgeUIDs holds the string denoting the uids edge name in mutations.
@@ -53,6 +55,7 @@ var Columns = []string{
 	FieldBody,
 	FieldBodyStructure,
 	FieldEnvelope,
+	FieldDeleted,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -64,3 +67,8 @@ func ValidColumn(column string) bool {
 	}
 	return false
 }
+
+var (
+	// DefaultDeleted holds the default value on creation for the "Deleted" field.
+	DefaultDeleted bool
+)
