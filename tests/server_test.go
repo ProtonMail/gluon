@@ -9,12 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ProtonMail/gluon/internal"
-
 	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
@@ -44,10 +43,75 @@ var (
 	}
 )
 
+type pathGenerator interface {
+	GenerateBackendPath() string
+	GenerateStorePath() string
+	GenerateUserPath(user string) string
+}
+
+type defaultPathGenerator struct {
+	tb testing.TB
+}
+
+func (dpg *defaultPathGenerator) GenerateBackendPath() string {
+	return dpg.tb.TempDir()
+}
+
+func (dpg *defaultPathGenerator) GenerateStorePath() string {
+	return dpg.tb.TempDir()
+}
+
+func (dpg *defaultPathGenerator) GenerateUserPath(user string) string {
+	tmpDir := dpg.tb.TempDir()
+	return getEntPath(tmpDir)
+}
+
+type fixedPathGenerator struct {
+	backendPath string
+	storePath   string
+	userPath    string
+	userPaths   map[string]string
+}
+
+func newFixedPathGenerator(backendPath, storePath, userPath string) pathGenerator {
+	return &fixedPathGenerator{
+		backendPath: backendPath,
+		userPath:    userPath,
+		storePath:   storePath,
+		userPaths:   make(map[string]string),
+	}
+}
+
+func (fpg *fixedPathGenerator) GenerateBackendPath() string {
+	return fpg.storePath
+}
+
+func (fpg *fixedPathGenerator) GenerateStorePath() string {
+	return fpg.storePath
+}
+
+func (fpg *fixedPathGenerator) GenerateUserPath(user string) string {
+	if v, ok := fpg.userPaths[user]; ok {
+		return v
+	}
+
+	newUserPath := getEntPath(fpg.userPath)
+	fpg.userPaths[user] = newUserPath
+
+	return newUserPath
+}
+
 // runServer initializes and starts the mailserver.
 func runServer(tb testing.TB, creds []credentials, delim string, tests func(*testSession)) {
+	runServerWithPaths(tb, creds, delim, &defaultPathGenerator{tb: tb}, tests)
+}
+
+// runServerWithPaths initializes and starts the mailserver using a pathGenerator.
+func runServerWithPaths(tb testing.TB, creds []credentials, delim string, pathGenerator pathGenerator, tests func(*testSession)) {
+	gluonPath := pathGenerator.GenerateBackendPath()
+	logrus.Tracef("Backend Path: %v", gluonPath)
 	server, err := gluon.New(
-		tb.TempDir(),
+		gluonPath,
 		gluon.WithDelimiter(delim),
 		gluon.WithTLS(&tls.Config{
 			Certificates: []tls.Certificate{testCert},
@@ -67,6 +131,7 @@ func runServer(tb testing.TB, creds []credentials, delim string, tests func(*tes
 
 	userIDs := make(map[string]string)
 	conns := make(map[string]Connector)
+	dbPaths := make(map[string]string)
 
 	for _, creds := range creds {
 		conn := connector.NewDummy(
@@ -78,10 +143,14 @@ func runServer(tb testing.TB, creds []credentials, delim string, tests func(*tes
 			defaultAttributes,
 		)
 
-		store, err := store.NewOnDiskStore(tb.TempDir(), []byte(creds.password))
+		storePath := pathGenerator.GenerateStorePath()
+		logrus.Tracef("User Store Path: %v=%v", creds.usernames[0], storePath)
+		store, err := store.NewOnDiskStore(storePath, []byte(creds.password))
 		require.NoError(tb, err)
 
-		userID, err := server.AddUser(conn, store, dialect.SQLite, getEntPath(tb.TempDir()))
+		entPath := pathGenerator.GenerateUserPath(creds.usernames[0])
+		logrus.Tracef("User DB path: %v=%v", creds.usernames[0], entPath)
+		userID, err := server.AddUser(ctx, conn, store, dialect.SQLite, entPath)
 		require.NoError(tb, err)
 
 		require.NoError(tb, conn.Sync(ctx))
@@ -91,6 +160,7 @@ func runServer(tb testing.TB, creds []credentials, delim string, tests func(*tes
 		}
 
 		conns[userID] = conn
+		dbPaths[userID] = entPath
 	}
 
 	listener, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))
@@ -99,7 +169,7 @@ func runServer(tb testing.TB, creds []credentials, delim string, tests func(*tes
 	errCh := server.Serve(ctx, listener)
 
 	// Run the test against the server.
-	tests(newTestSession(tb, listener, server, userIDs, conns))
+	tests(newTestSession(tb, listener, server, userIDs, conns, dbPaths))
 
 	// Flush and remove user before shutdown.
 	for userID, conn := range conns {
@@ -111,6 +181,8 @@ func runServer(tb testing.TB, creds []credentials, delim string, tests func(*tes
 	require.NoError(tb, server.Close(ctx))
 	require.NoError(tb, <-errCh)
 }
+
+// runServerWithPaths initializes and starts the mailserver.
 
 func withConnections(tb testing.TB, s *testSession, connIDs []int, tests func(map[int]*testConnection)) {
 	conns := make(map[int]*testConnection)

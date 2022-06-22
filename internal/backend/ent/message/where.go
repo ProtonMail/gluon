@@ -142,6 +142,13 @@ func Envelope(v string) predicate.Message {
 	})
 }
 
+// Deleted applies equality check predicate on the "Deleted" field. It's identical to DeletedEQ.
+func Deleted(v bool) predicate.Message {
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldDeleted), v))
+	})
+}
+
 // MessageIDEQ applies the EQ predicate on the "MessageID" field.
 func MessageIDEQ(v string) predicate.Message {
 	return predicate.Message(func(s *sql.Selector) {
@@ -846,6 +853,20 @@ func EnvelopeEqualFold(v string) predicate.Message {
 func EnvelopeContainsFold(v string) predicate.Message {
 	return predicate.Message(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldEnvelope), v))
+	})
+}
+
+// DeletedEQ applies the EQ predicate on the "Deleted" field.
+func DeletedEQ(v bool) predicate.Message {
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldDeleted), v))
+	})
+}
+
+// DeletedNEQ applies the NEQ predicate on the "Deleted" field.
+func DeletedNEQ(v bool) predicate.Message {
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldDeleted), v))
 	})
 }
 

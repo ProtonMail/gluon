@@ -3,15 +3,18 @@ package tests
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
 	"testing"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/emersion/go-imap/client"
 	"github.com/emersion/go-mbox"
@@ -32,6 +35,7 @@ type Connector interface {
 	MessageRemoved(string, string) error
 	MessageSeen(string, bool) error
 	MessageFlagged(string, bool) error
+	MessageDeleted(string) error
 
 	Sync(context.Context) error
 	Flush()
@@ -42,10 +46,11 @@ type Connector interface {
 type testSession struct {
 	tb testing.TB
 
-	listener net.Listener
-	server   *gluon.Server
-	userIDs  map[string]string
-	conns    map[string]Connector
+	listener    net.Listener
+	server      *gluon.Server
+	userIDs     map[string]string
+	conns       map[string]Connector
+	userDBPaths map[string]string
 }
 
 func newTestSession(
@@ -54,13 +59,15 @@ func newTestSession(
 	server *gluon.Server,
 	userIDs map[string]string,
 	conns map[string]Connector,
+	userDBPaths map[string]string,
 ) *testSession {
 	return &testSession{
-		tb:       tb,
-		listener: listener,
-		server:   server,
-		userIDs:  userIDs,
-		conns:    conns,
+		tb:          tb,
+		listener:    listener,
+		server:      server,
+		userIDs:     userIDs,
+		conns:       conns,
+		userDBPaths: userDBPaths,
 	}
 }
 
@@ -76,6 +83,22 @@ func (s *testSession) newClient() *client.Client {
 	require.NoError(s.tb, err)
 
 	return client
+}
+
+func (s *testSession) withUserDB(user string, fn func(client *ent.Client, ctx context.Context)) error {
+	path, ok := s.userDBPaths[s.userIDs[user]]
+	if !ok {
+		return fmt.Errorf("User not found")
+	}
+
+	client, err := ent.Open(dialect.SQLite, path)
+	if err != nil {
+		return err
+	}
+
+	fn(client, context.Background())
+
+	return client.Close()
 }
 
 func (s *testSession) setFolderPrefix(user, prefix string) {
@@ -166,6 +189,12 @@ func (s *testSession) messageAdded(user, messageID, mailboxID string) {
 
 func (s *testSession) messageRemoved(user, messageID, mailboxID string) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageRemoved(messageID, mailboxID))
+
+	s.conns[s.userIDs[user]].Flush()
+}
+
+func (s *testSession) messageDeleted(user, messageID string) {
+	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageDeleted(messageID))
 
 	s.conns[s.userIDs[user]].Flush()
 }

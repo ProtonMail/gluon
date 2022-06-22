@@ -30,6 +30,8 @@ type Message struct {
 	BodyStructure string `json:"BodyStructure,omitempty"`
 	// Envelope holds the value of the "Envelope" field.
 	Envelope string `json:"Envelope,omitempty"`
+	// Deleted holds the value of the "Deleted" field.
+	Deleted bool `json:"Deleted,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MessageQuery when eager-loading is set.
 	Edges MessageEdges `json:"edges"`
@@ -69,6 +71,8 @@ func (*Message) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case message.FieldDeleted:
+			values[i] = new(sql.NullBool)
 		case message.FieldID, message.FieldSize:
 			values[i] = new(sql.NullInt64)
 		case message.FieldMessageID, message.FieldInternalID, message.FieldBody, message.FieldBodyStructure, message.FieldEnvelope:
@@ -138,6 +142,12 @@ func (m *Message) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				m.Envelope = value.String
 			}
+		case message.FieldDeleted:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field Deleted", values[i])
+			} else if value.Valid {
+				m.Deleted = value.Bool
+			}
 		}
 	}
 	return nil
@@ -190,6 +200,8 @@ func (m *Message) String() string {
 	builder.WriteString(m.BodyStructure)
 	builder.WriteString(", Envelope=")
 	builder.WriteString(m.Envelope)
+	builder.WriteString(", Deleted=")
+	builder.WriteString(fmt.Sprintf("%v", m.Deleted))
 	builder.WriteByte(')')
 	return builder.String()
 }

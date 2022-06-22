@@ -26,7 +26,7 @@ type user struct {
 	stateID    int
 }
 
-func newUser(userID string, client *ent.Client, remote *remote.User, store store.Store, delimiter string) (*user, error) {
+func newUser(ctx context.Context, userID string, client *ent.Client, remote *remote.User, store store.Store, delimiter string) (*user, error) {
 	if err := client.Schema.Create(context.Background()); err != nil {
 		return nil, err
 	}
@@ -38,6 +38,10 @@ func newUser(userID string, client *ent.Client, remote *remote.User, store store
 		delimiter: delimiter,
 		client:    client,
 		states:    make(map[int]*State),
+	}
+
+	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
+		return nil, err
 	}
 
 	go func() {
@@ -67,6 +71,8 @@ func (user *user) tx(ctx context.Context, fn func(tx *ent.Tx) error) error {
 	}
 
 	if err := fn(tx); err != nil {
+		logrus.WithError(err).Error("Failed to execute transaction")
+
 		if rerr := tx.Rollback(); rerr != nil {
 			panic(rerr)
 		}
@@ -92,4 +98,19 @@ func (user *user) close(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
+	return user.tx(ctx, func(tx *ent.Tx) error {
+		ids, err := txGetMessageIDsMarkedDeleted(ctx, tx)
+		if err != nil {
+			return err
+		}
+
+		if err := txDeleteMessages(ctx, tx, ids...); err != nil {
+			return err
+		}
+
+		return user.store.Delete(ids...)
+	})
 }
