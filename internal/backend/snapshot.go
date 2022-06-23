@@ -19,15 +19,13 @@ type snapshot struct {
 
 	state    *State
 	messages *snapMsgList
-	pool     *pool
 }
 
-func newSnapshot(ctx context.Context, state *State, pool *pool, mbox *ent.Mailbox) (*snapshot, error) {
+func newSnapshot(ctx context.Context, state *State, mbox *ent.Mailbox) (*snapshot, error) {
 	snap := &snapshot{
 		mboxID:   mbox.MailboxID,
 		state:    state,
 		messages: newMsgList(),
-		pool:     pool,
 	}
 
 	msgUIDs, err := mbox.QueryUIDs().
@@ -36,10 +34,6 @@ func newSnapshot(ctx context.Context, state *State, pool *pool, mbox *ent.Mailbo
 	if err != nil {
 		return nil, err
 	}
-
-	msgUIDs = xslices.Filter(msgUIDs, func(msgUID *ent.UID) bool {
-		return !pool.hasMessage(mbox.MailboxID, msgUID.Edges.Message.MessageID)
-	})
 
 	for _, msgUID := range msgUIDs {
 		snap.messages.insert(
@@ -253,12 +247,6 @@ func (snap *snapshot) appendMessage(ctx context.Context, tx *ent.Tx, messageID s
 func (snap *snapshot) expungeMessage(ctx context.Context, tx *ent.Tx, messageID string) error {
 	if ok := snap.messages.remove(messageID); !ok {
 		return ErrNoSuchMessage
-	}
-
-	if snap.pool.hasSnap(snap) {
-		if err := snap.pool.expungeMessage(ctx, tx, snap, messageID); err != nil {
-			return err
-		}
 	}
 
 	return nil

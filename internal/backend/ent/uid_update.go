@@ -70,20 +70,6 @@ func (uu *UIDUpdate) SetNillableRecent(b *bool) *UIDUpdate {
 	return uu
 }
 
-// SetInDeletionPool sets the "InDeletionPool" field.
-func (uu *UIDUpdate) SetInDeletionPool(b bool) *UIDUpdate {
-	uu.mutation.SetInDeletionPool(b)
-	return uu
-}
-
-// SetNillableInDeletionPool sets the "InDeletionPool" field if the given value is not nil.
-func (uu *UIDUpdate) SetNillableInDeletionPool(b *bool) *UIDUpdate {
-	if b != nil {
-		uu.SetInDeletionPool(*b)
-	}
-	return uu
-}
-
 // SetMessageID sets the "message" edge to the Message entity by ID.
 func (uu *UIDUpdate) SetMessageID(id int) *UIDUpdate {
 	uu.mutation.SetMessageID(id)
@@ -239,13 +225,6 @@ func (uu *UIDUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: uid.FieldRecent,
 		})
 	}
-	if value, ok := uu.mutation.InDeletionPool(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: uid.FieldInDeletionPool,
-		})
-	}
 	if uu.mutation.MessageCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -372,20 +351,6 @@ func (uuo *UIDUpdateOne) SetRecent(b bool) *UIDUpdateOne {
 func (uuo *UIDUpdateOne) SetNillableRecent(b *bool) *UIDUpdateOne {
 	if b != nil {
 		uuo.SetRecent(*b)
-	}
-	return uuo
-}
-
-// SetInDeletionPool sets the "InDeletionPool" field.
-func (uuo *UIDUpdateOne) SetInDeletionPool(b bool) *UIDUpdateOne {
-	uuo.mutation.SetInDeletionPool(b)
-	return uuo
-}
-
-// SetNillableInDeletionPool sets the "InDeletionPool" field if the given value is not nil.
-func (uuo *UIDUpdateOne) SetNillableInDeletionPool(b *bool) *UIDUpdateOne {
-	if b != nil {
-		uuo.SetInDeletionPool(*b)
 	}
 	return uuo
 }
@@ -567,13 +532,6 @@ func (uuo *UIDUpdateOne) sqlSave(ctx context.Context) (_node *UID, err error) {
 			Type:   field.TypeBool,
 			Value:  value,
 			Column: uid.FieldRecent,
-		})
-	}
-	if value, ok := uuo.mutation.InDeletionPool(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: uid.FieldInDeletionPool,
 		})
 	}
 	if uuo.mutation.MessageCleared() {

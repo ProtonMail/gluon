@@ -55,20 +55,6 @@ func (uc *UIDCreate) SetNillableRecent(b *bool) *UIDCreate {
 	return uc
 }
 
-// SetInDeletionPool sets the "InDeletionPool" field.
-func (uc *UIDCreate) SetInDeletionPool(b bool) *UIDCreate {
-	uc.mutation.SetInDeletionPool(b)
-	return uc
-}
-
-// SetNillableInDeletionPool sets the "InDeletionPool" field if the given value is not nil.
-func (uc *UIDCreate) SetNillableInDeletionPool(b *bool) *UIDCreate {
-	if b != nil {
-		uc.SetInDeletionPool(*b)
-	}
-	return uc
-}
-
 // SetMessageID sets the "message" edge to the Message entity by ID.
 func (uc *UIDCreate) SetMessageID(id int) *UIDCreate {
 	uc.mutation.SetMessageID(id)
@@ -186,10 +172,6 @@ func (uc *UIDCreate) defaults() {
 		v := uid.DefaultRecent
 		uc.mutation.SetRecent(v)
 	}
-	if _, ok := uc.mutation.InDeletionPool(); !ok {
-		v := uid.DefaultInDeletionPool
-		uc.mutation.SetInDeletionPool(v)
-	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -202,9 +184,6 @@ func (uc *UIDCreate) check() error {
 	}
 	if _, ok := uc.mutation.Recent(); !ok {
 		return &ValidationError{Name: "Recent", err: errors.New(`ent: missing required field "UID.Recent"`)}
-	}
-	if _, ok := uc.mutation.InDeletionPool(); !ok {
-		return &ValidationError{Name: "InDeletionPool", err: errors.New(`ent: missing required field "UID.InDeletionPool"`)}
 	}
 	return nil
 }
@@ -256,14 +235,6 @@ func (uc *UIDCreate) createSpec() (*UID, *sqlgraph.CreateSpec) {
 			Column: uid.FieldRecent,
 		})
 		_node.Recent = value
-	}
-	if value, ok := uc.mutation.InDeletionPool(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: uid.FieldInDeletionPool,
-		})
-		_node.InDeletionPool = value
 	}
 	if nodes := uc.mutation.MessageIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

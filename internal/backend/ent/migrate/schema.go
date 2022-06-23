@@ -126,7 +126,6 @@ var (
 		{Name: "uid", Type: field.TypeInt},
 		{Name: "deleted", Type: field.TypeBool, Default: false},
 		{Name: "recent", Type: field.TypeBool, Default: true},
-		{Name: "in_deletion_pool", Type: field.TypeBool, Default: false},
 		{Name: "mailbox_ui_ds", Type: field.TypeInt, Nullable: true},
 		{Name: "uid_message", Type: field.TypeInt, Nullable: true},
 	}
@@ -138,13 +137,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "ui_ds_mailboxes_UIDs",
-				Columns:    []*schema.Column{UIDsColumns[5]},
+				Columns:    []*schema.Column{UIDsColumns[4]},
 				RefColumns: []*schema.Column{MailboxesColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 			{
 				Symbol:     "ui_ds_messages_message",
-				Columns:    []*schema.Column{UIDsColumns[6]},
+				Columns:    []*schema.Column{UIDsColumns[5]},
 				RefColumns: []*schema.Column{MessagesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
