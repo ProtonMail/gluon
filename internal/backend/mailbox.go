@@ -52,7 +52,16 @@ func (m *Mailbox) ReadOnly() bool {
 }
 
 func (m *Mailbox) ExpungeIssued() bool {
-	return m.snap.pool.hasSnap(m.snap)
+	var issued bool
+
+	for _, res := range m.state.res {
+		switch res.(type) {
+		case *expunge:
+			issued = true
+		}
+	}
+
+	return issued
 }
 
 func (m *Mailbox) Count() int {

@@ -3071,22 +3071,21 @@ func (m *MessageFlagMutation) ResetEdge(name string) error {
 // UIDMutation represents an operation that mutates the UID nodes in the graph.
 type UIDMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *int
-	_UID            *int
-	add_UID         *int
-	_Deleted        *bool
-	_Recent         *bool
-	_InDeletionPool *bool
-	clearedFields   map[string]struct{}
-	message         *int
-	clearedmessage  bool
-	mailbox         *int
-	clearedmailbox  bool
-	done            bool
-	oldValue        func(context.Context) (*UID, error)
-	predicates      []predicate.UID
+	op             Op
+	typ            string
+	id             *int
+	_UID           *int
+	add_UID        *int
+	_Deleted       *bool
+	_Recent        *bool
+	clearedFields  map[string]struct{}
+	message        *int
+	clearedmessage bool
+	mailbox        *int
+	clearedmailbox bool
+	done           bool
+	oldValue       func(context.Context) (*UID, error)
+	predicates     []predicate.UID
 }
 
 var _ ent.Mutation = (*UIDMutation)(nil)
@@ -3315,42 +3314,6 @@ func (m *UIDMutation) ResetRecent() {
 	m._Recent = nil
 }
 
-// SetInDeletionPool sets the "InDeletionPool" field.
-func (m *UIDMutation) SetInDeletionPool(b bool) {
-	m._InDeletionPool = &b
-}
-
-// InDeletionPool returns the value of the "InDeletionPool" field in the mutation.
-func (m *UIDMutation) InDeletionPool() (r bool, exists bool) {
-	v := m._InDeletionPool
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldInDeletionPool returns the old "InDeletionPool" field's value of the UID entity.
-// If the UID object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UIDMutation) OldInDeletionPool(ctx context.Context) (v bool, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldInDeletionPool is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldInDeletionPool requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldInDeletionPool: %w", err)
-	}
-	return oldValue.InDeletionPool, nil
-}
-
-// ResetInDeletionPool resets all changes to the "InDeletionPool" field.
-func (m *UIDMutation) ResetInDeletionPool() {
-	m._InDeletionPool = nil
-}
-
 // SetMessageID sets the "message" edge to the Message entity by id.
 func (m *UIDMutation) SetMessageID(id int) {
 	m.message = &id
@@ -3448,7 +3411,7 @@ func (m *UIDMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UIDMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 3)
 	if m._UID != nil {
 		fields = append(fields, uid.FieldUID)
 	}
@@ -3457,9 +3420,6 @@ func (m *UIDMutation) Fields() []string {
 	}
 	if m._Recent != nil {
 		fields = append(fields, uid.FieldRecent)
-	}
-	if m._InDeletionPool != nil {
-		fields = append(fields, uid.FieldInDeletionPool)
 	}
 	return fields
 }
@@ -3475,8 +3435,6 @@ func (m *UIDMutation) Field(name string) (ent.Value, bool) {
 		return m.Deleted()
 	case uid.FieldRecent:
 		return m.Recent()
-	case uid.FieldInDeletionPool:
-		return m.InDeletionPool()
 	}
 	return nil, false
 }
@@ -3492,8 +3450,6 @@ func (m *UIDMutation) OldField(ctx context.Context, name string) (ent.Value, err
 		return m.OldDeleted(ctx)
 	case uid.FieldRecent:
 		return m.OldRecent(ctx)
-	case uid.FieldInDeletionPool:
-		return m.OldInDeletionPool(ctx)
 	}
 	return nil, fmt.Errorf("unknown UID field %s", name)
 }
@@ -3523,13 +3479,6 @@ func (m *UIDMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRecent(v)
-		return nil
-	case uid.FieldInDeletionPool:
-		v, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetInDeletionPool(v)
 		return nil
 	}
 	return fmt.Errorf("unknown UID field %s", name)
@@ -3603,9 +3552,6 @@ func (m *UIDMutation) ResetField(name string) error {
 		return nil
 	case uid.FieldRecent:
 		m.ResetRecent()
-		return nil
-	case uid.FieldInDeletionPool:
-		m.ResetInDeletionPool()
 		return nil
 	}
 	return fmt.Errorf("unknown UID field %s", name)

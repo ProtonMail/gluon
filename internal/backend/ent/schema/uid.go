@@ -17,7 +17,6 @@ func (UID) Fields() []ent.Field {
 		field.Int("UID"),
 		field.Bool("Deleted").Default(false),
 		field.Bool("Recent").Default(true),
-		field.Bool("InDeletionPool").Default(false),
 	}
 }
 

@@ -24,8 +24,6 @@ type user struct {
 	states     map[int]*State
 	statesLock sync.RWMutex
 	stateID    int
-
-	pool *pool
 }
 
 func newUser(userID string, client *ent.Client, remote *remote.User, store store.Store, delimiter string) (*user, error) {
@@ -40,7 +38,6 @@ func newUser(userID string, client *ent.Client, remote *remote.User, store store
 		delimiter: delimiter,
 		client:    client,
 		states:    make(map[int]*State),
-		pool:      newPool(),
 	}
 
 	go func() {
@@ -57,23 +54,6 @@ func newUser(userID string, client *ent.Client, remote *remote.User, store store
 	}()
 
 	return user, nil
-}
-
-func (user *user) deferRemoval(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs []string) error {
-	if err := txSetInDeletionPool(ctx, tx, mboxID, messageIDs); err != nil {
-		return err
-	}
-
-	for _, messageID := range messageIDs {
-		if err := user.forStateInMailboxWithMessage(mboxID, messageID, func(state *State) error {
-			user.pool.addMessage(state.snap, messageID)
-			return nil
-		}); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // tx is a helper function that runs a sequence of ent client calls in a transaction.

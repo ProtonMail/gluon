@@ -36,8 +36,4 @@ func init() {
 	uidDescRecent := uidFields[2].Descriptor()
 	// uid.DefaultRecent holds the default value on creation for the Recent field.
 	uid.DefaultRecent = uidDescRecent.Default.(bool)
-	// uidDescInDeletionPool is the schema descriptor for InDeletionPool field.
-	uidDescInDeletionPool := uidFields[3].Descriptor()
-	// uid.DefaultInDeletionPool holds the default value on creation for the InDeletionPool field.
-	uid.DefaultInDeletionPool = uidDescInDeletionPool.Default.(bool)
 }

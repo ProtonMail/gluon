@@ -112,13 +112,6 @@ func Recent(v bool) predicate.UID {
 	})
 }
 
-// InDeletionPool applies equality check predicate on the "InDeletionPool" field. It's identical to InDeletionPoolEQ.
-func InDeletionPool(v bool) predicate.UID {
-	return predicate.UID(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldInDeletionPool), v))
-	})
-}
-
 // UIDEQ applies the EQ predicate on the "UID" field.
 func UIDEQ(v int) predicate.UID {
 	return predicate.UID(func(s *sql.Selector) {
@@ -220,20 +213,6 @@ func RecentEQ(v bool) predicate.UID {
 func RecentNEQ(v bool) predicate.UID {
 	return predicate.UID(func(s *sql.Selector) {
 		s.Where(sql.NEQ(s.C(FieldRecent), v))
-	})
-}
-
-// InDeletionPoolEQ applies the EQ predicate on the "InDeletionPool" field.
-func InDeletionPoolEQ(v bool) predicate.UID {
-	return predicate.UID(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldInDeletionPool), v))
-	})
-}
-
-// InDeletionPoolNEQ applies the NEQ predicate on the "InDeletionPool" field.
-func InDeletionPoolNEQ(v bool) predicate.UID {
-	return predicate.UID(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldInDeletionPool), v))
 	})
 }
 

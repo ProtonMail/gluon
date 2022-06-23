@@ -101,8 +101,6 @@ func (user *user) applyMailboxUpdated(ctx context.Context, tx *ent.Tx, update *i
 
 // applyMailboxIDChanged applies a MailboxIDChanged update.
 func (user *user) applyMailboxIDChanged(ctx context.Context, tx *ent.Tx, update *imap.MailboxIDChanged) error {
-	user.pool.updateMailboxID(update.OldID, update.NewID)
-
 	if err := user.forStateInMailbox(update.OldID, func(state *State) error {
 		return state.updateMailboxID(update.OldID, update.NewID)
 	}); err != nil {
@@ -201,8 +199,6 @@ func (user *user) applyMessageUpdated(ctx context.Context, tx *ent.Tx, update *i
 
 // applyMessageIDChanged applies a MessageIDChanged update.
 func (user *user) applyMessageIDChanged(ctx context.Context, tx *ent.Tx, update *imap.MessageIDChanged) error {
-	user.pool.updateMessageID(update.OldID, update.NewID)
-
 	if err := user.forState(func(state *State) error {
 		return state.updateMessageID(update.OldID, update.NewID)
 	}); err != nil {
@@ -222,10 +218,6 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx *ent.Tx, messageID
 		return err
 	}
 
-	curMailboxIDs = xslices.Filter(curMailboxIDs, func(mboxID string) bool {
-		return !user.pool.hasMessage(mboxID, messageID)
-	})
-
 	for _, mboxID := range xslices.Filter(mboxIDs, func(mboxID string) bool { return !slices.Contains(curMailboxIDs, mboxID) }) {
 		if _, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, []string{messageID}); err != nil {
 			return err
@@ -243,24 +235,8 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx *ent.Tx, messageID
 
 // applyMessagesAddedToMailbox adds the messages to the given mailbox.
 func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs []string) (map[string]int, error) {
-	if newMessageIDs := xslices.Filter(messageIDs, func(messageID string) bool {
-		return !user.pool.hasMessage(mboxID, messageID)
-	}); len(newMessageIDs) > 0 {
-		if _, err := txAddMessagesToMailbox(ctx, tx, newMessageIDs, mboxID); err != nil {
-			return nil, err
-		}
-	}
-
-	if oldMessageIDs := xslices.Filter(messageIDs, func(messageID string) bool {
-		return user.pool.hasMessage(mboxID, messageID)
-	}); len(oldMessageIDs) > 0 {
-		if _, err := txBumpMessagesInMailbox(ctx, tx, oldMessageIDs, mboxID); err != nil {
-			return nil, err
-		}
-
-		if err := user.pool.removeMessages(mboxID, oldMessageIDs...); err != nil {
-			return nil, err
-		}
+	if _, err := txAddMessagesToMailbox(ctx, tx, messageIDs, mboxID); err != nil {
+		return nil, err
 	}
 
 	messageUIDs, err := txGetMessageUIDs(ctx, tx, mboxID, messageIDs)
@@ -285,18 +261,8 @@ func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, m
 
 // applyMessagesRemovedFromMailbox removes the messages from the given mailbox.
 func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs []string) error {
-	if remMessageIDs := xslices.Filter(messageIDs, func(messageID string) bool {
-		return !user.hasStateInMailboxWithMessage(mboxID, messageID)
-	}); len(remMessageIDs) > 0 {
-		if err := txRemoveMessagesFromMailbox(ctx, tx, remMessageIDs, mboxID); err != nil {
-			return err
-		}
-	}
-
-	if defMessageIDs := xslices.Filter(messageIDs, func(messageID string) bool {
-		return user.hasStateInMailboxWithMessage(mboxID, messageID)
-	}); len(defMessageIDs) > 0 {
-		if err := user.deferRemoval(ctx, tx, mboxID, defMessageIDs); err != nil {
+	if len(messageIDs) > 0 {
+		if err := txRemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxID); err != nil {
 			return err
 		}
 	}
