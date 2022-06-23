@@ -2,7 +2,6 @@ package backend
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"runtime"
 	"strconv"
@@ -10,11 +9,10 @@ import (
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
+	"github.com/ProtonMail/gluon/internal/backend/ent/message"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/rfc822"
-	"github.com/bradenaw/juniper/parallel"
-	"github.com/bradenaw/juniper/stream"
 	"github.com/bradenaw/juniper/xslices"
 )
 
@@ -26,40 +24,19 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 		return err
 	}
 
-	type res struct {
-		seq   int
-		items []response.Item
-	}
-
-	resCh := parallel.MapStream(
-		ctx,
-		newUIDStream(m.snap, m.mbox, msg),
-		maxFetchConcurrency,
-		maxFetchConcurrency,
-		func(ctx context.Context, msg *ent.UID) (*res, error) {
-			seq, items, err := m.fetchItems(ctx, msg, attributes)
-			if err != nil {
-				return nil, err
-			}
-
-			return &res{seq: seq, items: items}, nil
-		},
-	)
-	defer resCh.Close()
-
-	for {
-		res, err := resCh.Next(ctx)
-		if errors.Is(err, stream.End) {
-			return nil
-		} else if err != nil {
+	for _, msg := range msg {
+		seq, items, err := m.fetchItems(ctx, msg, attributes)
+		if err != nil {
 			return err
 		}
 
-		ch <- response.Fetch(res.seq).WithItems(res.items...)
+		ch <- response.Fetch(seq).WithItems(items...)
 	}
+
+	return nil
 }
 
-func (m *Mailbox) fetchItems(ctx context.Context, entMsg *ent.UID, attributes []*proto.FetchAttribute) (int, []response.Item, error) {
+func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*proto.FetchAttribute) (int, []response.Item, error) {
 	var (
 		items []response.Item
 
@@ -67,7 +44,7 @@ func (m *Mailbox) fetchItems(ctx context.Context, entMsg *ent.UID, attributes []
 		setSeen bool
 	)
 
-	msg, err := m.snap.getMessage(entMsg.Edges.Message.MessageID)
+	message, err := m.tx.Message.Query().Where(message.MessageID(msg.ID)).Only(ctx)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -75,7 +52,7 @@ func (m *Mailbox) fetchItems(ctx context.Context, entMsg *ent.UID, attributes []
 	for _, attribute := range attributes {
 		switch attribute := attribute.Attribute.(type) {
 		case *proto.FetchAttribute_Keyword:
-			item, err := m.fetchKeyword(msg, entMsg, attribute.Keyword)
+			item, err := m.fetchKeyword(msg, message, attribute.Keyword)
 			if err != nil {
 				return 0, nil, err
 			}
@@ -127,16 +104,16 @@ func (m *Mailbox) fetchItems(ctx context.Context, entMsg *ent.UID, attributes []
 	return msg.Seq, items, nil
 }
 
-func (m *Mailbox) fetchKeyword(msg *snapMsg, res *ent.UID, keyword proto.FetchKeyword) (response.Item, error) {
+func (m *Mailbox) fetchKeyword(msg *snapMsg, message *ent.Message, keyword proto.FetchKeyword) (response.Item, error) {
 	switch keyword {
 	case proto.FetchKeyword_FetchKWEnvelope:
-		return response.ItemEnvelope(res.Edges.Message.Envelope), nil
+		return response.ItemEnvelope(message.Envelope), nil
 
 	case proto.FetchKeyword_FetchKWFlags:
 		return response.ItemFlags(msg.flags), nil
 
 	case proto.FetchKeyword_FetchKWInternalDate:
-		return response.ItemInternalDate(res.Edges.Message.Date), nil
+		return response.ItemInternalDate(message.Date), nil
 
 	case proto.FetchKeyword_FetchKWRFC822:
 		return m.fetchRFC822(msg.ID)
@@ -145,19 +122,19 @@ func (m *Mailbox) fetchKeyword(msg *snapMsg, res *ent.UID, keyword proto.FetchKe
 		return m.fetchRFC822Header(msg.ID)
 
 	case proto.FetchKeyword_FetchKWRFC822Size:
-		return response.ItemRFC822Size(res.Edges.Message.Size), nil
+		return response.ItemRFC822Size(message.Size), nil
 
 	case proto.FetchKeyword_FetchKWRFC822Text:
 		return m.fetchRFC822Text(msg.ID)
 
 	case proto.FetchKeyword_FetchKWBody:
-		return response.ItemBody(res.Edges.Message.Body), nil
+		return response.ItemBody(message.Body), nil
 
 	case proto.FetchKeyword_FetchKWBodyStructure:
-		return response.ItemBodyStructure(res.Edges.Message.BodyStructure), nil
+		return response.ItemBodyStructure(message.BodyStructure), nil
 
 	case proto.FetchKeyword_FetchKWUID:
-		return response.ItemUID(res.UID), nil
+		return response.ItemUID(msg.UID), nil
 
 	default:
 		panic("bad keyword")

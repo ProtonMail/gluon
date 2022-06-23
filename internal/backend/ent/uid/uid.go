@@ -13,8 +13,6 @@ const (
 	FieldDeleted = "deleted"
 	// FieldRecent holds the string denoting the recent field in the database.
 	FieldRecent = "recent"
-	// FieldInDeletionPool holds the string denoting the indeletionpool field in the database.
-	FieldInDeletionPool = "in_deletion_pool"
 	// EdgeMessage holds the string denoting the message edge name in mutations.
 	EdgeMessage = "message"
 	// EdgeMailbox holds the string denoting the mailbox edge name in mutations.
@@ -43,7 +41,6 @@ var Columns = []string{
 	FieldUID,
 	FieldDeleted,
 	FieldRecent,
-	FieldInDeletionPool,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "ui_ds"
@@ -73,6 +70,4 @@ var (
 	DefaultDeleted bool
 	// DefaultRecent holds the default value on creation for the "Recent" field.
 	DefaultRecent bool
-	// DefaultInDeletionPool holds the default value on creation for the "InDeletionPool" field.
-	DefaultInDeletionPool bool
 )

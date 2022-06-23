@@ -207,10 +207,10 @@ func ParseHeader(header []byte) *Header {
 		quote int
 	)
 
-	iter := iterator.Chan(forLines(bufio.NewReader(bytes.NewReader(header))))
+	lineIt := iterator.Chan(forLines(bufio.NewReader(bytes.NewReader(header))))
 
 	for {
-		line, ok := iter.Next()
+		line, ok := lineIt.Next()
 		if !ok {
 			break
 		}

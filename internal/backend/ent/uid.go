@@ -23,8 +23,6 @@ type UID struct {
 	Deleted bool `json:"Deleted,omitempty"`
 	// Recent holds the value of the "Recent" field.
 	Recent bool `json:"Recent,omitempty"`
-	// InDeletionPool holds the value of the "InDeletionPool" field.
-	InDeletionPool bool `json:"InDeletionPool,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UIDQuery when eager-loading is set.
 	Edges         UIDEdges `json:"edges"`
@@ -76,7 +74,7 @@ func (*UID) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case uid.FieldDeleted, uid.FieldRecent, uid.FieldInDeletionPool:
+		case uid.FieldDeleted, uid.FieldRecent:
 			values[i] = new(sql.NullBool)
 		case uid.FieldID, uid.FieldUID:
 			values[i] = new(sql.NullInt64)
@@ -122,12 +120,6 @@ func (u *UID) assignValues(columns []string, values []interface{}) error {
 				return fmt.Errorf("unexpected type %T for field Recent", values[i])
 			} else if value.Valid {
 				u.Recent = value.Bool
-			}
-		case uid.FieldInDeletionPool:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field InDeletionPool", values[i])
-			} else if value.Valid {
-				u.InDeletionPool = value.Bool
 			}
 		case uid.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -187,8 +179,6 @@ func (u *UID) String() string {
 	builder.WriteString(fmt.Sprintf("%v", u.Deleted))
 	builder.WriteString(", Recent=")
 	builder.WriteString(fmt.Sprintf("%v", u.Recent))
-	builder.WriteString(", InDeletionPool=")
-	builder.WriteString(fmt.Sprintf("%v", u.InDeletionPool))
 	builder.WriteByte(')')
 	return builder.String()
 }

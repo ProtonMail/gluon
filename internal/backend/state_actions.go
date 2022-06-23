@@ -100,18 +100,9 @@ func (state *State) actionAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, 
 }
 
 func (state *State) actionRemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []string, mboxID string) error {
-	var haveMessageIDs []string
-
-	if state.snap != nil && state.snap.mboxID == mboxID {
-		haveMessageIDs = xslices.Filter(state.snap.getAllMessageIDs(), func(messageID string) bool {
-			return !state.pool.hasMessage(mboxID, messageID)
-		})
-	} else {
-		var err error
-
-		if haveMessageIDs, err = txGetMailboxMessageIDs(ctx, tx, mboxID); err != nil {
-			return err
-		}
+	haveMessageIDs, err := txGetMailboxMessageIDs(ctx, tx, mboxID)
+	if err != nil {
+		return err
 	}
 
 	messageIDs = xslices.Filter(messageIDs, func(messageID string) bool {

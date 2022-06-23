@@ -99,38 +99,6 @@ func txRemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []s
 	return nil
 }
 
-// txBumpMessagesInMailbox bumps the messages to the top of the mailbox and removes them from the deletion pool.
-// This is used to "put messages back" into a mailbox.
-func txBumpMessagesInMailbox(ctx context.Context, tx *ent.Tx, messageIDs []string, mboxID string) (map[string]int, error) {
-	messageUIDs := make(map[string]int)
-
-	mbox, err := tx.Mailbox.Query().Where(mailbox.MailboxID(mboxID)).Only(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for idx, messageID := range messageIDs {
-		messageUIDs[messageID] = mbox.UIDNext + idx
-
-		if err := tx.UID.Update().
-			Where(
-				uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
-				uid.HasMessageWith(message.MessageID(messageID)),
-			).
-			SetUID(messageUIDs[messageID]).
-			SetInDeletionPool(false).
-			Exec(ctx); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := txBumpMailboxUIDNext(ctx, tx, mbox, len(messageIDs)); err != nil {
-		return nil, err
-	}
-
-	return messageUIDs, nil
-}
-
 func txMessageExists(ctx context.Context, tx *ent.Tx, messageID string) (bool, error) {
 	count, err := tx.Message.Query().Where(message.MessageID(messageID)).Count(ctx)
 	if err != nil {
@@ -345,20 +313,6 @@ func txSetDeletedFlag(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs
 			uid.HasMessageWith(message.MessageIDIn(messageIDs...)),
 		).
 		SetDeleted(deleted).
-		Save(ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func txSetInDeletionPool(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs []string) error {
-	if _, err := tx.UID.Update().
-		Where(
-			uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
-			uid.HasMessageWith(message.MessageIDIn(messageIDs...)),
-		).
-		SetInDeletionPool(true).
 		Save(ctx); err != nil {
 		return err
 	}

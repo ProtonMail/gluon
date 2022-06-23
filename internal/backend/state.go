@@ -16,7 +16,7 @@ import (
 	"github.com/bradenaw/juniper/xslices"
 )
 
-// TODO(REFACTOR): Decide on the best way to pass around user/state/snap/pool objects! Currently quite gross...
+// TODO(REFACTOR): Decide on the best way to pass around user/state/snap objects! Currently quite gross...
 type State struct {
 	*user
 
@@ -65,7 +65,7 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 			}
 		}
 
-		snap, err := newSnapshot(ctx, state, state.pool, mbox)
+		snap, err := newSnapshot(ctx, state, mbox)
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 			}
 		}
 
-		snap, err := newSnapshot(ctx, state, state.pool, mbox)
+		snap, err := newSnapshot(ctx, state, mbox)
 		if err != nil {
 			return err
 		}
@@ -257,7 +257,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 			return fn(newMailbox(tx, mbox, state, state.snap))
 		}
 
-		snap, err := newSnapshot(ctx, state, state.pool, mbox)
+		snap, err := newSnapshot(ctx, state, mbox)
 		if err != nil {
 			return err
 		}
@@ -487,12 +487,6 @@ func (state *State) deleteConnMetadata() error {
 }
 
 func (state *State) close(ctx context.Context, tx *ent.Tx) error {
-	if state.snap != nil && state.pool.hasSnap(state.snap) {
-		if err := state.pool.expungeSnap(ctx, tx, state.snap); err != nil {
-			return err
-		}
-	}
-
 	state.snap = nil
 
 	state.res = nil
