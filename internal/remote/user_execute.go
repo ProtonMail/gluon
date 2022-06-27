@@ -42,6 +42,12 @@ func (user *User) execute(ctx context.Context, op operation) error {
 	case *OpConnMetadataStoreSetValue:
 		return user.executeConnMetadataStoreSetValue(ctx, op)
 
+	case *OpRemMailboxTempID:
+		return user.executeRemMailboxTempID(ctx, op)
+
+	case *OpRemMessageTempID:
+		return user.executeRemMessageTempID(ctx, op)
+
 	default:
 		panic(fmt.Sprintf("bad operation: %v", op))
 	}
@@ -53,7 +59,7 @@ func (user *User) executeMailboxCreate(ctx context.Context, op *OpMailboxCreate)
 		return err
 	}
 
-	user.opQueue.setMailboxID(op.TempID, mbox.ID)
+	user.opQueue.addMailboxTempID(op.TempID, mbox.ID)
 
 	user.send(imap.NewMailboxIDChanged(op.TempID, mbox.ID), true)
 
@@ -61,11 +67,11 @@ func (user *User) executeMailboxCreate(ctx context.Context, op *OpMailboxCreate)
 }
 
 func (user *User) executeMailboxDelete(ctx context.Context, op *OpMailboxDelete) error {
-	return user.conn.DeleteLabel(ctx, op.MBoxID)
+	return user.conn.DeleteLabel(ctx, user.opQueue.translateMailboxID(op.MBoxID))
 }
 
 func (user *User) executeMailboxUpdate(ctx context.Context, op *OpMailboxUpdate) error {
-	return user.conn.UpdateLabel(ctx, op.MBoxID, op.Name)
+	return user.conn.UpdateLabel(ctx, user.opQueue.translateMailboxID(op.MBoxID), op.Name)
 }
 
 func (user *User) executeMessageCreate(ctx context.Context, op *OpMessageCreate) error {
@@ -74,7 +80,7 @@ func (user *User) executeMessageCreate(ctx context.Context, op *OpMessageCreate)
 		return err
 	}
 
-	user.opQueue.setMessageID(op.TempID, msg.ID)
+	user.opQueue.addMessageTempID(op.TempID, msg.ID)
 
 	user.send(imap.NewMessageIDChanged(op.TempID, msg.ID), true)
 
@@ -82,15 +88,18 @@ func (user *User) executeMessageCreate(ctx context.Context, op *OpMessageCreate)
 }
 
 func (user *User) executeMessageAdd(ctx context.Context, op *OpMessageAdd) error {
-	if err := user.conn.LabelMessages(ctx, op.MessageIDs, op.MBoxID); err != nil {
-		return user.refresh(ctx, op.MessageIDs, op.MBoxID)
+	if err := user.conn.LabelMessages(ctx, user.opQueue.translateMessageIDs(op.MessageIDs...),
+		user.opQueue.translateMailboxID(op.MBoxID)); err != nil {
+		return user.refresh(ctx, user.opQueue.translateMessageIDs(op.MessageIDs...),
+			user.opQueue.translateMailboxID(op.MBoxID))
 	}
 
 	return nil
 }
 
 func (user *User) executeMessageRemove(ctx context.Context, op *OpMessageRemove) error {
-	if err := user.conn.UnlabelMessages(ctx, op.MessageIDs, op.MBoxID); err != nil {
+	if err := user.conn.UnlabelMessages(ctx, user.opQueue.translateMessageIDs(op.MessageIDs...),
+		user.opQueue.translateMailboxID(op.MBoxID)); err != nil {
 		return user.refresh(ctx, op.MessageIDs, op.MBoxID)
 	}
 
@@ -98,7 +107,7 @@ func (user *User) executeMessageRemove(ctx context.Context, op *OpMessageRemove)
 }
 
 func (user *User) executeMessageSeen(ctx context.Context, op *OpMessageSeen) error {
-	if err := user.conn.MarkMessagesSeen(ctx, op.MessageIDs, op.Seen); err != nil {
+	if err := user.conn.MarkMessagesSeen(ctx, user.opQueue.translateMessageIDs(op.MessageIDs...), op.Seen); err != nil {
 		return user.refresh(ctx, op.MessageIDs)
 	}
 
@@ -106,7 +115,7 @@ func (user *User) executeMessageSeen(ctx context.Context, op *OpMessageSeen) err
 }
 
 func (user *User) executeMessageFlagged(ctx context.Context, op *OpMessageFlagged) error {
-	if err := user.conn.MarkMessagesFlagged(ctx, op.MessageIDs, op.Flagged); err != nil {
+	if err := user.conn.MarkMessagesFlagged(ctx, user.opQueue.translateMessageIDs(op.MessageIDs...), op.Flagged); err != nil {
 		return user.refresh(ctx, op.MessageIDs)
 	}
 
@@ -159,6 +168,18 @@ func (user *User) executeConnMetadataStoreSetValue(ctx context.Context, op *OpCo
 	if ok := user.connMetadataStore.SetValue(op.MetadataID, op.Key, op.Value); !ok {
 		return fmt.Errorf("Failed to set value for ConnMetadata with ID=%v", op.MetadataID)
 	}
+
+	return nil
+}
+
+func (user *User) executeRemMailboxTempID(ctx context.Context, op *OpRemMailboxTempID) error {
+	user.opQueue.remMailboxTempID(op.tempID)
+
+	return nil
+}
+
+func (user *User) executeRemMessageTempID(ctx context.Context, op *OpRemMessageTempID) error {
+	user.opQueue.remMessageTempID(op.tempID)
 
 	return nil
 }

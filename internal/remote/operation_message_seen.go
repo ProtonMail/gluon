@@ -28,12 +28,4 @@ func (op *OpMessageSeen) merge(other operation) (operation, bool) {
 	}
 }
 
-func (op *OpMessageSeen) setMessageID(tempID, messageID string) {
-	for idx := range op.MessageIDs {
-		if op.MessageIDs[idx] == tempID {
-			op.MessageIDs[idx] = messageID
-		}
-	}
-}
-
 func (OpMessageSeen) _isOperation() {}

@@ -24,10 +24,4 @@ func (op *OpMessageCreate) merge(other operation) (operation, bool) {
 	return nil, false
 }
 
-func (op *OpMessageCreate) setMailboxID(tempID, mailboxID string) {
-	if op.MBoxID == tempID {
-		op.MBoxID = mailboxID
-	}
-}
-
 func (OpMessageCreate) _isOperation() {}

@@ -78,6 +78,18 @@ func (user *User) CloseAndFlushOperationQueue() {
 	user.processWG.Wait()
 }
 
+func (user *User) FinishMailboxIDUpdate(tempID string) error {
+	return user.pushOp(&OpRemMailboxTempID{
+		tempID: tempID,
+	})
+}
+
+func (user *User) FinishMessageIDUpdate(tempID string) error {
+	return user.pushOp(&OpRemMessageTempID{
+		tempID: tempID,
+	})
+}
+
 // CloseAndSerializeOperationQueue closes the remote user.
 func (user *User) CloseAndSerializeOperationQueue() error {
 	ops, err := user.opQueue.closeQueueAndRetrieveRemaining()
