@@ -1,7 +1,6 @@
 package session
 
 import (
-	"context"
 	"crypto/tls"
 
 	"github.com/ProtonMail/gluon/internal/liner"
@@ -9,7 +8,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/response"
 )
 
-func (s *Session) handleStartTLS(ctx context.Context, tag string, cmd *proto.StartTLS) error {
+func (s *Session) handleStartTLS(tag string, cmd *proto.StartTLS) error {
 	if s.tlsConfig == nil {
 		return response.No(tag).WithError(ErrTLSUnavailable)
 	}

@@ -21,9 +21,9 @@ type user struct {
 	client *ent.Client
 	txLock sync.Mutex
 
-	states     map[int]*State
-	statesLock sync.RWMutex
-	stateID    int
+	states      map[int]*State
+	statesLock  sync.RWMutex
+	nextStateID int
 }
 
 func newUser(ctx context.Context, userID string, client *ent.Client, remote *remote.User, store store.Store, delimiter string) (*user, error) {
@@ -70,24 +70,34 @@ func (user *user) tx(ctx context.Context, fn func(tx *ent.Tx) error) error {
 		return err
 	}
 
-	if err := fn(tx); err != nil {
-		logrus.WithError(err).Error("Failed to execute transaction")
+	defer func() {
+		if v := recover(); v != nil {
+			if err := tx.Rollback(); err != nil {
+				panic(fmt.Errorf("rolling back while recovering (%v): %w", v, err))
+			}
 
+			panic(v)
+		}
+	}()
+
+	if err := fn(tx); err != nil {
 		if rerr := tx.Rollback(); rerr != nil {
-			panic(rerr)
+			return fmt.Errorf("rolling back transaction: %w", rerr)
 		}
 
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing transaction: %w", err)
+	}
+
+	return nil
 }
 
 // close closes the backend user.
 func (user *user) close(ctx context.Context) error {
-	if err := user.closeStates(ctx); err != nil {
-		return fmt.Errorf("failed to close user states: %w", err)
-	}
+	user.closeStates()
 
 	if err := user.remote.CloseAndSerializeOperationQueue(); err != nil {
 		return fmt.Errorf("failed to close user remote: %w", err)

@@ -18,8 +18,8 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/liner"
+	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
@@ -109,45 +109,53 @@ func (s *Session) SetTLSConfig(cfg *tls.Config) {
 func (s *Session) Serve(ctx context.Context) error {
 	defer s.done(ctx)
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	if err := s.greet(); err != nil {
 		return err
 	}
 
+	return s.serve(ctx, s.getCommandCh())
+}
+
+func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var (
+		tag string
+		cmd *proto.Command
+	)
+
 	for {
-		tag, cmd, err := s.readCommand()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
+		select {
+		case res, ok := <-cmdCh:
+			if !ok {
 				return nil
-			} else if err := response.Bad(tag).WithError(err).Send(s); err != nil {
-				return err
 			}
 
-			continue
+			tag, cmd = res.tag, res.cmd
+
+		case <-s.state.Done():
+			return nil
+
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 
 		switch {
 		case cmd.GetLogout() != nil:
-			return s.handleLogout(ctx, cmd.tag, cmd.GetLogout())
-
-		case cmd.GetStartTLS() != nil:
-			if err := s.handleStartTLS(ctx, cmd.tag, cmd.GetStartTLS()); err != nil {
-				return response.No(cmd.tag).WithError(err).Send(s)
-			}
+			return s.handleLogout(ctx, tag, cmd.GetLogout())
 
 		case cmd.GetIdle() != nil:
-			if err := s.handleIdle(ctx, cmd.tag, cmd.GetIdle()); err != nil {
-				if err := response.No(cmd.tag).WithError(err).Send(s); err != nil {
-					logrus.WithError(err).Error("Failed to send response to client")
+			if err := s.handleIdle(ctx, tag, cmd.GetIdle(), cmdCh); err != nil {
+				if err := response.No(tag).WithError(err).Send(s); err != nil {
+					return fmt.Errorf("failed to send response to client: %w", err)
 				}
 			}
 
 		default:
-			for res := range s.handleOther(withStartTime(ctx, time.Now()), cmd) {
+			for res := range s.handleOther(withStartTime(ctx, time.Now()), tag, cmd) {
 				if err := res.Send(s); err != nil {
-					logrus.WithError(err).Error("Failed to send response to client")
+					return fmt.Errorf("failed to send response to client: %w", err)
 				}
 			}
 		}
@@ -162,23 +170,6 @@ func (s *Session) WriteResponse(res string) error {
 	}
 
 	return nil
-}
-
-func (s *Session) readCommand() (string, *IMAPCommand, error) {
-	line, literals, err := s.liner.Read(func() error { return response.Continuation().Send(s) })
-	if err != nil {
-		return "", nil, err
-	}
-
-	s.logIncoming(string(line))
-
-	tag, cmd, err := parse(line, literals)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to parse IMAP command")
-		return tag, cmd, err
-	}
-
-	return tag, cmd, nil
 }
 
 func (s *Session) logIncoming(line string) {
