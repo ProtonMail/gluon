@@ -110,6 +110,10 @@ func (user *user) applyMailboxIDChanged(ctx context.Context, tx *ent.Tx, update 
 		return err
 	}
 
+	if err := user.remote.FinishMailboxIDUpdate(update.OldID); err != nil {
+		logrus.WithError(err).Errorf("Call to FinishMailboxIDUpdate() failed")
+	}
+
 	return txUpdateMailboxID(ctx, tx, update.OldID, update.NewID)
 }
 
@@ -206,6 +210,10 @@ func (user *user) applyMessageIDChanged(ctx context.Context, tx *ent.Tx, update 
 		return state.updateMessageID(update.OldID, update.NewID)
 	}); err != nil {
 		return err
+	}
+
+	if err := user.remote.FinishMessageIDUpdate(update.OldID); err != nil {
+		logrus.WithError(err).Error("Call to FinishMessageIDUpdate() failed")
 	}
 
 	if err := user.store.Update(update.OldID, update.NewID); err != nil {

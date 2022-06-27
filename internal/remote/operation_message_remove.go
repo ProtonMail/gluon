@@ -28,20 +28,6 @@ func (op *OpMessageRemove) merge(other operation) (operation, bool) {
 	}
 }
 
-func (op *OpMessageRemove) setMailboxID(tempID, mboxID string) {
-	if op.MBoxID == tempID {
-		op.MBoxID = mboxID
-	}
-}
-
-func (op *OpMessageRemove) setMessageID(tempID, messageID string) {
-	for idx := range op.MessageIDs {
-		if op.MessageIDs[idx] == tempID {
-			op.MessageIDs[idx] = messageID
-		}
-	}
-}
-
 func (op *OpMessageRemove) getConnMetadataID() ConnMetadataID {
 	return op.MetadataID
 }

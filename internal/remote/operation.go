@@ -21,14 +21,6 @@ func (c *OperationBase) getConnMetadataID() ConnMetadataID {
 	return c.MetadataID
 }
 
-type mailboxOperation interface {
-	setMailboxID(tempID, mailboxID string)
-}
-
-type messageOperation interface {
-	setMessageID(tempID, messageID string)
-}
-
 // saveOps serializes the operation queue to a binary format to be serialized to disk.
 func saveOps(ops []operation) ([]byte, error) {
 	buf := new(bytes.Buffer)
