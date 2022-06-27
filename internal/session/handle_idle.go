@@ -10,7 +10,7 @@ import (
 
 // GOMSRV-86: What does it mean to do IDLE when you're not selected?
 // GOMSRV-87: Should IDLE be stopped automatically when the context is cancelled?
-func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle) error {
+func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, cmdCh <-chan command) error {
 	if s.state == nil {
 		return ErrNotAuthenticated
 	}
@@ -34,10 +34,22 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle) e
 			}
 		}
 
+		var cmd *proto.Command
+
 		for {
-			_, cmd, err := s.readCommand()
-			if err != nil {
-				return err
+			select {
+			case res, ok := <-cmdCh:
+				if !ok {
+					return nil
+				}
+
+				cmd = res.cmd
+
+			case <-s.state.Done():
+				return nil
+
+			case <-ctx.Done():
+				return ctx.Err()
 			}
 
 			switch {
