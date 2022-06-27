@@ -18,49 +18,57 @@ func (user *user) newState(metadataID remote.ConnMetadataID) (*State, error) {
 		return nil, err
 	}
 
-	state := &State{user: user, metadataID: metadataID}
+	user.nextStateID++
 
-	user.states[user.stateID] = state
-	user.stateID++
+	user.states[user.nextStateID] = &State{
+		user:       user,
+		stateID:    user.nextStateID,
+		metadataID: metadataID,
+		doneCh:     make(chan struct{}),
+		stopCh:     make(chan struct{}),
+	}
 
-	return state, nil
+	return user.states[user.nextStateID], nil
 }
 
-func (user *user) closeState(ctx context.Context, state *State) error {
+func (user *user) removeState(ctx context.Context, stateID int) error {
 	return user.tx(ctx, func(tx *ent.Tx) error {
 		user.statesLock.Lock()
 		defer user.statesLock.Unlock()
 
-		if err := state.deleteConnMetadata(); err != nil {
+		state, ok := user.states[stateID]
+		if !ok {
+			panic("no such state")
+		}
+
+		messageIDs, err := txGetMessageIDsMarkedDeleted(ctx, tx)
+		if err != nil {
 			return err
+		}
+
+		messageIDs = xslices.Filter(messageIDs, func(messageID string) bool {
+			return xslices.CountFunc(maps.Values(user.states), func(other *State) bool {
+				return state != other && other.snap != nil && other.snap.hasMessage(messageID)
+			}) == 0
+		})
+
+		if err := txDeleteMessages(ctx, tx, messageIDs...); err != nil {
+			return err
+		}
+
+		if err := user.store.Delete(messageIDs...); err != nil {
+			return err
+		}
+
+		if err := state.deleteConnMetadata(); err != nil {
+			return fmt.Errorf("failed to remove conn metadata: %w", err)
 		}
 
 		if err := state.close(ctx, tx); err != nil {
 			return fmt.Errorf("failed to close state: %w", err)
 		}
 
-		delete(user.states, user.stateID)
-
-		return nil
-	})
-}
-
-func (user *user) closeStates(ctx context.Context) error {
-	return user.tx(ctx, func(tx *ent.Tx) error {
-		user.statesLock.Lock()
-		defer user.statesLock.Unlock()
-
-		for stateID, state := range user.states {
-			if err := state.deleteConnMetadata(); err != nil {
-				return err
-			}
-
-			if err := state.close(ctx, tx); err != nil {
-				return fmt.Errorf("failed to close state: %w", err)
-			}
-
-			delete(user.states, stateID)
-		}
+		delete(user.states, stateID)
 
 		return nil
 	})
@@ -133,47 +141,16 @@ func (user *user) forStateInMailboxWithMessage(mboxID, messageID string, fn func
 	})
 }
 
-// use by any other states associated with this user.
-// WARNING: This function needs to called from a within a user.stateLock scope.
-func (user *user) collectUnusedMessagesMarkedForDelete(ctx context.Context, tx *ent.Tx, excludedState *State) ([]string, error) {
-	messageIDsMarkForDelete, err := txGetMessageIDsMarkedDeleted(ctx, tx)
-	if err != nil {
-		return nil, err
-	}
+func (user *user) getStates() []*State {
+	user.statesLock.RLock()
+	defer user.statesLock.RUnlock()
 
-	messageIDsToDelete := xslices.Filter(messageIDsMarkForDelete, func(id string) bool {
-		for _, st := range user.states {
-			if st == excludedState || st.snap == nil {
-				continue
-			}
-			if st.snap.hasMessage(id) {
-				return false
-			}
-		}
-
-		return true
-	})
-
-	return messageIDsToDelete, nil
+	return maps.Values(user.states)
 }
 
-// deleteUnusedMessagesMarkedDeleted Will delete all messages that have been marked for deletion that have are not in
-// use by any other states associated with this user.
-// WARNING: This function needs to called from a within a user.stateLock scope.
-func (user *user) deleteUnusedMessagesMarkedDeleted(ctx context.Context, tx *ent.Tx, state *State) error {
-	// Don't run this code if the context has been cancelled (e.g: Server shutdown).
-	if ctx.Err() != nil {
-		return nil
+func (user *user) closeStates() {
+	for _, state := range user.getStates() {
+		close(state.doneCh)
+		<-state.stopCh
 	}
-
-	messageIDsToDelete, err := user.collectUnusedMessagesMarkedForDelete(ctx, tx, state)
-	if err != nil {
-		return err
-	}
-
-	if err := txDeleteMessages(ctx, tx, messageIDsToDelete...); err != nil {
-		return err
-	}
-
-	return user.store.Delete(messageIDsToDelete...)
 }

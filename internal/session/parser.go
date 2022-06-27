@@ -9,12 +9,6 @@ import (
 	protobuf "google.golang.org/protobuf/proto"
 )
 
-type IMAPCommand struct {
-	*proto.Command
-
-	tag string
-}
-
 type ParserError struct {
 	error string
 }
@@ -32,8 +26,8 @@ func (e *UnmarshalError) Error() string {
 }
 
 // On error the first type can potentially contain tag of the command that triggered the error or empty string
-// otherwise. If an error occurs the *IMAPCommand return result will be nil.
-func parse(line []byte, literals map[string][]byte) (string, *IMAPCommand, error) {
+// otherwise. If an error occurs the *proto.Command return result will be nil.
+func parse(line []byte, literals map[string][]byte) (string, *proto.Command, error) {
 	lit := parser.NewStringMap()
 
 	for k, v := range literals {
@@ -52,5 +46,5 @@ func parse(line []byte, literals map[string][]byte) (string, *IMAPCommand, error
 		return parseResult.GetTag(), nil, &UnmarshalError{cmdString: parseResult.GetCommand()}
 	}
 
-	return parseResult.GetTag(), &IMAPCommand{tag: parseResult.GetTag(), Command: cmd}, nil
+	return parseResult.GetTag(), cmd, nil
 }

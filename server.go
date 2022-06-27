@@ -17,7 +17,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/store"
-	"github.com/bradenaw/juniper/xsync"
 	"github.com/sirupsen/logrus"
 )
 
@@ -140,8 +139,8 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) chan error {
 		s.addListener(l)
 		defer s.removeListener(l)
 
-		group := xsync.NewGroup(ctx)
-		defer group.Wait()
+		var wg sync.WaitGroup
+		defer wg.Wait()
 
 		for {
 			conn, err := l.Accept()
@@ -149,9 +148,12 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) chan error {
 				return
 			}
 
-			group.Once(func(ctx context.Context) {
-				s.handleConnection(ctx, conn, errCh)
-			})
+			wg.Add(1)
+
+			go func() {
+				defer wg.Done()
+				s.handleConn(ctx, conn, errCh)
+			}()
 		}
 	}()
 
@@ -206,7 +208,7 @@ func (s *Server) removeListener(l net.Listener) {
 	})
 }
 
-func (s *Server) handleConnection(ctx context.Context, conn net.Conn, errCh chan error) {
+func (s *Server) handleConn(ctx context.Context, conn net.Conn, errCh chan error) {
 	session, sessionID := s.addSession(conn)
 	defer s.removeSession(sessionID)
 

@@ -7,8 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
@@ -22,6 +20,9 @@ import (
 type State struct {
 	*user
 
+	stateID    int
+	metadataID remote.ConnMetadataID
+
 	idleCh   chan response.Response
 	idleLock sync.RWMutex
 
@@ -31,7 +32,8 @@ type State struct {
 	snap *snapshot
 	ro   bool
 
-	metadataID remote.ConnMetadataID
+	doneCh chan struct{}
+	stopCh chan struct{}
 }
 
 func (state *State) UserID() string {
@@ -287,8 +289,22 @@ func (state *State) IsSelected() bool {
 	return state.snap != nil
 }
 
+func (state *State) SetConnMetadataKeyValue(key string, value any) error {
+	return state.remote.SetConnMetadataValue(state.metadataID, key, value)
+}
+
+func (state *State) Done() <-chan struct{} {
+	if state == nil {
+		return nil
+	}
+
+	return state.doneCh
+}
+
 func (state *State) Close(ctx context.Context) error {
-	return state.closeState(ctx, state)
+	defer close(state.stopCh)
+
+	return state.removeState(ctx, state.stateID)
 }
 
 // renameInbox creates a new mailbox and moves everything there.
@@ -472,14 +488,10 @@ func (state *State) updateMessageID(oldID, newID string) error {
 	return nil
 }
 
-func (state *State) SetConnMetadataKeyValue(key string, value any) error {
-	return state.remote.SetConnMetadataValue(state.metadataID, key, value)
-}
-
+// We don't want the queue closed to be reported as an error.
+// User will clean up existing metadata entries by itself when closed.
 func (state *State) deleteConnMetadata() error {
 	if err := state.remote.DeleteConnMetadataStore(state.metadataID); err != nil {
-		// We don't want the queue closed to be reported as an error. User will clean up existing
-		// metadata entries by itself when closed.
 		if !errors.Is(err, remote.ErrQueueClosed) {
 			return fmt.Errorf("failed to delete conn metadata store: %w", err)
 		}
@@ -489,10 +501,6 @@ func (state *State) deleteConnMetadata() error {
 }
 
 func (state *State) close(ctx context.Context, tx *ent.Tx) error {
-	if err := state.deleteUnusedMessagesMarkedDeleted(ctx, tx, state); err != nil {
-		logrus.WithError(err).Errorf("Failed to delete unused messages marked for delete")
-	}
-
 	state.snap = nil
 
 	state.res = nil
