@@ -60,4 +60,7 @@ type Connector interface {
 
 	// Resume resumes the stream of updates.
 	Resume()
+
+	// Close the connector will no longer be used and all resources should be closed/released.
+	Close(ctx context.Context) error
 }

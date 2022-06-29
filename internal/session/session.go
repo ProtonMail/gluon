@@ -205,6 +205,8 @@ func (s *Session) logOutgoing(line string) {
 }
 
 func (s *Session) done(ctx context.Context) {
+	close(s.eventCh)
+
 	if s.state != nil {
 		if err := s.state.Close(ctx); err != nil {
 			logrus.WithError(err).Error("Failed to close state")

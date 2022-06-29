@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 const defaultPeriod = time.Second
@@ -108,6 +109,12 @@ func runServer(tb testing.TB, creds []credentials, delim string, tests func(*tes
 
 // runServerWithPaths initializes and starts the mailserver using a pathGenerator.
 func runServerWithPaths(tb testing.TB, creds []credentials, delim string, pathGenerator pathGenerator, tests func(*testSession)) {
+	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
+	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
+
+	// Setup goroutine leak detector here so that it doesn't report the goroutines created by logrus.
+	defer goleak.VerifyNone(tb, goleak.IgnoreCurrent())
+
 	gluonPath := pathGenerator.GenerateBackendPath()
 	logrus.Tracef("Backend Path: %v", gluonPath)
 	server, err := gluon.New(
@@ -118,8 +125,8 @@ func runServerWithPaths(tb testing.TB, creds []credentials, delim string, pathGe
 			MinVersion:   tls.VersionTLS13,
 		}),
 		gluon.WithLogger(
-			logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
-			logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
+			loggerIn,
+			loggerOut,
 		),
 		gluon.WithVersionInfo(TestServerVersionInfo.Version.Major, TestServerVersionInfo.Version.Minor, TestServerVersionInfo.Version.Patch,
 			TestServerVersionInfo.Name, TestServerVersionInfo.Vendor, TestServerVersionInfo.SupportURL),

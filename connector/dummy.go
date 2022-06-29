@@ -272,6 +272,17 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 	return nil
 }
 
+func (conn *Dummy) Close(ctx context.Context) error {
+	//TODO: GODT-1647 fix double call to Close().
+	if conn.updateCh != nil {
+		close(conn.updateCh)
+		conn.updateCh = nil
+		conn.ticker.Stop()
+	}
+
+	return nil
+}
+
 func (conn *Dummy) GetLastRecordedIMAPID() imap.ID {
 	return conn.state.lastIMAPID
 }
