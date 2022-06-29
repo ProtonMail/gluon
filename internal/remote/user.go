@@ -2,6 +2,7 @@ package remote
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -36,6 +37,8 @@ type User struct {
 
 	// processWG is used to ensure we wait until the process goroutine has finished executing after we close the queue.
 	processWG sync.WaitGroup
+	// forwardWG is used to ensure we wait until the forward() goroutine has finished executing.
+	forwardWG sync.WaitGroup
 }
 
 // newUser constructs a new user with the given (IMAP) credentials.
@@ -57,6 +60,8 @@ func newUser(userID, path string, conn connector.Connector) (*User, error) {
 	}
 
 	// send connector updates along to the mailserver.
+	user.forwardWG.Add(1)
+
 	go user.forward(conn.GetUpdates())
 
 	user.processWG.Add(1)
@@ -71,11 +76,23 @@ func (user *User) GetUpdates() <-chan imap.Update {
 	return user.updatesCh
 }
 
-func (user *User) CloseAndFlushOperationQueue() {
+func (user *User) CloseAndFlushOperationQueue(ctx context.Context) error {
 	user.opQueue.closeQueue()
 
 	// Wait until any remaining operations popped by the process go routine finish executing
 	user.processWG.Wait()
+
+	if err := user.conn.Close(ctx); err != nil {
+		return err
+	}
+
+	//TODO: GODT-1647 fix double call to Close().
+	if user.updatesCh != nil {
+		user.forwardWG.Wait()
+		user.updatesCh = nil
+	}
+
+	return nil
 }
 
 func (user *User) FinishMailboxIDUpdate(tempID string) error {
@@ -91,7 +108,17 @@ func (user *User) FinishMessageIDUpdate(tempID string) error {
 }
 
 // CloseAndSerializeOperationQueue closes the remote user.
-func (user *User) CloseAndSerializeOperationQueue() error {
+func (user *User) CloseAndSerializeOperationQueue(ctx context.Context) error {
+	if err := user.conn.Close(ctx); err != nil {
+		return err
+	}
+
+	//TODO: GODT-1647 fix double call to Close().
+	if user.updatesCh != nil {
+		user.forwardWG.Wait()
+		user.updatesCh = nil
+	}
+
 	ops, err := user.opQueue.closeQueueAndRetrieveRemaining()
 	if err != nil {
 		return fmt.Errorf("failed to close queue: %w", err)
@@ -126,6 +153,11 @@ func (user *User) CloseAndSerializeOperationQueue() error {
 
 // forward pulls updates off the stream and forwards them to the outgoing update channel.
 func (user *User) forward(updateCh <-chan imap.Update) {
+	defer func() {
+		close(user.updatesCh)
+		user.forwardWG.Done()
+	}()
+
 	for update := range updateCh {
 		user.send(update)
 	}

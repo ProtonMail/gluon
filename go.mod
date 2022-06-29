@@ -14,6 +14,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.10
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
+	go.uber.org/goleak v1.1.12
 	golang.org/x/exp v0.0.0-20220518171630-0b5c67f07fdf
 	golang.org/x/text v0.3.7
 	google.golang.org/protobuf v1.27.1
