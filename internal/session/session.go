@@ -113,7 +113,7 @@ func (s *Session) Serve(ctx context.Context) error {
 		return err
 	}
 
-	return s.serve(ctx, s.getCommandCh())
+	return s.serve(ctx, s.getCommandCh(ctx))
 }
 
 func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {

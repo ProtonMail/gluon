@@ -48,7 +48,7 @@ func (b *Backend) AddUser(ctx context.Context, conn connector.Connector, store s
 
 	userID := uuid.NewString()
 
-	remote, err := b.remote.AddUser(userID, conn)
+	remote, err := b.remote.AddUser(ctx, userID, conn)
 	if err != nil {
 		return "", err
 	}

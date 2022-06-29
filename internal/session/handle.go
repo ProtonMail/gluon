@@ -2,6 +2,8 @@ package session
 
 import (
 	"context"
+	"runtime/pprof"
+	"strconv"
 
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
@@ -12,15 +14,18 @@ func (s *Session) handleOther(ctx context.Context, tag string, cmd *proto.Comman
 	ch := make(chan response.Response)
 
 	go func() {
-		defer close(ch)
+		labels := pprof.Labels("go", "handleOther()", "SessionID", strconv.Itoa(s.sessionID))
+		pprof.Do(ctx, labels, func(_ context.Context) {
+			defer close(ch)
 
-		if err := s.handleCommand(ctx, tag, cmd, ch); err != nil {
-			if res, ok := response.FromError(err); ok {
-				ch <- res
-			} else {
-				ch <- response.No(tag).WithError(err)
+			if err := s.handleCommand(ctx, tag, cmd, ch); err != nil {
+				if res, ok := response.FromError(err); ok {
+					ch <- res
+				} else {
+					ch <- response.No(tag).WithError(err)
+				}
 			}
-		}
+		})
 	}()
 
 	return ch

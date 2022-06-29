@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/pprof"
 	"sync"
 
 	"github.com/ProtonMail/gluon/connector"
@@ -44,7 +45,7 @@ type User struct {
 // newUser constructs a new user with the given (IMAP) credentials.
 // It serializes its operation queue to a file at the given filepath,
 // and performs remote operations using the given connector.
-func newUser(userID, path string, conn connector.Connector) (*User, error) {
+func newUser(ctx context.Context, userID, path string, conn connector.Connector) (*User, error) {
 	user := &User{
 		userID:            userID,
 		path:              path,
@@ -62,11 +63,21 @@ func newUser(userID, path string, conn connector.Connector) (*User, error) {
 	// send connector updates along to the mailserver.
 	user.forwardWG.Add(1)
 
-	go user.forward(conn.GetUpdates())
+	go func() {
+		labels := pprof.Labels("go", "forward()", "UserID", userID)
+		pprof.Do(ctx, labels, func(_ context.Context) {
+			user.forward(conn.GetUpdates())
+		})
+	}()
 
 	user.processWG.Add(1)
 	// process remote operations on the operation queue.
-	go user.process()
+	go func() {
+		labels := pprof.Labels("go", "process()", "UserID", userID)
+		pprof.Do(ctx, labels, func(_ context.Context) {
+			user.process()
+		})
+	}()
 
 	return user, nil
 }
