@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime/pprof"
+	"strconv"
 	"sync"
 
 	"github.com/ProtonMail/gluon/internal"
@@ -209,21 +211,24 @@ func (s *Server) removeListener(l net.Listener) {
 }
 
 func (s *Server) handleConn(ctx context.Context, conn net.Conn, errCh chan error) {
-	session, sessionID := s.addSession(conn)
-	defer s.removeSession(sessionID)
+	session, sessionID := s.addSession(ctx, conn)
+	labels := pprof.Labels("go", "Serve", "SessionID", strconv.Itoa(sessionID))
+	pprof.Do(ctx, labels, func(_ context.Context) {
+		defer s.removeSession(sessionID)
 
-	if err := session.Serve(ctx); err != nil {
-		errCh <- err
-	}
+		if err := session.Serve(ctx); err != nil {
+			errCh <- err
+		}
+	})
 }
 
-func (s *Server) addSession(conn net.Conn) (*session.Session, int) {
+func (s *Server) addSession(ctx context.Context, conn net.Conn) (*session.Session, int) {
 	s.sessionsLock.Lock()
 	defer s.sessionsLock.Unlock()
 
 	nextID := s.getNextID()
 
-	s.sessions[nextID] = session.New(conn, s.backend, nextID, &s.versionInfo, s.newEventCh())
+	s.sessions[nextID] = session.New(conn, s.backend, nextID, &s.versionInfo, s.newEventCh(ctx))
 
 	if s.tlsConfig != nil {
 		s.sessions[nextID].SetTLSConfig(s.tlsConfig)
@@ -266,13 +271,16 @@ func (s *Server) getNextID() int {
 	return s.nextID
 }
 
-func (s *Server) newEventCh() chan events.Event {
+func (s *Server) newEventCh(ctx context.Context) chan events.Event {
 	eventCh := make(chan events.Event)
 
 	go func() {
-		for event := range eventCh {
-			s.publish(event)
-		}
+		labels := pprof.Labels("Server", "Event Channel")
+		pprof.Do(ctx, labels, func(_ context.Context) {
+			for event := range eventCh {
+				s.publish(event)
+			}
+		})
 	}()
 
 	return eventCh

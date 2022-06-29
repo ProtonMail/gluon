@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"runtime/pprof"
 	"sync"
 
 	"github.com/ProtonMail/gluon/internal/backend/ent"
@@ -50,16 +51,18 @@ func newUser(ctx context.Context, userID string, client *ent.Client, remote *rem
 
 	go func() {
 		defer user.updateWG.Done()
-
-		for update := range remote.GetUpdates() {
-			update := update
-			if err := user.tx(context.Background(), func(tx *ent.Tx) error {
-				defer update.Done()
-				return user.apply(context.Background(), tx, update)
-			}); err != nil {
-				logrus.WithError(err).Errorf("Failed to apply update: %v", update)
+		labels := pprof.Labels("go", "Connector Updates", "UserID", user.userID)
+		pprof.Do(ctx, labels, func(_ context.Context) {
+			for update := range remote.GetUpdates() {
+				update := update
+				if err := user.tx(context.Background(), func(tx *ent.Tx) error {
+					defer update.Done()
+					return user.apply(context.Background(), tx, update)
+				}); err != nil {
+					logrus.WithError(err).Errorf("Failed to apply update: %v", update)
+				}
 			}
-		}
+		})
 	}()
 
 	return user, nil

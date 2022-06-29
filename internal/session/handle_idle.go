@@ -2,6 +2,8 @@ package session
 
 import (
 	"context"
+	"runtime/pprof"
+	"strconv"
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -17,11 +19,14 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, c
 
 	return s.state.Idle(ctx, func(pending []response.Response, resCh chan response.Response) error {
 		go func() {
-			for res := range resCh {
-				if err := res.Send(s); err != nil {
-					logrus.WithError(err).Error("Failed to send IDLE update")
+			labels := pprof.Labels("go", "Idle", "SessionID", strconv.Itoa(s.sessionID))
+			pprof.Do(ctx, labels, func(_ context.Context) {
+				for res := range resCh {
+					if err := res.Send(s); err != nil {
+						logrus.WithError(err).Error("Failed to send IDLE update")
+					}
 				}
-			}
+			})
 		}()
 
 		if err := response.Continuation().Send(s); err != nil {
