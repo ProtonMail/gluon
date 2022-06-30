@@ -5,7 +5,7 @@ import (
 )
 
 func TestIDLEExistsUpdates(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// First client selects in INBOX to receive EXISTS update.
 		c[1].C("A006 select INBOX")
 		c[1].Se("A006 OK [READ-WRITE] (^_^)")
@@ -32,7 +32,7 @@ func TestIDLEExistsUpdates(t *testing.T) {
 }
 
 func TestIDLEPendingUpdates(t *testing.T) {
-	runManyToOneTestWithData(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession, _, _ string) {
+	runManyToOneTestWithData(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession, _, _ string) {
 		c[1].C("A001 select INBOX").OK("A001")
 
 		// Generate some pending updates.

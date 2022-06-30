@@ -15,7 +15,7 @@ import (
 )
 
 func TestFetchAllMacro(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		newFetchCommand(t, client).withItems(goimap.FetchAll).fetch("1").forSeqNum(1, func(validator *validatorBuilder) {
@@ -29,7 +29,7 @@ func TestFetchAllMacro(t *testing.T) {
 }
 
 func TestFetchFastMacro(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		newFetchCommand(t, client).withItems(goimap.FetchFast).fetch("1").forSeqNum(1, func(validator *validatorBuilder) {
@@ -42,7 +42,7 @@ func TestFetchFastMacro(t *testing.T) {
 }
 
 func TestFetchFullMacro(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		newFetchCommand(t, client).withItems(goimap.FetchFull).fetch("1").forSeqNum(1, func(validator *validatorBuilder) {
@@ -58,7 +58,7 @@ func TestFetchFullMacro(t *testing.T) {
 
 func TestFetchRFC822(t *testing.T) {
 	// This test does all checks for RFC822 at the same time so we can compare the retrieved data
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		// Load message
@@ -78,7 +78,7 @@ func TestFetchRFC822(t *testing.T) {
 
 func TestFetchRFC822Header(t *testing.T) {
 	// This test does all checks for RFC822 at the same time so we can compare the retrieved data
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		// Load message
@@ -98,7 +98,7 @@ func TestFetchRFC822Header(t *testing.T) {
 
 func TestFetchRFC822Size(t *testing.T) {
 	// This test does all checks for RFC822 at the same time so we can compare the retrieved data
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 		newFetchCommand(t, client).withItems(goimap.FetchRFC822Size).fetch("1").forSeqNum(1, func(validator *validatorBuilder) {
 			validator.ignoreFlags()
@@ -109,7 +109,7 @@ func TestFetchRFC822Size(t *testing.T) {
 
 func TestFetchRFC822Text(t *testing.T) {
 	// This test does all checks for RFC822 at the same time so we can compare the retrieved data
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		// Load message
@@ -128,7 +128,7 @@ func TestFetchRFC822Text(t *testing.T) {
 }
 
 func TestFetchEnvelopeOnly(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 		newFetchCommand(t, client).withItems(goimap.FetchEnvelope).fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 			builder.wantEnvelope(newAfternoonMeetingMessageEnvelopeValidator)
@@ -137,7 +137,7 @@ func TestFetchEnvelopeOnly(t *testing.T) {
 }
 
 func TestFetchFlagsOnly(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		newFetchCommand(t, client).withItems(goimap.FetchFlags).fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -147,7 +147,7 @@ func TestFetchFlagsOnly(t *testing.T) {
 }
 
 func TestFetchInternalDateOnly(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		newFetchCommand(t, client).withItems(goimap.FetchInternalDate).fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -158,7 +158,7 @@ func TestFetchInternalDateOnly(t *testing.T) {
 }
 
 func TestFetchUIDOnly(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		newFetchCommand(t, client).withItems(goimap.FetchUid).fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -168,7 +168,7 @@ func TestFetchUIDOnly(t *testing.T) {
 }
 
 func TestFetchRFC822AddsSeenFlag(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		// Fetch the message flags and check the seen flag is not set
@@ -187,7 +187,7 @@ func TestFetchRFC822AddsSeenFlag(t *testing.T) {
 }
 
 func TestFetchRFC822TextAddsSeenFlag(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		// Fetch the message flags and check the seen flag is not set
@@ -206,7 +206,7 @@ func TestFetchRFC822TextAddsSeenFlag(t *testing.T) {
 }
 
 func TestFetchRFC822HeaderDoesNotAddSeenFlag(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		// Fetch the message flags and check the seen flag is not set
@@ -225,7 +225,7 @@ func TestFetchRFC822HeaderDoesNotAddSeenFlag(t *testing.T) {
 }
 
 func TestFetchBodyPeekDoesNotAddSeenFlag(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		// Fetch the message flags and check the seen flag is not set
@@ -244,7 +244,7 @@ func TestFetchBodyPeekDoesNotAddSeenFlag(t *testing.T) {
 }
 
 func TestFetchSequence(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectMailboxWithMultipleEntries(t, client)
 
 		// delete message number 4
@@ -279,7 +279,7 @@ func TestFetchSequence(t *testing.T) {
 }
 
 func TestFetchUID(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectMailboxWithMultipleEntries(t, client)
 
 		// delete message number 4
@@ -318,7 +318,7 @@ func TestFetchUID(t *testing.T) {
 }
 
 func TestFetchFromDataSequences(t *testing.T) {
-	runOneToOneTestClientWithData(t, "user", "pass", "/", func(client *client.Client, _ *testSession, _ string, _ string) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, _ *testSession, _ string, _ string) {
 		const sectionStr = "BODY[HEADER.FIELDS (To Subject)]"
 		fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetch("1:4,30:31,81")
 		fetchResult.forSeqNum(1, func(builder *validatorBuilder) {
@@ -389,7 +389,7 @@ func TestFetchFromDataSequences(t *testing.T) {
 }
 
 func TestFetchFromDataUids(t *testing.T) {
-	runOneToOneTestClientWithData(t, "user", "pass", "/", func(client *client.Client, _ *testSession, _ string, _ string) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, _ *testSession, _ string, _ string) {
 		// Remove a couple of messages
 		require.NoError(t, client.Store(createSeqSet("20:29,50:60,90"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
 		require.NoError(t, client.Expunge(nil))

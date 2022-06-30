@@ -5,7 +5,7 @@ import (
 )
 
 func TestUnselect(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK (^_^)")
 

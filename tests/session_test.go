@@ -46,11 +46,12 @@ type Connector interface {
 type testSession struct {
 	tb testing.TB
 
-	listener    net.Listener
-	server      *gluon.Server
-	userIDs     map[string]string
-	conns       map[string]Connector
-	userDBPaths map[string]string
+	listener      net.Listener
+	server        *gluon.Server
+	userIDs       map[string]string
+	conns         map[string]Connector
+	userDBPaths   map[string]string
+	serverOptions *serverOptions
 }
 
 func newTestSession(
@@ -60,14 +61,16 @@ func newTestSession(
 	userIDs map[string]string,
 	conns map[string]Connector,
 	userDBPaths map[string]string,
+	options *serverOptions,
 ) *testSession {
 	return &testSession{
-		tb:          tb,
-		listener:    listener,
-		server:      server,
-		userIDs:     userIDs,
-		conns:       conns,
-		userDBPaths: userDBPaths,
+		tb:            tb,
+		listener:      listener,
+		server:        server,
+		userIDs:       userIDs,
+		conns:         conns,
+		userDBPaths:   userDBPaths,
+		serverOptions: options,
 	}
 }
 

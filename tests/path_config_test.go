@@ -3,7 +3,7 @@ package tests
 import "testing"
 
 func TestPathConfig_ProtonPathConfig(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		s.setFolderPrefix("user", "Folders")
 		s.setLabelPrefix("user", "Labels")
 
@@ -52,7 +52,7 @@ func TestPathConfig_ProtonPathConfig(t *testing.T) {
 }
 
 func TestPathConfig_DotDelimiter(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", ".", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
 		s.setFolderPrefix("user", "Folders")
 		s.setLabelPrefix("user", "Labels")
 

@@ -5,7 +5,7 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK (^_^)")
 
@@ -54,7 +54,7 @@ func TestStore(t *testing.T) {
 }
 
 func TestStoreSilent(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// one message in INBOX
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
 
@@ -113,7 +113,7 @@ func TestStoreSilent(t *testing.T) {
 }
 
 func TestUIDStore(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK (^_^)")
 
@@ -162,7 +162,7 @@ func TestUIDStore(t *testing.T) {
 }
 
 func TestFlagsDuplicateAndCaseInsensitive(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
 
 		c.C(`A001 SELECT INBOX`)

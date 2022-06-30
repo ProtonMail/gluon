@@ -8,7 +8,7 @@ import (
 )
 
 func TestSelectWhileSyncing(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// Define some mailbox names.
 		mailboxNames := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"}
 
@@ -53,7 +53,7 @@ func TestSelectWhileSyncing(t *testing.T) {
 }
 
 func TestTwoFetchesAtOnce(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		mboxID := s.mailboxCreated("user", []string{"mbox"})
 
 		for i := 0; i < 1000; i++ {

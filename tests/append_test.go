@@ -16,7 +16,7 @@ func TestAppend(t *testing.T) {
 		messagePath = "testdata/afternoon-meeting.eml"
 	)
 
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create(mailboxName))
 		{
 			// first check, empty mailbox
@@ -45,7 +45,7 @@ func TestAppendWithUidPlus(t *testing.T) {
 		messagePath = "testdata/afternoon-meeting.eml"
 	)
 
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		const (
 			validityUid = uint32(1)
 		)
@@ -94,12 +94,12 @@ func TestAppendNoSuchMailbox(t *testing.T) {
 		messagePath = "testdata/afternoon-meeting.eml"
 	)
 
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		err := doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.SeenFlag)
 		require.Error(t, err)
 	})
 	// Run the old test as well as there is no way to check for the `[TRYCREATE]` flag of the response
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.doAppendFromFile(`saved-messages`, `testdata/afternoon-meeting.eml`, `\Seen`).expect(`NO \[TRYCREATE\]`)
 	})
 }
@@ -110,7 +110,7 @@ func TestAppendWhileSelected(t *testing.T) {
 		messagePath = "testdata/afternoon-meeting.eml"
 	)
 
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create(mailboxName))
 		// Mailbox should have read-write modifier
 		mailboxStatus, err := client.Select(mailboxName, false)

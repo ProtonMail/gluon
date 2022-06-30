@@ -5,7 +5,7 @@ import (
 )
 
 func TestLogout(t *testing.T) {
-	runOneToOneTest(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("a001 logout")
 		c.S("* BYE (^_^)/~")
 		c.S("a001 OK (^_^)")

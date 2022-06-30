@@ -5,7 +5,7 @@ import "testing"
 func TestDraftScenario(t *testing.T) {
 	// Simulate a draft update issued from the connector, which involves deleting the original message in drafts
 	// and replacing it with a new one.
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 
 		mailboxID := s.mailboxCreated("user", []string{"Drafts"})
 

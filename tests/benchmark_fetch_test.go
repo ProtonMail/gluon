@@ -10,7 +10,7 @@ func BenchmarkFetchDatabase(b *testing.B) {
 		mboxSize := 1 << n
 
 		b.Run(strconv.Itoa(mboxSize), func(b *testing.B) {
-			runOneToOneTestWithAuth(b, "user", "pass", "/", func(c *testConnection, s *testSession) {
+			runOneToOneTestWithAuth(b, defaultServerOptions(b), func(c *testConnection, s *testSession) {
 				benchID := s.mailboxCreated("user", []string{"BENCH"})
 
 				for i := 0; i < mboxSize; i++ {
@@ -50,7 +50,7 @@ func BenchmarkFetchSingleCache(b *testing.B) {
 		mboxSize := 1 << n
 
 		b.Run(strconv.Itoa(mboxSize), func(b *testing.B) {
-			runOneToOneTestWithAuth(b, "user", "pass", "/", func(c *testConnection, s *testSession) {
+			runOneToOneTestWithAuth(b, defaultServerOptions(b), func(c *testConnection, s *testSession) {
 				benchID := s.mailboxCreated("user", []string{"BENCH"})
 
 				for i := 0; i < mboxSize; i++ {

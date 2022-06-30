@@ -5,7 +5,7 @@ import (
 )
 
 func TestRemoteCopy(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		s.setFolderPrefix("user", "Folders")
 		s.setLabelPrefix("user", "Labels")
 
@@ -39,7 +39,7 @@ func TestRemoteCopy(t *testing.T) {
 }
 
 func TestRemoteDeletionPool(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// Create a mailbox for the test to run in.
 		mboxID1 := s.mailboxCreated("user", []string{"mbox1"})
 		mboxID2 := s.mailboxCreated("user", []string{"mbox2"})

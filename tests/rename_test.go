@@ -11,7 +11,7 @@ import (
 )
 
 func TestRename(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("blurdybloop"))
 		require.NoError(t, client.Create("foo"))
 		require.NoError(t, client.Create("foo/bar"))
@@ -26,7 +26,7 @@ func TestRename(t *testing.T) {
 }
 
 func TestRenameHierarchy(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("foo/bar/zap"))
 
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "foo", "foo/bar", "foo/bar/zap"})
@@ -59,7 +59,7 @@ func TestRenameAddHierarchy(t *testing.T) {
 
 	for i, tc := range testCases {
 		logrus.Trace(" --- test case ", i, " ---")
-		runOneToOneTestClientWithAuth(t, "user", "pass", ".", func(client *client.Client, _ *testSession) {
+		runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(client *client.Client, _ *testSession) {
 			require.NoError(t, client.Create("foo.bar"))
 			matchMailboxNamesClient(t, client, "", "*", initialMailbox)
 
@@ -87,7 +87,7 @@ func TestRenameAddHierarchy(t *testing.T) {
 }
 
 func TestRenameBadHierarchy(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", ".", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("foo.bar"))
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "foo", "foo.bar"})
 		require.Error(t, client.Rename("foo", "foo.foo"))
@@ -98,7 +98,7 @@ func TestRenameBadHierarchy(t *testing.T) {
 }
 
 func TestRenameInbox(t *testing.T) {
-	runOneToOneTestWithData(t, "user", "pass", "/", func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
 		// Put all the 100 messages into the inbox.
 		c.C("tag move 1:* inbox").OK("tag")
 		c.C("tag status inbox (messages)").Sxe("MESSAGES 100").OK("tag")
@@ -123,7 +123,7 @@ func TestRenameInbox(t *testing.T) {
 		c.C("tag status yet/another/mailbox (messages)").Sxe("MESSAGES 100").OK("tag")
 	})
 
-	runOneToOneTestClientWithAuth(t, "user", "pass", ".", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("INBOX.foo.bar"))
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "INBOX.foo", "INBOX.foo.bar"})
 

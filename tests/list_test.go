@@ -7,7 +7,7 @@ import (
 )
 
 func TestList(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("A002 CREATE #news/comp/mail/mime")
 		c.S("A002 OK (^_^)")
 
@@ -45,7 +45,7 @@ func TestList(t *testing.T) {
 }
 
 func TestListFlagsAndAttributes(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		mailboxID := s.mailboxCreatedCustom(
 			"user",
 			[]string{"custom-attributes"},

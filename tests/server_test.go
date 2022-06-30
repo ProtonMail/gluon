@@ -102,24 +102,94 @@ func (fpg *fixedPathGenerator) GenerateUserPath(user string) string {
 	return newUserPath
 }
 
-// runServer initializes and starts the mailserver.
-func runServer(tb testing.TB, creds []credentials, delim string, tests func(*testSession)) {
-	runServerWithPaths(tb, creds, delim, &defaultPathGenerator{tb: tb}, tests)
+func newDefaultPathGenerator(tb testing.TB) pathGenerator {
+	return &defaultPathGenerator{tb: tb}
+}
+
+type serverOptions struct {
+	credentials []credentials
+	delimiter   string
+	pathGenerator
+}
+
+func (s *serverOptions) defaultUsername() string {
+	return s.credentials[0].usernames[0]
+}
+
+func (s *serverOptions) defaultUserPassword() string {
+	return s.credentials[0].password
+}
+
+type serverOption interface {
+	apply(options *serverOptions)
+}
+
+type delimiterServerOption struct {
+	delimiter string
+}
+
+func (d *delimiterServerOption) apply(options *serverOptions) {
+	options.delimiter = d.delimiter
+}
+
+type pathGeneratorOption struct {
+	pg pathGenerator
+}
+
+func (pg *pathGeneratorOption) apply(options *serverOptions) {
+	options.pathGenerator = pg.pg
+}
+
+type credentialsSeverOption struct {
+	credentials []credentials
+}
+
+func (c *credentialsSeverOption) apply(options *serverOptions) {
+	options.credentials = c.credentials
+}
+
+func withDelimiter(delimiter string) serverOption {
+	return &delimiterServerOption{delimiter: delimiter}
+}
+
+func withPathGenerator(pg pathGenerator) serverOption {
+	return &pathGeneratorOption{pg: pg}
+}
+
+func withCredentials(credentials []credentials) serverOption {
+	return &credentialsSeverOption{credentials: credentials}
+}
+
+func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
+	options := &serverOptions{
+		credentials: []credentials{{
+			usernames: []string{"user"},
+			password:  "pass",
+		}},
+		delimiter:     "/",
+		pathGenerator: newDefaultPathGenerator(tb),
+	}
+
+	for _, op := range modifiers {
+		op.apply(options)
+	}
+
+	return options
 }
 
 // runServerWithPaths initializes and starts the mailserver using a pathGenerator.
-func runServerWithPaths(tb testing.TB, creds []credentials, delim string, pathGenerator pathGenerator, tests func(*testSession)) {
+func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) {
 	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 
 	// Setup goroutine leak detector here so that it doesn't report the goroutines created by logrus.
 	defer goleak.VerifyNone(tb, goleak.IgnoreCurrent())
 
-	gluonPath := pathGenerator.GenerateBackendPath()
+	gluonPath := options.pathGenerator.GenerateBackendPath()
 	logrus.Tracef("Backend Path: %v", gluonPath)
 	server, err := gluon.New(
 		gluonPath,
-		gluon.WithDelimiter(delim),
+		gluon.WithDelimiter(options.delimiter),
 		gluon.WithTLS(&tls.Config{
 			Certificates: []tls.Certificate{testCert},
 			MinVersion:   tls.VersionTLS13,
@@ -140,7 +210,7 @@ func runServerWithPaths(tb testing.TB, creds []credentials, delim string, pathGe
 	conns := make(map[string]Connector)
 	dbPaths := make(map[string]string)
 
-	for _, creds := range creds {
+	for _, creds := range options.credentials {
 		conn := connector.NewDummy(
 			creds.usernames,
 			creds.password,
@@ -150,12 +220,13 @@ func runServerWithPaths(tb testing.TB, creds []credentials, delim string, pathGe
 			defaultAttributes,
 		)
 
-		storePath := pathGenerator.GenerateStorePath()
+		storePath := options.pathGenerator.GenerateStorePath()
+
 		logrus.Tracef("User Store Path: %v=%v", creds.usernames[0], storePath)
 		store, err := store.NewOnDiskStore(storePath, []byte(creds.password))
 		require.NoError(tb, err)
 
-		entPath := pathGenerator.GenerateUserPath(creds.usernames[0])
+		entPath := options.pathGenerator.GenerateUserPath(creds.usernames[0])
 		logrus.Tracef("User DB path: %v=%v", creds.usernames[0], entPath)
 		userID, err := server.AddUser(ctx, conn, store, dialect.SQLite, entPath)
 		require.NoError(tb, err)
@@ -176,7 +247,7 @@ func runServerWithPaths(tb testing.TB, creds []credentials, delim string, pathGe
 	errCh := server.Serve(ctx, listener)
 
 	// Run the test against the server.
-	tests(newTestSession(tb, listener, server, userIDs, conns, dbPaths))
+	tests(newTestSession(tb, listener, server, userIDs, conns, dbPaths, options))
 
 	// Flush and remove user before shutdown.
 	for userID, conn := range conns {

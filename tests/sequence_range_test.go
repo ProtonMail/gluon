@@ -5,7 +5,7 @@ import (
 )
 
 func TestSequenceRange(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("a001 CREATE mbox1")
 		c.S("a001 OK (^_^)")
 		c.C("a002 CREATE mbox2")
@@ -65,7 +65,7 @@ func TestSequenceRange(t *testing.T) {
 }
 
 func TestUIDSequenceRange(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		// UID based operation will send an OK response for any grammatically valid UID sequence set
 		// if no message match the UID sequence set, the operations simply return OK with no untagged response before.
 

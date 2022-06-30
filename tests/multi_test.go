@@ -5,7 +5,7 @@ import (
 )
 
 func TestCreateMulti(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		c[1].C("A003 CREATE owatagusiam")
 		c[1].S("A003 OK (^_^)")
 
@@ -15,7 +15,7 @@ func TestCreateMulti(t *testing.T) {
 }
 
 func TestExistsUpdates(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		// First client selects in INBOX to receive EXISTS update.
 		c[1].C("A006 select INBOX")
 		c[1].Se("A006 OK [READ-WRITE] (^_^)")
@@ -32,7 +32,7 @@ func TestExistsUpdates(t *testing.T) {
 }
 
 func TestExistsUpdatesInSeparateMailboxes(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		c[1].C("A003 CREATE owatagusiam")
 		c[1].S("A003 OK (^_^)")
 
@@ -50,7 +50,7 @@ func TestExistsUpdatesInSeparateMailboxes(t *testing.T) {
 }
 
 func TestFetchUpdates(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
 
 		// First client selects in INBOX to receive FETCH update.
@@ -73,7 +73,7 @@ func TestFetchUpdates(t *testing.T) {
 }
 
 func TestExpungeUpdates(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		// Generate three messages, the first two unseen, the third seen.
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
@@ -128,7 +128,7 @@ func TestExpungeUpdates(t *testing.T) {
 }
 
 func TestSequenceNumbersPerSession(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// Generate five messages.
 		c[1].doAppend(`inbox`, `To: 1@pm.me`).expect("OK")
 		c[1].doAppend(`inbox`, `To: 2@pm.me`).expect("OK")

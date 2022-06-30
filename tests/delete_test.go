@@ -9,7 +9,7 @@ import (
 )
 
 func TestDelete(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", ".", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("blurdybloop"))
 		require.NoError(t, client.Create("foo"))
 		require.NoError(t, client.Create("foo.bar"))
@@ -51,13 +51,13 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDeleteCannotDeleteInbox(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.Error(t, client.Delete("INBOX"))
 	})
 }
 
 func TestDeleteCannotDeleteMissingMailbox(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.Error(t, client.Delete("this doesn't exist"))
 	})
 }

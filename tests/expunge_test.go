@@ -13,7 +13,7 @@ import (
 )
 
 func TestExpungeUnmarked(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("mbox"))
 		_, err := client.Select("mbox", false)
 		require.NoError(t, err)
@@ -22,7 +22,7 @@ func TestExpungeUnmarked(t *testing.T) {
 }
 
 func TestExpungeSingle(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("mbox"))
 		_, err := client.Select("mbox", false)
 		require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestExpungeSingle(t *testing.T) {
 }
 
 func TestRemoveSameMessageTwice(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		// There are three messages in the inbox.
 		c[1].doAppend(`inbox`, `To: 1@pm.me`).expect("OK")
 		c[1].doAppend(`inbox`, `To: 2@pm.me`).expect("OK")
@@ -69,7 +69,7 @@ func TestRemoveSameMessageTwice(t *testing.T) {
 }
 
 func TestExpungeInterval(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("mbox"))
 		_, err := client.Select("mbox", false)
 		require.NoError(t, err)
@@ -120,7 +120,7 @@ func beforeOrAfterExpungeCheck(t *testing.T, client *client.Client, mailboxName 
 func TestExpungeWithAppendBeforeMailboxSelect(t *testing.T) {
 	// This test exists to catch an issue where in the past messages that might be added before/after selected would
 	// not be removed.
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		const mailboxName = "saved-messages"
 		require.NoError(t, client.Create(mailboxName))
 
@@ -140,7 +140,7 @@ func TestExpungeWithAppendBeforeMailboxSelect(t *testing.T) {
 func TestExpungeWithAppendAfterMailBoxSelect(t *testing.T) {
 	// This test exists to catch an issue where in the past messages that might be added before/after selected would
 	// not be removed.
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		const mailboxName = "saved-messages"
 
 		require.NoError(t, client.Create(mailboxName))
@@ -158,7 +158,7 @@ func TestExpungeWithAppendAfterMailBoxSelect(t *testing.T) {
 }
 
 func TestExpungeUID(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		const mailboxName = "mbox"
 
 		require.NoError(t, client.Create(mailboxName))
@@ -221,7 +221,7 @@ func TestExpungeUID(t *testing.T) {
 func TestExpungeResponseSequence(t *testing.T) {
 	// Test the response sequence produce by the expunge command, should match the example output of
 	// rfc3501#section-6.4.3
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		const mailboxName = "mbox"
 		require.NoError(t, client.Create(mailboxName))
 		_, err := client.Select(mailboxName, false)
