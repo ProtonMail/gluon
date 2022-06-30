@@ -10,7 +10,7 @@ import (
 )
 
 func TestCopy(t *testing.T) {
-	runOneToOneTestClientWithData(t, "user", "pass", "/", func(client *client.Client, s *testSession, mbox, mboxID string) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, s *testSession, mbox, mboxID string) {
 		{
 			// There are 100 messages in the origin and no messages in the destination.
 			mailboxStatus, err := client.Status(mbox, []goimap.StatusItem{goimap.StatusMessages})
@@ -62,7 +62,7 @@ func TestCopy(t *testing.T) {
 
 func TestCopyTryCreate(t *testing.T) {
 	// Test can't be remove since there is no way to check the TRYCREATE response from the server
-	runOneToOneTestWithData(t, "user", "pass", "/", func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
 		// There are 100 messages in the origin.
 		c.Cf(`A001 status %v (messages)`, mbox).Sxe(`MESSAGES 100`).OK(`A001`)
 
@@ -77,7 +77,7 @@ func TestCopyTryCreate(t *testing.T) {
 }
 
 func TestCopyNonExistingClient(t *testing.T) {
-	runOneToOneTestClientWithData(t, "user", "pass", "/", func(client *client.Client, s *testSession, mbox, mboxID string) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, s *testSession, mbox, mboxID string) {
 		{
 			// Move message intervals to inbox
 			sequenceSet, seqErr := goimap.ParseSeqSet("1:25,76:100")
@@ -115,7 +115,7 @@ func TestCopyNonExistingClient(t *testing.T) {
 }
 
 func TestCopyNonExisting(t *testing.T) {
-	runOneToOneTestWithData(t, "user", "pass", "/", func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
 		// MOVE some of the messages out of the mailbox.
 		c.C(`A001 move 1:24,76:100 inbox`).OK(`A001`)
 

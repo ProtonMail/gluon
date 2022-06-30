@@ -5,7 +5,7 @@ import (
 )
 
 func TestDeleted(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		// Create two mailboxes.
 		c.C("b001 CREATE mbox1")
 		c.S("b001 OK (^_^)")
@@ -73,7 +73,7 @@ func TestDeleted(t *testing.T) {
 }
 
 func TestUIDDeleted(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		// Create two mailboxes
 		c.C("b001 CREATE mbox1")
 		c.S("b001 OK (^_^)")

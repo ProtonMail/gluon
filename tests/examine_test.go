@@ -13,7 +13,7 @@ import (
 func TestExamineWithLiteral(t *testing.T) {
 	// This test remains here since it is not possible to send literal commands with the
 	// IMAP client. The rest of the functionality is still tested in the IMAP client test.
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("A002 CREATE Archive")
 		c.S("A002 OK (^_^)")
 
@@ -33,7 +33,7 @@ func TestExamineWithLiteral(t *testing.T) {
 }
 
 func TestExamineClient(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("Archive"))
 		require.NoError(t, client.Append("INBOX", []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 1@pm.me")))
 		require.NoError(t, client.Append("INBOX", []string{}, time.Now(), strings.NewReader("To: 2@pm.me")))

@@ -5,7 +5,7 @@ import (
 )
 
 func TestSelect(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("A002 CREATE Archive")
 		c.S("A002 OK (^_^)")
 
@@ -46,14 +46,14 @@ func TestSelect(t *testing.T) {
 }
 
 func TestSelectNoSuchMailbox(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("a003 select What")
 		c.Sx("a003 NO .*")
 	})
 }
 
 func TestSelectUTF7(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		// Test we can create a mailbox with a UTF-7 name.
 		c.C("A003 CREATE &ZeVnLIqe-").OK("A003")
 

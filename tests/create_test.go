@@ -8,7 +8,7 @@ import (
 )
 
 func TestCreate(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX"})
 		require.NoError(t, client.Create("owatagusiam"))
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "owatagusiam"})
@@ -18,7 +18,7 @@ func TestCreate(t *testing.T) {
 }
 
 func TestCreateEndingInSeparator(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX"})
 		require.NoError(t, client.Create("owatagusiam/"))
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "owatagusiam"})
@@ -26,13 +26,13 @@ func TestCreateEndingInSeparator(t *testing.T) {
 }
 
 func TestCreateCannotCreateInbox(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.Error(t, client.Create("INBOX"))
 	})
 }
 
 func TestCreateCannotCreateExistingMailbox(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("Folder"))
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "Folder"})
 		require.Error(t, client.Create("Folder"))
@@ -40,7 +40,7 @@ func TestCreateCannotCreateExistingMailbox(t *testing.T) {
 }
 
 func TestCreateWithDifferentHierarchySeparator(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX"})
 		require.NoError(t, client.Create("Folder"))
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "Folder"})
@@ -50,7 +50,7 @@ func TestCreateWithDifferentHierarchySeparator(t *testing.T) {
 }
 
 func TestCreatePreviousLevelHierarchyIfNonExisting(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("Folder/Bar/ZZ"))
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "Folder", "Folder/Bar", "Folder/Bar/ZZ"})
 	})
@@ -58,7 +58,7 @@ func TestCreatePreviousLevelHierarchyIfNonExisting(t *testing.T) {
 
 // TODO: GOMSRV-51.
 func _TestEnsureNewMailboxWithDeletedNameHasGreaterId(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		const (
 			inboxName = "Folder"
 		)

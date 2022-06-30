@@ -5,7 +5,7 @@ import (
 )
 
 func TestStatus(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", ".", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, _ *testSession) {
 		c.C("B001 CREATE blurdybloop")
 		c.S("B001 OK (^_^)")
 

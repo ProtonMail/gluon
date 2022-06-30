@@ -8,7 +8,7 @@ import (
 )
 
 func TestMove(t *testing.T) {
-	runOneToOneTestWithData(t, "user", "pass", "/", func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
 		// There are 100 messages in the origin and no messages in the destination.
 		c.Cf(`A001 status %v (messages)`, mbox).Sxe(`MESSAGES 100`).OK(`A001`)
 		c.C(`A002 status inbox (messages)`).Sxe(`MESSAGES 0`).OK(`A002`)
@@ -36,7 +36,7 @@ func TestMove(t *testing.T) {
 }
 
 func TestMoveTryCreate(t *testing.T) {
-	runOneToOneTestWithData(t, "user", "pass", "/", func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
 		// There are 100 messages in the origin.
 		c.Cf(`A001 status %v (messages)`, mbox).Sxe(`MESSAGES 100`).OK(`A001`)
 
@@ -51,7 +51,7 @@ func TestMoveTryCreate(t *testing.T) {
 }
 
 func TestMoveNonExistent(t *testing.T) {
-	runOneToOneTestWithData(t, "user", "pass", "/", func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
 		// MOVE some of the messages out of the mailbox.
 		c.C(`A001 move 1:24,76:100 inbox`).OK(`A001`)
 
@@ -82,7 +82,7 @@ func _TestMoveBackAndForthRepeated(t *testing.T) {
 }
 
 func TestMoveBackAndForth(t *testing.T) {
-	runOneToOneTestWithData(t, "user", "pass", "/", func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
 		// There are 100 messages in the origin and no messages in the destination.
 		c.Cf(`A001 status %v (messages)`, mbox).Sxe(`MESSAGES 100`).OK(`A001`)
 		c.C(`A002 status inbox (messages)`).Sxe(`MESSAGES 0`).OK(`A002`)
@@ -105,7 +105,7 @@ func TestMoveBackAndForth(t *testing.T) {
 }
 
 func TestMoveCopyDuplicates(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		// 4 messages in inbox.
 		c.doAppend("inbox", "To: 1@pm.me").expect("OK")
 		c.doAppend("inbox", "To: 2@pm.me").expect("OK")
@@ -150,7 +150,7 @@ func TestMoveCopyDuplicates(t *testing.T) {
 }
 
 func TestMoveDuplicate(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		origID := s.mailboxCreated("user", []string{"orig"})
 		destID := s.mailboxCreated("user", []string{"dest"})
 

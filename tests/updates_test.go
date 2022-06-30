@@ -5,7 +5,7 @@ import (
 )
 
 func TestMessageCreatedUpdate(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		// Create a mailbox for the test to run in.
 		mboxID := s.mailboxCreated("user", []string{"mbox"})
 
@@ -40,7 +40,7 @@ func TestMessageCreatedUpdate(t *testing.T) {
 }
 
 func TestMessageCreatedNoopUpdate(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		// Create a mailbox for the test to run in.
 		other := s.mailboxCreated("user", []string{"other"})
 
@@ -75,7 +75,7 @@ func TestMessageCreatedNoopUpdate(t *testing.T) {
 }
 
 func TestMessageCreatedIDLEUpdate(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		// Create a mailbox for the test to run in.
 		other := s.mailboxCreated("user", []string{"other"})
 
@@ -118,7 +118,7 @@ func TestMessageCreatedIDLEUpdate(t *testing.T) {
 }
 
 func TestMessageRemovedUpdate(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		// Create a mailbox for the test to run in.
 		mboxID := s.mailboxCreated("user", []string{"mbox"})
 
@@ -183,7 +183,7 @@ func TestMessageRemovedUpdate(t *testing.T) {
 }
 
 func TestMessageRemovedUpdateRepeated(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		// Create a mailbox for the test to run in.
 		mboxID := s.mailboxCreated("user", []string{"mbox"})
 
@@ -206,7 +206,7 @@ func TestMessageRemovedUpdateRepeated(t *testing.T) {
 }
 
 func TestMailboxCreatedUpdate(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		c.C(`A82 LIST "" *`)
 		c.S(`* LIST (\Unmarked) "/" "INBOX"`)
 		c.S(`A82 OK (^_^)`)
@@ -221,7 +221,7 @@ func TestMailboxCreatedUpdate(t *testing.T) {
 }
 
 func TestMessageSeenUpdate(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		mailboxID := s.mailboxCreated("user", []string{"mbox"})
 		messageID := s.messageCreatedFromFile("user", mailboxID, "testdata/multipart-mixed.eml")
 
@@ -246,7 +246,7 @@ func TestMessageSeenUpdate(t *testing.T) {
 }
 
 func TestMessageFlaggedUpdate(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		mailboxID := s.mailboxCreated("user", []string{"mbox"})
 		messageID := s.messageCreatedFromFile("user", mailboxID, "testdata/multipart-mixed.eml")
 

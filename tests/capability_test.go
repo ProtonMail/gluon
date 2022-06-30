@@ -10,7 +10,7 @@ import (
 )
 
 func TestCapability(t *testing.T) {
-	runOneToOneTestClient(t, "user", "pass", "/", func(client *client.Client, s *testSession) {
+	runOneToOneTestClient(t, defaultServerOptions(t), func(client *client.Client, s *testSession) {
 		capabilities, err := client.Capability()
 		require.NoError(t, err)
 		require.ElementsMatch(t, maps.Keys(capabilities), []string{

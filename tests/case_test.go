@@ -6,7 +6,7 @@ import (
 
 // GOMSRV-39: We should be able to match INBOX in other cases!
 func _TestMailboxCase(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		// Create a non-inbox mailbox.
 		c.C(`A001 CREATE Archive`).OK(`A001`)
 

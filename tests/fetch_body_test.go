@@ -11,7 +11,7 @@ import (
 )
 
 func TestFetchBodySetsSeenFlag(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.doAppendFromFile(`INBOX`, `testdata/multipart-mixed.eml`).expect("OK")
 
 		c.C(`A004 SELECT INBOX`)
@@ -42,7 +42,7 @@ func TestFetchBodySetsSeenFlag(t *testing.T) {
 }
 
 func TestFetchBodyPeekDoesNotSetSeenFlag(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.doAppendFromFile(`INBOX`, `testdata/multipart-mixed.eml`).expect("OK")
 
 		c.C(`A004 SELECT INBOX`)
@@ -70,7 +70,7 @@ func TestFetchBodyPeekDoesNotSetSeenFlag(t *testing.T) {
 }
 
 func TestFetchStructure(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.doAppendFromFile(`INBOX`, `testdata/multipart-mixed.eml`, `\Seen`).expect("OK")
 
 		c.C(`A004 SELECT INBOX`)
@@ -89,7 +89,7 @@ func TestFetchStructure(t *testing.T) {
 }
 
 func TestFetchStructureMultiPart(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectMultiPartMessage(t, client)
 
 		newFetchCommand(t, client).withItems(goimap.FetchBodyStructure).fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -147,7 +147,7 @@ func TestFetchStructureMultiPart(t *testing.T) {
 }
 
 func TestFetchEnvelopeMultiPart(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectMultiPartMessage(t, client)
 
 		newFetchCommand(t, client).withItems(goimap.FetchEnvelope).fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -176,7 +176,7 @@ func TestFetchEnvelopeMultiPart(t *testing.T) {
 }
 
 func TestFetchStructureEmbedded(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectEmbeddedMessage(t, client)
 
 		newFetchCommand(t, client).withItems(goimap.FetchBodyStructure).fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -229,7 +229,7 @@ func TestFetchStructureEmbedded(t *testing.T) {
 }
 
 func TestFetchBodyMultiPart(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectMultiPartMessage(t, client)
 
 		// Get full body
@@ -309,7 +309,7 @@ func TestFetchBodyMultiPart(t *testing.T) {
 }
 
 func TestFetchBodyEmbedded(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectEmbeddedMessage(t, client)
 
 		// Get full body
@@ -368,7 +368,7 @@ func TestFetchBodyEmbedded(t *testing.T) {
 }
 
 func TestFetchBodyPlain(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectPlainMessage(t, client)
 
 		// Get full body
@@ -393,7 +393,7 @@ func TestFetchBodyPlain(t *testing.T) {
 }
 
 func TestFetchStructurePlain(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectPlainMessage(t, client)
 
 		newFetchCommand(t, client).withItems(goimap.FetchBodyStructure).fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -412,7 +412,7 @@ func TestFetchStructurePlain(t *testing.T) {
 }
 
 func TestFetchBodyPartialMultiPart(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectMultiPartMessage(t, client)
 
 		newFetchCommand(t, client).withItems("BODY[1.TEXT]<20.10>").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -432,7 +432,7 @@ func TestFetchBodyPartialMultiPart(t *testing.T) {
 }
 
 func TestFetchBodyPartialReturnsEmptyWhenStartingOctetIsGreaterThanContentSize(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectMultiPartMessage(t, client)
 
 		newFetchCommand(t, client).withItems("BODY[1.TEXT]<20000.10>").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -443,7 +443,7 @@ func TestFetchBodyPartialReturnsEmptyWhenStartingOctetIsGreaterThanContentSize(t
 }
 
 func TestFetchHeaderMultiPart(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectMultiPartMessage(t, client)
 
 		newFetchCommand(t, client).withItems("BODY[HEADER]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -518,7 +518,7 @@ func TestFetchHeaderMultiPart(t *testing.T) {
 }
 
 func TestFetchHeaderFieldsMultiPart(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectMultiPartMessage(t, client)
 
 		newFetchCommand(t, client).withItems("BODY[HEADER.FIELDS (To From Date)]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -556,7 +556,7 @@ func TestFetchHeaderFieldsMultiPart(t *testing.T) {
 }
 
 func TestFetchHeaderFieldsEmbedded(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectEmbeddedMessage(t, client)
 
 		newFetchCommand(t, client).withItems("BODY[2.HEADER.FIELDS (To)]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -581,7 +581,7 @@ func TestFetchHeaderFieldsEmbedded(t *testing.T) {
 }
 
 func TestFetchMIMEMultiPart(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		fillAndSelectMultiPartMessage(t, client)
 
 		newFetchCommand(t, client).withItems("BODY[MIME]").fetchFailure("1")

@@ -29,7 +29,7 @@ func TestSimpleMailCopy(t *testing.T) {
 		messagePath = "testdata/afternoon-meeting.eml"
 	)
 
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("Archive"))
 		// list mailbox
 		{
@@ -84,7 +84,7 @@ func TestReceptionOnIdle(t *testing.T) {
 		messagePath = "testdata/afternoon-meeting.eml"
 	)
 
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(c *client.Client, sess *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(c *client.Client, sess *testSession) {
 		// list mailbox
 		{
 			expectedMailboxNames := []string{
@@ -178,7 +178,7 @@ func TestReceptionOnIdle(t *testing.T) {
  * Either delete it, Archive it or put it as unseen.
  */
 func TestMorningFiltering(t *testing.T) {
-	runOneToOneTestClientWithData(t, "user", "pass", "/", func(client *client.Client, s *testSession, mbox, mboxID string) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, s *testSession, mbox, mboxID string) {
 		require.NoError(t, client.Create("ReadLater"))
 		require.NoError(t, client.Create("Archive"))
 

@@ -5,7 +5,7 @@ import (
 )
 
 func TestDeletionPool(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2, 3, 4}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3, 4}, func(c map[int]*testConnection, s *testSession) {
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
 		c[1].doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
 		c[1].doAppend(`INBOX`, `To: 3@pm.me`).expect("OK")
@@ -61,7 +61,7 @@ func TestDeletionPool(t *testing.T) {
 }
 
 func TestExpungeIssued(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
 		c[1].doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
 		c[1].doAppend(`INBOX`, `To: 3@pm.me`).expect("OK")
@@ -109,7 +109,7 @@ func TestExpungeIssued(t *testing.T) {
 }
 
 func TestExpungeUpdate(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
 		c[1].doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
 
@@ -181,7 +181,7 @@ func TestExpungeUpdate(t *testing.T) {
 }
 
 func TestStatusOnUnnotifiedSnapshot(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		// INBOX with 4 messages
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
 		c[1].doAppend(`INBOX`, `To: 2@pm.me`, `\Seen`).expect("OK")
@@ -218,7 +218,7 @@ func TestStatusOnUnnotifiedSnapshot(t *testing.T) {
 }
 
 func TestDeletionFlagPropagation(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		origin, done := c[1].doCreateTempDir()
 		defer done()
 
@@ -252,7 +252,7 @@ func TestDeletionFlagPropagation(t *testing.T) {
 }
 
 func TestDeletionFlagPropagationIDLE(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// Create a message.
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect(`OK`)
 
@@ -286,7 +286,7 @@ func TestDeletionFlagPropagationIDLE(t *testing.T) {
 }
 
 func TestDeletionFlagPropagationMulti(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		// Create a message.
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect(`OK`)
 
@@ -337,7 +337,7 @@ func TestDeletionFlagPropagationMulti(t *testing.T) {
 }
 
 func TestNoopReceivesPendingDeletionUpdates(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		// Create a mailbox.
 		mailboxID := s.mailboxCreated("user", []string{"mbox"})
 
@@ -360,7 +360,7 @@ func TestNoopReceivesPendingDeletionUpdates(t *testing.T) {
 }
 
 func TestMessageErasedFromDB(t *testing.T) {
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		// Create a mailbox.
 		mailboxID := s.mailboxCreated("user", []string{"mbox"})
 
@@ -399,17 +399,9 @@ func TestMessageErasedFromDBOnStartup(t *testing.T) {
 		t.TempDir(),
 	)
 
-	creds := []credentials{{usernames: []string{"user"}, password: "pass"}}
+	options := defaultServerOptions(t, withPathGenerator(pathGenerator))
 
-	runServer := func(fn func(c *testConnection, s *testSession)) {
-		runServerWithPaths(t, creds, "/", pathGenerator, func(s *testSession) {
-			withConnections(t, s, []int{1}, func(c map[int]*testConnection) {
-				fn(c[1], s)
-			})
-		})
-	}
-
-	runServer(func(c *testConnection, s *testSession) {
+	runOneToOneTest(t, options, func(c *testConnection, s *testSession) {
 		// Create a mailbox.
 		mailboxID := s.mailboxCreated("user", []string{"mbox"})
 
@@ -431,14 +423,14 @@ func TestMessageErasedFromDBOnStartup(t *testing.T) {
 		dbCheckUserMessageCount(s, "user", 1)
 	})
 
-	runServer(func(c *testConnection, s *testSession) {
+	runOneToOneTest(t, options, func(c *testConnection, s *testSession) {
 		// Message should have been removed now.
 		dbCheckUserMessageCount(s, "user", 0)
 	})
 }
 
 func TestMessageErasedFromDBWithMany(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// Create a mailbox.
 		mailboxID := s.mailboxCreated("user", []string{"mbox"})
 

@@ -14,7 +14,7 @@ func TestClose(t *testing.T) {
 	// This test is still useful as we have no way of checking the fetch responses after the store command.
 	// Additionally, we also need to ensure that there are no unilateral EXPUNGE messages returned from the server after close.
 	// There is currently no way to check for this with the go imap client.
-	runOneToOneTestWithAuth(t, "user", "pass", "/", func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK (^_^)")
 
@@ -52,7 +52,7 @@ func TestClose(t *testing.T) {
 }
 
 func TestCloseWithClient(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, "user", "pass", "/", func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		const (
 			messageBoxName = "saved-messages"
 		)

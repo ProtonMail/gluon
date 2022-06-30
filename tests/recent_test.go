@@ -5,7 +5,7 @@ import (
 )
 
 func TestRecentSelect(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 appends a new message to INBOX.
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
 
@@ -20,7 +20,7 @@ func TestRecentSelect(t *testing.T) {
 }
 
 func TestRecentStatus(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 appends a new message to INBOX.
 		c[1].doAppend("INBOX", `To: 1@pm.me`).expect("OK")
 
@@ -36,7 +36,7 @@ func TestRecentStatus(t *testing.T) {
 }
 
 func TestRecentFetch(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 appends a new message to INBOX.
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
 
@@ -63,7 +63,7 @@ func TestRecentFetch(t *testing.T) {
 }
 
 func TestRecentAppend(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 appends a new message to INBOX.
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
 
@@ -80,7 +80,7 @@ func TestRecentAppend(t *testing.T) {
 }
 
 func TestRecentStore(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		mbox, done := c[1].doCreateTempDir()
 		defer done()
 
@@ -111,7 +111,7 @@ func TestRecentStore(t *testing.T) {
 }
 
 func TestRecentExists(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 and B both select INBOX.
 		c[1].C("A006 select INBOX").OK("A006")
 		c[2].C("A006 select INBOX").OK("A006")
@@ -130,7 +130,7 @@ func TestRecentExists(t *testing.T) {
 }
 
 func TestRecentIDLEExists(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 selects INBOX and IDLEs.
 		c[1].C("A006 select INBOX").OK("A006")
 		c[1].C("A007 IDLE")
@@ -148,7 +148,7 @@ func TestRecentIDLEExists(t *testing.T) {
 }
 
 func TestRecentIDLEExpunge(t *testing.T) {
-	runManyToOneTestWithAuth(t, "user", "pass", "/", []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 creates a second mailbox and begins to IDLE inside it.
 		c[1].C("A002 CREATE folder").OK("A002")
 		c[1].C("A006 select folder").OK("A006")
