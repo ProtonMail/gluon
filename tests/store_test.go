@@ -2,6 +2,10 @@ package tests
 
 import (
 	"testing"
+
+	goimap "github.com/emersion/go-imap"
+	"github.com/emersion/go-imap/client"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStore(t *testing.T) {
@@ -210,5 +214,35 @@ func TestFlagsDuplicateAndCaseInsensitive(t *testing.T) {
 		// -FLAGS with empty list
 		c.C(`A00B STORE 1 -FLAGS ()`)
 		c.Sx(`A00B OK`)
+	})
+}
+
+func TestStoreFlagsPersistBetweenRuns(t *testing.T) {
+	options := defaultServerOptions(t, withPathGenerator(newFixedPathGenerator(t.TempDir(), t.TempDir(), t.TempDir())))
+
+	runOneToOneTestWithAuth(t, options, func(c *testConnection, _ *testSession) {
+		c.C("b001 CREATE saved-messages")
+		c.S("b001 OK (^_^)")
+		c.doAppend(`saved-messages`, `To: 2@pm.me`).expect("OK")
+	})
+
+	// Check if recent flag was persisted and then mark the message as deleted.
+	runOneToOneTestClientWithAuth(t, options, func(client *client.Client, _ *testSession) {
+		_, err := client.Select("saved-messages", false)
+		require.NoError(t, err)
+		newFetchCommand(t, client).withItems(goimap.FetchFlags).fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+			builder.wantFlags(goimap.RecentFlag)
+		}).check()
+
+		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+	})
+
+	// Check if delete flag was persisted.
+	runOneToOneTestClientWithAuth(t, options, func(client *client.Client, _ *testSession) {
+		_, err := client.Select("saved-messages", false)
+		require.NoError(t, err)
+		newFetchCommand(t, client).withItems(goimap.FetchFlags).fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+			builder.wantFlags(goimap.DeletedFlag)
+		}).check()
 	})
 }
