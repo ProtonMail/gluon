@@ -166,6 +166,31 @@ func (s *testSession) messageCreated(user, mailboxID string, literal []byte, fla
 	return messageID
 }
 
+func (s *testSession) batchMessageCreated(user string, mailboxID string, count int, createMessage func(int) ([]byte, []string)) []string {
+	var messageIDs []string
+
+	for i := 0; i < count; i++ {
+		messageID := utils.NewRandomMessageID()
+
+		literal, flags := createMessage(i)
+
+		require.NoError(s.tb, s.conns[s.userIDs[user]].MessageCreated(
+			imap.Message{
+				ID:    messageID,
+				Flags: imap.NewFlagSetFromSlice(flags),
+				Date:  time.Now(),
+			},
+			literal,
+			[]string{mailboxID},
+		))
+
+		messageIDs = append(messageIDs, messageID)
+	}
+	s.conns[s.userIDs[user]].Flush()
+
+	return messageIDs
+}
+
 func (s *testSession) messageCreatedFromFile(user, mailboxID, path string, flags ...string) string {
 	literal, err := os.ReadFile(path)
 	require.NoError(s.tb, err)

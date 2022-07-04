@@ -28,11 +28,24 @@ func newSnapshot(ctx context.Context, state *State, mbox *ent.Mailbox) (*snapsho
 		messages: newMsgList(),
 	}
 
-	msgUIDs, err := mbox.QueryUIDs().
-		WithMessage(func(query *ent.MessageQuery) { query.WithFlags() }).
-		All(ctx)
-	if err != nil {
-		return nil, err
+	var msgUIDs []*ent.UID
+
+	const limit = 16000
+
+	for offset := 0; ; offset += limit {
+		list, err := mbox.QueryUIDs().
+			WithMessage(func(query *ent.MessageQuery) { query.WithFlags() }).Offset(offset).Limit(limit).
+			All(ctx)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if len(list) == 0 {
+			break
+		}
+
+		msgUIDs = append(msgUIDs, list...)
 	}
 
 	for _, msgUID := range msgUIDs {
