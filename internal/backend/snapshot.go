@@ -34,7 +34,8 @@ func newSnapshot(ctx context.Context, state *State, mbox *ent.Mailbox) (*snapsho
 
 	for offset := 0; ; offset += limit {
 		list, err := mbox.QueryUIDs().
-			WithMessage(func(query *ent.MessageQuery) { query.WithFlags() }).Offset(offset).Limit(limit).
+			WithMessage(func(query *ent.MessageQuery) { query.WithFlags().Select(message.FieldMessageID) }).Offset(offset).Limit(limit).
+			Select(uid.FieldUID, uid.FieldRecent, uid.FieldDeleted).
 			All(ctx)
 
 		if err != nil {
