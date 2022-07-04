@@ -91,7 +91,7 @@ func txBumpMailboxUIDNext(ctx context.Context, tx *ent.Tx, mbox *ent.Mailbox, wi
 }
 
 func txGetMailboxName(ctx context.Context, tx *ent.Tx, mboxID string) (string, error) {
-	mailbox, err := tx.Mailbox.Query().Where(mailbox.MailboxID(mboxID)).Only(ctx)
+	mailbox, err := tx.Mailbox.Query().Where(mailbox.MailboxID(mboxID)).Select(mailbox.FieldName).Only(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -102,6 +102,7 @@ func txGetMailboxName(ctx context.Context, tx *ent.Tx, mboxID string) (string, e
 func txGetMailboxMessageIDs(ctx context.Context, tx *ent.Tx, mailboxID string) ([]string, error) {
 	messages, err := tx.Message.Query().
 		Where(message.HasUIDsWith(uid.HasMailboxWith(mailbox.MailboxID(mailboxID)))).
+		Select(message.FieldMessageID).
 		All(ctx)
 	if err != nil {
 		return nil, err

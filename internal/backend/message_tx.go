@@ -3,6 +3,8 @@ package backend
 import (
 	"context"
 
+	"github.com/ProtonMail/gluon/internal/backend/ent/messageflag"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
@@ -128,7 +130,7 @@ func txGetMessages(ctx context.Context, tx *ent.Tx, messageIDs ...string) (map[s
 }
 
 func txGetMessageID(ctx context.Context, tx *ent.Tx, internalID string) (string, error) {
-	message, err := tx.Message.Query().Where(message.InternalID(internalID)).Only(ctx)
+	message, err := tx.Message.Query().Where(message.InternalID(internalID)).Select(message.FieldID).Only(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -139,7 +141,9 @@ func txGetMessageID(ctx context.Context, tx *ent.Tx, internalID string) (string,
 func txGetMessageMailboxIDs(ctx context.Context, tx *ent.Tx, messageID string) ([]string, error) {
 	messageUIDs, err := tx.UID.Query().
 		Where(uid.HasMessageWith(message.MessageID(messageID))).
-		WithMailbox().
+		WithMailbox(func(query *ent.MailboxQuery) {
+			query.Select(mailbox.FieldMailboxID)
+		}).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -156,7 +160,9 @@ func txGetMessageUIDs(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs
 			uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
 			uid.HasMessageWith(message.MessageIDIn(messageIDs...)),
 		).
-		WithMessage().
+		WithMessage(func(query *ent.MessageQuery) {
+			query.Select(message.FieldMessageID)
+		}).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -176,7 +182,9 @@ func txGetMessageUIDs(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs
 func txGetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []string) (map[string]imap.FlagSet, error) {
 	messages, err := tx.Message.Query().
 		Where(message.MessageIDIn(messageIDs...)).
-		WithFlags().
+		WithFlags(func(query *ent.MessageFlagQuery) {
+			query.Select(messageflag.FieldValue)
+		}).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -199,7 +207,9 @@ func txGetMessageDeleted(ctx context.Context, tx *ent.Tx, mboxID string, message
 			uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
 			uid.HasMessageWith(message.MessageIDIn(messageIDs...)),
 		).
-		WithMessage().
+		WithMessage(func(query *ent.MessageQuery) {
+			query.Select(message.FieldMessageID)
+		}).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -377,7 +387,7 @@ func txDeleteMessages(ctx context.Context, tx *ent.Tx, messageIDs ...string) err
 }
 
 func txGetMessageIDsMarkedDeleted(ctx context.Context, tx *ent.Tx) ([]string, error) {
-	messages, err := tx.Message.Query().Where(message.Deleted(true)).All(ctx)
+	messages, err := tx.Message.Query().Where(message.Deleted(true)).Select(message.FieldMessageID).All(ctx)
 	if err != nil {
 		return nil, err
 	}
