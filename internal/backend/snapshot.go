@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"entgo.io/ent/dialect/sql"
 	"fmt"
 	"strconv"
 
@@ -30,23 +31,29 @@ func newSnapshot(ctx context.Context, state *State, mbox *ent.Mailbox) (*snapsho
 
 	var msgUIDs []*ent.UID
 
-	const limit = 16000
+	{
+		const QueryLimit = 16000
+		queryOffset := 0
+		for i := 0; ; i += QueryLimit {
 
-	for offset := 0; ; offset += limit {
-		list, err := mbox.QueryUIDs().
-			WithMessage(func(query *ent.MessageQuery) { query.WithFlags().Select(message.FieldMessageID) }).Offset(offset).Limit(limit).
-			Select(uid.FieldUID, uid.FieldRecent, uid.FieldDeleted).
-			All(ctx)
+			result, err := mbox.QueryUIDs().
+				Where(uid.IDGT(queryOffset)).
+				WithMessage(func(query *ent.MessageQuery) { query.WithFlags().Select(message.FieldMessageID) }).
+				Select(uid.FieldID, uid.FieldUID, uid.FieldRecent, uid.FieldDeleted).Order(func(selector *sql.Selector) {
+				selector.OrderBy(uid.FieldID)
+			}).Limit(QueryLimit).All(ctx)
 
-		if err != nil {
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
+
+			resultLen := len(result)
+			if resultLen == 0 {
+				break
+			}
+			queryOffset = result[resultLen-1].ID
+			msgUIDs = append(msgUIDs, result...)
 		}
-
-		if len(list) == 0 {
-			break
-		}
-
-		msgUIDs = append(msgUIDs, list...)
 	}
 
 	for _, msgUID := range msgUIDs {

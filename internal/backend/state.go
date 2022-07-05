@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"entgo.io/ent/dialect/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -42,9 +43,31 @@ func (state *State) UserID() string {
 
 func (state *State) List(ctx context.Context, ref, pattern string, subscribed bool, fn func(map[string]Match) error) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		mailboxes, err := tx.Mailbox.Query().WithAttributes().All(ctx)
-		if err != nil {
-			return err
+
+		const QueryLimit = 16000
+
+		var mailboxes []*ent.Mailbox
+
+		{
+			queryOffset := 0
+			for i := 0; ; i += QueryLimit {
+				result, err := tx.Mailbox.Query().Where(mailbox.IDGT(queryOffset)).WithAttributes().
+					Limit(QueryLimit).Order(func(selector *sql.Selector) {
+					selector.OrderBy(mailbox.FieldID)
+				}).All(ctx)
+
+				if err != nil {
+					return err
+				}
+
+				resultLen := len(result)
+				if resultLen == 0 {
+					break
+				}
+
+				queryOffset = result[resultLen-1].ID
+				mailboxes = append(mailboxes, result...)
+			}
 		}
 
 		matches, err := getMatches(ctx, mailboxes, ref, pattern, state.delimiter, subscribed)

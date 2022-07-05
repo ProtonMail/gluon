@@ -132,6 +132,28 @@ func (s *testSession) mailboxCreated(user string, name []string, withData ...str
 	return mboxID
 }
 
+func (s *testSession) batchMailboxCreated(user string, count int, mailboxNameGen func(number int) string) []string {
+	var mboxIDs []string
+
+	for i := 0; i < count; i++ {
+		mboxID := utils.NewRandomLabelID()
+
+		require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxCreated(imap.Mailbox{
+			ID:             mboxID,
+			Name:           []string{mailboxNameGen(i)},
+			Flags:          defaultFlags,
+			PermanentFlags: defaultPermanentFlags,
+			Attributes:     defaultAttributes,
+		}))
+
+		mboxIDs = append(mboxIDs, mboxID)
+	}
+
+	s.conns[s.userIDs[user]].Flush()
+
+	return mboxIDs
+}
+
 func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, permFlags, attrs imap.FlagSet) string {
 	mboxID := utils.NewRandomLabelID()
 
