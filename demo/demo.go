@@ -18,8 +18,14 @@ import (
 )
 
 func main() {
+	if level, err := logrus.ParseLevel(os.Getenv("GLUON_LOG_LEVEL")); err == nil {
+		logrus.SetLevel(level)
+	}
+
 	ctx := context.Background()
 	server, err := gluon.New(temp())
+
+	defer server.Close(ctx)
 
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to create server")
