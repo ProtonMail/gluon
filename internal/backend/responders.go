@@ -41,7 +41,7 @@ func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]resp
 	res := []response.Response{response.Exists().WithCount(seq)}
 
 	if recent := len(snap.getMessagesWithFlag(imap.FlagRecent)); recent > 0 {
-		if err := txClearRecentFlag(ctx, tx, snap.mboxID, u.messageID); err != nil {
+		if err := DBClearRecentFlag(ctx, tx, snap.mboxID, u.messageID); err != nil {
 			return nil, err
 		}
 

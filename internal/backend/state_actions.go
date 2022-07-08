@@ -7,7 +7,6 @@ import (
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
-	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
@@ -22,7 +21,7 @@ func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name st
 		return nil, err
 	}
 
-	return tx.Mailbox.Query().Where(mailbox.MailboxID(res.ID)).Only(ctx)
+	return DBGetMailboxByID(ctx, tx.Client(), res.ID)
 }
 
 // TODO(REFACTOR): What if another client is selected in the same mailbox -- should we send expunge updates?
@@ -63,7 +62,7 @@ func (state *State) actionCreateMessage(ctx context.Context, tx *ent.Tx, mboxID 
 		return 0, err
 	}
 
-	messageUIDs, err := txGetMessageUIDs(ctx, tx, mboxID, []string{res.ID})
+	messageUIDs, err := DBGetMessageUIDs(ctx, tx.Client(), mboxID, []string{res.ID})
 	if err != nil {
 		return 0, err
 	}
@@ -79,7 +78,7 @@ func (state *State) actionAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, 
 	} else {
 		var err error
 
-		if haveMessageIDs, err = txGetMailboxMessageIDs(ctx, tx, mboxID); err != nil {
+		if haveMessageIDs, err = DBGetMailboxMessageIDs(ctx, tx.Client(), mboxID); err != nil {
 			return nil, err
 		}
 	}
@@ -100,7 +99,7 @@ func (state *State) actionAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, 
 }
 
 func (state *State) actionRemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []string, mboxID string) error {
-	haveMessageIDs, err := txGetMailboxMessageIDs(ctx, tx, mboxID)
+	haveMessageIDs, err := DBGetMailboxMessageIDs(ctx, tx.Client(), mboxID)
 	if err != nil {
 		return err
 	}

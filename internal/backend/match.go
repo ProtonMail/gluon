@@ -8,7 +8,6 @@ import (
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
-	"github.com/ProtonMail/gluon/internal/backend/ent/uid"
 	"github.com/bradenaw/juniper/xslices"
 )
 
@@ -37,7 +36,7 @@ func getMatches(
 					return flag.Value
 				}))
 
-				recent, err := mailbox.QueryUIDs().Where(uid.Recent(true)).Count(ctx)
+				recent, err := DBGetMailboxRecentCount(ctx, mailbox)
 				if err != nil {
 					return nil, err
 				}

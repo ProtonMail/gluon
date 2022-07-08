@@ -14,18 +14,20 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 		panic("the recent flag is read-only")
 	}
 
-	curFlags, err := txGetMessageFlags(ctx, tx, messageIDs)
+	client := tx.Client()
+	curFlags, err := DBGetMessageFlags(ctx, client, messageIDs)
+
 	if err != nil {
 		return err
 	}
 
-	delFlags, err := txGetMessageDeleted(ctx, tx, state.snap.mboxID, messageIDs)
+	delFlags, err := DBGetMessageDeleted(ctx, client, state.snap.mboxID, messageIDs)
 	if err != nil {
 		return err
 	}
 
 	if addFlags.Contains(imap.FlagDeleted) {
-		if err := txSetDeletedFlag(ctx, tx, state.snap.mboxID, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID, xslices.Filter(messageIDs, func(messageID string) bool {
 			return !delFlags[messageID]
 		}), true); err != nil {
 			return err
@@ -33,7 +35,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 	}
 
 	for _, flag := range addFlags.Remove(imap.FlagDeleted).ToSlice() {
-		if err := txAddMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := DBAddMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID string) bool {
 			return !curFlags[messageID].Contains(flag)
 		}), flag); err != nil {
 			return err
@@ -73,18 +75,20 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 		panic("the recent flag is read-only")
 	}
 
-	curFlags, err := txGetMessageFlags(ctx, tx, messageIDs)
+	client := tx.Client()
+	curFlags, err := DBGetMessageFlags(ctx, client, messageIDs)
+
 	if err != nil {
 		return err
 	}
 
-	delFlags, err := txGetMessageDeleted(ctx, tx, state.snap.mboxID, messageIDs)
+	delFlags, err := DBGetMessageDeleted(ctx, client, state.snap.mboxID, messageIDs)
 	if err != nil {
 		return err
 	}
 
 	if remFlags.Contains(imap.FlagDeleted) {
-		if err := txSetDeletedFlag(ctx, tx, state.snap.mboxID, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID, xslices.Filter(messageIDs, func(messageID string) bool {
 			return delFlags[messageID]
 		}), false); err != nil {
 			return err
@@ -92,7 +96,7 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 	}
 
 	for _, flag := range remFlags.Remove(imap.FlagDeleted).ToSlice() {
-		if err := txRemoveMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := DBRemoveMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID string) bool {
 			return curFlags[messageID].Contains(flag)
 		}), flag); err != nil {
 			return err
@@ -138,11 +142,11 @@ func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messag
 		panic("the recent flag is read-only")
 	}
 
-	if err := txSetDeletedFlag(ctx, tx, state.snap.mboxID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {
+	if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {
 		return err
 	}
 
-	if err := txSetMessageFlags(ctx, tx, messageIDs, setFlags.Remove(imap.FlagDeleted)); err != nil {
+	if err := DBSetMessageFlags(ctx, tx, messageIDs, setFlags.Remove(imap.FlagDeleted)); err != nil {
 		return err
 	}
 

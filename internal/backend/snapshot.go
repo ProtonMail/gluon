@@ -2,15 +2,11 @@ package backend
 
 import (
 	"context"
-	"entgo.io/ent/dialect/sql"
 	"fmt"
 	"strconv"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
-	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
-	"github.com/ProtonMail/gluon/internal/backend/ent/message"
-	"github.com/ProtonMail/gluon/internal/backend/ent/uid"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/bradenaw/juniper/xslices"
 )
@@ -23,37 +19,15 @@ type snapshot struct {
 }
 
 func newSnapshot(ctx context.Context, state *State, mbox *ent.Mailbox) (*snapshot, error) {
+	msgUIDs, err := DBGetMailboxMessagesForNewSnapshot(ctx, mbox)
+	if err != nil {
+		return nil, err
+	}
+
 	snap := &snapshot{
 		mboxID:   mbox.MailboxID,
 		state:    state,
 		messages: newMsgList(),
-	}
-
-	var msgUIDs []*ent.UID
-
-	{
-		const QueryLimit = 16000
-		queryOffset := 0
-		for i := 0; ; i += QueryLimit {
-
-			result, err := mbox.QueryUIDs().
-				Where(uid.IDGT(queryOffset)).
-				WithMessage(func(query *ent.MessageQuery) { query.WithFlags().Select(message.FieldMessageID) }).
-				Select(uid.FieldID, uid.FieldUID, uid.FieldRecent, uid.FieldDeleted).Order(func(selector *sql.Selector) {
-				selector.OrderBy(uid.FieldID)
-			}).Limit(QueryLimit).All(ctx)
-
-			if err != nil {
-				return nil, err
-			}
-
-			resultLen := len(result)
-			if resultLen == 0 {
-				break
-			}
-			queryOffset = result[resultLen-1].ID
-			msgUIDs = append(msgUIDs, result...)
-		}
 	}
 
 	for _, msgUID := range msgUIDs {
@@ -245,13 +219,7 @@ func (snap *snapshot) getMessagesWithoutFlag(flag string) []*snapMsg {
 }
 
 func (snap *snapshot) appendMessage(ctx context.Context, tx *ent.Tx, messageID string) error {
-	msgUID, err := tx.UID.Query().
-		Where(
-			uid.HasMailboxWith(mailbox.MailboxID(snap.mboxID)),
-			uid.HasMessageWith(message.MessageID(messageID)),
-		).
-		WithMessage(func(query *ent.MessageQuery) { query.WithFlags() }).
-		Only(ctx)
+	msgUID, err := DBGetMailboxMessage(ctx, tx.Client(), snap.mboxID, messageID)
 	if err != nil {
 		return err
 	}

@@ -132,7 +132,7 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 	}
 
 	if len(internalID) > 0 {
-		if messageID, err := txGetMessageID(ctx, m.tx, internalID); err != nil {
+		if messageID, err := DBGetMessageID(ctx, m.tx.Client(), internalID); err != nil {
 			logrus.WithError(err).Warn("The message has an unknown internal ID")
 		} else if res, err := m.state.actionAddMessagesToMailbox(ctx, m.tx, []string{messageID}, m.mbox.MailboxID); err != nil {
 			return 0, err
