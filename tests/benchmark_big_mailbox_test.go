@@ -2,10 +2,11 @@ package tests
 
 import (
 	"fmt"
+	"testing"
+
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func BenchmarkBigMailboxStatus(b *testing.B) {

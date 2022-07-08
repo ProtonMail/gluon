@@ -192,7 +192,7 @@ func (m *Mailbox) matchSearchKeyBefore(ctx context.Context, candidates []*snapMs
 	}
 
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := txGetMessage(ctx, m.tx, message.ID)
+		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID)
 		if err != nil {
 			return false, err
 		}
@@ -291,7 +291,7 @@ func (m *Mailbox) matchSearchKeyKeyword(ctx context.Context, candidates []*snapM
 
 func (m *Mailbox) matchSearchKeyLarger(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := txGetMessage(ctx, m.tx, message.ID)
+		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID)
 		if err != nil {
 			return false, err
 		}
@@ -330,7 +330,7 @@ func (m *Mailbox) matchSearchKeyOn(ctx context.Context, candidates []*snapMsg, k
 	}
 
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := txGetMessage(ctx, m.tx, message.ID)
+		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID)
 		if err != nil {
 			return false, err
 		}
@@ -456,7 +456,7 @@ func (m *Mailbox) matchSearchKeySince(ctx context.Context, candidates []*snapMsg
 	}
 
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := txGetMessage(ctx, m.tx, message.ID)
+		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID)
 		if err != nil {
 			return false, err
 		}
@@ -467,7 +467,7 @@ func (m *Mailbox) matchSearchKeySince(ctx context.Context, candidates []*snapMsg
 
 func (m *Mailbox) matchSearchKeySmaller(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := txGetMessage(ctx, m.tx, message.ID)
+		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID)
 		if err != nil {
 			return false, err
 		}

@@ -41,7 +41,7 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 			panic("no such state")
 		}
 
-		messageIDs, err := txGetMessageIDsMarkedDeleted(ctx, tx)
+		messageIDs, err := DBGetMessageIDsMarkedDeleted(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 			}) == 0
 		})
 
-		if err := txDeleteMessages(ctx, tx, messageIDs...); err != nil {
+		if err := DBDeleteMessages(ctx, tx, messageIDs...); err != nil {
 			return err
 		}
 

@@ -6,7 +6,6 @@ import (
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
-	"github.com/ProtonMail/gluon/internal/backend/ent/uid"
 	"github.com/bradenaw/juniper/iterator"
 	"github.com/bradenaw/juniper/stream"
 	"github.com/bradenaw/juniper/xslices"
@@ -40,10 +39,7 @@ func (fetcher *fetcher) Next(ctx context.Context) (stream.Stream[*ent.UID], erro
 		return nil, err
 	}
 
-	res, err := fetcher.mbox.QueryUIDs().
-		Where(uid.UIDGTE(begin.UID), uid.UIDLTE(end.UID)).
-		WithMessage().
-		All(ctx)
+	res, err := DBGetUIDInterval(ctx, fetcher.mbox, begin.UID, end.UID)
 	if err != nil {
 		return nil, err
 	}

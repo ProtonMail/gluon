@@ -13,7 +13,7 @@ import (
 	"github.com/bradenaw/juniper/xslices"
 )
 
-type txCreateMessageReq struct {
+type DBCreateMessageReq struct {
 	message    imap.Message
 	literal    []byte
 	body       string
@@ -22,7 +22,7 @@ type txCreateMessageReq struct {
 	internalID string
 }
 
-func txCreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*txCreateMessageReq) ([]*ent.Message, error) {
+func DBCreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*DBCreateMessageReq) ([]*ent.Message, error) {
 	flags := make(map[string][]*ent.MessageFlag)
 
 	for _, req := range reqs {
@@ -38,7 +38,7 @@ func txCreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*txCreateMessageR
 		flags[req.message.ID] = entFlags
 	}
 
-	return tx.Message.CreateBulk(xslices.Map(reqs, func(req *txCreateMessageReq) *ent.MessageCreate {
+	return tx.Message.CreateBulk(xslices.Map(reqs, func(req *DBCreateMessageReq) *ent.MessageCreate {
 		return tx.Message.Create().
 			SetMessageID(req.message.ID).
 			SetInternalID(req.internalID).
@@ -51,7 +51,7 @@ func txCreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*txCreateMessageR
 	})...).Save(ctx)
 }
 
-func txAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []string, mboxID string) (map[string]int, error) {
+func DBAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []string, mboxID string) (map[string]int, error) {
 	messageUIDs := make(map[string]int)
 
 	mbox, err := tx.Mailbox.Query().Where(mailbox.MailboxID(mboxID)).Only(ctx)
@@ -59,7 +59,7 @@ func txAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []string
 		return nil, err
 	}
 
-	messages, err := txGetMessages(ctx, tx, messageIDs...)
+	messages, err := DBGetMessages(ctx, tx.Client(), messageIDs...)
 	if err != nil {
 		return nil, err
 	}
@@ -80,15 +80,14 @@ func txAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []string
 		return nil, err
 	}
 
-	if err := txBumpMailboxUIDNext(ctx, tx, mbox, len(messageIDs)); err != nil {
+	if err := DBBumpMailboxUIDNext(ctx, tx, mbox, len(messageIDs)); err != nil {
 		return nil, err
 	}
 
 	return messageUIDs, nil
 }
 
-// TODO(REFACTOR): At what point do we prune the database of messages that are no longer in any mailbox?
-func txRemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []string, mboxID string) error {
+func DBRemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []string, mboxID string) error {
 	if _, err := tx.UID.Delete().
 		Where(
 			uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
@@ -101,8 +100,8 @@ func txRemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []s
 	return nil
 }
 
-func txMessageExists(ctx context.Context, tx *ent.Tx, messageID string) (bool, error) {
-	count, err := tx.Message.Query().Where(message.MessageID(messageID)).Count(ctx)
+func DBMessageExists(ctx context.Context, client *ent.Client, messageID string) (bool, error) {
+	count, err := client.Message.Query().Where(message.MessageID(messageID)).Count(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -110,12 +109,12 @@ func txMessageExists(ctx context.Context, tx *ent.Tx, messageID string) (bool, e
 	return count > 0, nil
 }
 
-func txGetMessage(ctx context.Context, tx *ent.Tx, messageID string) (*ent.Message, error) {
-	return tx.Message.Query().Where(message.MessageID(messageID)).Only(ctx)
+func DBGetMessage(ctx context.Context, client *ent.Client, messageID string) (*ent.Message, error) {
+	return client.Message.Query().Where(message.MessageID(messageID)).Only(ctx)
 }
 
-func txGetMessages(ctx context.Context, tx *ent.Tx, messageIDs ...string) (map[string]*ent.Message, error) {
-	messages, err := tx.Message.Query().Where(message.MessageIDIn(messageIDs...)).All(ctx)
+func DBGetMessages(ctx context.Context, client *ent.Client, messageIDs ...string) (map[string]*ent.Message, error) {
+	messages, err := client.Message.Query().Where(message.MessageIDIn(messageIDs...)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +128,8 @@ func txGetMessages(ctx context.Context, tx *ent.Tx, messageIDs ...string) (map[s
 	return res, nil
 }
 
-func txGetMessageID(ctx context.Context, tx *ent.Tx, internalID string) (string, error) {
-	message, err := tx.Message.Query().Where(message.InternalID(internalID)).Select(message.FieldID).Only(ctx)
+func DBGetMessageID(ctx context.Context, client *ent.Client, internalID string) (string, error) {
+	message, err := client.Message.Query().Where(message.InternalID(internalID)).Select(message.FieldID).Only(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -138,8 +137,8 @@ func txGetMessageID(ctx context.Context, tx *ent.Tx, internalID string) (string,
 	return message.MessageID, nil
 }
 
-func txGetMessageMailboxIDs(ctx context.Context, tx *ent.Tx, messageID string) ([]string, error) {
-	messageUIDs, err := tx.UID.Query().
+func DBGetMessageMailboxIDs(ctx context.Context, client *ent.Client, messageID string) ([]string, error) {
+	messageUIDs, err := client.UID.Query().
 		Where(uid.HasMessageWith(message.MessageID(messageID))).
 		WithMailbox(func(query *ent.MailboxQuery) {
 			query.Select(mailbox.FieldMailboxID)
@@ -154,8 +153,8 @@ func txGetMessageMailboxIDs(ctx context.Context, tx *ent.Tx, messageID string) (
 	}), nil
 }
 
-func txGetMessageUIDs(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs []string) (map[string]int, error) {
-	messageUIDs, err := tx.UID.Query().
+func DBGetMessageUIDs(ctx context.Context, client *ent.Client, mboxID string, messageIDs []string) (map[string]int, error) {
+	messageUIDs, err := client.UID.Query().
 		Where(
 			uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
 			uid.HasMessageWith(message.MessageIDIn(messageIDs...)),
@@ -177,10 +176,10 @@ func txGetMessageUIDs(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs
 	return res, nil
 }
 
-// txGetMessageFlags returns the flags of the given messages.
+// DBGetMessageFlags returns the flags of the given messages.
 // It does not include per-mailbox flags (\Deleted, \Recent)!
-func txGetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []string) (map[string]imap.FlagSet, error) {
-	messages, err := tx.Message.Query().
+func DBGetMessageFlags(ctx context.Context, client *ent.Client, messageIDs []string) (map[string]imap.FlagSet, error) {
+	messages, err := client.Message.Query().
 		Where(message.MessageIDIn(messageIDs...)).
 		WithFlags(func(query *ent.MessageFlagQuery) {
 			query.Select(messageflag.FieldValue)
@@ -201,8 +200,8 @@ func txGetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []string) (ma
 	return curFlags, nil
 }
 
-func txGetMessageDeleted(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs []string) (map[string]bool, error) {
-	messageUIDs, err := tx.UID.Query().
+func DBGetMessageDeleted(ctx context.Context, client *ent.Client, mboxID string, messageIDs []string) (map[string]bool, error) {
+	messageUIDs, err := client.UID.Query().
 		Where(
 			uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
 			uid.HasMessageWith(message.MessageIDIn(messageIDs...)),
@@ -224,7 +223,7 @@ func txGetMessageDeleted(ctx context.Context, tx *ent.Tx, mboxID string, message
 	return res, nil
 }
 
-func txAddMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []string, addFlag string) error {
+func DBAddMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []string, addFlag string) error {
 	messages, err := tx.Message.Query().
 		Where(message.MessageIDIn(messageIDs...)).
 		All(ctx)
@@ -250,7 +249,7 @@ func txAddMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []string, addF
 	return nil
 }
 
-func txRemoveMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []string, remFlag string) error {
+func DBRemoveMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []string, remFlag string) error {
 	messages, err := tx.Message.Query().
 		Where(message.MessageIDIn(messageIDs...)).
 		WithFlags().
@@ -274,7 +273,7 @@ func txRemoveMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []string, r
 	return nil
 }
 
-func txSetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []string, setFlags imap.FlagSet) error {
+func DBSetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []string, setFlags imap.FlagSet) error {
 	messages, err := tx.Message.Query().
 		Where(message.MessageIDIn(messageIDs...)).
 		WithFlags().
@@ -316,7 +315,7 @@ func txSetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []string, set
 	return nil
 }
 
-func txSetDeletedFlag(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs []string, deleted bool) error {
+func DBSetDeletedFlag(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs []string, deleted bool) error {
 	if _, err := tx.UID.Update().
 		Where(
 			uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
@@ -330,7 +329,7 @@ func txSetDeletedFlag(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs
 	return nil
 }
 
-func txClearRecentFlag(ctx context.Context, tx *ent.Tx, mboxID, messageID string) error {
+func DBClearRecentFlag(ctx context.Context, tx *ent.Tx, mboxID, messageID string) error {
 	if _, err := tx.UID.Update().
 		Where(
 			uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
@@ -345,7 +344,7 @@ func txClearRecentFlag(ctx context.Context, tx *ent.Tx, mboxID, messageID string
 	return nil
 }
 
-func txClearRecentFlags(ctx context.Context, tx *ent.Tx, mboxID string) error {
+func DBClearRecentFlags(ctx context.Context, tx *ent.Tx, mboxID string) error {
 	if _, err := tx.UID.Update().
 		Where(
 			uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
@@ -359,7 +358,7 @@ func txClearRecentFlags(ctx context.Context, tx *ent.Tx, mboxID string) error {
 	return nil
 }
 
-func txUpdateMessageID(ctx context.Context, tx *ent.Tx, oldID, newID string) error {
+func DBUpdateMessageID(ctx context.Context, tx *ent.Tx, oldID, newID string) error {
 	if _, err := tx.Message.Update().
 		Where(message.MessageID(oldID)).
 		SetMessageID(newID).
@@ -370,7 +369,7 @@ func txUpdateMessageID(ctx context.Context, tx *ent.Tx, oldID, newID string) err
 	return nil
 }
 
-func txMarkMessageAsDeleted(ctx context.Context, tx *ent.Tx, messageID string) error {
+func DBMarkMessageAsDeleted(ctx context.Context, tx *ent.Tx, messageID string) error {
 	if _, err := tx.Message.Update().Where(message.MessageID(messageID)).SetDeleted(true).Save(ctx); err != nil {
 		return err
 	}
@@ -378,7 +377,7 @@ func txMarkMessageAsDeleted(ctx context.Context, tx *ent.Tx, messageID string) e
 	return nil
 }
 
-func txDeleteMessages(ctx context.Context, tx *ent.Tx, messageIDs ...string) error {
+func DBDeleteMessages(ctx context.Context, tx *ent.Tx, messageIDs ...string) error {
 	if _, err := tx.Message.Delete().Where(message.MessageIDIn(messageIDs...)).Exec(ctx); err != nil {
 		return err
 	}
@@ -386,7 +385,7 @@ func txDeleteMessages(ctx context.Context, tx *ent.Tx, messageIDs ...string) err
 	return nil
 }
 
-func txGetMessageIDsMarkedDeleted(ctx context.Context, tx *ent.Tx) ([]string, error) {
+func DBGetMessageIDsMarkedDeleted(ctx context.Context, tx *ent.Tx) ([]string, error) {
 	messages, err := tx.Message.Query().Where(message.Deleted(true)).Select(message.FieldMessageID).All(ctx)
 	if err != nil {
 		return nil, err

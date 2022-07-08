@@ -123,12 +123,12 @@ func (user *user) close(ctx context.Context) error {
 
 func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 	return user.tx(ctx, func(tx *ent.Tx) error {
-		ids, err := txGetMessageIDsMarkedDeleted(ctx, tx)
+		ids, err := DBGetMessageIDsMarkedDeleted(ctx, tx)
 		if err != nil {
 			return err
 		}
 
-		if err := txDeleteMessages(ctx, tx, ids...); err != nil {
+		if err := DBDeleteMessages(ctx, tx, ids...); err != nil {
 			return err
 		}
 

@@ -2,7 +2,6 @@ package backend
 
 import (
 	"context"
-	"entgo.io/ent/dialect/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
-	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/remote"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/bradenaw/juniper/sets"
@@ -44,30 +42,9 @@ func (state *State) UserID() string {
 func (state *State) List(ctx context.Context, ref, pattern string, subscribed bool, fn func(map[string]Match) error) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
 
-		const QueryLimit = 16000
-
-		var mailboxes []*ent.Mailbox
-
-		{
-			queryOffset := 0
-			for i := 0; ; i += QueryLimit {
-				result, err := tx.Mailbox.Query().Where(mailbox.IDGT(queryOffset)).WithAttributes().
-					Limit(QueryLimit).Order(func(selector *sql.Selector) {
-					selector.OrderBy(mailbox.FieldID)
-				}).All(ctx)
-
-				if err != nil {
-					return err
-				}
-
-				resultLen := len(result)
-				if resultLen == 0 {
-					break
-				}
-
-				queryOffset = result[resultLen-1].ID
-				mailboxes = append(mailboxes, result...)
-			}
+		mailboxes, err := DBGetAllMailboxes(ctx, tx.Client())
+		if err != nil {
+			return err
 		}
 
 		matches, err := getMatches(ctx, mailboxes, ref, pattern, state.delimiter, subscribed)
@@ -81,7 +58,7 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 
 func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) error) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := tx.Mailbox.Query().Where(mailbox.Name(name)).Only(ctx)
+		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
 			return ErrNoSuchMailbox
 		}
@@ -97,7 +74,7 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 			return err
 		}
 
-		if err := txClearRecentFlags(ctx, tx, mbox.MailboxID); err != nil {
+		if err := DBClearRecentFlags(ctx, tx, mbox.MailboxID); err != nil {
 			return err
 		}
 
@@ -110,7 +87,7 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 
 func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) error) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := tx.Mailbox.Query().Where(mailbox.Name(name)).Only(ctx)
+		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
 			return ErrNoSuchMailbox
 		}
@@ -141,14 +118,14 @@ func (state *State) Create(ctx context.Context, name string) error {
 			name = strings.TrimRight(name, state.delimiter)
 		}
 
-		if exists, err := tx.Mailbox.Query().Where(mailbox.Name(name)).Exist(ctx); err != nil {
+		if exists, err := DBMailboxExistsWithName(ctx, tx.Client(), name); err != nil {
 			return err
 		} else if exists {
 			return ErrExistingMailbox
 		}
 
 		for _, superior := range listSuperiors(name, state.delimiter) {
-			if exists, err := tx.Mailbox.Query().Where(mailbox.Name(superior)).Exist(ctx); err != nil {
+			if exists, err := DBMailboxExistsWithName(ctx, tx.Client(), superior); err != nil {
 				return err
 			} else if exists {
 				continue
@@ -169,7 +146,7 @@ func (state *State) Create(ctx context.Context, name string) error {
 
 func (state *State) Delete(ctx context.Context, name string) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := tx.Mailbox.Query().Where(mailbox.Name(name)).Only(ctx)
+		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
 			return ErrNoSuchMailbox
 		}
@@ -180,19 +157,20 @@ func (state *State) Delete(ctx context.Context, name string) error {
 
 func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := tx.Mailbox.Query().Where(mailbox.Name(oldName)).Only(ctx)
+		client := tx.Client()
+		mbox, err := DBGetMailboxByName(ctx, client, oldName)
 		if err != nil {
 			return ErrNoSuchMailbox
 		}
 
-		if exists, err := tx.Mailbox.Query().Where(mailbox.Name(newName)).Exist(ctx); err != nil {
+		if exists, err := DBMailboxExistsWithName(ctx, client, newName); err != nil {
 			return err
 		} else if exists {
 			return ErrExistingMailbox
 		}
 
 		for _, superior := range listSuperiors(newName, state.delimiter) {
-			if exists, err := tx.Mailbox.Query().Where(mailbox.Name(superior)).Exist(ctx); err != nil {
+			if exists, err := DBMailboxExistsWithName(ctx, client, superior); err != nil {
 				return err
 			} else if exists {
 				if superior == oldName {
@@ -210,7 +188,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			return state.renameInbox(ctx, tx, mbox, newName)
 		}
 
-		mailboxes, err := tx.Mailbox.Query().All(ctx)
+		mailboxes, err := DBGetAllMailboxes(ctx, client)
 		if err != nil {
 			return err
 		}
@@ -220,7 +198,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		}))
 
 		for _, inferior := range inferiors {
-			mbox, err := tx.Mailbox.Query().Where(mailbox.Name(inferior)).Only(ctx)
+			mbox, err := DBGetMailboxByName(ctx, client, inferior)
 			if err != nil {
 				return ErrNoSuchMailbox
 			}
@@ -238,7 +216,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 func (state *State) Subscribe(ctx context.Context, name string) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := tx.Mailbox.Query().Where(mailbox.Name(name)).Only(ctx)
+		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
 			return ErrNoSuchMailbox
 		} else if mbox.Subscribed {
@@ -251,7 +229,7 @@ func (state *State) Subscribe(ctx context.Context, name string) error {
 
 func (state *State) Unsubscribe(ctx context.Context, name string) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := tx.Mailbox.Query().Where(mailbox.Name(name)).Only(ctx)
+		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
 			return ErrNoSuchMailbox
 		} else if !mbox.Subscribed {
@@ -275,7 +253,7 @@ func (state *State) Idle(ctx context.Context, fn func([]response.Response, chan 
 
 func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) error) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := tx.Mailbox.Query().Where(mailbox.Name(name)).Only(ctx)
+		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
 			return ErrNoSuchMailbox
 		}
@@ -299,7 +277,7 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 	}
 
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := tx.Mailbox.Query().Where(mailbox.MailboxID(state.snap.mboxID)).Only(ctx)
+		mbox, err := DBGetMailboxByID(ctx, tx.Client(), state.snap.mboxID)
 		if err != nil {
 			return err
 		}
@@ -337,7 +315,7 @@ func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mail
 		return err
 	}
 
-	messages, err := inbox.QueryUIDs().WithMessage().All(ctx)
+	messages, err := DBGetMailboxMessages(ctx, inbox)
 	if err != nil {
 		return err
 	}

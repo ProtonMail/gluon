@@ -50,13 +50,13 @@ func (user *user) apply(ctx context.Context, tx *ent.Tx, update imap.Update) err
 
 // applyMailboxCreated applies a MailboxCreated update.
 func (user *user) applyMailboxCreated(ctx context.Context, tx *ent.Tx, update *imap.MailboxCreated) error {
-	if exists, err := txMailboxExists(ctx, tx, update.Mailbox.ID); err != nil {
+	if exists, err := DBMailboxExistsWithID(ctx, tx.Client(), update.Mailbox.ID); err != nil {
 		return err
 	} else if exists {
 		return nil
 	}
 
-	if _, err := txCreateMailbox(
+	if _, err := DBCreateMailbox(
 		ctx,
 		tx,
 		update.Mailbox.ID,
@@ -73,24 +73,25 @@ func (user *user) applyMailboxCreated(ctx context.Context, tx *ent.Tx, update *i
 
 // applyMailboxDeleted applies a MailboxDeleted update.
 func (user *user) applyMailboxDeleted(ctx context.Context, tx *ent.Tx, update *imap.MailboxDeleted) error {
-	if exists, err := txMailboxExists(ctx, tx, update.MailboxID); err != nil {
+	if exists, err := DBMailboxExistsWithID(ctx, tx.Client(), update.MailboxID); err != nil {
 		return err
 	} else if !exists {
 		return nil
 	}
 
-	return txDeleteMailbox(ctx, tx, update.MailboxID)
+	return DBDeleteMailbox(ctx, tx, update.MailboxID)
 }
 
 // applyMailboxUpdated applies a MailboxUpdated update.
 func (user *user) applyMailboxUpdated(ctx context.Context, tx *ent.Tx, update *imap.MailboxUpdated) error {
-	if exists, err := txMailboxExists(ctx, tx, update.MailboxID); err != nil {
+	client := tx.Client()
+	if exists, err := DBMailboxExistsWithID(ctx, client, update.MailboxID); err != nil {
 		return err
 	} else if !exists {
 		return nil
 	}
 
-	currentName, err := txGetMailboxName(ctx, tx, update.MailboxID)
+	currentName, err := DBGetMailboxName(ctx, client, update.MailboxID)
 	if err != nil {
 		return err
 	}
@@ -99,7 +100,7 @@ func (user *user) applyMailboxUpdated(ctx context.Context, tx *ent.Tx, update *i
 		return nil
 	}
 
-	return txRenameMailbox(ctx, tx, update.MailboxID, strings.Join(update.MailboxName, user.delimiter))
+	return DBRenameMailbox(ctx, tx, update.MailboxID, strings.Join(update.MailboxName, user.delimiter))
 }
 
 // applyMailboxIDChanged applies a MailboxIDChanged update.
@@ -114,7 +115,7 @@ func (user *user) applyMailboxIDChanged(ctx context.Context, tx *ent.Tx, update 
 		logrus.WithError(err).Errorf("Call to FinishMailboxIDUpdate() failed")
 	}
 
-	return txUpdateMailboxID(ctx, tx, update.OldID, update.NewID)
+	return DBUpdateMailboxID(ctx, tx, update.OldID, update.NewID)
 }
 
 // applyMessagesCreated applies a MessagesCreated update.
@@ -122,14 +123,14 @@ func (user *user) applyMessagesCreated(ctx context.Context, tx *ent.Tx, update *
 	var updates []*imap.MessageCreated
 
 	for _, update := range update.Messages {
-		if exists, err := txMessageExists(ctx, tx, update.Message.ID); err != nil {
+		if exists, err := DBMessageExists(ctx, tx.Client(), update.Message.ID); err != nil {
 			return err
 		} else if !exists {
 			updates = append(updates, update)
 		}
 	}
 
-	var reqs []*txCreateMessageReq
+	var reqs []*DBCreateMessageReq
 
 	for _, update := range updates {
 		internalID := uuid.NewString()
@@ -143,7 +144,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, tx *ent.Tx, update *
 			return fmt.Errorf("failed to store message literal: %w", err)
 		}
 
-		reqs = append(reqs, &txCreateMessageReq{
+		reqs = append(reqs, &DBCreateMessageReq{
 			message:    update.Message,
 			literal:    literal,
 			body:       update.Body,
@@ -153,7 +154,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, tx *ent.Tx, update *
 		})
 	}
 
-	if _, err := txCreateMessages(ctx, tx, reqs...); err != nil {
+	if _, err := DBCreateMessages(ctx, tx, reqs...); err != nil {
 		return fmt.Errorf("failed to create message: %w", err)
 	}
 
@@ -168,7 +169,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, tx *ent.Tx, update *
 	}
 
 	for mailboxID, messageIDs := range messageIDs {
-		messageUIDs, err := txAddMessagesToMailbox(ctx, tx, messageIDs, mailboxID)
+		messageUIDs, err := DBAddMessagesToMailbox(ctx, tx, messageIDs, mailboxID)
 		if err != nil {
 			return err
 		}
@@ -187,7 +188,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, tx *ent.Tx, update *
 
 // applyMessageUpdated applies a MessageUpdated update.
 func (user *user) applyMessageUpdated(ctx context.Context, tx *ent.Tx, update *imap.MessageUpdated) error {
-	if exists, err := txMessageExists(ctx, tx, update.MessageID); err != nil {
+	if exists, err := DBMessageExists(ctx, tx.Client(), update.MessageID); err != nil {
 		return err
 	} else if !exists {
 		return ErrNoSuchMessage
@@ -220,11 +221,11 @@ func (user *user) applyMessageIDChanged(ctx context.Context, tx *ent.Tx, update 
 		return err
 	}
 
-	return txUpdateMessageID(ctx, tx, update.OldID, update.NewID)
+	return DBUpdateMessageID(ctx, tx, update.OldID, update.NewID)
 }
 
 func (user *user) setMessageMailboxes(ctx context.Context, tx *ent.Tx, messageID string, mboxIDs []string) error {
-	curMailboxIDs, err := txGetMessageMailboxIDs(ctx, tx, messageID)
+	curMailboxIDs, err := DBGetMessageMailboxIDs(ctx, tx.Client(), messageID)
 	if err != nil {
 		return err
 	}
@@ -246,11 +247,11 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx *ent.Tx, messageID
 
 // applyMessagesAddedToMailbox adds the messages to the given mailbox.
 func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs []string) (map[string]int, error) {
-	if _, err := txAddMessagesToMailbox(ctx, tx, messageIDs, mboxID); err != nil {
+	if _, err := DBAddMessagesToMailbox(ctx, tx, messageIDs, mboxID); err != nil {
 		return nil, err
 	}
 
-	messageUIDs, err := txGetMessageUIDs(ctx, tx, mboxID, messageIDs)
+	messageUIDs, err := DBGetMessageUIDs(ctx, tx.Client(), mboxID, messageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +274,7 @@ func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, m
 // applyMessagesRemovedFromMailbox removes the messages from the given mailbox.
 func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.Tx, mboxID string, messageIDs []string) error {
 	if len(messageIDs) > 0 {
-		if err := txRemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxID); err != nil {
+		if err := DBRemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxID); err != nil {
 			return err
 		}
 	}
@@ -290,7 +291,7 @@ func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.T
 }
 
 func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID string, seen, flagged bool) error {
-	curFlags, err := txGetMessageFlags(ctx, tx, []string{messageID})
+	curFlags, err := DBGetMessageFlags(ctx, tx.Client(), []string{messageID})
 	if err != nil {
 		return err
 	}
@@ -319,7 +320,7 @@ func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID str
 }
 
 func (user *user) addMessageFlags(ctx context.Context, tx *ent.Tx, messageID string, flag string) error {
-	if err := txAddMessageFlag(ctx, tx, []string{messageID}, flag); err != nil {
+	if err := DBAddMessageFlag(ctx, tx, []string{messageID}, flag); err != nil {
 		return err
 	}
 
@@ -334,7 +335,7 @@ func (user *user) addMessageFlags(ctx context.Context, tx *ent.Tx, messageID str
 }
 
 func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID string, flag string) error {
-	if err := txRemoveMessageFlag(ctx, tx, []string{messageID}, flag); err != nil {
+	if err := DBRemoveMessageFlag(ctx, tx, []string{messageID}, flag); err != nil {
 		return err
 	}
 
@@ -349,7 +350,7 @@ func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID 
 }
 
 func (user *user) applyMessageDeleted(ctx context.Context, tx *ent.Tx, update *imap.MessageDeleted) error {
-	if err := txMarkMessageAsDeleted(ctx, tx, update.MessageID); err != nil {
+	if err := DBMarkMessageAsDeleted(ctx, tx, update.MessageID); err != nil {
 		return err
 	}
 
