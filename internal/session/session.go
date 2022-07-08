@@ -113,7 +113,12 @@ func (s *Session) Serve(ctx context.Context) error {
 		return err
 	}
 
-	return s.serve(ctx, s.getCommandCh(ctx))
+	if err := s.serve(ctx, s.getCommandCh(ctx)); err != nil {
+		logrus.WithError(err).Errorf("Failed to serve session %v", s.sessionID)
+		return err
+	}
+
+	return nil
 }
 
 func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
@@ -153,8 +158,14 @@ func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
 			}
 
 		default:
-			for res := range s.handleOther(withStartTime(ctx, time.Now()), tag, cmd) {
+			responseCh := s.handleOther(withStartTime(ctx, time.Now()), tag, cmd)
+			for res := range responseCh {
 				if err := res.Send(s); err != nil {
+					// Consume all remaining channel response since the connection is no longer available.
+					// Failing to do so can cause a deadlock in the program as `s.handleOther` never finishes
+					// executing and can hold onto a number of locks indefinitely.
+					for _ = range responseCh {
+					}
 					return fmt.Errorf("failed to send response to client: %w", err)
 				}
 			}
