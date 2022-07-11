@@ -1,5 +1,7 @@
 package response
 
+import "strings"
+
 type continuation struct {
 	tag string
 }
@@ -15,5 +17,5 @@ func (r *continuation) Send(s Session) error {
 }
 
 func (r *continuation) String() string {
-	return join([]string{r.tag, faceCon})
+	return strings.Join([]string{r.tag, "Ready"}, " ")
 }

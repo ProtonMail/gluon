@@ -18,7 +18,7 @@ func (s *Session) handleLogout(ctx context.Context, tag string, cmd *proto.Logou
 		return err
 	}
 
-	if err := response.Ok(tag).Send(s); err != nil {
+	if err := response.Ok(tag).WithMessage("LOGOUT").Send(s); err != nil {
 		return err
 	}
 

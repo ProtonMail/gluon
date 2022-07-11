@@ -8,11 +8,11 @@ func TestIDLEExistsUpdates(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// First client selects in INBOX to receive EXISTS update.
 		c[1].C("A006 select INBOX")
-		c[1].Se("A006 OK [READ-WRITE] (^_^)")
+		c[1].Se("A006 OK [READ-WRITE] SELECT")
 
 		// First client starts to IDLE.
 		c[1].C("A007 IDLE")
-		c[1].S("+ (*_*)")
+		c[1].S("+ Ready")
 
 		// Second client appends to INBOX to generate EXISTS updates.
 		// The client is not selected and thus doesn't itself receive responses.
@@ -24,7 +24,7 @@ func TestIDLEExistsUpdates(t *testing.T) {
 
 		// First client stops idling.
 		c[1].C("DONE")
-		c[1].S(`A007 OK (^_^)`)
+		c[1].OK(`A007`)
 
 		// Further stuff doesn't trigger any issues.
 		c[2].doAppend(`INBOX`, `To: 3@pm.me`, `\Seen`).expect("OK")
@@ -39,7 +39,7 @@ func TestIDLEPendingUpdates(t *testing.T) {
 		c[2].C("B001 UID MOVE 1,2,3 INBOX").OK("B001")
 
 		// Begin IDLE.
-		c[1].C("A002 IDLE").S("+ (*_*)")
+		c[1].C("A002 IDLE").S("+ Ready")
 
 		// Generate some additional updates.
 		c[2].C("B002 UID MOVE 4,5,6 INBOX").OK("B002")

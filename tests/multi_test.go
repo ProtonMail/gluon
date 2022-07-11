@@ -7,10 +7,10 @@ import (
 func TestCreateMulti(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		c[1].C("A003 CREATE owatagusiam")
-		c[1].S("A003 OK (^_^)")
+		c[1].OK("A003")
 
 		c[2].C("A003 CREATE owatagusiam")
-		c[2].S("A003 NO a mailbox with that name already exists (~_~)")
+		c[2].S("A003 NO a mailbox with that name already exists")
 	})
 }
 
@@ -18,7 +18,7 @@ func TestExistsUpdates(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		// First client selects in INBOX to receive EXISTS update.
 		c[1].C("A006 select INBOX")
-		c[1].Se("A006 OK [READ-WRITE] (^_^)")
+		c[1].Se("A006 OK [READ-WRITE] SELECT")
 
 		// Second client appends to INBOX to generate EXISTS update.
 		c[2].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
@@ -27,25 +27,25 @@ func TestExistsUpdates(t *testing.T) {
 		c[1].C("b001 noop")
 		c[1].S(`* 1 EXISTS`)
 		c[1].S(`* 1 RECENT`)
-		c[1].S("b001 OK (^_^)")
+		c[1].OK("b001")
 	})
 }
 
 func TestExistsUpdatesInSeparateMailboxes(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		c[1].C("A003 CREATE owatagusiam")
-		c[1].S("A003 OK (^_^)")
+		c[1].S("A003 OK CREATE")
 
 		// First client selects in owatagusiam to ignore EXISTS updates from INBOX.
 		c[1].C("A006 select owatagusiam")
-		c[1].Se("A006 OK [READ-WRITE] (^_^)")
+		c[1].Se("A006 OK [READ-WRITE] SELECT")
 
 		// Second client appends to INBOX to generate EXISTS update.
 		c[2].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
 
 		// First client does not receive the EXISTS update from INBOX.
 		c[1].C("b001 noop")
-		c[1].S("b001 OK (^_^)")
+		c[1].OK("b001")
 	})
 }
 
@@ -55,11 +55,11 @@ func TestFetchUpdates(t *testing.T) {
 
 		// First client selects in INBOX to receive FETCH update.
 		c[1].C("A006 select INBOX")
-		c[1].Se("A006 OK [READ-WRITE] (^_^)")
+		c[1].Se("A006 OK [READ-WRITE] SELECT")
 
 		// Second client selects in INBOX and then sets some flags to generate a FETCH update.
 		c[2].C("b006 select INBOX")
-		c[2].Se("b006 OK [READ-WRITE] (^_^)")
+		c[2].Se("b006 OK [READ-WRITE] SELECT")
 
 		c[2].C(`B007 STORE 1 +FLAGS (\Deleted)`)
 		c[2].S(`* 1 FETCH (FLAGS (\Deleted \Seen))`)
@@ -68,7 +68,7 @@ func TestFetchUpdates(t *testing.T) {
 		// First client receives the FETCH update.
 		c[1].C("c001 noop")
 		c[1].S(`* 1 FETCH (FLAGS (\Deleted \Recent \Seen))`)
-		c[1].S("c001 OK (^_^)")
+		c[1].OK("c001")
 	})
 }
 
@@ -81,49 +81,49 @@ func TestExpungeUpdates(t *testing.T) {
 
 		// Both clients select in inbox.
 		c[1].C("A006 select INBOX")
-		c[1].Se("A006 OK [READ-WRITE] (^_^)")
+		c[1].Se("A006 OK [READ-WRITE] SELECT")
 
 		c[2].C("A007 select INBOX")
-		c[2].Se("A007 OK [READ-WRITE] (^_^)")
+		c[2].Se("A007 OK [READ-WRITE] SELECT")
 
 		// For both clients, the message with sequence number 3 is seen.
 		c[1].C(`A005 FETCH 3 (FLAGS UID)`)
 		c[1].S(`* 3 FETCH (FLAGS (\Recent \Seen) UID 3)`)
-		c[1].Sx(`A005 OK .* command completed in .*`)
+		c[1].OK(`A005`)
 		c[2].C(`B005 FETCH 3 (FLAGS UID)`)
 		c[2].S(`* 3 FETCH (FLAGS (\Seen) UID 3)`)
-		c[2].Sx(`B005 OK .* command completed in .*`)
+		c[2].OK(`B005`)
 
 		// First client marks the first message as deleted.
 		c[1].C(`B003 STORE 1 +FLAGS (\Deleted)`)
 		c[1].S(`* 1 FETCH (FLAGS (\Deleted \Recent))`)
-		c[1].Sx("B003 OK .*")
+		c[1].OK("B003")
 
 		// Second client sees the flag has been changed.
 		c[2].C("c001 noop")
 		c[2].S(`* 1 FETCH (FLAGS (\Deleted))`)
-		c[2].S("c001 OK (^_^)")
+		c[2].OK("c001")
 
 		// First client expunges the first message (seq numbers are shifted down by 1).
 		c[1].C(`B202 EXPUNGE`)
 		c[1].S(`* 1 EXPUNGE`)
-		c[1].S("B202 OK (^_^)")
+		c[1].OK("B202")
 
 		// Second client doesn't yet know that the messages were expunged
 		// and it still thinks the seen message has seq 3 / uid 2
 		// (actually, it was decremented, so it should now have seq 2 / uid 2)
 		c[2].C(`B006 FETCH 3 (FLAGS UID)`)
 		c[2].S(`* 3 FETCH (FLAGS (\Seen) UID 3)`)
-		c[2].Sx(`B006 OK .* command completed in .*`)
+		c[2].OK(`B006`)
 
 		// Second client then does noop and gets the expunge update.
 		// Its seqs are then decremented; the seen message should now have seq 2 / uid 2.
 		c[2].C("c002 noop")
 		c[2].S(`* 1 EXPUNGE`)
-		c[2].S("c002 OK (^_^)")
+		c[2].OK("c002")
 		c[2].C(`B007 FETCH 2 (FLAGS UID)`)
 		c[2].S(`* 2 FETCH (FLAGS (\Seen) UID 3)`)
-		c[2].Sx(`B007 OK .* command completed in .*`)
+		c[2].OK(`B007`)
 	})
 }
 

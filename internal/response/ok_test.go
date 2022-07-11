@@ -13,7 +13,7 @@ func TestOkUntagged(t *testing.T) {
 }
 
 func TestOkTagged(t *testing.T) {
-	assert.Equal(t, `tag OK (^_^)`, Ok("tag").String())
+	assert.Equal(t, `tag OK`, Ok("tag").String())
 }
 
 func TestOkUnseen(t *testing.T) {

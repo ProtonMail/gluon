@@ -17,7 +17,7 @@ func prepareServerResponse(info *internal.VersionInfo) response.Response {
 
 func (s *Session) handleIDGet(ctx context.Context, tag string, ch chan response.Response) error {
 	ch <- prepareServerResponse(s.version)
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("ID")
 
 	return nil
 }
@@ -34,7 +34,7 @@ func (s *Session) handleIDSet(ctx context.Context, tag string, cmd *proto.IDSet,
 	}
 
 	ch <- prepareServerResponse(s.version)
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("ID")
 
 	return nil
 }

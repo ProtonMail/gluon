@@ -21,7 +21,7 @@ func (s *Session) handleExpunge(ctx context.Context, tag string, cmd *proto.Expu
 		return err
 	}
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("EXPUNGE")
 
 	return nil
 }
@@ -41,7 +41,7 @@ func (s *Session) handleUIDExpunge(ctx context.Context, tag string, cmd *proto.U
 		return err
 	}
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("EXPUNGE")
 
 	return nil
 }

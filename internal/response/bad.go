@@ -35,10 +35,6 @@ func (r *bad) String() string {
 		parts = append(parts, r.err.Error())
 	}
 
-	if r.tag != "*" {
-		parts = append(parts, faceBad)
-	}
-
 	return join(parts)
 }
 

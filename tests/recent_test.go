@@ -134,7 +134,7 @@ func TestRecentIDLEExists(t *testing.T) {
 		// Client 1 selects INBOX and IDLEs.
 		c[1].C("A006 select INBOX").OK("A006")
 		c[1].C("A007 IDLE")
-		c[1].S("+ (*_*)")
+		c[1].S("+ Ready")
 
 		// Client 2 appends two new messages to INBOX.
 		c[2].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
@@ -143,7 +143,7 @@ func TestRecentIDLEExists(t *testing.T) {
 		// Client 1 receives EXISTS and RECENT updates.
 		c[1].S(`* 1 EXISTS`, `* 1 RECENT`, `* 2 EXISTS`, `* 2 RECENT`)
 		c[1].C("DONE")
-		c[1].Sx(`A007 OK .*`)
+		c[1].OK(`A007`)
 	})
 }
 
@@ -153,7 +153,7 @@ func TestRecentIDLEExpunge(t *testing.T) {
 		c[1].C("A002 CREATE folder").OK("A002")
 		c[1].C("A006 select folder").OK("A006")
 		c[1].C("A007 IDLE")
-		c[1].S("+ (*_*)")
+		c[1].S("+ Ready")
 
 		// Client 2 appends two new messages to INBOX.
 		c[2].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
@@ -176,6 +176,6 @@ func TestRecentIDLEExpunge(t *testing.T) {
 		// The order of expunge results cannot be guaranteed (MOVE is handled in random order).
 		c[1].Sx(`\* \d EXPUNGE`, `\* \d EXPUNGE`)
 		c[1].C("DONE")
-		c[1].Sx(`A007 OK .*`)
+		c[1].OK(`A007`)
 	})
 }

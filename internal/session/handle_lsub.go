@@ -29,7 +29,7 @@ func (s *Session) handleLsub(ctx context.Context, tag string, cmd *proto.Lsub, c
 				WithAttributes(match.Atts)
 		}
 
-		ch <- response.Ok(tag)
+		ch <- response.Ok(tag).WithMessage("LSUB")
 
 		return nil
 	})

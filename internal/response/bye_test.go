@@ -7,9 +7,9 @@ import (
 )
 
 func TestBye(t *testing.T) {
-	assert.Equal(t, "* BYE (^_^)/~", Bye().String())
+	assert.Equal(t, "* BYE", Bye().String())
 }
 
 func TestByeMessage(t *testing.T) {
-	assert.Equal(t, "* BYE (^_^)/~ message", Bye().WithMessage("message").String())
+	assert.Equal(t, "* BYE message", Bye().WithMessage("message").String())
 }

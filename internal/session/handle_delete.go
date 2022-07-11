@@ -24,7 +24,7 @@ func (s *Session) handleDelete(ctx context.Context, tag string, cmd *proto.Del, 
 		return err
 	}
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("DELETE")
 
 	return nil
 }

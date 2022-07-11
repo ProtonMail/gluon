@@ -56,7 +56,7 @@ func (s *Session) handleStatus(ctx context.Context, tag string, cmd *proto.Statu
 		return err
 	}
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("STATUS")
 
 	return nil
 }

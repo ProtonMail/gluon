@@ -171,7 +171,7 @@ func TestMoveDuplicate(t *testing.T) {
 		// Initially there are three messages in the destination.
 		c[2].C(`B001 select dest`).OK(`B001`)
 		c[3].C(`C002 status dest (messages)`).Sxe(`MESSAGES 3`).OK(`C002`)
-		c[2].C(`B002 idle`).S("+ (*_*)")
+		c[2].C(`B002 idle`).S("+ Ready")
 
 		// Copy three messages into the destination.
 		// They receive UIDs 4:6 in the destination.

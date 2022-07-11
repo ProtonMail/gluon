@@ -29,7 +29,7 @@ func (s *Session) handleList(ctx context.Context, tag string, cmd *proto.List, c
 				WithAttributes(match.Atts)
 		}
 
-		ch <- response.Ok(tag)
+		ch <- response.Ok(tag).WithMessage("LIST")
 
 		return nil
 	})
