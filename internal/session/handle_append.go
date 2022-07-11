@@ -38,7 +38,7 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Appen
 			return err
 		}
 
-		ch <- response.Ok(tag).WithItems(response.ItemAppendUID(mailbox.UIDValidity(), messageUID))
+		ch <- response.Ok(tag).WithItems(response.ItemAppendUID(mailbox.UIDValidity(), messageUID)).WithMessage("APPEND")
 
 		return nil
 	}); errors.Is(err, backend.ErrNoSuchMailbox) {
