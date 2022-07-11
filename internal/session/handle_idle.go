@@ -59,7 +59,7 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, c
 
 			switch {
 			case cmd.GetDone() != nil:
-				return response.Ok(tag).Send(s)
+				return response.Ok(tag).WithMessage("IDLE").Send(s)
 
 			default:
 				return response.Bad(tag).Send(s)

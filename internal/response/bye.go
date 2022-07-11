@@ -18,7 +18,7 @@ func (r *bye) Send(s Session) error {
 }
 
 func (r *bye) String() string {
-	parts := []string{"*", "BYE", faceBye}
+	parts := []string{"*", "BYE"}
 
 	if r.msg != "" {
 		parts = append(parts, r.msg)

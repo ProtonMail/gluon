@@ -15,7 +15,7 @@ func (s *Session) handleUnselect(ctx context.Context, tag string, cmd *proto.Uns
 
 	s.name = ""
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("UNSELECT")
 
 	return nil
 }

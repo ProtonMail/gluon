@@ -29,7 +29,7 @@ func (s *Session) handleRename(ctx context.Context, tag string, cmd *proto.Renam
 		return err
 	}
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("RENAME")
 
 	return nil
 }

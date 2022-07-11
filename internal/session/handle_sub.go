@@ -24,7 +24,7 @@ func (s *Session) handleSub(ctx context.Context, tag string, cmd *proto.Sub, ch 
 		return err
 	}
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("SUB")
 
 	return nil
 }

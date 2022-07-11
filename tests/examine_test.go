@@ -15,12 +15,12 @@ func TestExamineWithLiteral(t *testing.T) {
 	// IMAP client. The rest of the functionality is still tested in the IMAP client test.
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("A002 CREATE Archive")
-		c.S("A002 OK (^_^)")
+		c.S("A002 OK CREATE")
 
 		c.doAppend(`Archive`, `To: 3@pm.me`, `\Seen`).expect("OK")
 
 		c.C("a007 examine {7}")
-		c.S("+ (*_*)")
+		c.S("+ Ready")
 		c.C("Archive")
 		c.S(`* FLAGS (\Deleted \Flagged \Seen)`,
 			`* 1 EXISTS`,
@@ -28,7 +28,7 @@ func TestExamineWithLiteral(t *testing.T) {
 			`* OK [PERMANENTFLAGS (\Deleted \Flagged \Seen)]`,
 			`* OK [UIDNEXT 2]`,
 			`* OK [UIDVALIDITY 1]`)
-		c.S(`a007 OK [READ-ONLY] (^_^)`)
+		c.S(`a007 OK [READ-ONLY] EXAMINE`)
 	})
 }
 

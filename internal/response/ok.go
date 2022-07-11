@@ -51,10 +51,6 @@ func (r *ok) String() string {
 		parts = append(parts, fmt.Sprintf("[%v]", join(items)))
 	}
 
-	if r.tag != "*" {
-		parts = append(parts, faceOk)
-	}
-
 	if r.msg != "" {
 		parts = append(parts, r.msg)
 	}

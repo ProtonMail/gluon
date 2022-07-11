@@ -19,9 +19,9 @@ func TestLoginQuoted(t *testing.T) {
 func TestLoginLiteral(t *testing.T) {
 	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C(`A001 login {4}`)
-		c.S(`+ (*_*)`)
+		c.S(`+ Ready`)
 		c.C(`user {4}`)
-		c.S(`+ (*_*)`)
+		c.S(`+ Ready`)
 		c.C(`pass`)
 		c.OK(`A001`)
 	})
@@ -74,9 +74,9 @@ func TestLoginFailure(t *testing.T) {
 func TestLoginLiteralFailure(t *testing.T) {
 	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C(`A001 login {7}`)
-		c.S(`+ (*_*)`)
+		c.S(`+ Ready`)
 		c.C(`baduser {7}`)
-		c.S(`+ (*_*)`)
+		c.S(`+ Ready`)
 		c.C(`badpass`)
 		c.NO(`A001`)
 	})
@@ -85,6 +85,6 @@ func TestLoginLiteralFailure(t *testing.T) {
 func TestLoginCapabilities(t *testing.T) {
 	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("A001 login user pass")
-		c.S(`A001 OK [CAPABILITY IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT] (^_^)`)
+		c.S(`A001 OK [CAPABILITY IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT]`)
 	})
 }

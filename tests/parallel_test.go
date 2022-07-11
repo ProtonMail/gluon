@@ -38,10 +38,10 @@ func TestSelectWhileSyncing(t *testing.T) {
 		// Select a bunch of mailboxes.
 		for i := 0; i < 100; i++ {
 			c[2].C("A006 select " + mailboxNames[rand.Int()%len(mailboxNames)]) //nolint:gosec
-			c[2].Se("A006 OK [READ-WRITE] (^_^)")
+			c[2].Se("A006 OK [READ-WRITE] SELECT")
 
 			c[2].C("A006 select INBOX")
-			c[2].Se("A006 OK [READ-WRITE] (^_^)")
+			c[2].Se("A006 OK [READ-WRITE] SELECT")
 		}
 
 		// Stop appending.
@@ -61,7 +61,7 @@ func TestTwoFetchesAtOnce(t *testing.T) {
 		}
 
 		c.C("A006 select mbox")
-		c.Se("A006 OK [READ-WRITE] (^_^)")
+		c.Se("A006 OK [READ-WRITE] SELECT")
 
 		// Do some fetches in parallel.
 		c.C(`A005 FETCH 1:200 (BODY[TEXT])`)
@@ -73,17 +73,17 @@ func TestTwoFetchesAtOnce(t *testing.T) {
 		// The fetch commands will complete eventually; who knows which will be processed first.
 		// TODO: Also check the untagged FETCH responses.
 		c.Sxe(
-			`A005 OK .* command completed in .*`,
-			`A006 OK .* command completed in .*`,
-			`A007 OK .* command completed in .*`,
-			`A008 OK .* command completed in .*`,
-			`A009 OK .* command completed in .*`,
+			`A005 OK command completed in .*`,
+			`A006 OK command completed in .*`,
+			`A007 OK command completed in .*`,
+			`A008 OK command completed in .*`,
+			`A009 OK command completed in .*`,
 		)
 
 		// We should then be able to logout fine.
 		c.C("A010 logout")
-		c.S("* BYE (^_^)/~")
-		c.S("A010 OK (^_^)")
+		c.S("* BYE")
+		c.OK("A010")
 
 		// Logging out should close the connection.
 		c.expectClosed()

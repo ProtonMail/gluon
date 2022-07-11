@@ -51,7 +51,7 @@ func (s *Session) handleSelect(ctx context.Context, tag string, cmd *proto.Selec
 		return err
 	}
 
-	ch <- response.Ok(tag).WithItems(response.ItemReadWrite())
+	ch <- response.Ok(tag).WithItems(response.ItemReadWrite()).WithMessage("SELECT")
 
 	s.eventCh <- events.EventSelect{
 		SessionID: s.sessionID,

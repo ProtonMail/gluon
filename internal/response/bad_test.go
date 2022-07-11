@@ -12,9 +12,9 @@ func TestBadUntagged(t *testing.T) {
 }
 
 func TestBadTagged(t *testing.T) {
-	assert.Equal(t, "tag BAD (>_<)", Bad("tag").String())
+	assert.Equal(t, "tag BAD", Bad("tag").String())
 }
 
 func TestBadError(t *testing.T) {
-	assert.Equal(t, "tag BAD erroooooor (>_<)", Bad("tag").WithError(errors.New("erroooooor")).String())
+	assert.Equal(t, "tag BAD erroooooor", Bad("tag").WithError(errors.New("erroooooor")).String())
 }

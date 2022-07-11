@@ -24,7 +24,7 @@ func (s *Session) handleCreate(ctx context.Context, tag string, cmd *proto.Creat
 		return err
 	}
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("CREATE")
 
 	return nil
 }

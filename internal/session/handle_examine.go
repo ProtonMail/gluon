@@ -50,7 +50,7 @@ func (s *Session) handleExamine(ctx context.Context, tag string, cmd *proto.Exam
 		return err
 	}
 
-	ch <- response.Ok(tag).WithItems(response.ItemReadOnly())
+	ch <- response.Ok(tag).WithItems(response.ItemReadOnly()).WithMessage("EXAMINE")
 
 	return nil
 }

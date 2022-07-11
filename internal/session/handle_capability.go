@@ -13,7 +13,7 @@ func (s *Session) handleCapability(ctx context.Context, tag string, cmd *proto.C
 
 	ch <- response.Capability().WithCapabilities(s.caps...)
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("CAPABILITY")
 
 	return nil
 }

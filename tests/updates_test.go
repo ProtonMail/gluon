@@ -11,11 +11,11 @@ func TestMessageCreatedUpdate(t *testing.T) {
 
 		// Select in the mailbox to receive EXISTS and RECENT updates.
 		c.C("A006 select mbox")
-		c.Se("A006 OK [READ-WRITE] (^_^)")
+		c.Se("A006 OK [READ-WRITE] SELECT")
 
 		// Start idling in INBOX to receive the updates.
 		c.C("A007 IDLE")
-		c.S("+ (*_*)")
+		c.S("+ Ready")
 
 		// Create some messages externally.
 		s.messageCreatedFromFile("user", mboxID, "testdata/multipart-mixed.eml")
@@ -26,7 +26,7 @@ func TestMessageCreatedUpdate(t *testing.T) {
 
 		// Stop idling.
 		c.C("DONE")
-		c.S("A007 OK (^_^)")
+		c.OK("A007")
 
 		// Create a third message externally.
 		s.messageCreatedFromFile("user", mboxID, "testdata/text-plain.eml")
@@ -35,7 +35,7 @@ func TestMessageCreatedUpdate(t *testing.T) {
 		c.C("A007 NOOP")
 		c.S("* 3 EXISTS")
 		c.S("* 3 RECENT")
-		c.S("A007 OK (^_^)")
+		c.OK("A007")
 	})
 }
 
@@ -83,7 +83,7 @@ func TestMessageCreatedIDLEUpdate(t *testing.T) {
 		c.C(`A001 select other`).OK(`A001`)
 
 		// Begin IDLE.
-		c.C(`A002 IDLE`).S(`+ (*_*)`)
+		c.C(`A002 IDLE`).S(`+ Ready`)
 
 		// Create two messages externally.
 		s.messageCreatedFromFile("user", other, "testdata/multipart-mixed.eml")
@@ -103,7 +103,7 @@ func TestMessageCreatedIDLEUpdate(t *testing.T) {
 		c.C(`DONE`).OK(`A002`)
 		c.C(`A003 select inbox`).OK(`A003`)
 		c.C(`A004 select other`).OK(`A004`)
-		c.C(`A005 IDLE`).S(`+ (*_*)`)
+		c.C(`A005 IDLE`).S(`+ Ready`)
 
 		// Create two more messages externally.
 		s.messageCreatedFromFile("user", other, "testdata/multipart-mixed.eml")
@@ -130,11 +130,11 @@ func TestMessageRemovedUpdate(t *testing.T) {
 
 		// Select in the mailbox to receive EXPUNGE updates.
 		c.C("A006 select mbox")
-		c.Se("A006 OK [READ-WRITE] (^_^)")
+		c.Se("A006 OK [READ-WRITE] SELECT")
 
 		// Start idling in INBOX to receive the EXPUNGE updates.
 		c.C("A007 IDLE")
-		c.S("+ (*_*)")
+		c.S("+ Ready")
 
 		// Remove the first message.
 		s.messageRemoved("user", messageID1, mboxID)
@@ -158,7 +158,7 @@ func TestMessageRemovedUpdate(t *testing.T) {
 
 		// Stop idling.
 		c.C("DONE")
-		c.S("A007 OK (^_^)")
+		c.OK("A007")
 
 		// Remove the fourth message.
 		s.messageRemoved("user", messageID4, mboxID)
@@ -167,18 +167,18 @@ func TestMessageRemovedUpdate(t *testing.T) {
 		// Therefore, we still think there is one message in the mailbox!
 		c.C("A007 FETCH 1:* (UID)")
 		c.S("* 1 FETCH (UID 4)")
-		c.Sx("A007 OK .* command completed in .*")
+		c.OK("A007")
 
 		// Processing the previous fetch shouldn't have led to an EXPUNGE;
 		// a subsequent fetch will return the same result!
 		c.C("A007 FETCH 1:* (UID)")
 		c.S("* 1 FETCH (UID 4)")
-		c.Sx("A007 OK .* command completed in .*")
+		c.OK("A007")
 
 		// Do NOOP to finally receive the EXPUNGE update.
 		c.C("A007 NOOP")
 		c.S("* 1 EXPUNGE")
-		c.S("A007 OK (^_^)")
+		c.OK("A007")
 	})
 }
 
@@ -191,16 +191,16 @@ func TestMessageRemovedUpdateRepeated(t *testing.T) {
 			messageID := s.messageCreatedFromFile("user", mboxID, "testdata/multipart-mixed.eml")
 
 			c.C("A006 select mbox")
-			c.Se("A006 OK [READ-WRITE] (^_^)")
+			c.Se("A006 OK [READ-WRITE] SELECT")
 
 			c.C("A007 IDLE")
-			c.S("+ (*_*)")
+			c.S("+ Ready")
 
 			s.messageRemoved("user", messageID, mboxID)
 			c.S("* 1 EXPUNGE")
 
 			c.C("DONE")
-			c.S("A007 OK (^_^)")
+			c.OK("A007")
 		}
 	})
 }
@@ -209,14 +209,14 @@ func TestMailboxCreatedUpdate(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		c.C(`A82 LIST "" *`)
 		c.S(`* LIST (\Unmarked) "/" "INBOX"`)
-		c.S(`A82 OK (^_^)`)
+		c.OK("A82")
 
 		s.mailboxCreated("user", []string{"some-mailbox"})
 
 		c.C(`A82 LIST "" *`)
 		c.S(`* LIST (\Unmarked) "/" "some-mailbox"`,
 			`* LIST (\Unmarked) "/" "INBOX"`)
-		c.S(`A82 OK (^_^)`)
+		c.OK("A82")
 	})
 }
 

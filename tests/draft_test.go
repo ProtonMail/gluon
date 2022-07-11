@@ -16,7 +16,7 @@ func TestDraftScenario(t *testing.T) {
 		c.C("A002 NOOP")
 		c.S("* 1 EXISTS")
 		c.S("* 1 RECENT")
-		c.S("A002 OK (^_^)")
+		c.S("A002 OK")
 
 		c.C("A003 FETCH 1 (BODY.PEEK[HEADER.FIELDS (To)])")
 		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 3@3.pm)")
@@ -29,7 +29,7 @@ func TestDraftScenario(t *testing.T) {
 		c.S("* 1 EXPUNGE")
 		c.S("* 1 EXISTS")
 		c.S("* 1 RECENT")
-		c.S("A002 OK (^_^)")
+		c.S("A002 OK")
 
 		c.C("A003 FETCH 1 (BODY.PEEK[HEADER.FIELDS (To)])")
 		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 4@4.pm)")

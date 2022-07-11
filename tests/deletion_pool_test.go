@@ -32,13 +32,13 @@ func TestDeletionPool(t *testing.T) {
 		c[2].C(`C001 FETCH 1:* (FLAGS UID)`)
 		c[2].S(`* 2 FETCH (FLAGS (\Deleted))`) // Queued snapshot update
 		c[2].S(`* 1 FETCH (FLAGS () UID 1)`, `* 2 FETCH (FLAGS (\Deleted) UID 2)`, `* 3 FETCH (FLAGS () UID 3)`)
-		c[2].Sx(`C001 OK \[EXPUNGEISSUED\] \(\^_\^\)`)
+		c[2].Sx(`C001 OK \[EXPUNGEISSUED\][ \..]*`)
 		c[2].C(`C002 NOOP`)
 		c[2].S(`* 2 EXPUNGE`)
 		c[2].Sx(`C002 OK`)
 		c[2].C(`C003 FETCH 1:* (FLAGS UID)`)
 		c[2].S(`* 1 FETCH (FLAGS () UID 1)`, `* 2 FETCH (FLAGS () UID 3)`)
-		c[2].Sx(`C003 OK .* command completed in `)
+		c[2].OK(`C003`)
 
 		// We create a new snapshot of the INBOX, it only lists two messages
 		c[3].C(`D001 SELECT INBOX`)
@@ -49,14 +49,14 @@ func TestDeletionPool(t *testing.T) {
 		// get the FETCH and EXPUNGE notification, and reselect the mailbox. The deleted message should not be there anymore
 		c[4].C(`E001 FETCH 1:* (FLAGS UID)`)
 		c[4].S(`* 2 FETCH (FLAGS (\Deleted))`, `* 1 FETCH (FLAGS () UID 1)`, `* 2 FETCH (FLAGS (\Deleted) UID 2)`, `* 3 FETCH (FLAGS () UID 3)`)
-		c[4].Sxe(`E001 OK \[EXPUNGEISSUED\] \(\^_\^\)`)
+		c[4].Sxe(`E001 OK \[EXPUNGEISSUED\]`)
 		c[4].C(`E002 CLOSE`).OK(`E002`)
 		c[4].C(`E003 SELECT INBOX`)
 		c[4].Sxe(`\* 2 EXISTS`)
 		c[4].Sxe(`E003 OK`)
 		c[4].C(`E004 FETCH 1:* (FLAGS UID)`)
 		c[4].S(`* 1 FETCH (FLAGS () UID 1)`, `* 2 FETCH (FLAGS () UID 3)`)
-		c[4].Sx(`E004 OK \(\^_\^\) command completed in `)
+		c[4].OK(`E004`)
 	})
 }
 
@@ -88,19 +88,19 @@ func TestExpungeIssued(t *testing.T) {
 		c[2].C(`C001 FETCH 1:* (FLAGS UID)`)
 		c[2].S(`* 2 FETCH (FLAGS (\Deleted))`)
 		c[2].S(`* 1 FETCH (FLAGS () UID 1)`, `* 2 FETCH (FLAGS (\Deleted) UID 2)`, `* 3 FETCH (FLAGS () UID 3)`)
-		c[2].Sx(`C001 OK \[EXPUNGEISSUED\] \(\^_\^\) command completed in`)
+		c[2].Sx(`C001 OK \[EXPUNGEISSUED\] command completed in`)
 
 		c[2].C(`C002 FETCH 1 (FLAGS UID)`)
 		c[2].S(`* 1 FETCH (FLAGS () UID 1)`)
-		c[2].Sx(`C002 OK \[EXPUNGEISSUED\] \(\^_\^\) command completed in`)
+		c[2].Sx(`C002 OK \[EXPUNGEISSUED\] command completed in`)
 
 		c[2].C(`C003 STORE 2 +FLAGS (flag)`)
 		c[2].S(`* 2 FETCH (FLAGS (\Deleted flag))`)
-		c[2].Sx(`C003 OK \[EXPUNGEISSUED\] \(\^_\^\) command completed in`)
+		c[2].Sx(`C003 OK \[EXPUNGEISSUED\] command completed in`)
 
 		c[2].C(`C004 SEARCH DELETED`)
 		c[2].S(`* SEARCH 2`)
-		c[2].Sx(`C004 OK \[EXPUNGEISSUED\] \(\^_\^\) command completed in`)
+		c[2].Sx(`C004 OK \[EXPUNGEISSUED\] command completed in`)
 
 		c[2].C(`C005 NOOP`)
 		c[2].S(`* 2 EXPUNGE`)
@@ -123,13 +123,13 @@ func TestExpungeUpdate(t *testing.T) {
 		// session 1 delete message 1 (STORE+EXPUNGE) then flag message 2 (now 1) as sent
 		c[1].C(`A002 STORE 1 +FLAGS (\Deleted)`)
 		c[1].S(`* 1 FETCH (FLAGS (\Deleted \Recent))`)
-		c[1].Sx("A002 OK .* command completed in")
+		c[1].Sx("A002 OK command completed in")
 		c[1].C(`A003 EXPUNGE`)
 		c[1].S(`* 1 EXPUNGE`)
-		c[1].Sx(`A003 OK \(\^_\^\)`)
+		c[1].Sx(`A003 OK`)
 		c[1].C(`A004 STORE 1 +FLAGS (\Seen)`)
 		c[1].S(`* 1 FETCH (FLAGS (\Recent \Seen))`)
-		c[1].Sx(`A004 OK \(\^_\^\) command completed in`)
+		c[1].Sx(`A004 OK command completed in`)
 
 		// session 2 get notifications for the flags, but not the EXPUNGE.
 		c[2].C(`B001 FETCH 1:* (UID FLAGS)`)
@@ -141,18 +141,18 @@ func TestExpungeUpdate(t *testing.T) {
 			`* 1 FETCH (UID 1 FLAGS (\Deleted))`,
 			`* 2 FETCH (UID 2 FLAGS (\Seen))`,
 		) // fetch results + updated from session 1
-		c[2].Sx(`B001 OK \[EXPUNGEISSUED\] \(\^_\^\) command completed in`)
+		c[2].Sx(`B001 OK \[EXPUNGEISSUED\] command completed in`)
 
 		// session 2 can still change flags on the deleted message (which still resides in the deletion pool
 		c[2].C(`B002 STORE 1 +FLAGS (\Flagged)`)
 		c[2].S(`* 1 FETCH (FLAGS (\Deleted \Flagged))`)
-		c[2].Sx(`B002 OK \[EXPUNGEISSUED\] \(\^_\^\) command completed in`)
+		c[2].Sx(`B002 OK \[EXPUNGEISSUED\] command completed in`)
 
 		// session 1 adds a message to the box and flags it as answered
 		c[1].doAppend(`INBOX`, `To: 3@pm.me`).expect(`OK .*`)
 		c[1].C(`A005 STORE 2 +FLAGS (\Answered)`)
 		c[1].S(`* 2 FETCH (FLAGS (\Answered \Recent))`)
-		c[1].Sx("A005 OK .* command completed in")
+		c[1].Sx("A005 OK command completed in")
 
 		// session 2 sees the new message
 		c[2].C(`B003 FETCH 1:* (UID FLAGS)`)
@@ -162,20 +162,20 @@ func TestExpungeUpdate(t *testing.T) {
 			`* 2 FETCH (UID 2 FLAGS (\Seen))`,
 			`* 3 FETCH (UID 3 FLAGS (\Answered))`,
 		)
-		c[2].Sx(`B003 OK \[EXPUNGEISSUED\] \(\^_\^\) command completed in`)
+		c[2].Sx(`B003 OK \[EXPUNGEISSUED\] command completed in`)
 
 		// session 2 performs a NOOP to get notified of the EXPUNGE from session 1
 		c[2].C(`B004 NOOP`)
 		c[2].S(`* 1 EXPUNGE`)
-		c[2].Sx(`B004 OK \(\^_\^\)`)
+		c[2].Sx(`B004 OK`)
 		c[2].C(`B005 FETCH 1:* (UID FLAGS)`)
 		c[2].S(`* 1 FETCH (UID 2 FLAGS (\Seen))`, `* 2 FETCH (UID 3 FLAGS (\Answered))`)
-		c[2].Sx(`B005 OK \(\^_\^\) command completed in`)
+		c[2].Sx(`B005 OK command completed in`)
 
 		// close sessions
 		for i := 1; i <= 2; i++ {
 			c[i].C(`C001 CLOSE`)
-			c[i].Sx(`C001 OK \(\^_\^\)`)
+			c[i].Sx(`C001 OK`)
 		}
 	})
 }
@@ -198,22 +198,22 @@ func TestStatusOnUnnotifiedSnapshot(t *testing.T) {
 		// snapshot 1 deletes message 1 (STORE + EXPUNGE).
 		c[1].C(`A002 STORE 1 +FLAGS (\Deleted)`)
 		c[1].S(`* 1 FETCH (FLAGS (\Deleted \Recent \Seen))`)
-		c[1].Sx(`A002 OK \(\^_\^\) command completed in`)
+		c[1].Sx(`A002 OK command completed in`)
 		c[1].C(`A003 EXPUNGE`)
 		c[1].S(`* 1 EXPUNGE`)
-		c[1].S(`A003 OK (^_^)`)
+		c[1].S(`A003 OK EXPUNGE`)
 
 		// session 3 calls status.
 		c[3].C(`C001 STATUS INBOX (MESSAGES RECENT UNSEEN)`)
 		c[3].S(`* STATUS "INBOX" (MESSAGES 3 RECENT 0 UNSEEN 2)`)
-		c[3].S(`C001 OK (^_^)`)
+		c[3].S(`C001 OK STATUS`)
 
 		// session 2 (which has INBOX selected) calls status and, it gets the updates and status for the messages.
 		c[2].C(`B001 STATUS INBOX (MESSAGES RECENT UNSEEN)`)
 		c[2].S(`* 1 FETCH (FLAGS (\Deleted \Seen))`)
 		c[2].S(`* 1 EXPUNGE`)
 		c[2].S(`* STATUS "INBOX" (MESSAGES 3 RECENT 0 UNSEEN 2)`)
-		c[2].S(`B001 OK (^_^)`)
+		c[2].S(`B001 OK STATUS`)
 	})
 }
 
@@ -269,7 +269,7 @@ func TestDeletionFlagPropagationIDLE(t *testing.T) {
 
 		// Begin IDLE in destination.
 		c[2].C("A007 IDLE")
-		c[2].S("+ (*_*)")
+		c[2].S("+ Ready")
 
 		// Delete the message from inbox (set \Deleted and expunge)
 		c[1].C(`A001 STORE 1 +FLAGS (\Deleted)`)
@@ -382,7 +382,7 @@ func TestMessageErasedFromDB(t *testing.T) {
 
 		// Noop should process their deletion.
 		c.C(`A002 LOGOUT`)
-		c.S(`* BYE (^_^)/~`)
+		c.S(`* BYE`)
 		c.Sx(`A002 OK`)
 
 		waiter.waitEndOfSession()
@@ -413,8 +413,8 @@ func TestMessageErasedFromDBOnStartup(t *testing.T) {
 
 		// Noop should process their deletion.
 		c.C(`A002 LOGOUT`)
-		c.S(`* BYE (^_^)/~`)
-		c.Sx(`A002 OK`)
+		c.S(`* BYE`)
+		c.Sx(`A002 OK LOGOUT`)
 		waiter.waitEndOfSession()
 		dbCheckUserMessageCount(s, "user", 1)
 
@@ -452,8 +452,8 @@ func TestMessageErasedFromDBWithMany(t *testing.T) {
 
 		// Logout client 1.
 		c[1].C(`A002 LOGOUT`)
-		c[1].S(`* BYE (^_^)/~`)
-		c[1].Sx(`A002 OK`)
+		c[1].S(`* BYE`)
+		c[1].Sx(`A002 OK LOGOUT`)
 
 		// Ensure session is properly finished its exit work to ensure the database writes take place.
 		waiter.waitEndOfSession()
@@ -464,8 +464,8 @@ func TestMessageErasedFromDBWithMany(t *testing.T) {
 		c[2].C(`A002 LOGOUT`)
 		//c[2].S(`* 2 EXISTS`)
 		//c[2].S(`* 1 RECENT`)
-		c[2].S(`* BYE (^_^)/~`)
-		c[2].Sx(`A002 OK`)
+		c[2].S(`* BYE`)
+		c[2].Sx(`A002 OK LOGOUT`)
 
 		// Ensure session is properly finished its exit work to ensure the database writes take place.
 		waiter.waitEndOfSession()

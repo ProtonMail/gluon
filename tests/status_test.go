@@ -7,7 +7,7 @@ import (
 func TestStatus(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, _ *testSession) {
 		c.C("B001 CREATE blurdybloop")
-		c.S("B001 OK (^_^)")
+		c.S("B001 OK CREATE")
 
 		c.doAppend(`blurdybloop`, `To: 1@pm.me`, `\Seen`).expect("OK")
 		c.doAppend(`blurdybloop`, `To: 2@pm.me`).expect("OK")
@@ -15,6 +15,6 @@ func TestStatus(t *testing.T) {
 
 		c.C("A042 STATUS blurdybloop (MESSAGES UNSEEN)")
 		c.S(`* STATUS "blurdybloop" (MESSAGES 3 UNSEEN 2)`)
-		c.S("A042 OK (^_^)")
+		c.S("A042 OK STATUS")
 	})
 }

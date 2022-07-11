@@ -7,5 +7,5 @@ import (
 )
 
 func TestContinuation(t *testing.T) {
-	assert.Equal(t, "+ (*_*)", Continuation().String())
+	assert.Equal(t, "+ Ready", Continuation().String())
 }

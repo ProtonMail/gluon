@@ -13,7 +13,7 @@ func (s *Session) handleCheck(ctx context.Context, tag string, cmd *proto.Check,
 		return err
 	}
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("CHECK")
 
 	return nil
 }

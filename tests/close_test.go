@@ -16,7 +16,7 @@ func TestClose(t *testing.T) {
 	// There is currently no way to check for this with the go imap client.
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")
-		c.S("b001 OK (^_^)")
+		c.S("b001 OK CREATE")
 
 		c.doAppend(`saved-messages`, `To: 1@pm.me`, `\Seen`).expect("OK")
 		c.doAppend(`saved-messages`, `To: 2@pm.me`).expect("OK")
@@ -25,7 +25,7 @@ func TestClose(t *testing.T) {
 		c.doAppend(`saved-messages`, `To: 5@pm.me`, `\Seen`).expect("OK")
 
 		c.C(`A002 SELECT saved-messages`)
-		c.Se(`A002 OK [READ-WRITE] (^_^)`)
+		c.Se(`A002 OK [READ-WRITE] SELECT`)
 
 		// TODO: Match flags in any order.
 		c.C(`A003 STORE 1 +FLAGS (\Deleted)`)
@@ -42,12 +42,12 @@ func TestClose(t *testing.T) {
 
 		// TODO: GOMSRV-106 - Ensure this also works for cases where multiple clients have the same mailbox open
 		c.C(`A202 CLOSE`)
-		c.S("A202 OK (^_^)")
+		c.S("A202 OK CLOSE")
 
 		// There are 2 messages in saved-messages.
 		c.C(`A006 STATUS saved-messages (MESSAGES)`)
 		c.S(`* STATUS "saved-messages" (MESSAGES 2)`)
-		c.S(`A006 OK (^_^)`)
+		c.S(`A006 OK STATUS`)
 	})
 }
 

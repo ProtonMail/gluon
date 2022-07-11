@@ -24,7 +24,7 @@ func (s *Session) handleUnsub(ctx context.Context, tag string, cmd *proto.Unsub,
 		return err
 	}
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("UNSUBSCRIBE")
 
 	return nil
 }

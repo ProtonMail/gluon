@@ -7,7 +7,7 @@ import (
 func TestSelect(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("A002 CREATE Archive")
-		c.S("A002 OK (^_^)")
+		c.OK("A002")
 
 		c.doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
 		c.doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
@@ -21,7 +21,7 @@ func TestSelect(t *testing.T) {
 			`* OK [PERMANENTFLAGS (\Deleted \Flagged \Seen)]`,
 			`* OK [UIDNEXT 3]`,
 			`* OK [UIDVALIDITY 1]`)
-		c.S("A006 OK [READ-WRITE] (^_^)")
+		c.S("A006 OK [READ-WRITE] SELECT")
 
 		// Selecting again modifies the RECENT value.
 		c.C("A006 select INBOX")
@@ -32,7 +32,7 @@ func TestSelect(t *testing.T) {
 			`* OK [PERMANENTFLAGS (\Deleted \Flagged \Seen)]`,
 			`* OK [UIDNEXT 3]`,
 			`* OK [UIDVALIDITY 1]`)
-		c.S("A006 OK [READ-WRITE] (^_^)")
+		c.S("A006 OK [READ-WRITE] SELECT")
 
 		c.C("A007 select Archive")
 		c.S(`* FLAGS (\Deleted \Flagged \Seen)`,
@@ -41,7 +41,7 @@ func TestSelect(t *testing.T) {
 			`* OK [PERMANENTFLAGS (\Deleted \Flagged \Seen)]`,
 			`* OK [UIDNEXT 2]`,
 			`* OK [UIDVALIDITY 1]`)
-		c.S(`A007 OK [READ-WRITE] (^_^)`)
+		c.S(`A007 OK [READ-WRITE] SELECT`)
 	})
 }
 

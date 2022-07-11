@@ -53,10 +53,6 @@ func (r *no) String() (res string) {
 		parts = append(parts, r.err.Error())
 	}
 
-	if r.tag != "*" {
-		parts = append(parts, faceNo)
-	}
-
 	return join(parts)
 }
 

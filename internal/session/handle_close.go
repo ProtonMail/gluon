@@ -28,7 +28,7 @@ func (s *Session) handleClose(ctx context.Context, tag string, cmd *proto.Close,
 
 	s.name = ""
 
-	ch <- response.Ok(tag)
+	ch <- response.Ok(tag).WithMessage("CLOSE")
 
 	return nil
 }
