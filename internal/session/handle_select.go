@@ -36,12 +36,12 @@ func (s *Session) handleSelect(ctx context.Context, tag string, cmd *proto.Selec
 		ch <- response.Flags().WithFlags(flags)
 		ch <- response.Exists().WithCount(mailbox.Count())
 		ch <- response.Recent().WithCount(len(mailbox.GetMessagesWithFlag(imap.FlagRecent)))
-		ch <- response.Ok().WithItems(response.ItemPermanentFlags(permFlags))
-		ch <- response.Ok().WithItems(response.ItemUIDNext(mailbox.UIDNext()))
-		ch <- response.Ok().WithItems(response.ItemUIDValidity(mailbox.UIDValidity()))
+		ch <- response.Ok().WithItems(response.ItemPermanentFlags(permFlags)).WithMessage("Flags permitted")
+		ch <- response.Ok().WithItems(response.ItemUIDNext(mailbox.UIDNext())).WithMessage("Predicted next UID")
+		ch <- response.Ok().WithItems(response.ItemUIDValidity(mailbox.UIDValidity())).WithMessage("UIDs valid")
 
 		if unseen := mailbox.GetMessagesWithoutFlag(imap.FlagSeen); len(unseen) > 0 {
-			ch <- response.Ok().WithItems(response.ItemUnseen(unseen[0]))
+			ch <- response.Ok().WithItems(response.ItemUnseen(unseen[0])).WithMessage("Unseen messages")
 		}
 
 		s.name = mailbox.Name()
