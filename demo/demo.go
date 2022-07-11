@@ -22,8 +22,14 @@ func main() {
 		logrus.SetLevel(level)
 	}
 
+	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
+	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
+
 	ctx := context.Background()
-	server, err := gluon.New(temp())
+	server, err := gluon.New(temp(), gluon.WithLogger(
+		loggerIn,
+		loggerOut,
+	))
 
 	defer server.Close(ctx)
 
@@ -56,8 +62,8 @@ func addUser(ctx context.Context, server *gluon.Server, addresses []string, pass
 		addresses,
 		password,
 		time.Second,
-		imap.NewFlagSet(),
-		imap.NewFlagSet(),
+		imap.NewFlagSet(`\Answered`, `\Seen`, `\Flagged`, `\Deleted`),
+		imap.NewFlagSet(`\Answered`, `\Seen`, `\Flagged`, `\Deleted`),
 		imap.NewFlagSet(),
 	)
 
