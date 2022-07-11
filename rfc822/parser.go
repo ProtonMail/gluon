@@ -57,7 +57,15 @@ func (section *Section) Children() []*Section {
 
 func (section *Section) Part(identifier ...int) *Section {
 	if len(identifier) > 0 {
-		return section.Children()[identifier[0]-1].Part(identifier[1:]...)
+		children := section.Children()
+
+		if identifier[0] <= 0 || identifier[0]-1 > len(children) {
+			return nil
+		}
+
+		if len(children) != 0 {
+			return children[identifier[0]-1].Part(identifier[1:]...)
+		}
 	}
 
 	return section

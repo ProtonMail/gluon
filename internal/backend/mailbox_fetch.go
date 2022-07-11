@@ -219,6 +219,10 @@ func (m *Mailbox) fetchBodySection(section *proto.BodySection, literal []byte) (
 		root = root.Part(parts...)
 	}
 
+	if root == nil {
+		return nil, fmt.Errorf("Invalid Section Part")
+	}
+
 	switch keyword := section.OptionalKeyword.(type) {
 	case *proto.BodySection_Keyword:
 		// HEADER and TEXT keywords should handle embedded message/rfc822 parts!

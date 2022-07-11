@@ -632,6 +632,80 @@ func TestFetchMIMEMultiPart(t *testing.T) {
 	})
 }
 
+func TestFetchBodyPeekSection1(t *testing.T) {
+	const message = `Received: with ECARTIS (v1.0.0; list dovecot); Wed, 31 Jul 2002 22:48:41 +0300 (EEST)
+Return-Path: <cras@irccrew.org>
+Delivered-To: dovecot@procontrol.fi
+Received: from shodan.irccrew.org (shodan.irccrew.org [80.83.4.2])
+	by danu.procontrol.fi (Postfix) with ESMTP id F141123829
+	for <dovecot@procontrol.fi>; Wed, 31 Jul 2002 22:48:40 +0300 (EEST)
+Received: by shodan.irccrew.org (Postfix, from userid 6976)
+	id 42ED44C0A0; Wed, 31 Jul 2002 22:48:40 +0300 (EEST)
+Date: Wed, 31 Jul 2002 22:48:39 +0300
+From: Timo Sirainen <tss@iki.fi>
+To: dovecot@procontrol.fi
+Subject: [dovecot] v0.95 released
+Message-ID: <20020731224839.H22431@irccrew.org>
+Mime-Version: 1.0
+Content-Disposition: inline
+User-Agent: Mutt/1.2.5i
+Content-Type: text/plain; charset=us-ascii
+X-archive-position: 3
+X-ecartis-version: Ecartis v1.0.0
+Sender: dovecot-bounce@procontrol.fi
+Errors-to: dovecot-bounce@procontrol.fi
+X-original-sender: tss@iki.fi
+Precedence: bulk
+X-list: dovecot
+X-UID: 3                                                  
+Status: O
+
+v0.95 2002-07-31  Timo Sirainen <tss@iki.fi>
+
+	+ Initial SSL support using GNU TLS, tested with v0.5.1.
+	  TLS support is still missing.
+	+ Digest-MD5 authentication method
+	+ passwd-file authentication backend
+	+ Code cleanups
+	- Found several bugs from mempool and ioloop code, now we should
+	  be stable? :)
+	- A few corrections for long header field handling
+
+`
+
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
+		{
+			require.NoError(t, doAppendWithClient(client, "INBOX", message, time.Now()))
+			_, err := client.Select("INBOX", false)
+			require.NoError(t, err)
+
+			newFetchCommand(t, client).withItems("BODY.PEEK[1]").fetchUid("1").forUid(1, func(builder *validatorBuilder) {
+				const expectedBody = `v0.95 2002-07-31  Timo Sirainen <tss@iki.fi>
+
+	+ Initial SSL support using GNU TLS, tested with v0.5.1.
+	  TLS support is still missing.
+	+ Digest-MD5 authentication method
+	+ passwd-file authentication backend
+	+ Code cleanups
+	- Found several bugs from mempool and ioloop code, now we should
+	  be stable? :)
+	- A few corrections for long header field handling
+
+`
+				builder.ignoreFlags()
+				builder.wantSection("BODY[1]", expectedBody)
+			}).check()
+		}
+	})
+}
+
+func TestFetchBodyPeekInvalidSectionNumber(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
+		fillAndSelectPlainMessage(t, client)
+		newFetchCommand(t, client).withItems("BODY.PEEK[2]").fetchFailure("1")
+	})
+}
+
 // --- helpers -------------------------------------------------------------------------------------------------------
 // NOTE: these helpers create messages with the seen flag to avoid interfering with the go imap client library. Due to
 // a timing issue, it is possible that a fetch update for the flag state can be received as a separate message.
