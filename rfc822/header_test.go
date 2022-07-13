@@ -14,6 +14,8 @@ func TestHeader_Raw(t *testing.T) {
 }
 
 func TestHeader_Has(t *testing.T) {
+	const literal = "To: somebody\r\nFrom: somebody else\r\nSubject: this is\r\n\ta multiline field\r\nFrom: duplicate entry\r\nReferences:\r\n\t <foo@bar.com>\r\n\r\n"
+
 	header := ParseHeader([]byte(literal))
 
 	assert.Equal(t, true, header.Has("To"))
@@ -25,9 +27,12 @@ func TestHeader_Has(t *testing.T) {
 	assert.Equal(t, true, header.Has("Subject"))
 	assert.Equal(t, true, header.Has("subject"))
 	assert.Equal(t, false, header.Has("subjectt"))
+	assert.Equal(t, true, header.Has("References"))
 }
 
 func TestHeader_Get(t *testing.T) {
+	const literal = "To: somebody\r\nFrom: somebody else\r\nSubject: this is\r\n\ta multiline field\r\nFrom: duplicate entry\r\nReferences:\r\n\t <foo@bar.com>\r\n\r\n"
+
 	header := ParseHeader([]byte(literal))
 
 	assert.Equal(t, "somebody", header.Get("To"))
@@ -36,6 +41,7 @@ func TestHeader_Get(t *testing.T) {
 	assert.Equal(t, "somebody else", header.Get("from"))
 	assert.Equal(t, "this is a multiline field", header.Get("Subject"))
 	assert.Equal(t, "this is a multiline field", header.Get("subject"))
+	assert.Equal(t, "<foo@bar.com>", header.Get("References"))
 }
 
 func TestHeader_GetRaw(t *testing.T) {

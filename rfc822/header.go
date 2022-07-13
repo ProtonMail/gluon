@@ -270,15 +270,23 @@ func mergeMultiline(line []byte) string {
 	var res [][]byte
 
 	for line := range forLines(bufio.NewReader(bytes.NewReader(line))) {
-		res = append(res, bytes.TrimSpace(line))
+		trimmed := bytes.TrimSpace(line)
+		if trimmed != nil {
+			res = append(res, trimmed)
+		}
 	}
 
 	return string(bytes.Join(res, []byte(" ")))
 }
 
-// TODO: What if there isn't a space after the colon?
 func splitLine(line []byte) [][]byte {
-	return bytes.SplitN(line, []byte(`: `), 2)
+	result := bytes.SplitN(line, []byte(`:`), 2)
+
+	if len(result) > 1 && len(result[1]) > 0 && result[1][0] == ' ' {
+		result[1] = result[1][1:]
+	}
+
+	return result
 }
 
 // TODO: Don't assume line ending is \r\n. Bad.

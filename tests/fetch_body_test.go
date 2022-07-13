@@ -706,6 +706,76 @@ func TestFetchBodyPeekInvalidSectionNumber(t *testing.T) {
 	})
 }
 
+func TestFetchBody_Dovecot_InvalidMessageHeader(t *testing.T) {
+	// This tests fails when requesting when fetch BODY.PEEK[HEADER.FIELDS (In-Reply-To In-Reply-To Cc)].
+	// Instead of only returning In-Reply-To and Cc, it was also returning the References header.
+	const message = `From tss@iki.fi  Mon Apr  7 01:27:38 2003
+Received: with ECARTIS (v1.0.0; list dovecot); Mon, 07 Apr 2003 01:27:38 +0300 (EEST)
+Return-Path: <tss@iki.fi>
+X-Original-To: dovecot@procontrol.fi
+Delivered-To: dovecot@procontrol.fi
+Received: from oma.irssi.org (ip213-185-36-189.laajakaista.mtv3.fi [213.185.36.189])
+	by danu.procontrol.fi (Postfix) with ESMTP id 2A7282387F
+	for <dovecot@procontrol.fi>; Mon,  7 Apr 2003 01:27:38 +0300 (EEST)
+Received: by oma.irssi.org (Postfix, from userid 1000)
+	id 3D1565E01F95; Mon,  7 Apr 2003 01:27:36 +0300 (EEST)
+Subject: [dovecot] Re: message order reversed on copying
+From: Timo Sirainen <tss@iki.fi>
+To: Charlie Brady <charlieb-dovecot@e-smith.com>
+Cc: dovecot@procontrol.fi
+In-Reply-To: <Pine.LNX.4.44.0304061811480.10634-100000@allspice.nssg.mitel.com>
+References:
+	 <Pine.LNX.4.44.0304061811480.10634-100000@allspice.nssg.mitel.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Organization:
+Message-Id: <1049668055.22903.405.camel@hurina>
+Mime-Version: 1.0
+X-Mailer: Ximian Evolution 1.2.3
+Date: 07 Apr 2003 01:27:36 +0300
+X-archive-position: 516
+X-ecartis-version: Ecartis v1.0.0
+Sender: dovecot-bounce@procontrol.fi
+Errors-to: dovecot-bounce@procontrol.fi
+X-original-sender: tss@iki.fi
+Precedence: bulk
+X-list: dovecot
+X-UID: 516
+Status: O
+
+On Mon, 2003-04-07 at 01:15, Charlie Brady wrote:
+> > > +  nfiles = scandir (tmp, &names, NULL, maildir_namesort);
+> > scandir() isn't portable though.
+> No? Which OS doesn't have it?
+
+It's not in any standard -> it's not portable. Maybe it's portable
+enough, but I try to avoid those whenever possible.
+
+> > Which changes UIDVALIDITY and forces clients to discard their cache.
+>
+> Yes, I could have mentioned that. Still, it's the only way I know to
+> restore the sorting order once it's jumbled.
+
+How about making your client sort the messages by received-date? :)
+
+`
+
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
+		require.NoError(t, doAppendWithClient(client, "INBOX", message, time.Now()))
+		_, err := client.Select("INBOX", false)
+		require.NoError(t, err)
+		newFetchCommand(t, client).withItems("BODY.PEEK[HEADER.FIELDS (In-Reply-To In-Reply-To Cc)]").
+			fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+			builder.ignoreFlags()
+			builder.wantSection(`BODY[HEADER.FIELDS (In-Reply-To In-Reply-To Cc)]`,
+				`Cc: dovecot@procontrol.fi
+In-Reply-To: <Pine.LNX.4.44.0304061811480.10634-100000@allspice.nssg.mitel.com>
+
+`)
+		}).check()
+	})
+}
+
 // --- helpers -------------------------------------------------------------------------------------------------------
 // NOTE: these helpers create messages with the seen flag to avoid interfering with the go imap client library. Due to
 // a timing issue, it is possible that a fetch update for the flag state can be received as a separate message.
