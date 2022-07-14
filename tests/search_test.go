@@ -47,6 +47,11 @@ func TestSearchBcc(t *testing.T) {
 		c.C(`A001 search bcc "dovecot@procontrol.fi"`)
 		c.S("* SEARCH 49 50")
 		c.OK("A001")
+
+		// Search is also case-insensitive.
+		c.C(`A001 search bcc "dovecot@PROcontrol.FI"`)
+		c.S("* SEARCH 49 50")
+		c.OK("A001")
 	})
 }
 
@@ -61,12 +66,22 @@ func TestSearchBody(t *testing.T) {
 		c.C(`A001 search body "Content-Length saves just the size of mail body"`)
 		c.S("* SEARCH 50")
 		c.OK("A001")
+
+		// Search is also case-insensitive.
+		c.C(`A001 search body "Content-LenGTH sAvEs just the size of MaiL body"`)
+		c.S("* SEARCH 50")
+		c.OK("A001")
 	})
 }
 
 func TestSearchCc(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
 		c.C(`A001 search cc "Dovecot Mailinglist <dovecot@procontrol.fi>"`)
+		c.S("* SEARCH 53 55 60")
+		c.OK("A001")
+
+		// Search is also case-insensitive.
+		c.C(`A001 search cc "DoVeCot Mailinglist <doveCOT@proconTROl.fi>"`)
 		c.S("* SEARCH 53 55 60")
 		c.OK("A001")
 	})
@@ -115,6 +130,10 @@ func TestSearchFrom(t *testing.T) {
 		c.OK("A001")
 
 		c.C(`A001 search from "reply@seekercenter.net"`)
+		c.S("* SEARCH 5")
+		c.OK("A001")
+
+		c.C(`A001 search from "reply@seeKERcenTER.net"`)
 		c.S("* SEARCH 5")
 		c.OK("A001")
 	})
@@ -373,6 +392,11 @@ func TestSearchSubject(t *testing.T) {
 		c.C(`A003 search subject "mbox problems"`)
 		c.S("* SEARCH 100")
 		c.OK("A003")
+
+		// Subject search is case-insensitive.
+		c.C(`A003 search subject "MBOX PROBLEMS"`)
+		c.S("* SEARCH 100")
+		c.OK("A003")
 	})
 }
 
@@ -387,12 +411,21 @@ func TestSearchText(t *testing.T) {
 		c.C(`A002 search text "Content-Length saves just the size of mail body"`)
 		c.S("* SEARCH 50")
 		c.OK("A002")
+
+		// Text search is case-insensitive.
+		c.C(`A002 search text "ContenT-LeNgTh saveS jUst the Size of mail body"`)
+		c.S("* SEARCH 50")
+		c.OK("A002")
 	})
 }
 
 func TestSearchTo(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
 		c.C(`A001 search to "Timo Sirainen <tss@iki.fi>"`)
+		c.S("* SEARCH 49")
+		c.OK("A001")
+
+		c.C(`A001 search to "Timo SirAINEN <tSS@ikI.FI>"`)
 		c.S("* SEARCH 49")
 		c.OK("A001")
 	})

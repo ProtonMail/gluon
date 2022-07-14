@@ -181,7 +181,7 @@ func (m *Mailbox) matchSearchKeyBcc(ctx context.Context, candidates []*snapMsg, 
 			return false, err
 		}
 
-		return strings.Contains(value, key.GetText()), nil
+		return strings.Contains(strings.ToLower(value), strings.ToLower(key.GetText())), nil
 	})
 }
 
@@ -213,7 +213,7 @@ func (m *Mailbox) matchSearchKeyBody(ctx context.Context, candidates []*snapMsg,
 			return false, err
 		}
 
-		return bytes.Contains(section.Body(), []byte(key.GetText())), nil
+		return bytes.Contains([]byte(strings.ToLower(string(section.Body()))), []byte(strings.ToLower(key.GetText()))), nil
 	})
 }
 
@@ -229,7 +229,7 @@ func (m *Mailbox) matchSearchKeyCc(ctx context.Context, candidates []*snapMsg, k
 			return false, err
 		}
 
-		return strings.Contains(value, key.GetText()), nil
+		return strings.Contains(strings.ToLower(value), strings.ToLower(key.GetText())), nil
 	})
 }
 
@@ -263,7 +263,7 @@ func (m *Mailbox) matchSearchKeyFrom(ctx context.Context, candidates []*snapMsg,
 			return false, err
 		}
 
-		return strings.Contains(value, key.GetText()), nil
+		return strings.Contains(strings.ToLower(value), strings.ToLower(key.GetText())), nil
 	})
 }
 
@@ -279,7 +279,7 @@ func (m *Mailbox) matchSearchKeyHeader(ctx context.Context, candidates []*snapMs
 			return false, err
 		}
 
-		return strings.Contains(value, key.GetText()), nil
+		return strings.Contains(strings.ToLower(value), strings.ToLower(key.GetText())), nil
 	})
 }
 
@@ -496,7 +496,7 @@ func (m *Mailbox) matchSearchKeySubject(ctx context.Context, candidates []*snapM
 			return false, err
 		}
 
-		return strings.Contains(value, key.GetText()), nil
+		return strings.Contains(strings.ToLower(value), strings.ToLower(key.GetText())), nil
 	})
 }
 
@@ -507,7 +507,7 @@ func (m *Mailbox) matchSearchKeyText(ctx context.Context, candidates []*snapMsg,
 			return false, err
 		}
 
-		return bytes.Contains(literal, []byte(key.GetText())), nil
+		return bytes.Contains([]byte(strings.ToLower(string(literal))), []byte(strings.ToLower(key.GetText()))), nil
 	})
 }
 
@@ -523,7 +523,7 @@ func (m *Mailbox) matchSearchKeyTo(ctx context.Context, candidates []*snapMsg, k
 			return false, err
 		}
 
-		return strings.Contains(value, key.GetText()), nil
+		return strings.Contains(strings.ToLower(value), strings.ToLower(key.GetText())), nil
 	})
 }
 
