@@ -392,6 +392,8 @@ func (m *Mailbox) matchSearchKeySentBefore(ctx context.Context, candidates []*sn
 			return false, err
 		}
 
+		date = convertToDateWithoutTZ(date)
+
 		return date.Before(beforeDate), nil
 	})
 }
@@ -418,8 +420,10 @@ func (m *Mailbox) matchSearchKeySentOn(ctx context.Context, candidates []*snapMs
 			return false, err
 		}
 
-		// GOMSRV-99: Is this correct?
-		return onDate.Truncate(24 * time.Hour).Equal(date.Truncate(24 * time.Hour)), nil
+		// GODT-1598: Is this correct?
+		date = convertToDateWithoutTZ(date)
+
+		return date.Equal(onDate), nil
 	})
 }
 
@@ -445,7 +449,9 @@ func (m *Mailbox) matchSearchKeySentSince(ctx context.Context, candidates []*sna
 			return false, err
 		}
 
-		return date.After(sinceDate), nil
+		date = convertToDateWithoutTZ(date)
+
+		return date.Equal(sinceDate) || date.After(sinceDate), nil
 	})
 }
 
@@ -461,7 +467,9 @@ func (m *Mailbox) matchSearchKeySince(ctx context.Context, candidates []*snapMsg
 			return false, err
 		}
 
-		return msg.Date.After(sinceDate), nil
+		date := convertToDateWithoutTZ(msg.Date)
+
+		return date.Equal(sinceDate) || date.After(sinceDate), nil
 	})
 }
 
@@ -596,4 +604,8 @@ func filter(candidates []*snapMsg, wantMessage func(*snapMsg) (bool, error)) ([]
 	}
 
 	return res, nil
+}
+
+func convertToDateWithoutTZ(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
