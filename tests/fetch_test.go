@@ -462,6 +462,45 @@ func TestFetchFromDataUids(t *testing.T) {
 	})
 }
 
+func TestFetchInReplyTo(t *testing.T) {
+	const message = `From cras@irccrew.org  Tue Jul 23 19:39:23 2002
+Received: with ECARTIS (v1.0.0; list dovecot); Tue, 23 Jul 2002 19:39:23 +0300 (EEST)
+Return-Path: <cras@irccrew.org>
+Delivered-To: dovecot@procontrol.fi
+Date: Tue, 23 Jul 2002 19:39:23 +0300
+From: Timo Sirainen <tss@iki.fi>
+To: dovecot@procontrol.fi
+Subject: [dovecot] first test mail
+Message-ID: <20020723193923.J22431@irccrew.org>
+User-Agent: Mutt/1.2.5i
+Content-Type: text/plain; charset=us-ascii
+Sender: dovecot-bounce@procontrol.fi
+In-Reply-To: <Pine.LNX.4.44.0304061811480.10634-100000@allspice.nssg.mitel.com>
+
+lets see if it works
+
+`
+
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
+		require.NoError(t, doAppendWithClient(client, "INBOX", message, time.Now()))
+		_, err := client.Select("INBOX", false)
+		require.NoError(t, err)
+		newFetchCommand(t, client).withItems("ENVELOPE").
+			fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+			builder.ignoreFlags()
+			builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+				builder.wantDateTime("23-Jul-2002 19:39:23 +0300")
+				builder.wantSender("dovecot-bounce@procontrol.fi")
+				builder.wantTo("dovecot@procontrol.fi")
+				builder.wantFrom("tss@iki.fi")
+				builder.wantSubject("[dovecot] first test mail")
+				builder.wantMessageId("<20020723193923.J22431@irccrew.org>")
+				builder.wantInReplyTo("<Pine.LNX.4.44.0304061811480.10634-100000@allspice.nssg.mitel.com>")
+			})
+		}).check()
+	})
+}
+
 // --- helpers -------------------------------------------------------------------------------------------------------
 
 func fillAndSelectAfternoonMeetingMailbox(t *testing.T, client *client.Client) {
