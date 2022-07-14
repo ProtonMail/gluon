@@ -72,7 +72,7 @@ func envelope(header *rfc822.Header) (fmt.Stringer, error) {
 	if !header.Has("In-Reply-To") {
 		fields.add("")
 	} else {
-		fields.add(tryParseAddressList(header.Get("In-Reply-To")))
+		fields.add(header.Get("In-Reply-To"))
 	}
 
 	fields.add(header.Get("Message-Id"))
