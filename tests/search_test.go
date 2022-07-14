@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
+	"time"
 )
 
 func TestSearchCharSet(t *testing.T) {
@@ -307,6 +309,23 @@ func TestSearchSentBefore(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
 		c.C(`A001 search sentbefore 10-Aug-2002`)
 		c.S("* SEARCH " + seq(1, 19))
+		c.OK("A001")
+	})
+}
+
+func TestSearchSentSinceAndSentBefore(t *testing.T) {
+	// The result of this test should be no messages in the search result. Due to timezone adjustments, by
+	// mail.ParseDate the date was being converted to 17 Feb 2003 22:29:37 +000, causing the search to pass
+	// rather than fail.
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		c.doAppend("INBOX", "Date: 18 Feb 2003 00:29:37 +0200\n\nTo: foo@foo.com\r\n")
+		c.C(`A002 SELECT INBOX`)
+		c.Se(`A002 OK [READ-WRITE] SELECT`)
+
+		t := time.Now()
+
+		c.C(fmt.Sprintf(`A001 search since %s sentbefore 18-Feb-2003`, t.Format("_2-Jan-2006")))
+		c.S("* SEARCH")
 		c.OK("A001")
 	})
 }
