@@ -190,3 +190,29 @@ func TestSequenceNumbersPerSession(t *testing.T) {
 		).OK(`tag`)
 	})
 }
+
+func TestAddFlagsToExpungedMessage(t *testing.T) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+		c[1].doAppend(`inbox`, `To: 1@pm.me`).expect("OK")
+
+		// Both clients select in inbox.
+		c[1].C("tag select inbox").OK("tag")
+		c[2].C("tag select inbox").OK("tag")
+
+		// Both clients see one message in inbox.
+		c[1].C(`tag status inbox (messages)`).Sxe(`MESSAGES 1`).OK(`tag`)
+		c[2].C(`tag status inbox (messages)`).Sxe(`MESSAGES 1`).OK(`tag`)
+
+		// Expunge the first message with client 1.
+		c[1].C(`tag store 1 +flags (\deleted)`).OK(`tag`)
+		c[1].C(`tag expunge`).OK(`tag`)
+		c[1].C(`tag status inbox (messages)`).Sxe(`MESSAGES 0`).OK(`tag`)
+
+		// Client 2 has not been notified of the expunge; setting flags must succeed.
+		c[2].C(`tag store 1 +flags (\seen)`).OK(`tag`)
+
+		// When client 2 performs noop, it finally receives the expunge response.
+		c[2].C(`tag noop`).S(`* 1 EXPUNGE`).OK("tag")
+		c[2].C(`tag status inbox (messages)`).Sxe(`MESSAGES 0`).OK(`tag`)
+	})
+}
