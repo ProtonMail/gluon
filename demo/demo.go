@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -14,10 +15,33 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/store"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/pkg/profile"
 	"github.com/sirupsen/logrus"
 )
 
+var cpuProfileFlag = flag.Bool("profile-cpu", false, "Enable CPU profiling.")
+var memProfileFlag = flag.Bool("profile-mem", false, "Enable Memory profiling.")
+var blockProfileFlag = flag.Bool("profile-lock", false, "Enable lock profiling.")
+var profilePathFlag = flag.String("profile-path", "", "Path where to write profile data.")
+
 func main() {
+	flag.Parse()
+
+	if *cpuProfileFlag {
+		p := profile.Start(profile.CPUProfile, profile.ProfilePath(*profilePathFlag))
+		defer p.Stop()
+	}
+
+	if *memProfileFlag {
+		p := profile.Start(profile.MemProfile, profile.MemProfileAllocs, profile.ProfilePath(*profilePathFlag))
+		defer p.Stop()
+	}
+
+	if *blockProfileFlag {
+		p := profile.Start(profile.BlockProfile, profile.ProfilePath(*profilePathFlag))
+		defer p.Stop()
+	}
+
 	if level, err := logrus.ParseLevel(os.Getenv("GLUON_LOG_LEVEL")); err == nil {
 		logrus.SetLevel(level)
 	}
