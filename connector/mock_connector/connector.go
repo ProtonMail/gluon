@@ -50,6 +50,20 @@ func (mr *MockConnectorMockRecorder) Authorize(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authorize", reflect.TypeOf((*MockConnector)(nil).Authorize), arg0, arg1)
 }
 
+// Close mocks base method.
+func (m *MockConnector) Close(arg0 context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockConnectorMockRecorder) Close(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockConnector)(nil).Close), arg0)
+}
+
 // CreateLabel mocks base method.
 func (m *MockConnector) CreateLabel(arg0 context.Context, arg1 []string) (imap.Mailbox, error) {
 	m.ctrl.T.Helper()
