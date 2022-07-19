@@ -4,6 +4,8 @@ import (
 	"crypto/tls"
 	"io"
 
+	"github.com/ProtonMail/gluon/profiling"
+
 	"github.com/ProtonMail/gluon/internal"
 )
 
@@ -80,4 +82,17 @@ func WithVersionInfo(vmajor, vminor, vpatch int, name, vendor, supportURL string
 			SupportURL: supportURL,
 		},
 	}
+}
+
+type withCmdExecProfiler struct {
+	builder profiling.CmdProfilerBuilder
+}
+
+func (c *withCmdExecProfiler) config(server *Server) {
+	server.cmdExecProfBuilder = c.builder
+}
+
+// WithCmdProfiler allows a specific CmdProfilerBuilder to be set for the server's execution.
+func WithCmdProfiler(builder profiling.CmdProfilerBuilder) Option {
+	return &withCmdExecProfiler{builder: builder}
 }
