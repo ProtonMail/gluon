@@ -12,10 +12,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ProtonMail/gluon/internal"
+	"github.com/ProtonMail/gluon/profiling"
 
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/liner"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
@@ -66,17 +67,20 @@ type Session struct {
 	imapID imap.ID
 
 	version *internal.VersionInfo
+
+	cmdProfilerBuilder profiling.CmdProfilerBuilder
 }
 
-func New(conn net.Conn, backend *backend.Backend, sessionID int, versionInfo *internal.VersionInfo, eventCh chan<- events.Event) *Session {
+func New(conn net.Conn, backend *backend.Backend, sessionID int, versionInfo *internal.VersionInfo, profiler profiling.CmdProfilerBuilder, eventCh chan<- events.Event) *Session {
 	return &Session{
-		conn:      conn,
-		liner:     liner.New(conn),
-		backend:   backend,
-		caps:      []imap.Capability{imap.IMAP4rev1, imap.IDLE, imap.UNSELECT, imap.UIDPLUS, imap.MOVE},
-		sessionID: sessionID,
-		eventCh:   eventCh,
-		version:   versionInfo,
+		conn:               conn,
+		liner:              liner.New(conn),
+		backend:            backend,
+		caps:               []imap.Capability{imap.IMAP4rev1, imap.IDLE, imap.UNSELECT, imap.UIDPLUS, imap.MOVE},
+		sessionID:          sessionID,
+		eventCh:            eventCh,
+		version:            versionInfo,
+		cmdProfilerBuilder: profiler,
 	}
 }
 
@@ -125,6 +129,9 @@ func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	profiler := s.cmdProfilerBuilder.New()
+	defer s.cmdProfilerBuilder.Collect(profiler)
+
 	var (
 		tag string
 		cmd *proto.Command
@@ -148,9 +155,15 @@ func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
 
 		switch {
 		case cmd.GetLogout() != nil:
+			profiler.Start(profiling.CmdTypeLogout)
+			defer profiler.Stop(profiling.CmdTypeLogout)
+
 			return s.handleLogout(ctx, tag, cmd.GetLogout())
 
 		case cmd.GetIdle() != nil:
+			profiler.Start(profiling.CmdTypeIdle)
+			defer profiler.Stop(profiling.CmdTypeIdle)
+
 			if err := s.handleIdle(ctx, tag, cmd.GetIdle(), cmdCh); err != nil {
 				if err := response.No(tag).WithError(err).Send(s); err != nil {
 					return fmt.Errorf("failed to send response to client: %w", err)
@@ -158,7 +171,7 @@ func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
 			}
 
 		default:
-			responseCh := s.handleOther(withStartTime(ctx, time.Now()), tag, cmd)
+			responseCh := s.handleOther(withStartTime(ctx, time.Now()), tag, cmd, profiler)
 			for res := range responseCh {
 				if err := res.Send(s); err != nil {
 					// Consume all remaining channel response since the connection is no longer available.

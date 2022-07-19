@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/ProtonMail/gluon/profiling"
+
 	"github.com/ProtonMail/gluon/internal"
 
 	"github.com/ProtonMail/gluon/connector"
@@ -49,7 +51,8 @@ type Server struct {
 	watchers     map[chan events.Event]struct{}
 	watchersLock sync.RWMutex
 
-	versionInfo internal.VersionInfo
+	versionInfo        internal.VersionInfo
+	cmdExecProfBuilder profiling.CmdProfilerBuilder
 }
 
 // New creates a new server with the given options.
@@ -61,10 +64,11 @@ func New(dir string, withOpt ...Option) (*Server, error) {
 	}
 
 	server := &Server{
-		backend:   backend,
-		listeners: make(map[net.Listener]struct{}),
-		sessions:  make(map[int]*session.Session),
-		watchers:  make(map[chan events.Event]struct{}),
+		backend:            backend,
+		listeners:          make(map[net.Listener]struct{}),
+		sessions:           make(map[int]*session.Session),
+		watchers:           make(map[chan events.Event]struct{}),
+		cmdExecProfBuilder: &profiling.NullCmdExecProfilerBuilder{},
 	}
 
 	for _, opt := range withOpt {
@@ -228,7 +232,7 @@ func (s *Server) addSession(ctx context.Context, conn net.Conn) (*session.Sessio
 
 	nextID := s.getNextID()
 
-	s.sessions[nextID] = session.New(conn, s.backend, nextID, &s.versionInfo, s.newEventCh(ctx))
+	s.sessions[nextID] = session.New(conn, s.backend, nextID, &s.versionInfo, s.cmdExecProfBuilder, s.newEventCh(ctx))
 
 	if s.tlsConfig != nil {
 		s.sessions[nextID].SetTLSConfig(s.tlsConfig)
