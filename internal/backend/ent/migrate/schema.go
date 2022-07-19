@@ -12,7 +12,7 @@ var (
 	MailboxesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "mailbox_id", Type: field.TypeString},
-		{Name: "name", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString, Unique: true},
 		{Name: "uid_next", Type: field.TypeInt, Default: 1},
 		{Name: "uid_validity", Type: field.TypeInt, Default: 1},
 		{Name: "subscribed", Type: field.TypeBool, Default: true},

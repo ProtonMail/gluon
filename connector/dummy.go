@@ -66,7 +66,7 @@ func NewDummy(usernames []string, password string, period time.Duration, flags, 
 		})
 	}()
 
-	conn.state.createLabel([]string{imap.Inbox}, false)
+	conn.state.createLabelWithID([]string{imap.Inbox}, "0", false)
 
 	return conn
 }

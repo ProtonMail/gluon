@@ -16,7 +16,7 @@ type Mailbox struct {
 func (Mailbox) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("MailboxID"),
-		field.String("Name"),
+		field.String("Name").Unique(),
 		field.Int("UIDNext").Default(1),
 		field.Int("UIDValidity").Default(1),
 		field.Bool("Subscribed").Default(true),

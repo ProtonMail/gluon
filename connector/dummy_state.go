@@ -84,6 +84,18 @@ func (state *dummyState) createLabel(name []string, exclusive bool) imap.Mailbox
 	return state.toMailbox(labelID)
 }
 
+func (state *dummyState) createLabelWithID(name []string, id string, exclusive bool) imap.Mailbox {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	state.labels[id] = &dummyLabel{
+		labelName: name,
+		exclusive: exclusive,
+	}
+
+	return state.toMailbox(id)
+}
+
 func (state *dummyState) updateLabel(labelID string, name []string) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
