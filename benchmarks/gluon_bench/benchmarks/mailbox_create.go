@@ -2,21 +2,32 @@ package benchmarks
 
 import (
 	"context"
-	"fmt"
+	"net"
 
-	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 )
 
-func BenchmarkMailboxCreate(ctx context.Context, server *gluon.Server, addr string) {
-	cl, err := utils.NewClient(addr)
+type MailboxCreate struct{}
+
+func (b *MailboxCreate) Name() string {
+	return "mailbox-create"
+}
+
+func (*MailboxCreate) Setup(ctx context.Context, addr net.Addr) error {
+	return nil
+}
+
+func (*MailboxCreate) TearDown(ctx context.Context, addr net.Addr) error {
+	return nil
+}
+
+func (*MailboxCreate) Run(ctx context.Context, addr net.Addr) error {
+	cl, err := utils.NewClient(addr.String())
 	defer utils.CloseClient(cl)
 
 	if err != nil {
-		panic("Failed to connect o server")
+		return err
 	}
 
-	if err := utils.BuildMailbox(cl, "INBOX", 1000); err != nil {
-		panic(fmt.Sprintf("Benchmark Mailbox Create - Failed to create mailbox: %v", err))
-	}
+	return utils.BuildMailbox(cl, "INBOX", 1000)
 }

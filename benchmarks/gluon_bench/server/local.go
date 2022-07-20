@@ -1,49 +1,63 @@
-package main
+package server
 
 import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-
-	"entgo.io/ent/dialect"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
-
 	"net"
 	"path/filepath"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/store"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 )
 
-// newServer creates a new server and returns the server instance and address.
-func newServer(ctx context.Context, path string, options ...gluon.Option) (*gluon.Server, string, error) {
+// LocalServer runs a gluon server in the same process as the benchmark process.
+type LocalServer struct {
+	server   *gluon.Server
+	listener net.Listener
+}
+
+func (l *LocalServer) Address() net.Addr {
+	return l.listener.Addr()
+}
+
+func (l *LocalServer) Close(ctx context.Context) error {
+	return l.server.Close(ctx)
+}
+
+type LocalServerBuilder struct{}
+
+func (*LocalServerBuilder) New(ctx context.Context, serverPath string, profiler profiling.CmdProfilerBuilder) (Server, error) {
 	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 
 	var opts []gluon.Option
 
 	opts = append(opts, gluon.WithLogger(loggerIn, loggerOut))
-	opts = append(opts, options...)
+	opts = append(opts, gluon.WithCmdProfiler(profiler))
 
-	server, err := gluon.New(path, opts...)
+	server, err := gluon.New(serverPath, opts...)
 
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	if err := addUser(ctx, server, path, []string{utils.UserName}, utils.UserPassword); err != nil {
-		return nil, "", err
+	if err := addUser(ctx, server, serverPath, []string{utils.UserName}, utils.UserPassword); err != nil {
+		return nil, err
 	}
 
 	listener, err := net.Listen("tcp", "localhost:1143")
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	go func() {
@@ -52,7 +66,10 @@ func newServer(ctx context.Context, path string, options ...gluon.Option) (*gluo
 		}
 	}()
 
-	return server, listener.Addr().String(), nil
+	return &LocalServer{
+		server:   server,
+		listener: listener,
+	}, nil
 }
 
 func addUser(ctx context.Context, server *gluon.Server, path string, addresses []string, password string) error {
@@ -70,9 +87,7 @@ func addUser(ctx context.Context, server *gluon.Server, path string, addresses [
 	storePath := filepath.Join(path, id+".store")
 	dbPath := filepath.Join(path, id+".db")
 
-	if *verboseFlag {
-		fmt.Printf("Adding user ID=%v\n  StorePath:'%v'\n  DBPath:'%v'\n", id, storePath, dbPath)
-	}
+	fmt.Printf("Adding user ID=%v\n  StorePath:'%v'\n  DBPath:'%v'\n", id, storePath, dbPath)
 
 	store, err := store.NewOnDiskStore(storePath, []byte(utils.UserPassword))
 	if err != nil {
@@ -89,20 +104,8 @@ func addUser(ctx context.Context, server *gluon.Server, path string, addresses [
 		return err
 	}
 
-	if *verboseFlag {
-		fmt.Printf("Starting Connector Sync\n")
-	}
-
 	if err := connector.Sync(context.Background()); err != nil {
-		if *verboseFlag {
-			fmt.Printf("Error during Connector Sync\n")
-		}
-
 		return err
-	}
-
-	if *verboseFlag {
-		fmt.Printf("Finished Connector Sync\n")
 	}
 
 	return nil

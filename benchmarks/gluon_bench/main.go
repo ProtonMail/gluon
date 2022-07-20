@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmarks"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/server"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/ProtonMail/gluon/profiling"
 )
@@ -19,17 +19,18 @@ var verboseFlag = flag.Bool("verbose", false, "Enable verbose logging.")
 var jsonReporterFlag = flag.String("json-reporter", "", "If specified, will generate a json report with the given filename.")
 var benchmarkRunsFlag = flag.Uint("bench-runs", 1, "Number of runs per benchmark.")
 var reuseStateFlag = flag.Bool("reuse-state", false, "When present, benchmarks will re-use previous run state, rather than a clean slate.")
+var remoteServerFlag = flag.String("remote-server", "", "IP address and port of the remote IMAP server to run against. E.g. 127.0.0.1:1143.")
 
-var benchmarkMap = map[string]func(context.Context, *gluon.Server, string){
-	"bench-mailbox-create": benchmarks.BenchmarkMailboxCreate,
-}
-
-type benchmarkEntry struct {
-	key     string
-	benchFn func(context.Context, *gluon.Server, string)
+var benches = []benchmarks.Benchmark{
+	&benchmarks.MailboxCreate{},
 }
 
 func main() {
+	var benchmarkMap = make(map[string]benchmarks.Benchmark)
+	for _, v := range benches {
+		benchmarkMap[v.Name()] = v
+	}
+
 	flag.Usage = func() {
 		fmt.Printf("Usage %v [options] benchmark0 benchmark1 ... benchmarkN\n", os.Args[0])
 		fmt.Printf("\nAvailable Benchmarks:\n")
@@ -43,7 +44,7 @@ func main() {
 	}
 	flag.Parse()
 
-	var benchmarks []benchmarkEntry
+	var benchmarks []benchmarks.Benchmark
 
 	args := flag.Args()
 	if len(args) == 0 {
@@ -53,7 +54,7 @@ func main() {
 
 	for _, arg := range args {
 		if v, ok := benchmarkMap[arg]; ok {
-			benchmarks = append(benchmarks, benchmarkEntry{key: arg, benchFn: v})
+			benchmarks = append(benchmarks, v)
 		}
 	}
 
@@ -78,11 +79,24 @@ func main() {
 		serverDirConfig = &utils.TmpServerDirConfig{}
 	}
 
+	var serverBuilder server.ServerBuilder
+
+	if len(*remoteServerFlag) != 0 {
+		builder, err := server.NewRemoteServerBuilder(*remoteServerFlag)
+		if err != nil {
+			panic(fmt.Sprintf("Invalid Server address: %v", err))
+		}
+
+		serverBuilder = builder
+	} else {
+		serverBuilder = &server.LocalServerBuilder{}
+	}
+
 	benchmarkReports := make([]*reporter.BenchmarkReport, 0, len(benchmarks))
 
 	for _, v := range benchmarks {
 		if *verboseFlag {
-			fmt.Printf("Begin Benchmark: %v\n", v.key)
+			fmt.Printf("Begin Benchmark: %v\n", v.Name())
 		}
 
 		numRuns := *benchmarkRunsFlag
@@ -96,14 +110,14 @@ func main() {
 
 			cmdProfiler.Clear()
 
-			scopedTimer := measureBenchmark(serverDirConfig, v.key, r, cmdProfiler, v.benchFn)
+			scopedTimer := measureBenchmark(serverDirConfig, serverBuilder, r, cmdProfiler, v)
 			benchmarkRuns = append(benchmarkRuns, reporter.NewBenchmarkRun(scopedTimer.Elapsed(), cmdProfiler.Merge()))
 		}
 
-		benchmarkReports = append(benchmarkReports, reporter.NewBenchmarkReport(v.key, benchmarkRuns...))
+		benchmarkReports = append(benchmarkReports, reporter.NewBenchmarkReport(v.Name(), benchmarkRuns...))
 
 		if *verboseFlag {
-			fmt.Printf("End Benchmark: %v\n", v.key)
+			fmt.Printf("End Benchmark: %v\n", v.Name())
 		}
 	}
 
@@ -122,16 +136,18 @@ func main() {
 	}
 }
 
-func measureBenchmark(dirConfig utils.ServerDirConfig, name string, iteration uint, cmdProfiler profiling.CmdProfilerBuilder, bench func(context.Context, *gluon.Server, string)) utils.ScopedTimer {
+func measureBenchmark(dirConfig utils.ServerDirConfig, serverBuilder server.ServerBuilder, iteration uint,
+	cmdProfiler profiling.CmdProfilerBuilder, bench benchmarks.Benchmark) utils.ScopedTimer {
 	serverPath, err := dirConfig.Get()
+
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get server directory: %v", err))
 	}
 
 	if !*reuseStateFlag {
-		serverPath = filepath.Join(serverPath, fmt.Sprintf("%v-%d", name, iteration))
+		serverPath = filepath.Join(serverPath, fmt.Sprintf("%v-%d", bench.Name(), iteration))
 	} else {
-		serverPath = filepath.Join(serverPath, name)
+		serverPath = filepath.Join(serverPath, bench.Name())
 	}
 
 	if *verboseFlag {
@@ -143,7 +159,13 @@ func measureBenchmark(dirConfig utils.ServerDirConfig, name string, iteration ui
 	}
 
 	ctx := context.Background()
-	server, address, err := newServer(ctx, serverPath, gluon.WithCmdProfiler(cmdProfiler))
+	server, err := serverBuilder.New(ctx, serverPath, cmdProfiler)
+
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create server: %v", err))
+	}
+
+	address := server.Address()
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed to start server: %v", err))
@@ -151,10 +173,24 @@ func measureBenchmark(dirConfig utils.ServerDirConfig, name string, iteration ui
 
 	defer server.Close(ctx)
 
+	if err := bench.Setup(ctx, address); err != nil {
+		panic(fmt.Sprintf("Failed to setup benchmark %v: %v", bench.Name(), err))
+	}
+
 	scopedTimer := utils.ScopedTimer{}
 	scopedTimer.Start()
-	bench(ctx, server, address)
+
+	benchErr := bench.Run(ctx, address)
+
 	scopedTimer.Stop()
+
+	if benchErr != nil {
+		panic(fmt.Sprintf("Failed to run benchmark %v: %v", bench.Name(), err))
+	}
+
+	if err := bench.TearDown(ctx, address); err != nil {
+		panic(fmt.Sprintf("Failed to teardown benchmark %v: %v", bench.Name(), err))
+	}
 
 	return scopedTimer
 }
