@@ -12,3 +12,9 @@ linters:
   disable:
     - godox # Annoying, we have too many TODOs at the moment :p
     - scopelint # Deprecated, replaced by exportloopref, which is enabled by default.
+
+issues:
+  exclude-rules:
+    - path: benchmarks
+      linters:
+        - gosec
