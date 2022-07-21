@@ -43,6 +43,10 @@ func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
 
 	defer utils.CloseClient(cl)
 
+	if err := utils.FillBenchmarkSourceMailbox(cl); err != nil {
+		return err
+	}
+
 	//Delete mailbox if it exists
 	if err := cl.Delete(c.dstMailbox); err != nil {
 		// ignore error

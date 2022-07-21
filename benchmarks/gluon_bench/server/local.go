@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
-
 	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"

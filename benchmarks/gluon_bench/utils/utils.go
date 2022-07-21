@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
+	"github.com/emersion/go-imap/client"
 	"time"
 )
 
@@ -20,4 +22,14 @@ func (s *ScopedTimer) Stop() {
 
 func (s *ScopedTimer) Elapsed() time.Duration {
 	return s.end.Sub(s.start)
+}
+
+func FillBenchmarkSourceMailbox(cl *client.Client) error {
+	if *flags.FillSourceMailbox != 0 {
+		if err := BuildMailbox(cl, *flags.MailboxFlag, int(*flags.FillSourceMailbox)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
