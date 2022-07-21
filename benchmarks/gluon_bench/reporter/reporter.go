@@ -24,9 +24,9 @@ type BenchmarkStatistics struct {
 }
 
 func (b *BenchmarkStatistics) String() string {
-	return fmt.Sprintf("Total: %04dms SampleCount:%04d Fastest:%04dms Slowest:%04dms Average: %04dms Median: %04dms 90thPercentile: %04d ms 10thPercentile: %04dms RMS %04dms",
-		b.Total.Milliseconds(), b.SampleCount, b.Fastest.Milliseconds(), b.Slowest.Milliseconds(), b.Average.Milliseconds(),
-		b.Median.Milliseconds(), b.Percentile90.Milliseconds(), b.Percentile10.Milliseconds(), b.RMS.Milliseconds(),
+	return fmt.Sprintf("SampleCount:%04d Total:%v Fastest:%v Slowest:%v Average:%v Median:%v 90thPercentile:%v 10thPercentile:%v RMS:%v",
+		b.SampleCount, b.Total, b.Fastest, b.Slowest, b.Average,
+		b.Median, b.Percentile90, b.Percentile10, b.RMS,
 	)
 }
 
@@ -57,9 +57,9 @@ func NewBenchmarkStatistics(durations ...time.Duration) BenchmarkStatistics {
 		statistics.Average = statistics.Total / time.Duration(statistics.SampleCount)
 		if statistics.Total%2 == 0 {
 			halfPoint := statistics.SampleCount / 2
-			statistics.Median = (sortedDurations[halfPoint] + sortedDurations[halfPoint+1]) / 2
+			statistics.Median = (sortedDurations[halfPoint-1] + sortedDurations[halfPoint]) / 2
 		} else {
-			statistics.Median = sortedDurations[((statistics.SampleCount + 1) / 2)]
+			statistics.Median = sortedDurations[((statistics.SampleCount+1)/2)-1]
 		}
 		statistics.Percentile90 = sortedDurations[int(math.Floor(float64(statistics.SampleCount)*(90.0/100.0)))]
 		statistics.Percentile10 = sortedDurations[int(math.Floor(float64(statistics.SampleCount)*(10.0/100.0)))]
