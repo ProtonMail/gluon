@@ -18,6 +18,7 @@ import (
 var benches = []benchmarks.Benchmark{
 	&benchmarks.MailboxCreate{},
 	benchmarks.NewFetch(),
+	benchmarks.NewCopy(),
 }
 
 func main() {

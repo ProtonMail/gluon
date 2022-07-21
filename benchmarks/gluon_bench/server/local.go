@@ -5,10 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"net"
 	"path/filepath"
 	"time"
+
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 
 	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
