@@ -2,10 +2,15 @@ package benchmarks
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"net"
 
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 )
+
+var messageCountFlag = flag.Uint("mailbox-create-message-count", 1000, "Number of random messages to create in the inbox.")
 
 type MailboxCreate struct{}
 
@@ -14,6 +19,10 @@ func (b *MailboxCreate) Name() string {
 }
 
 func (*MailboxCreate) Setup(ctx context.Context, addr net.Addr) error {
+	if *messageCountFlag == 0 {
+		return fmt.Errorf("invalid message count")
+	}
+
 	return nil
 }
 
@@ -29,5 +38,5 @@ func (*MailboxCreate) Run(ctx context.Context, addr net.Addr) error {
 
 	defer utils.CloseClient(cl)
 
-	return utils.BuildMailbox(cl, "INBOX", 1000)
+	return utils.BuildMailbox(cl, *flags.MailboxFlag, int(*messageCountFlag))
 }

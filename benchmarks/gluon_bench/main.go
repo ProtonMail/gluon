@@ -8,21 +8,16 @@ import (
 	"path/filepath"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmarks"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/server"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/ProtonMail/gluon/profiling"
 )
 
-var storePathFlag = flag.String("path", "", "Filepath where to write the database data. If not set a temp folder will be used.")
-var verboseFlag = flag.Bool("verbose", false, "Enable verbose logging.")
-var jsonReporterFlag = flag.String("json-reporter", "", "If specified, will generate a json report with the given filename.")
-var benchmarkRunsFlag = flag.Uint("bench-runs", 1, "Number of runs per benchmark.")
-var reuseStateFlag = flag.Bool("reuse-state", false, "When present, benchmarks will re-use previous run state, rather than a clean slate.")
-var remoteServerFlag = flag.String("remote-server", "", "IP address and port of the remote IMAP server to run against. E.g. 127.0.0.1:1143.")
-
 var benches = []benchmarks.Benchmark{
 	&benchmarks.MailboxCreate{},
+	benchmarks.NewFetch(),
 }
 
 func main() {
@@ -64,8 +59,8 @@ func main() {
 
 	var benchmarkReporter reporter.BenchmarkReporter
 
-	if len(*jsonReporterFlag) != 0 {
-		benchmarkReporter = reporter.NewJSONReporter(*jsonReporterFlag)
+	if len(*flags.JsonReporterFlag) != 0 {
+		benchmarkReporter = reporter.NewJSONReporter(*flags.JsonReporterFlag)
 	} else {
 		benchmarkReporter = &reporter.StdOutReporter{}
 	}
@@ -73,16 +68,16 @@ func main() {
 	cmdProfiler := utils.NewDurationCmdProfilerBuilder()
 
 	var serverDirConfig utils.ServerDirConfig
-	if len(*storePathFlag) != 0 {
-		serverDirConfig = utils.NewPersistentServerDirConfig(*storePathFlag)
+	if len(*flags.StorePathFlag) != 0 {
+		serverDirConfig = utils.NewPersistentServerDirConfig(*flags.StorePathFlag)
 	} else {
 		serverDirConfig = &utils.TmpServerDirConfig{}
 	}
 
 	var serverBuilder server.ServerBuilder
 
-	if len(*remoteServerFlag) != 0 {
-		builder, err := server.NewRemoteServerBuilder(*remoteServerFlag)
+	if len(*flags.RemoteServerFlag) != 0 {
+		builder, err := server.NewRemoteServerBuilder(*flags.RemoteServerFlag)
 		if err != nil {
 			panic(fmt.Sprintf("Invalid Server address: %v", err))
 		}
@@ -95,16 +90,16 @@ func main() {
 	benchmarkReports := make([]*reporter.BenchmarkReport, 0, len(benchmarks))
 
 	for _, v := range benchmarks {
-		if *verboseFlag {
+		if *flags.VerboseFlag {
 			fmt.Printf("Begin Benchmark: %v\n", v.Name())
 		}
 
-		numRuns := *benchmarkRunsFlag
+		numRuns := *flags.BenchmarkRunsFlag
 
 		var benchmarkRuns = make([]*reporter.BenchmarkRun, 0, numRuns)
 
 		for r := uint(0); r < numRuns; r++ {
-			if *verboseFlag {
+			if *flags.VerboseFlag {
 				fmt.Printf("Benchmark Run: %v\n", r)
 			}
 
@@ -116,13 +111,13 @@ func main() {
 
 		benchmarkReports = append(benchmarkReports, reporter.NewBenchmarkReport(v.Name(), benchmarkRuns...))
 
-		if *verboseFlag {
+		if *flags.VerboseFlag {
 			fmt.Printf("End Benchmark: %v\n", v.Name())
 		}
 	}
 
 	if benchmarkReporter != nil {
-		if *verboseFlag {
+		if *flags.VerboseFlag {
 			fmt.Printf("Generating Report\n")
 		}
 
@@ -131,7 +126,7 @@ func main() {
 		}
 	}
 
-	if *verboseFlag {
+	if *flags.VerboseFlag {
 		fmt.Printf("Finished\n")
 	}
 }
@@ -144,13 +139,11 @@ func measureBenchmark(dirConfig utils.ServerDirConfig, serverBuilder server.Serv
 		panic(fmt.Sprintf("Failed to get server directory: %v", err))
 	}
 
-	if !*reuseStateFlag {
+	if !*flags.ReuseStateFlag {
 		serverPath = filepath.Join(serverPath, fmt.Sprintf("%v-%d", bench.Name(), iteration))
-	} else {
-		serverPath = filepath.Join(serverPath, bench.Name())
 	}
 
-	if *verboseFlag {
+	if *flags.VerboseFlag {
 		fmt.Printf("Benchmark Data Path: %v\n", serverPath)
 	}
 
