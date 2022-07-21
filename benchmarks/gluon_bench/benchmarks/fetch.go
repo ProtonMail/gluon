@@ -40,6 +40,10 @@ func (f *Fetch) Setup(ctx context.Context, addr net.Addr) error {
 
 	defer utils.CloseClient(cl)
 
+	if err := utils.FillBenchmarkSourceMailbox(cl); err != nil {
+		return err
+	}
+
 	status, err := cl.Status(*flags.MailboxFlag, []imap.StatusItem{imap.StatusMessages})
 	if err != nil {
 		return err
