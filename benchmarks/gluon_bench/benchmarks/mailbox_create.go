@@ -23,11 +23,11 @@ func (*MailboxCreate) TearDown(ctx context.Context, addr net.Addr) error {
 
 func (*MailboxCreate) Run(ctx context.Context, addr net.Addr) error {
 	cl, err := utils.NewClient(addr.String())
-	defer utils.CloseClient(cl)
-
 	if err != nil {
 		return err
 	}
+
+	defer utils.CloseClient(cl)
 
 	return utils.BuildMailbox(cl, "INBOX", 1000)
 }
