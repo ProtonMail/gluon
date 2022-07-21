@@ -5,12 +5,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"net"
 	"path/filepath"
 	"time"
 
 	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
@@ -87,7 +89,9 @@ func addUser(ctx context.Context, server *gluon.Server, path string, addresses [
 	storePath := filepath.Join(path, id+".store")
 	dbPath := filepath.Join(path, id+".db")
 
-	fmt.Printf("Adding user ID=%v\n  StorePath:'%v'\n  DBPath:'%v'\n", id, storePath, dbPath)
+	if *flags.VerboseFlag {
+		fmt.Printf("Adding user ID=%v\n  StorePath:'%v'\n  DBPath:'%v'\n", id, storePath, dbPath)
+	}
 
 	store, err := store.NewOnDiskStore(storePath, []byte(utils.UserPassword))
 	if err != nil {
