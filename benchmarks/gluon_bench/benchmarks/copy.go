@@ -15,14 +15,11 @@ import (
 
 var copyCountFlag = flag.Uint("copy-count", 0, "Total number of messages to copy during copy benchmarks.")
 var copyListFlag = flag.String("copy-list", "", "Use a list of predefined sequences to copy rather than random generated.")
-var copyRandomRangesFlag = flag.Bool("copy-random-ranges", false, "If not using a copy list, use a random range rather than a random sequence.")
 var copyAllFlag = flag.Bool("copy-all", false, "If set, perform a copy of the all messages.")
 
 type Copy struct {
-	messageCount uint32
-	copyCount    uint32
-	copyLists    [][]*imap.SeqSet
-	dstMailbox   string
+	seqSets    *ParallelSeqSet
+	dstMailbox string
 }
 
 func NewCopy() *Copy {
@@ -61,49 +58,28 @@ func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
 		return err
 	}
 
-	c.messageCount = status.Messages
+	messageCount := status.Messages
 
-	if c.messageCount == 0 {
+	if messageCount == 0 {
 		return fmt.Errorf("mailbox '%v' has no messages", *flags.MailboxFlag)
 	}
 
-	if *copyCountFlag == 0 {
-		c.copyCount = c.messageCount / 2
-	} else {
-		c.copyCount = uint32(*copyCountFlag)
+	copyCount := uint32(*copyCountFlag)
+	if copyCount == 0 {
+		copyCount = uint32(messageCount / 2)
 	}
 
-	if len(*copyListFlag) != 0 {
-		list, err := utils.SequenceListFromFile(*copyListFlag)
-		if err != nil {
-			return err
-		}
+	seqSets, err := NewParallelSeqSet(copyCount,
+		*flags.ParallelClientsFlag,
+		*copyListFlag,
+		*copyAllFlag,
+		*flags.FlagRandomSeqSetIntervals)
 
-		c.copyLists = make([][]*imap.SeqSet, *flags.ParallelClientsFlag)
-		for i := uint(0); i < *flags.ParallelClientsFlag; i++ {
-			c.copyLists[i] = list
-		}
-	} else if *copyAllFlag {
-		c.copyLists = make([][]*imap.SeqSet, *flags.ParallelClientsFlag)
-		for i := uint(0); i < *flags.ParallelClientsFlag; i++ {
-			c.copyLists[i] = []*imap.SeqSet{utils.NewSequenceSetAll()}
-		}
-	} else {
-		c.copyLists = make([][]*imap.SeqSet, *flags.ParallelClientsFlag)
-		for i := uint(0); i < *flags.ParallelClientsFlag; i++ {
-			list := make([]*imap.SeqSet, 0, c.copyCount)
-			for r := uint32(0); r < c.copyCount; r++ {
-				var seqSet *imap.SeqSet
-				if !*copyRandomRangesFlag {
-					seqSet = utils.RandomSequenceSetNum(c.copyCount)
-				} else {
-					seqSet = utils.RandomSequenceSetRange(c.copyCount)
-				}
-				list = append(list, seqSet)
-			}
-			c.copyLists[i] = list
-		}
+	if err != nil {
+		return err
 	}
+
+	c.seqSets = seqSets
 
 	return nil
 }
@@ -125,7 +101,7 @@ func (c *Copy) TearDown(ctx context.Context, addr net.Addr) error {
 
 func (c *Copy) Run(ctx context.Context, addr net.Addr) error {
 	utils.RunParallelClients(addr, func(cl *client.Client, index uint) {
-		for _, v := range c.copyLists[index] {
+		for _, v := range c.seqSets.Get(index) {
 			if err := cl.Copy(v, c.dstMailbox); err != nil {
 				panic(err)
 			}

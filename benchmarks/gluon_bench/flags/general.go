@@ -11,3 +11,4 @@ var RemoteServerFlag = flag.String("remote-server", "", "IP address and port of 
 var MailboxFlag = flag.String("mailbox", "INBOX", "If not specified will use INBOX as the mailbox to run benchmarks against.")
 var ParallelClientsFlag = flag.Uint("parallel-clients", 1, "Set the number of clients to be run in parallel during the benchmark.")
 var FillSourceMailbox = flag.Uint("fill-src-mailbox", 1000, "Number of messages to add to the source inbox before each benchmark, set to 0 to skip.")
+var FlagRandomSeqSetIntervals = flag.Bool("random-seqset-intervals", false, "When set, generate random sequence intervals rather than single numbers.")

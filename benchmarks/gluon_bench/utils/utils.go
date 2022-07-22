@@ -1,9 +1,10 @@
 package utils
 
 import (
+	"time"
+
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/emersion/go-imap/client"
-	"time"
 )
 
 // ScopedTimer tracks the duration between invocations to Start and Stop.
