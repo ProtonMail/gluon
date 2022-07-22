@@ -5,11 +5,10 @@ import (
 	"runtime/pprof"
 	"strconv"
 
-	"github.com/ProtonMail/gluon/profiling"
-
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/profiling"
 )
 
 func (s *Session) handleOther(ctx context.Context, tag string, cmd *proto.Command, profiler profiling.CmdProfiler) chan response.Response {
@@ -287,10 +286,8 @@ func (s *Session) handleWithMailbox(ctx context.Context, tag string, cmd *proto.
 		return s.handleCopy(ctx, tag, cmd.GetCopy(), mailbox, ch)
 
 	case cmd.GetUid() != nil:
-		profiler.Start(profiling.CmdTypeUID)
-		defer profiler.Stop(profiling.CmdTypeUID)
 		// 6.4.8. UID Command
-		return s.handleUID(ctx, tag, cmd.GetUid(), mailbox, ch)
+		return s.handleUID(ctx, tag, cmd.GetUid(), mailbox, profiler, ch)
 
 	case cmd.GetMove() != nil:
 		profiler.Start(profiling.CmdTypeMove)

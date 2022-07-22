@@ -1,33 +1,37 @@
 package profiling
 
 const (
-	CmdTypeSelect      = 0
-	CmdTypeCreate      = 1
-	CmdTypeDelete      = 2
-	CmdTypeRename      = 3
-	CmdTypeSubscribe   = 4
-	CmdTypeUnsubscribe = 5
-	CmdTypeList        = 6
-	CmdTypeLSub        = 7
-	CmdTypeStatus      = 8
-	CmdTypeAppend      = 9
-	CmdTypeCheck       = 10
-	CmdTypeClose       = 11
-	CmdTypeExpunge     = 12
-	CmdTypeSearch      = 13
-	CmdTypeFetch       = 14
-	CmdTypeStore       = 15
-	CmdTypeCopy        = 16
-	CmdTypeUID         = 17
-	CmdTypeNoop        = 18
-	CmdTypeIdle        = 19
-	CmdTypeMove        = 20
-	CmdTypeID          = 21
-	CmdTypeLogout      = 22
-	CmdTypeUnselect    = 23
-	CmdTypeLogin       = 24
-	CmdTypeExamine     = 25
-	CmdTypeTotal       = 26
+	CmdTypeSelect = iota
+	CmdTypeCreate
+	CmdTypeDelete
+	CmdTypeRename
+	CmdTypeSubscribe
+	CmdTypeUnsubscribe
+	CmdTypeList
+	CmdTypeLSub
+	CmdTypeStatus
+	CmdTypeAppend
+	CmdTypeCheck
+	CmdTypeClose
+	CmdTypeExpunge
+	CmdTypeSearch
+	CmdTypeFetch
+	CmdTypeStore
+	CmdTypeCopy
+	CmdTypeNoop
+	CmdTypeIdle
+	CmdTypeMove
+	CmdTypeID
+	CmdTypeLogout
+	CmdTypeUnselect
+	CmdTypeLogin
+	CmdTypeExamine
+	CmdTypeUIDMove
+	CmdTypeUIDCopy
+	CmdTypeUIDStore
+	CmdTypeUIDFetch
+	CmdTypeUIDSearch
+	CmdTypeTotal
 )
 
 func CmdTypeToString(cmdType int) string {
@@ -66,8 +70,6 @@ func CmdTypeToString(cmdType int) string {
 		return "STORE  "
 	case CmdTypeCopy:
 		return "COPY   "
-	case CmdTypeUID:
-		return "UID    "
 	case CmdTypeNoop:
 		return "NOOP   "
 	case CmdTypeIdle:
@@ -84,6 +86,16 @@ func CmdTypeToString(cmdType int) string {
 		return "LOGIN  "
 	case CmdTypeExamine:
 		return "EXAMINE"
+	case CmdTypeUIDFetch:
+		return "UFETCH "
+	case CmdTypeUIDCopy:
+		return "UCOPY  "
+	case CmdTypeUIDMove:
+		return "UMOVE  "
+	case CmdTypeUIDStore:
+		return "USTORE "
+	case CmdTypeUIDSearch:
+		return "USEARCH"
 
 	default:
 		return "Unknown"
