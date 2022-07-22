@@ -45,23 +45,43 @@ func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, r
 	for i := uint(0); i < numWorkers; i++ {
 		list := make([]*imap.SeqSet, 0, count)
 
-		if generateIntervals && randomDrain {
-			panic("This is not yet supported")
-		}
-
 		if randomDrain {
 			available := make([]uint32, count)
 			for r := uint32(0); r < count; r++ {
 				available[r] = r + 1
 			}
 
-			for r := uint32(0); r < count; r++ {
-				index := rand.Uint32() % (count - r)
-				tmp := available[index]
-				available[index] = available[count-r-1]
-				seqSet := &imap.SeqSet{}
-				seqSet.AddNum(tmp)
-				list = append(list, seqSet)
+			if generateIntervals {
+				const maxIntervalRange = uint32(40)
+				for len(available) > 0 {
+					intervalRange := rand.Uint32() % maxIntervalRange
+					itemsLeft := uint32(len(available))
+					index := rand.Uint32() % itemsLeft
+
+					if index > intervalRange {
+						index -= intervalRange
+					} else {
+						index = 0
+					}
+
+					if index+intervalRange >= itemsLeft {
+						intervalRange = itemsLeft - index
+					}
+
+					seqSet := &imap.SeqSet{}
+					seqSet.AddRange(index, index+intervalRange)
+					list = append(list, seqSet)
+					available = append(available[:index], available[index+intervalRange:]...)
+				}
+			} else {
+				for r := uint32(0); r < count; r++ {
+					index := rand.Uint32() % (count - r)
+					tmp := available[index]
+					available[index] = available[count-r-1]
+					seqSet := &imap.SeqSet{}
+					seqSet.AddNum(tmp)
+					list = append(list, seqSet)
+				}
 			}
 		} else {
 			for r := uint32(0); r < count; r++ {
