@@ -73,7 +73,8 @@ func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
 		*flags.ParallelClientsFlag,
 		*copyListFlag,
 		*copyAllFlag,
-		*flags.FlagRandomSeqSetIntervals)
+		*flags.FlagRandomSeqSetIntervals,
+		false)
 
 	if err != nil {
 		return err

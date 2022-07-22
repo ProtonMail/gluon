@@ -61,7 +61,8 @@ func (f *Fetch) Setup(ctx context.Context, addr net.Addr) error {
 		*flags.ParallelClientsFlag,
 		*fetchListFlag,
 		*fetchAllFlag,
-		*flags.FlagRandomSeqSetIntervals)
+		*flags.FlagRandomSeqSetIntervals,
+		false)
 
 	if err != nil {
 		return err

@@ -118,6 +118,19 @@ func RandomSequenceSetRange(max uint32) *imap.SeqSet {
 }
 
 func RunParallelClients(addr net.Addr, fn func(*client.Client, uint)) {
+	mailboxes := make([]string, *flags.ParallelClientsFlag)
+	for i := uint(0); i < *flags.ParallelClientsFlag; i++ {
+		mailboxes[i] = *flags.MailboxFlag
+	}
+
+	RunParallelClientsWithMailboxes(addr, mailboxes, fn)
+}
+
+func RunParallelClientsWithMailboxes(addr net.Addr, mailboxes []string, fn func(*client.Client, uint)) {
+	if len(mailboxes) != int(*flags.ParallelClientsFlag) {
+		panic("Mailbox count doesn't match worker count")
+	}
+
 	wg := sync.WaitGroup{}
 
 	for i := uint(0); i < *flags.ParallelClientsFlag; i++ {
@@ -134,7 +147,7 @@ func RunParallelClients(addr net.Addr, fn func(*client.Client, uint)) {
 
 			defer CloseClient(cl)
 
-			if _, err := cl.Select(*flags.MailboxFlag, true); err != nil {
+			if _, err := cl.Select(mailboxes[index], true); err != nil {
 				panic(err)
 			}
 
