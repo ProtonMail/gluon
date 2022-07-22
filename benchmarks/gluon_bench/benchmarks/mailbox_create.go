@@ -38,5 +38,5 @@ func (*MailboxCreate) Run(ctx context.Context, addr net.Addr) error {
 
 	defer utils.CloseClient(cl)
 
-	return utils.BuildMailbox(cl, *flags.MailboxFlag, int(*messageCountFlag))
+	return utils.BuildMailbox(cl, *flags.Mailbox, int(*messageCountFlag))
 }

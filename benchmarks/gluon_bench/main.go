@@ -61,8 +61,8 @@ func main() {
 
 	var benchmarkReporter reporter.BenchmarkReporter
 
-	if len(*flags.JsonReporterFlag) != 0 {
-		benchmarkReporter = reporter.NewJSONReporter(*flags.JsonReporterFlag)
+	if len(*flags.JsonReporter) != 0 {
+		benchmarkReporter = reporter.NewJSONReporter(*flags.JsonReporter)
 	} else {
 		benchmarkReporter = &reporter.StdOutReporter{}
 	}
@@ -70,16 +70,16 @@ func main() {
 	cmdProfiler := utils.NewDurationCmdProfilerBuilder()
 
 	var serverDirConfig utils.ServerDirConfig
-	if len(*flags.StorePathFlag) != 0 {
-		serverDirConfig = utils.NewPersistentServerDirConfig(*flags.StorePathFlag)
+	if len(*flags.StorePath) != 0 {
+		serverDirConfig = utils.NewPersistentServerDirConfig(*flags.StorePath)
 	} else {
 		serverDirConfig = &utils.TmpServerDirConfig{}
 	}
 
 	var serverBuilder server.ServerBuilder
 
-	if len(*flags.RemoteServerFlag) != 0 {
-		builder, err := server.NewRemoteServerBuilder(*flags.RemoteServerFlag)
+	if len(*flags.RemoteServer) != 0 {
+		builder, err := server.NewRemoteServerBuilder(*flags.RemoteServer)
 		if err != nil {
 			panic(fmt.Sprintf("Invalid Server address: %v", err))
 		}
@@ -92,16 +92,16 @@ func main() {
 	benchmarkReports := make([]*reporter.BenchmarkReport, 0, len(benchmarks))
 
 	for _, v := range benchmarks {
-		if *flags.VerboseFlag {
+		if *flags.Verbose {
 			fmt.Printf("Begin Benchmark: %v\n", v.Name())
 		}
 
-		numRuns := *flags.BenchmarkRunsFlag
+		numRuns := *flags.BenchmarkRuns
 
 		var benchmarkRuns = make([]*reporter.BenchmarkRun, 0, numRuns)
 
 		for r := uint(0); r < numRuns; r++ {
-			if *flags.VerboseFlag {
+			if *flags.Verbose {
 				fmt.Printf("Benchmark Run: %v\n", r)
 			}
 
@@ -113,13 +113,13 @@ func main() {
 
 		benchmarkReports = append(benchmarkReports, reporter.NewBenchmarkReport(v.Name(), benchmarkRuns...))
 
-		if *flags.VerboseFlag {
+		if *flags.Verbose {
 			fmt.Printf("End Benchmark: %v\n", v.Name())
 		}
 	}
 
 	if benchmarkReporter != nil {
-		if *flags.VerboseFlag {
+		if *flags.Verbose {
 			fmt.Printf("Generating Report\n")
 		}
 
@@ -128,7 +128,7 @@ func main() {
 		}
 	}
 
-	if *flags.VerboseFlag {
+	if *flags.Verbose {
 		fmt.Printf("Finished\n")
 	}
 }
@@ -141,11 +141,11 @@ func measureBenchmark(dirConfig utils.ServerDirConfig, serverBuilder server.Serv
 		panic(fmt.Sprintf("Failed to get server directory: %v", err))
 	}
 
-	if !*flags.ReuseStateFlag {
+	if !*flags.ReuseState {
 		serverPath = filepath.Join(serverPath, fmt.Sprintf("%v-%d", bench.Name(), iteration))
 	}
 
-	if *flags.VerboseFlag {
+	if *flags.Verbose {
 		fmt.Printf("Benchmark Data Path: %v\n", serverPath)
 	}
 

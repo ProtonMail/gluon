@@ -53,7 +53,7 @@ func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
 		return err
 	}
 
-	status, err := cl.Status(*flags.MailboxFlag, []imap.StatusItem{imap.StatusMessages})
+	status, err := cl.Status(*flags.Mailbox, []imap.StatusItem{imap.StatusMessages})
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
 	messageCount := status.Messages
 
 	if messageCount == 0 {
-		return fmt.Errorf("mailbox '%v' has no messages", *flags.MailboxFlag)
+		return fmt.Errorf("mailbox '%v' has no messages", *flags.Mailbox)
 	}
 
 	copyCount := uint32(*copyCountFlag)
@@ -70,10 +70,10 @@ func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
 	}
 
 	seqSets, err := NewParallelSeqSet(copyCount,
-		*flags.ParallelClientsFlag,
+		*flags.ParallelClients,
 		*copyListFlag,
 		*copyAllFlag,
-		*flags.FlagRandomSeqSetIntervals,
+		*flags.RandomSeqSetIntervals,
 		false,
 		*flags.UIDMode)
 

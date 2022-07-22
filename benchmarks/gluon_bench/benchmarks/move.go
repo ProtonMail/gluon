@@ -34,7 +34,7 @@ func (*Move) Name() string {
 }
 
 func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
-	if *flags.FillSourceMailboxFlag == 0 {
+	if *flags.FillSourceMailbox == 0 {
 		return fmt.Errorf("move benchmark requires a message count > 0")
 	}
 
@@ -45,17 +45,17 @@ func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
 
 	defer utils.CloseClient(cl)
 
-	srcMailboxes := make([]string, 0, *flags.ParallelClientsFlag)
-	dstMailboxes := make([]string, 0, *flags.ParallelClientsFlag)
+	srcMailboxes := make([]string, 0, *flags.ParallelClients)
+	dstMailboxes := make([]string, 0, *flags.ParallelClients)
 
-	for i := uint(0); i < *flags.ParallelClientsFlag; i++ {
+	for i := uint(0); i < *flags.ParallelClients; i++ {
 		srcMailboxes = append(srcMailboxes, uuid.NewString())
 	}
 
 	if *moveIntoSameDstFlag {
 		dstMailboxes = []string{uuid.NewString()}
 	} else {
-		for i := uint(0); i < *flags.ParallelClientsFlag; i++ {
+		for i := uint(0); i < *flags.ParallelClients; i++ {
 			dstMailboxes = append(dstMailboxes, uuid.NewString())
 		}
 	}
@@ -91,16 +91,16 @@ func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
 
 	// Fill srcMailboxes
 	for _, v := range srcMailboxes {
-		if err := utils.BuildMailbox(cl, v, int(*flags.FillSourceMailboxFlag)); err != nil {
+		if err := utils.BuildMailbox(cl, v, int(*flags.FillSourceMailbox)); err != nil {
 			return err
 		}
 	}
 
-	seqSets, err := NewParallelSeqSet(uint32(*flags.FillSourceMailboxFlag),
-		*flags.ParallelClientsFlag,
+	seqSets, err := NewParallelSeqSet(uint32(*flags.FillSourceMailbox),
+		*flags.ParallelClients,
 		*moveListFlag,
 		*moveAllFlag,
-		*flags.FlagRandomSeqSetIntervals,
+		*flags.RandomSeqSetIntervals,
 		true,
 		*flags.UIDMode)
 
