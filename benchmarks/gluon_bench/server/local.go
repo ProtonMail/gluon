@@ -88,7 +88,7 @@ func addUser(ctx context.Context, server *gluon.Server, path string, addresses [
 	storePath := filepath.Join(path, id+".store")
 	dbPath := filepath.Join(path, id+".db")
 
-	if *flags.VerboseFlag {
+	if *flags.Verbose {
 		fmt.Printf("Adding user ID=%v\n  StorePath:'%v'\n  DBPath:'%v'\n", id, storePath, dbPath)
 	}
 

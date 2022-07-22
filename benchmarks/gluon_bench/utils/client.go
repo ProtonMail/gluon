@@ -133,22 +133,22 @@ func RandomSequenceSetRange(max uint32) *imap.SeqSet {
 }
 
 func RunParallelClients(addr net.Addr, fn func(*client.Client, uint)) {
-	mailboxes := make([]string, *flags.ParallelClientsFlag)
-	for i := uint(0); i < *flags.ParallelClientsFlag; i++ {
-		mailboxes[i] = *flags.MailboxFlag
+	mailboxes := make([]string, *flags.ParallelClients)
+	for i := uint(0); i < *flags.ParallelClients; i++ {
+		mailboxes[i] = *flags.Mailbox
 	}
 
 	RunParallelClientsWithMailboxes(addr, mailboxes, fn)
 }
 
 func RunParallelClientsWithMailboxes(addr net.Addr, mailboxes []string, fn func(*client.Client, uint)) {
-	if len(mailboxes) != int(*flags.ParallelClientsFlag) {
+	if len(mailboxes) != int(*flags.ParallelClients) {
 		panic("Mailbox count doesn't match worker count")
 	}
 
 	wg := sync.WaitGroup{}
 
-	for i := uint(0); i < *flags.ParallelClientsFlag; i++ {
+	for i := uint(0); i < *flags.ParallelClients; i++ {
 		wg.Add(1)
 
 		go func(index uint) {
