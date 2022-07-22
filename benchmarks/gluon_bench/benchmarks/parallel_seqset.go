@@ -39,7 +39,7 @@ func NewParallelSeqSetFromFile(path string, numWorkers uint) (*ParallelSeqSet, e
 // NewParallelSeqSetRandom generates count random sequence set for each worker. If generateIntervals is set to true,
 // it will generate intervals rather than a single number. If randomDrain is set to true it will generate unique
 // values that eventually exhaust the problem space.
-func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, randomDrain bool) *ParallelSeqSet {
+func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, randomDrain, uid bool) *ParallelSeqSet {
 	lists := make([][]*imap.SeqSet, numWorkers)
 
 	for i := uint(0); i < numWorkers; i++ {
@@ -69,17 +69,26 @@ func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, r
 					}
 
 					seqSet := &imap.SeqSet{}
-					seqSet.AddRange(index, index+intervalRange)
+					if uid {
+						seqSet.AddRange(available[index], available[index+intervalRange-1])
+					} else {
+						seqSet.AddRange(index+1, index+intervalRange)
+					}
+
 					list = append(list, seqSet)
 					available = append(available[:index], available[index+intervalRange:]...)
 				}
 			} else {
 				for r := uint32(0); r < count; r++ {
 					index := rand.Uint32() % (count - r)
-					tmp := available[index]
-					available[index] = available[count-r-1]
 					seqSet := &imap.SeqSet{}
-					seqSet.AddNum(tmp)
+					if uid {
+						tmp := available[index]
+						available[index] = available[count-r-1]
+						seqSet.AddNum(tmp)
+					} else {
+						seqSet.AddNum(index)
+					}
 					list = append(list, seqSet)
 				}
 			}
@@ -117,7 +126,9 @@ func NewParallelSeqSetAll(numWorkers uint) *ParallelSeqSet {
 // * If generateAll is set to true, it will call NewParallelSeqSetAll.
 // * If none of the above are valid it will generate random collection of sequence sets which can be single or intervals
 //   based on whether generateIntervals is set to true.
-func NewParallelSeqSet(count uint32, numWorkers uint, listFile string, generateAll, generateIntervals, randomDrain bool) (*ParallelSeqSet, error) {
+// 	 If randomDrain is set to true, it will generate non repeating sequences. E.g. Useful for move or delete benchmarks.
+//   If uid is set to true, it will assume the values are UIDs rather than sequence IDs.
+func NewParallelSeqSet(count uint32, numWorkers uint, listFile string, generateAll, generateIntervals, randomDrain, uid bool) (*ParallelSeqSet, error) {
 	if count == 0 {
 		return nil, fmt.Errorf("count can not be 0")
 	}
@@ -127,6 +138,6 @@ func NewParallelSeqSet(count uint32, numWorkers uint, listFile string, generateA
 	} else if generateAll {
 		return NewParallelSeqSetAll(numWorkers), nil
 	} else {
-		return NewParallelSeqSetRandom(count, numWorkers, generateIntervals, randomDrain), nil
+		return NewParallelSeqSetRandom(count, numWorkers, generateIntervals, randomDrain, uid), nil
 	}
 }

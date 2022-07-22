@@ -26,8 +26,8 @@ func (s *ScopedTimer) Elapsed() time.Duration {
 }
 
 func FillBenchmarkSourceMailbox(cl *client.Client) error {
-	if *flags.FillSourceMailbox != 0 {
-		if err := BuildMailbox(cl, *flags.MailboxFlag, int(*flags.FillSourceMailbox)); err != nil {
+	if *flags.FillSourceMailboxFlag != 0 {
+		if err := BuildMailbox(cl, *flags.MailboxFlag, int(*flags.FillSourceMailboxFlag)); err != nil {
 			return err
 		}
 	}

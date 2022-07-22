@@ -62,7 +62,8 @@ func (f *Fetch) Setup(ctx context.Context, addr net.Addr) error {
 		*fetchListFlag,
 		*fetchAllFlag,
 		*flags.FlagRandomSeqSetIntervals,
-		false)
+		false,
+		*flags.UIDMode)
 
 	if err != nil {
 		return err
@@ -79,8 +80,19 @@ func (*Fetch) TearDown(ctx context.Context, addr net.Addr) error {
 
 func (f *Fetch) Run(ctx context.Context, addr net.Addr) error {
 	utils.RunParallelClients(addr, func(cl *client.Client, index uint) {
+		var fetchFn func(*client.Client, *imap.SeqSet) error
+		if *flags.UIDMode {
+			fetchFn = func(cl *client.Client, set *imap.SeqSet) error {
+				return utils.UIDFetchMessage(cl, set, imap.FetchAll)
+			}
+		} else {
+			fetchFn = func(cl *client.Client, set *imap.SeqSet) error {
+				return utils.FetchMessage(cl, set, imap.FetchAll)
+			}
+		}
+
 		for _, v := range f.seqSets.Get(index) {
-			if err := utils.FetchMessage(cl, v, imap.FetchAll); err != nil {
+			if err := fetchFn(cl, v); err != nil {
 				panic(err)
 			}
 		}

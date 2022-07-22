@@ -74,7 +74,8 @@ func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
 		*copyListFlag,
 		*copyAllFlag,
 		*flags.FlagRandomSeqSetIntervals,
-		false)
+		false,
+		*flags.UIDMode)
 
 	if err != nil {
 		return err
@@ -102,8 +103,19 @@ func (c *Copy) TearDown(ctx context.Context, addr net.Addr) error {
 
 func (c *Copy) Run(ctx context.Context, addr net.Addr) error {
 	utils.RunParallelClients(addr, func(cl *client.Client, index uint) {
+		var copyFn func(*client.Client, *imap.SeqSet, string) error
+		if *flags.UIDMode {
+			copyFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {
+				return cl.UidCopy(set, mailbox)
+			}
+		} else {
+			copyFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {
+				return cl.Copy(set, mailbox)
+			}
+		}
+
 		for _, v := range c.seqSets.Get(index) {
-			if err := cl.Copy(v, c.dstMailbox); err != nil {
+			if err := copyFn(cl, v, c.dstMailbox); err != nil {
 				panic(err)
 			}
 		}

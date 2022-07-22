@@ -54,6 +54,21 @@ func FetchMessage(cl *client.Client, sequenceSet *imap.SeqSet, items ...imap.Fet
 	return cl.Fetch(sequenceSet, items, ch)
 }
 
+func UIDFetchMessage(cl *client.Client, sequenceSet *imap.SeqSet, items ...imap.FetchItem) error {
+	ch := make(chan *imap.Message)
+
+	go func() {
+		for {
+			_, ok := <-ch
+			if !ok {
+				break
+			}
+		}
+	}()
+
+	return cl.UidFetch(sequenceSet, items, ch)
+}
+
 func SequenceListFromFile(path string) ([]*imap.SeqSet, error) {
 	result := make([]*imap.SeqSet, 0, 64)
 

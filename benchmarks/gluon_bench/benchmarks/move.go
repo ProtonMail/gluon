@@ -8,6 +8,7 @@ import (
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
+	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
 )
@@ -33,7 +34,7 @@ func (*Move) Name() string {
 }
 
 func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
-	if *flags.FillSourceMailbox == 0 {
+	if *flags.FillSourceMailboxFlag == 0 {
 		return fmt.Errorf("move benchmark requires a message count > 0")
 	}
 
@@ -90,17 +91,18 @@ func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
 
 	// Fill srcMailboxes
 	for _, v := range srcMailboxes {
-		if err := utils.BuildMailbox(cl, v, int(*flags.FillSourceMailbox)); err != nil {
+		if err := utils.BuildMailbox(cl, v, int(*flags.FillSourceMailboxFlag)); err != nil {
 			return err
 		}
 	}
 
-	seqSets, err := NewParallelSeqSet(uint32(*flags.FillSourceMailbox),
+	seqSets, err := NewParallelSeqSet(uint32(*flags.FillSourceMailboxFlag),
 		*flags.ParallelClientsFlag,
 		*moveListFlag,
 		*moveAllFlag,
 		*flags.FlagRandomSeqSetIntervals,
-		true)
+		true,
+		*flags.UIDMode)
 
 	if err != nil {
 		return err
@@ -136,14 +138,24 @@ func (m *Move) TearDown(ctx context.Context, addr net.Addr) error {
 
 func (m *Move) Run(ctx context.Context, addr net.Addr) error {
 	utils.RunParallelClientsWithMailboxes(addr, m.srcMailboxes, func(cl *client.Client, index uint) {
-		// Use uid move rather than sequence as it's easier to deal with.
+		var moveFn func(*client.Client, *imap.SeqSet, string) error
+		if *flags.UIDMode {
+			moveFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {
+				return cl.UidMove(set, mailbox)
+			}
+		} else {
+			moveFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {
+				return cl.Move(set, mailbox)
+			}
+		}
+
 		for _, v := range m.seqSets.Get(index) {
 			if *moveIntoSameDstFlag {
-				if err := cl.UidMove(v, m.dstMailboxes[0]); err != nil {
+				if err := moveFn(cl, v, m.dstMailboxes[0]); err != nil {
 					panic(err)
 				}
 			} else {
-				if err := cl.UidMove(v, m.dstMailboxes[index]); err != nil {
+				if err := moveFn(cl, v, m.dstMailboxes[index]); err != nil {
 					panic(err)
 				}
 			}
