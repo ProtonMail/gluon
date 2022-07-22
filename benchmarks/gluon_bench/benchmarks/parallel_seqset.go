@@ -2,6 +2,7 @@ package benchmarks
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/emersion/go-imap"
@@ -36,22 +37,43 @@ func NewParallelSeqSetFromFile(path string, numWorkers uint) (*ParallelSeqSet, e
 }
 
 // NewParallelSeqSetRandom generates count random sequence set for each worker. If generateIntervals is set to true,
-// it will generate intervals rather than a single number.
-func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals bool) *ParallelSeqSet {
+// it will generate intervals rather than a single number. If randomDrain is set to true it will generate unique
+// values that eventually exhaust the problem space.
+func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, randomDrain bool) *ParallelSeqSet {
 	lists := make([][]*imap.SeqSet, numWorkers)
 
 	for i := uint(0); i < numWorkers; i++ {
 		list := make([]*imap.SeqSet, 0, count)
 
-		for r := uint32(0); r < count; r++ {
-			var seqSet *imap.SeqSet
-			if !generateIntervals {
-				seqSet = utils.RandomSequenceSetNum(count)
-			} else {
-				seqSet = utils.RandomSequenceSetRange(count)
+		if generateIntervals && randomDrain {
+			panic("This is not yet supported")
+		}
+
+		if randomDrain {
+			available := make([]uint32, count)
+			for r := uint32(0); r < count; r++ {
+				available[r] = r + 1
 			}
 
-			list = append(list, seqSet)
+			for r := uint32(0); r < count; r++ {
+				index := rand.Uint32() % (count - r)
+				tmp := available[index]
+				available[index] = available[count-r-1]
+				seqSet := &imap.SeqSet{}
+				seqSet.AddNum(tmp)
+				list = append(list, seqSet)
+			}
+		} else {
+			for r := uint32(0); r < count; r++ {
+				var seqSet *imap.SeqSet
+				if !generateIntervals {
+					seqSet = utils.RandomSequenceSetNum(count)
+				} else {
+					seqSet = utils.RandomSequenceSetRange(count)
+				}
+
+				list = append(list, seqSet)
+			}
 		}
 
 		lists[i] = list
@@ -75,7 +97,7 @@ func NewParallelSeqSetAll(numWorkers uint) *ParallelSeqSet {
 // * If generateAll is set to true, it will call NewParallelSeqSetAll.
 // * If none of the above are valid it will generate random collection of sequence sets which can be single or intervals
 //   based on whether generateIntervals is set to true.
-func NewParallelSeqSet(count uint32, numWorkers uint, listFile string, generateAll bool, generateIntervals bool) (*ParallelSeqSet, error) {
+func NewParallelSeqSet(count uint32, numWorkers uint, listFile string, generateAll, generateIntervals, randomDrain bool) (*ParallelSeqSet, error) {
 	if count == 0 {
 		return nil, fmt.Errorf("count can not be 0")
 	}
@@ -85,6 +107,6 @@ func NewParallelSeqSet(count uint32, numWorkers uint, listFile string, generateA
 	} else if generateAll {
 		return NewParallelSeqSetAll(numWorkers), nil
 	} else {
-		return NewParallelSeqSetRandom(count, numWorkers, generateIntervals), nil
+		return NewParallelSeqSetRandom(count, numWorkers, generateIntervals, randomDrain), nil
 	}
 }

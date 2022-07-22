@@ -19,6 +19,7 @@ var benches = []benchmarks.Benchmark{
 	&benchmarks.MailboxCreate{},
 	benchmarks.NewFetch(),
 	benchmarks.NewCopy(),
+	benchmarks.NewMove(),
 }
 
 func main() {
