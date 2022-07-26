@@ -13,10 +13,11 @@ import (
 	"github.com/google/uuid"
 )
 
-var moveListFlag = flag.String("move-list", "", "Use a list of predefined sequences to move rather than random generated.")
-var moveAllFlag = flag.Bool("move-all", false, "If set, perform a move of the all messages.")
-var moveIntoSameDstFlag = flag.Bool("move-into-same-dst", false, "If set, rather than moving each unique mailbox into "+
-	"separate unique mailboxes, move all messages into one common destination mailbox.")
+var (
+	moveListFlag        = flag.String("move-list", "", "Use a list of predefined sequences to move rather than random generated.")
+	moveAllFlag         = flag.Bool("move-all", false, "If set, perform a move of the all messages.")
+	moveIntoSameDstFlag = flag.Bool("move-into-same-dst", false, "If set, rather than moving each unique mailbox into separate unique mailboxes, move all messages into one common destination mailbox.")
+)
 
 type Move struct {
 	seqSets       *ParallelSeqSet

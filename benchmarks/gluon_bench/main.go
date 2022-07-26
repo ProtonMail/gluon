@@ -32,7 +32,7 @@ func main() {
 		fmt.Printf("Usage %v [options] benchmark0 benchmark1 ... benchmarkN\n", os.Args[0])
 		fmt.Printf("\nAvailable Benchmarks:\n")
 
-		for k, _ := range benchmarkMap {
+		for k := range benchmarkMap {
 			fmt.Printf("  * %v\n", k)
 		}
 

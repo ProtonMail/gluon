@@ -12,10 +12,12 @@ import (
 	"github.com/emersion/go-imap/client"
 )
 
-var fetchCountFlag = flag.Uint("fetch-count", 0, "Total number of messages to fetch during fetch benchmarks.")
-var fetchListFlag = flag.String("fetch-list", "", "Use a list of predefined sequences to fetch rather than random generated.")
-var fetchReadOnly = flag.Bool("fetch-read-only", false, "If set, perform fetches in read-only mode.")
-var fetchAllFlag = flag.Bool("fetch-all", false, "If set, perform one fetch for all messages.")
+var (
+	fetchCountFlag = flag.Uint("fetch-count", 0, "Total number of messages to fetch during fetch benchmarks.")
+	fetchListFlag  = flag.String("fetch-list", "", "Use a list of predefined sequences to fetch rather than random generated.")
+	fetchReadOnly  = flag.Bool("fetch-read-only", false, "If set, perform fetches in read-only mode.")
+	fetchAllFlag   = flag.Bool("fetch-all", false, "If set, perform one fetch for all messages.")
+)
 
 type Fetch struct {
 	seqSets *ParallelSeqSet

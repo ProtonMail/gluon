@@ -44,8 +44,7 @@ func FetchMessage(cl *client.Client, sequenceSet *imap.SeqSet, items ...imap.Fet
 
 	go func() {
 		for {
-			_, ok := <-ch
-			if !ok {
+			if _, ok := <-ch; !ok {
 				break
 			}
 		}
@@ -59,8 +58,7 @@ func UIDFetchMessage(cl *client.Client, sequenceSet *imap.SeqSet, items ...imap.
 
 	go func() {
 		for {
-			_, ok := <-ch
-			if !ok {
+			if _, ok := <-ch; !ok {
 				break
 			}
 		}
