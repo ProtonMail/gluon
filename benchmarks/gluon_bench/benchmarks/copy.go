@@ -13,9 +13,11 @@ import (
 	"github.com/google/uuid"
 )
 
-var copyCountFlag = flag.Uint("copy-count", 0, "Total number of messages to copy during copy benchmarks.")
-var copyListFlag = flag.String("copy-list", "", "Use a list of predefined sequences to copy rather than random generated.")
-var copyAllFlag = flag.Bool("copy-all", false, "If set, perform a copy of the all messages.")
+var (
+	copyCountFlag = flag.Uint("copy-count", 0, "Total number of messages to copy during copy benchmarks.")
+	copyListFlag  = flag.String("copy-list", "", "Use a list of predefined sequences to copy rather than random generated.")
+	copyAllFlag   = flag.Bool("copy-all", false, "If set, perform a copy of the all messages.")
+)
 
 type Copy struct {
 	seqSets    *ParallelSeqSet
