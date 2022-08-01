@@ -20,6 +20,7 @@ var benches = []benchmarks.Benchmark{
 	benchmarks.NewFetch(),
 	benchmarks.NewCopy(),
 	benchmarks.NewMove(),
+	benchmarks.NewStore(),
 }
 
 func main() {

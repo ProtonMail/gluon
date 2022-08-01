@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"fmt"
+	"github.com/bradenaw/juniper/xslices"
 	"math/rand"
 	"net"
 	"os"
@@ -51,6 +52,48 @@ func FetchMessage(cl *client.Client, sequenceSet *imap.SeqSet, items ...imap.Fet
 	}()
 
 	return cl.Fetch(sequenceSet, items, ch)
+}
+
+func flagsToInterface(flags ...string) []interface{} {
+	return xslices.Map(flags, func(f string) interface{} {
+		return interface{}(f)
+	})
+}
+
+func Store(cl *client.Client, sequenceSet *imap.SeqSet, item string, silent bool, flags ...string) error {
+	if !silent {
+		ch := make(chan *imap.Message)
+
+		go func() {
+			for {
+				if _, ok := <-ch; !ok {
+					break
+				}
+			}
+		}()
+
+		return cl.Store(sequenceSet, imap.StoreItem(item), flagsToInterface(flags...), ch)
+	} else {
+		return cl.Store(sequenceSet, imap.StoreItem(item), flagsToInterface(flags...), nil)
+	}
+}
+
+func UIDStore(cl *client.Client, sequenceSet *imap.SeqSet, item string, silent bool, flags ...string) error {
+	if !silent {
+		ch := make(chan *imap.Message)
+
+		go func() {
+			for {
+				if _, ok := <-ch; !ok {
+					break
+				}
+			}
+		}()
+
+		return cl.UidStore(sequenceSet, imap.StoreItem(item), flagsToInterface(flags...), ch)
+	} else {
+		return cl.UidStore(sequenceSet, imap.StoreItem(item), flagsToInterface(flags...), nil)
+	}
 }
 
 func UIDFetchMessage(cl *client.Client, sequenceSet *imap.SeqSet, items ...imap.FetchItem) error {
