@@ -130,16 +130,21 @@ func RandomSequenceSetRange(max uint32) *imap.SeqSet {
 	return r
 }
 
-func RunParallelClients(addr net.Addr, fn func(*client.Client, uint)) {
-	mailboxes := make([]string, *flags.ParallelClients)
+type MailboxInfo struct {
+	Name     string
+	ReadOnly bool
+}
+
+func RunParallelClients(addr net.Addr, readOnly bool, fn func(*client.Client, uint)) {
+	mailboxes := make([]MailboxInfo, *flags.ParallelClients)
 	for i := uint(0); i < *flags.ParallelClients; i++ {
-		mailboxes[i] = *flags.Mailbox
+		mailboxes[i] = MailboxInfo{Name: *flags.Mailbox, ReadOnly: readOnly}
 	}
 
 	RunParallelClientsWithMailboxes(addr, mailboxes, fn)
 }
 
-func RunParallelClientsWithMailboxes(addr net.Addr, mailboxes []string, fn func(*client.Client, uint)) {
+func RunParallelClientsWithMailboxes(addr net.Addr, mailboxes []MailboxInfo, fn func(*client.Client, uint)) {
 	if len(mailboxes) != int(*flags.ParallelClients) {
 		panic("Mailbox count doesn't match worker count")
 	}
@@ -160,7 +165,9 @@ func RunParallelClientsWithMailboxes(addr net.Addr, mailboxes []string, fn func(
 
 			defer CloseClient(cl)
 
-			if _, err := cl.Select(mailboxes[index], true); err != nil {
+			mbox := mailboxes[index]
+
+			if _, err := cl.Select(mbox.Name, mbox.ReadOnly); err != nil {
 				panic(err)
 			}
 
