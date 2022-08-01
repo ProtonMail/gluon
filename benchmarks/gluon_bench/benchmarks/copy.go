@@ -104,7 +104,7 @@ func (c *Copy) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (c *Copy) Run(ctx context.Context, addr net.Addr) error {
-	utils.RunParallelClients(addr, func(cl *client.Client, index uint) {
+	utils.RunParallelClients(addr, true, func(cl *client.Client, index uint) {
 		var copyFn func(*client.Client, *imap.SeqSet, string) error
 		if *flags.UIDMode {
 			copyFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {

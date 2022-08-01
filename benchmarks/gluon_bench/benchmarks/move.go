@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/bradenaw/juniper/xslices"
 	"net"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
@@ -138,7 +139,14 @@ func (m *Move) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (m *Move) Run(ctx context.Context, addr net.Addr) error {
-	utils.RunParallelClientsWithMailboxes(addr, m.srcMailboxes, func(cl *client.Client, index uint) {
+	mboxInfos := xslices.Map(m.srcMailboxes, func(name string) utils.MailboxInfo {
+		return utils.MailboxInfo{
+			Name:     name,
+			ReadOnly: true,
+		}
+	})
+
+	utils.RunParallelClientsWithMailboxes(addr, mboxInfos, func(cl *client.Client, index uint) {
 		var moveFn func(*client.Client, *imap.SeqSet, string) error
 		if *flags.UIDMode {
 			moveFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {

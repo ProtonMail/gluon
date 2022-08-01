@@ -81,7 +81,7 @@ func (*Fetch) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (f *Fetch) Run(ctx context.Context, addr net.Addr) error {
-	utils.RunParallelClients(addr, func(cl *client.Client, index uint) {
+	utils.RunParallelClients(addr, true, func(cl *client.Client, index uint) {
 		var fetchFn func(*client.Client, *imap.SeqSet) error
 		if *flags.UIDMode {
 			fetchFn = func(cl *client.Client, set *imap.SeqSet) error {
