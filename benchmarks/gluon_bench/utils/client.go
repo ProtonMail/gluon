@@ -3,13 +3,14 @@ package utils
 import (
 	"bufio"
 	"fmt"
-	"github.com/bradenaw/juniper/xslices"
 	"math/rand"
 	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bradenaw/juniper/xslices"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/emersion/go-imap"
