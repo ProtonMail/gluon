@@ -343,7 +343,7 @@ func TestSearchSentSinceAndSentBefore(t *testing.T) {
 
 		t := time.Now()
 
-		c.C(fmt.Sprintf(`A001 search since %s sentbefore 18-Feb-2003`, t.Format("_2-Jan-2006")))
+		c.C(fmt.Sprintf(`A001 search since %s sentbefore 18-Feb-2003`, t.Format("02-Jan-2006")))
 		c.S("* SEARCH")
 		c.OK("A001")
 	})
