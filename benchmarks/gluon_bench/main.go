@@ -21,6 +21,7 @@ var benches = []benchmarks.Benchmark{
 	benchmarks.NewCopy(),
 	benchmarks.NewMove(),
 	benchmarks.NewStore(),
+	benchmarks.NewExpunge(),
 }
 
 func main() {
