@@ -16,6 +16,7 @@ var (
 	storeCountFlag  = flag.Uint("store-count", 0, "Total number of messages to store during store benchmarks.")
 	storeListFlag   = flag.String("store-list", "", "Use a list of predefined sequences to store rather than random generated.")
 	storeSilentFlag = flag.Bool("store-silent", false, "When set to true, request silent updates that do not produce any responses")
+	storeAllFlag    = flag.Bool("store-all", false, "If set, perform one store for all messages.")
 )
 
 type Store struct {
@@ -53,15 +54,15 @@ func (s *Store) Setup(ctx context.Context, addr net.Addr) error {
 		return fmt.Errorf("mailbox '%v' has no messages", *flags.Mailbox)
 	}
 
-	fetchCount := uint32(*fetchCountFlag)
-	if fetchCount == 0 {
-		fetchCount = messageCount / 2
+	storeCount := uint32(*storeCountFlag)
+	if storeCount == 0 {
+		storeCount = messageCount / 2
 	}
 
-	seqSets, err := NewParallelSeqSet(fetchCount,
+	seqSets, err := NewParallelSeqSet(storeCount,
 		*flags.ParallelClients,
-		*fetchListFlag,
-		*fetchAllFlag,
+		*storeListFlag,
+		*storeAllFlag,
 		*flags.RandomSeqSetIntervals,
 		false,
 		*flags.UIDMode)
