@@ -4,9 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
+
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/google/uuid"
-	"net"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
