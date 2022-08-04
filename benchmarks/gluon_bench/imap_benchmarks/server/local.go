@@ -4,17 +4,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"entgo.io/ent/dialect"
 	"fmt"
 	"net"
 	"path/filepath"
-	"time"
 
-	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
-	"github.com/ProtonMail/gluon/connector"
-	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/store"
 	_ "github.com/mattn/go-sqlite3"
@@ -52,7 +49,7 @@ func (*LocalServerBuilder) New(ctx context.Context, serverPath string, profiler 
 		return nil, err
 	}
 
-	if err := addUser(ctx, server, serverPath, []string{utils.UserName}, utils.UserPassword); err != nil {
+	if err := addUser(ctx, server, serverPath); err != nil {
 		return nil, err
 	}
 
@@ -73,17 +70,14 @@ func (*LocalServerBuilder) New(ctx context.Context, serverPath string, profiler 
 	}, nil
 }
 
-func addUser(ctx context.Context, server *gluon.Server, path string, addresses []string, password string) error {
-	hash := sha256.Sum256([]byte(addresses[0]))
+func addUser(ctx context.Context, server *gluon.Server, path string) error {
+	hash := sha256.Sum256([]byte(*flags.UserName))
 	id := hex.EncodeToString(hash[:])
-	connector := connector.NewDummy(
-		addresses,
-		password,
-		time.Second,
-		imap.NewFlagSet(`\Answered`, `\Seen`, `\Flagged`, `\Deleted`),
-		imap.NewFlagSet(`\Answered`, `\Seen`, `\Flagged`, `\Deleted`),
-		imap.NewFlagSet(),
-	)
+
+	c, err := utils.NewConnector(*flags.Connector)
+	if err != nil {
+		return nil
+	}
 
 	storePath := filepath.Join(path, id+".store")
 	dbPath := filepath.Join(path, id+".db")
@@ -92,14 +86,14 @@ func addUser(ctx context.Context, server *gluon.Server, path string, addresses [
 		fmt.Printf("Adding user ID=%v\n  BenchPath:'%v'\n  DBPath:'%v'\n", id, storePath, dbPath)
 	}
 
-	store, err := store.NewOnDiskStore(storePath, []byte(utils.UserPassword))
+	store, err := store.NewOnDiskStore(storePath, []byte(*flags.UserPassword))
 	if err != nil {
 		return err
 	}
 
 	_, err = server.AddUser(
 		ctx,
-		connector,
+		c.Connector(),
 		store,
 		dialect.SQLite,
 		fmt.Sprintf("file:%v?cache=shared&_fk=1", dbPath))
@@ -107,7 +101,7 @@ func addUser(ctx context.Context, server *gluon.Server, path string, addresses [
 		return err
 	}
 
-	if err := connector.Sync(context.Background()); err != nil {
+	if err := c.Sync(context.Background()); err != nil {
 		return err
 	}
 

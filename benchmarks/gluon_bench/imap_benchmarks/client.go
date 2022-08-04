@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
@@ -23,7 +22,7 @@ func NewClient(addr string) (*client.Client, error) {
 		return nil, err
 	}
 
-	if err := client.Login(utils.UserName, utils.UserPassword); err != nil {
+	if err := client.Login(*flags.UserName, *flags.UserPassword); err != nil {
 		return nil, err
 	}
 

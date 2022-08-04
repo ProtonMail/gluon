@@ -8,21 +8,22 @@ import (
 	"path/filepath"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
-	imap_benchmarks2 "github.com/ProtonMail/gluon/benchmarks/gluon_bench/imap_benchmarks"
-
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/gluon_benchmarks"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/imap_benchmarks"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
 )
 
 var benches = []benchmark.Benchmark{
-	imap_benchmarks2.NewMailboxCreate(),
-	imap_benchmarks2.NewFetch(),
-	imap_benchmarks2.NewCopy(),
-	imap_benchmarks2.NewMove(),
-	imap_benchmarks2.NewStore(),
-	imap_benchmarks2.NewExpunge(),
-	imap_benchmarks2.NewSearchText(),
-	imap_benchmarks2.NewSearchSince(),
+	imap_benchmarks.NewMailboxCreate(),
+	imap_benchmarks.NewFetch(),
+	imap_benchmarks.NewCopy(),
+	imap_benchmarks.NewMove(),
+	imap_benchmarks.NewStore(),
+	imap_benchmarks.NewExpunge(),
+	imap_benchmarks.NewSearchText(),
+	imap_benchmarks.NewSearchSince(),
+	gluon_benchmarks.NewSync(),
 }
 
 func main() {

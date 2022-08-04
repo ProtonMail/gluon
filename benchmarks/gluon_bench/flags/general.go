@@ -8,4 +8,7 @@ var (
 	JsonReporter  = flag.String("json-reporter", "", "If specified, will generate a json report with the given filename.")
 	BenchmarkRuns = flag.Uint("bench-runs", 1, "Number of runs per benchmark.")
 	ReuseState    = flag.Bool("reuse-state", false, "When present, benchmarks will re-use previous run state, rather than a clean slate.")
+	Connector     = flag.String("connector", "dummy", "Key of the connector implementation registered with ConnectorFactory.")
+	UserName      = flag.String("user-name", "user", "Username for the connector user, defaults to 'user'.")
+	UserPassword  = flag.String("user-pwd", "password", "Password for the connector user, defaults to 'password'.")
 )
