@@ -1,10 +1,9 @@
-package benchmarks
+package imap_benchmarks
 
 import (
 	"fmt"
 	"math/rand"
 
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/emersion/go-imap"
 )
 
@@ -21,7 +20,7 @@ func (p *ParallelSeqSet) Get(i uint) []*imap.SeqSet {
 // NewParallelSeqSetFromFile load the sequence sets from a file. The same sequence set will be assigned to
 // all workers.
 func NewParallelSeqSetFromFile(path string, numWorkers uint) (*ParallelSeqSet, error) {
-	list, err := utils.SequenceListFromFile(path)
+	list, err := SequenceListFromFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -161,9 +160,9 @@ func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, r
 			for r := uint32(0); r < count; r++ {
 				var seqSet *imap.SeqSet
 				if !generateIntervals {
-					seqSet = utils.RandomSequenceSetNum(count)
+					seqSet = RandomSequenceSetNum(count)
 				} else {
-					seqSet = utils.RandomSequenceSetRange(count)
+					seqSet = RandomSequenceSetRange(count)
 				}
 
 				list = append(list, seqSet)
@@ -180,7 +179,7 @@ func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, r
 func NewParallelSeqSetAll(numWorkers uint) *ParallelSeqSet {
 	lists := make([][]*imap.SeqSet, numWorkers)
 	for i := uint(0); i < numWorkers; i++ {
-		lists[i] = []*imap.SeqSet{utils.NewSequenceSetAll()}
+		lists[i] = []*imap.SeqSet{NewSequenceSetAll()}
 	}
 
 	return &ParallelSeqSet{seqSets: lists}

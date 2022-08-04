@@ -1,4 +1,4 @@
-package benchmarks
+package imap_benchmarks
 
 import (
 	"context"
@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/bradenaw/juniper/xslices"
-
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
+	"github.com/bradenaw/juniper/xslices"
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
@@ -28,8 +27,8 @@ type Move struct {
 	dstMailboxes  []string
 }
 
-func NewMove() *Move {
-	return &Move{}
+func NewMove() benchmark.Benchmark {
+	return NewIMAPBenchmarkRunner(&Move{})
 }
 
 func (*Move) Name() string {
@@ -41,12 +40,12 @@ func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
 		return fmt.Errorf("move benchmark requires a message count > 0")
 	}
 
-	cl, err := utils.NewClient(addr.String())
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
 	srcMailboxes := make([]string, 0, *flags.ParallelClients)
 	dstMailboxes := make([]string, 0, *flags.ParallelClients)
@@ -94,7 +93,7 @@ func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
 
 	// Fill srcMailboxes
 	for _, v := range srcMailboxes {
-		if err := utils.BuildMailbox(cl, v, int(*flags.FillSourceMailbox)); err != nil {
+		if err := BuildMailbox(cl, v, int(*flags.FillSourceMailbox)); err != nil {
 			return err
 		}
 	}
@@ -117,12 +116,12 @@ func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
 }
 
 func (m *Move) TearDown(ctx context.Context, addr net.Addr) error {
-	cl, err := utils.NewClient(addr.String())
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
 	for _, v := range m.srcMailboxes {
 		if err := cl.Delete(v); err != nil {
@@ -140,14 +139,14 @@ func (m *Move) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (m *Move) Run(ctx context.Context, addr net.Addr) error {
-	mboxInfos := xslices.Map(m.srcMailboxes, func(name string) utils.MailboxInfo {
-		return utils.MailboxInfo{
+	mboxInfos := xslices.Map(m.srcMailboxes, func(name string) MailboxInfo {
+		return MailboxInfo{
 			Name:     name,
 			ReadOnly: true,
 		}
 	})
 
-	utils.RunParallelClientsWithMailboxes(addr, mboxInfos, func(cl *client.Client, index uint) {
+	RunParallelClientsWithMailboxes(addr, mboxInfos, func(cl *client.Client, index uint) {
 		var moveFn func(*client.Client, *imap.SeqSet, string) error
 		if *flags.UIDMode {
 			moveFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {

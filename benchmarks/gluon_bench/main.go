@@ -7,27 +7,26 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmarks"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
+	imap_benchmarks2 "github.com/ProtonMail/gluon/benchmarks/gluon_bench/imap_benchmarks"
+
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/server"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
-	"github.com/ProtonMail/gluon/profiling"
 )
 
-var benches = []benchmarks.Benchmark{
-	&benchmarks.MailboxCreate{},
-	benchmarks.NewFetch(),
-	benchmarks.NewCopy(),
-	benchmarks.NewMove(),
-	benchmarks.NewStore(),
-	benchmarks.NewExpunge(),
-	benchmarks.NewSearchText(),
-	benchmarks.NewSearchSince(),
+var benches = []benchmark.Benchmark{
+	imap_benchmarks2.NewMailboxCreate(),
+	imap_benchmarks2.NewFetch(),
+	imap_benchmarks2.NewCopy(),
+	imap_benchmarks2.NewMove(),
+	imap_benchmarks2.NewStore(),
+	imap_benchmarks2.NewExpunge(),
+	imap_benchmarks2.NewSearchText(),
+	imap_benchmarks2.NewSearchSince(),
 }
 
 func main() {
-	var benchmarkMap = make(map[string]benchmarks.Benchmark)
+	var benchmarkMap = make(map[string]benchmark.Benchmark)
 	for _, v := range benches {
 		benchmarkMap[v.Name()] = v
 	}
@@ -45,7 +44,7 @@ func main() {
 	}
 	flag.Parse()
 
-	var benchmarks []benchmarks.Benchmark
+	var benchmarks []benchmark.Benchmark
 
 	args := flag.Args()
 	if len(args) == 0 {
@@ -71,33 +70,18 @@ func main() {
 		benchmarkReporter = &reporter.StdOutReporter{}
 	}
 
-	cmdProfiler := utils.NewDurationCmdProfilerBuilder()
-
-	var serverDirConfig utils.ServerDirConfig
-	if len(*flags.StorePath) != 0 {
-		serverDirConfig = utils.NewPersistentServerDirConfig(*flags.StorePath)
+	var benchDirConfig benchmark.BenchDirConfig
+	if len(*flags.BenchPath) != 0 {
+		benchDirConfig = benchmark.NewFixedBenchDirConfig(*flags.BenchPath)
 	} else {
-		serverDirConfig = &utils.TmpServerDirConfig{}
-	}
-
-	var serverBuilder server.ServerBuilder
-
-	if len(*flags.RemoteServer) != 0 {
-		builder, err := server.NewRemoteServerBuilder(*flags.RemoteServer)
-		if err != nil {
-			panic(fmt.Sprintf("Invalid Server address: %v", err))
-		}
-
-		serverBuilder = builder
-	} else {
-		serverBuilder = &server.LocalServerBuilder{}
+		benchDirConfig = &benchmark.TmpBenchDirConfig{}
 	}
 
 	benchmarkReports := make([]*reporter.BenchmarkReport, 0, len(benchmarks))
 
 	for _, v := range benchmarks {
 		if *flags.Verbose {
-			fmt.Printf("Begin Benchmark: %v\n", v.Name())
+			fmt.Printf("Begin IMAPBenchmark: %v\n", v.Name())
 		}
 
 		numRuns := *flags.BenchmarkRuns
@@ -106,19 +90,17 @@ func main() {
 
 		for r := uint(0); r < numRuns; r++ {
 			if *flags.Verbose {
-				fmt.Printf("Benchmark Run: %v\n", r)
+				fmt.Printf("IMAPBenchmark Run: %v\n", r)
 			}
 
-			cmdProfiler.Clear()
-
-			scopedTimer := measureBenchmark(serverDirConfig, serverBuilder, r, cmdProfiler, v)
-			benchmarkRuns = append(benchmarkRuns, reporter.NewBenchmarkRun(scopedTimer.Elapsed(), cmdProfiler.Merge()))
+			benchRun := measureBenchmark(benchDirConfig, r, v)
+			benchmarkRuns = append(benchmarkRuns, benchRun)
 		}
 
 		benchmarkReports = append(benchmarkReports, reporter.NewBenchmarkReport(v.Name(), benchmarkRuns...))
 
 		if *flags.Verbose {
-			fmt.Printf("End Benchmark: %v\n", v.Name())
+			fmt.Printf("End IMAPBenchmark: %v\n", v.Name())
 		}
 	}
 
@@ -137,59 +119,38 @@ func main() {
 	}
 }
 
-func measureBenchmark(dirConfig utils.ServerDirConfig, serverBuilder server.ServerBuilder, iteration uint,
-	cmdProfiler profiling.CmdProfilerBuilder, bench benchmarks.Benchmark) utils.ScopedTimer {
-	serverPath, err := dirConfig.Get()
+func measureBenchmark(dirConfig benchmark.BenchDirConfig, iteration uint, bench benchmark.Benchmark) *reporter.BenchmarkRun {
+	benchPath, err := dirConfig.Get()
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get server directory: %v", err))
 	}
 
 	if !*flags.ReuseState {
-		serverPath = filepath.Join(serverPath, fmt.Sprintf("%v-%d", bench.Name(), iteration))
+		benchPath = filepath.Join(benchPath, fmt.Sprintf("%v-%d", bench.Name(), iteration))
 	}
 
 	if *flags.Verbose {
-		fmt.Printf("Benchmark Data Path: %v\n", serverPath)
+		fmt.Printf("IMAPBenchmark Data Path: %v\n", benchPath)
 	}
 
-	if err := os.MkdirAll(serverPath, 0o777); err != nil {
-		panic(fmt.Sprintf("Failed to create server directory '%v' : %v", serverPath, err))
+	if err := os.MkdirAll(benchPath, 0o777); err != nil {
+		panic(fmt.Sprintf("Failed to create server directory '%v' : %v", benchPath, err))
 	}
 
 	ctx := context.Background()
-	server, err := serverBuilder.New(ctx, serverPath, cmdProfiler)
-
-	if err != nil {
-		panic(fmt.Sprintf("Failed to create server: %v", err))
-	}
-
-	address := server.Address()
-
-	if err != nil {
-		panic(fmt.Sprintf("Failed to start server: %v", err))
-	}
-
-	defer server.Close(ctx)
-
-	if err := bench.Setup(ctx, address); err != nil {
+	if err := bench.Setup(ctx, benchPath); err != nil {
 		panic(fmt.Sprintf("Failed to setup benchmark %v: %v", bench.Name(), err))
 	}
 
-	scopedTimer := utils.ScopedTimer{}
-	scopedTimer.Start()
-
-	benchErr := bench.Run(ctx, address)
-
-	scopedTimer.Stop()
-
+	benchRun, benchErr := bench.Run(ctx)
 	if benchErr != nil {
 		panic(fmt.Sprintf("Failed to run benchmark %v: %v", bench.Name(), err))
 	}
 
-	if err := bench.TearDown(ctx, address); err != nil {
+	if err := bench.TearDown(ctx); err != nil {
 		panic(fmt.Sprintf("Failed to teardown benchmark %v: %v", bench.Name(), err))
 	}
 
-	return scopedTimer
+	return benchRun
 }

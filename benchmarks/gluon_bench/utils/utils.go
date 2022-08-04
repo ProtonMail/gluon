@@ -4,9 +4,6 @@ import (
 	"bufio"
 	"os"
 	"time"
-
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
-	"github.com/emersion/go-imap/client"
 )
 
 // ScopedTimer tracks the duration between invocations to Start and Stop.
@@ -25,16 +22,6 @@ func (s *ScopedTimer) Stop() {
 
 func (s *ScopedTimer) Elapsed() time.Duration {
 	return s.end.Sub(s.start)
-}
-
-func FillBenchmarkSourceMailbox(cl *client.Client) error {
-	if *flags.FillSourceMailbox != 0 {
-		if err := BuildMailbox(cl, *flags.Mailbox, int(*flags.FillSourceMailbox)); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func ReadLinesFromFile(path string) ([]string, error) {

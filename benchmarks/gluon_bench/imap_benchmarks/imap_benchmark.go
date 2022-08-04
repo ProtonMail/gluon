@@ -1,12 +1,13 @@
-package benchmarks
+package imap_benchmarks
 
 import (
 	"context"
 	"net"
 )
 
-type Benchmark interface {
-	// Name should return the name of the bechmark, it will also be used to match against cli args.
+// IMAPBenchmark is intended to be used to build benchmarks which bench IMAP commands on a given server.
+type IMAPBenchmark interface {
+	// Name should return the name of the benchmark. It will also be used to match against cli args.
 	Name() string
 
 	// Setup sets up the benchmark state, this is not timed.
