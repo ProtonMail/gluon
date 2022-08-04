@@ -287,6 +287,10 @@ func (conn *Dummy) GetLastRecordedIMAPID() imap.ID {
 	return conn.state.lastIMAPID
 }
 
+func (conn *Dummy) ClearUpdates() {
+	conn.popUpdates()
+}
+
 func (conn *Dummy) validateName(name []string) (bool, error) {
 	var exclusive bool
 
