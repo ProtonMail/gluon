@@ -1,4 +1,4 @@
-package benchmarks
+package imap_benchmarks
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 )
@@ -19,27 +19,27 @@ var (
 	storeAllFlag    = flag.Bool("store-all", false, "If set, perform one store for all messages.")
 )
 
-type Store struct {
+type StoreBench struct {
 	seqSets *ParallelSeqSet
 }
 
-func NewStore() *Store {
-	return &Store{}
+func NewStore() benchmark.Benchmark {
+	return NewIMAPBenchmarkRunner(&StoreBench{})
 }
 
-func (*Store) Name() string {
+func (*StoreBench) Name() string {
 	return "store"
 }
 
-func (s *Store) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := utils.NewClient(addr.String())
+func (s *StoreBench) Setup(ctx context.Context, addr net.Addr) error {
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
-	if err := utils.FillBenchmarkSourceMailbox(cl); err != nil {
+	if err := FillBenchmarkSourceMailbox(cl); err != nil {
 		return err
 	}
 
@@ -76,23 +76,23 @@ func (s *Store) Setup(ctx context.Context, addr net.Addr) error {
 	return nil
 }
 
-func (*Store) TearDown(ctx context.Context, addr net.Addr) error {
+func (*StoreBench) TearDown(ctx context.Context, addr net.Addr) error {
 	return nil
 }
 
-func (s *Store) Run(ctx context.Context, addr net.Addr) error {
+func (s *StoreBench) Run(ctx context.Context, addr net.Addr) error {
 	items := []string{"FLAGS", "-FLAGS", "+FLAGS"}
 	flagList := []string{imap.DeletedFlag, imap.SeenFlag, imap.AnsweredFlag, imap.FlaggedFlag}
 
-	utils.RunParallelClients(addr, false, func(cl *client.Client, index uint) {
+	RunParallelClients(addr, false, func(cl *client.Client, index uint) {
 		var storeFn func(*client.Client, *imap.SeqSet, int) error
 		if *flags.UIDMode {
 			storeFn = func(cl *client.Client, set *imap.SeqSet, index int) error {
-				return utils.UIDStore(cl, set, items[index%len(items)], *storeSilentFlag, flagList[index%len(flagList)])
+				return UIDStore(cl, set, items[index%len(items)], *storeSilentFlag, flagList[index%len(flagList)])
 			}
 		} else {
 			storeFn = func(cl *client.Client, set *imap.SeqSet, index int) error {
-				return utils.Store(cl, set, items[index%len(items)], *storeSilentFlag, flagList[index%len(flagList)])
+				return Store(cl, set, items[index%len(items)], *storeSilentFlag, flagList[index%len(flagList)])
 			}
 		}
 

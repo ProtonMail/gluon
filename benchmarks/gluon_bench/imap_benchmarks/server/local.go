@@ -89,7 +89,7 @@ func addUser(ctx context.Context, server *gluon.Server, path string, addresses [
 	dbPath := filepath.Join(path, id+".db")
 
 	if *flags.Verbose {
-		fmt.Printf("Adding user ID=%v\n  StorePath:'%v'\n  DBPath:'%v'\n", id, storePath, dbPath)
+		fmt.Printf("Adding user ID=%v\n  BenchPath:'%v'\n  DBPath:'%v'\n", id, storePath, dbPath)
 	}
 
 	store, err := store.NewOnDiskStore(storePath, []byte(utils.UserPassword))

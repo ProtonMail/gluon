@@ -1,4 +1,4 @@
-package benchmarks
+package imap_benchmarks
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 )
@@ -23,8 +23,8 @@ type Fetch struct {
 	seqSets *ParallelSeqSet
 }
 
-func NewFetch() *Fetch {
-	return &Fetch{}
+func NewFetch() benchmark.Benchmark {
+	return NewIMAPBenchmarkRunner(&Fetch{})
 }
 
 func (*Fetch) Name() string {
@@ -32,14 +32,14 @@ func (*Fetch) Name() string {
 }
 
 func (f *Fetch) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := utils.NewClient(addr.String())
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
-	if err := utils.FillBenchmarkSourceMailbox(cl); err != nil {
+	if err := FillBenchmarkSourceMailbox(cl); err != nil {
 		return err
 	}
 
@@ -81,15 +81,15 @@ func (*Fetch) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (f *Fetch) Run(ctx context.Context, addr net.Addr) error {
-	utils.RunParallelClients(addr, *fetchReadOnly, func(cl *client.Client, index uint) {
+	RunParallelClients(addr, *fetchReadOnly, func(cl *client.Client, index uint) {
 		var fetchFn func(*client.Client, *imap.SeqSet) error
 		if *flags.UIDMode {
 			fetchFn = func(cl *client.Client, set *imap.SeqSet) error {
-				return utils.UIDFetchMessage(cl, set, imap.FetchAll)
+				return UIDFetchMessage(cl, set, imap.FetchAll)
 			}
 		} else {
 			fetchFn = func(cl *client.Client, set *imap.SeqSet) error {
-				return utils.FetchMessage(cl, set, imap.FetchAll)
+				return FetchMessage(cl, set, imap.FetchAll)
 			}
 		}
 

@@ -1,4 +1,4 @@
-package benchmarks
+package imap_benchmarks
 
 import (
 	"context"
@@ -6,13 +6,17 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 )
 
 var messageCountFlag = flag.Uint("mailbox-create-message-count", 1000, "Number of random messages to create in the inbox.")
 
 type MailboxCreate struct{}
+
+func NewMailboxCreate() benchmark.Benchmark {
+	return NewIMAPBenchmarkRunner(&MailboxCreate{})
+}
 
 func (b *MailboxCreate) Name() string {
 	return "mailbox-create"
@@ -31,12 +35,12 @@ func (*MailboxCreate) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (*MailboxCreate) Run(ctx context.Context, addr net.Addr) error {
-	cl, err := utils.NewClient(addr.String())
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
-	return utils.BuildMailbox(cl, *flags.Mailbox, int(*messageCountFlag))
+	return BuildMailbox(cl, *flags.Mailbox, int(*messageCountFlag))
 }

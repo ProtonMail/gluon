@@ -1,7 +1,9 @@
-package utils
+package imap_benchmarks
 
 import (
 	"time"
+
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 
 	"github.com/emersion/go-imap/client"
 	"golang.org/x/exp/rand"
@@ -9,7 +11,7 @@ import (
 
 // BuildMailbox creates a mailbox of name `mailbox` and fills it up with `messageCount` random messages.
 func BuildMailbox(cl *client.Client, mailbox string, messageCount int) error {
-	messages := []string{MessageAfterNoonMeeting, MessageMultiPartMixed, MessageEmbedded}
+	messages := []string{utils.MessageAfterNoonMeeting, utils.MessageMultiPartMixed, utils.MessageEmbedded}
 	messagesLen := len(messages)
 
 	for i := 0; i < messageCount; i++ {

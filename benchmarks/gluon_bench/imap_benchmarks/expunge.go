@@ -1,4 +1,4 @@
-package benchmarks
+package imap_benchmarks
 
 import (
 	"context"
@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/bradenaw/juniper/xslices"
-	"github.com/google/uuid"
-
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
+	"github.com/bradenaw/juniper/xslices"
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
+	"github.com/google/uuid"
 )
 
 var (
@@ -27,8 +26,8 @@ type Expunge struct {
 	mailboxes []string
 }
 
-func NewExpunge() *Expunge {
-	return &Expunge{}
+func NewExpunge() benchmark.Benchmark {
+	return NewIMAPBenchmarkRunner(&Expunge{})
 }
 
 func (*Expunge) Name() string {
@@ -36,15 +35,15 @@ func (*Expunge) Name() string {
 }
 
 func (e *Expunge) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := utils.NewClient(addr.String())
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
 	if *expungeSameMBoxFlag {
-		if err := utils.FillBenchmarkSourceMailbox(cl); err != nil {
+		if err := FillBenchmarkSourceMailbox(cl); err != nil {
 			return err
 		}
 
@@ -84,7 +83,7 @@ func (e *Expunge) Setup(ctx context.Context, addr net.Addr) error {
 				return err
 			}
 
-			if err := utils.BuildMailbox(cl, v, int(*flags.FillSourceMailbox)); err != nil {
+			if err := BuildMailbox(cl, v, int(*flags.FillSourceMailbox)); err != nil {
 				return err
 			}
 		}
@@ -108,12 +107,12 @@ func (e *Expunge) Setup(ctx context.Context, addr net.Addr) error {
 }
 
 func (e *Expunge) TearDown(ctx context.Context, addr net.Addr) error {
-	cl, err := utils.NewClient(addr.String())
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
 	if !*expungeSameMBoxFlag {
 		for _, v := range e.mailboxes {
@@ -127,22 +126,22 @@ func (e *Expunge) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (e *Expunge) Run(ctx context.Context, addr net.Addr) error {
-	mboxInfo := xslices.Map(e.mailboxes, func(m string) utils.MailboxInfo {
-		return utils.MailboxInfo{Name: m, ReadOnly: false}
+	mboxInfo := xslices.Map(e.mailboxes, func(m string) MailboxInfo {
+		return MailboxInfo{Name: m, ReadOnly: false}
 	})
 
-	utils.RunParallelClientsWithMailboxes(addr, mboxInfo, func(cl *client.Client, index uint) {
+	RunParallelClientsWithMailboxes(addr, mboxInfo, func(cl *client.Client, index uint) {
 		var expungeFn func(*client.Client, *imap.SeqSet) error
 		if *flags.UIDMode {
 			expungeFn = func(cl *client.Client, set *imap.SeqSet) error {
-				if err := utils.UIDStore(cl, set, "+FLAGS", true, imap.DeletedFlag); err != nil {
+				if err := UIDStore(cl, set, "+FLAGS", true, imap.DeletedFlag); err != nil {
 					return err
 				}
 				return cl.Expunge(nil)
 			}
 		} else {
 			expungeFn = func(cl *client.Client, set *imap.SeqSet) error {
-				if err := utils.Store(cl, set, "+FLAGS", true, imap.DeletedFlag); err != nil {
+				if err := Store(cl, set, "+FLAGS", true, imap.DeletedFlag); err != nil {
 					return err
 				}
 				return cl.Expunge(nil)

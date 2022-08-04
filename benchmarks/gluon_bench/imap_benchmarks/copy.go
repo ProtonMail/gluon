@@ -1,4 +1,4 @@
-package benchmarks
+package imap_benchmarks
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
@@ -24,10 +24,10 @@ type Copy struct {
 	dstMailbox string
 }
 
-func NewCopy() *Copy {
-	return &Copy{
+func NewCopy() benchmark.Benchmark {
+	return NewIMAPBenchmarkRunner(&Copy{
 		dstMailbox: uuid.NewString(),
-	}
+	})
 }
 
 func (*Copy) Name() string {
@@ -35,14 +35,14 @@ func (*Copy) Name() string {
 }
 
 func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := utils.NewClient(addr.String())
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
-	if err := utils.FillBenchmarkSourceMailbox(cl); err != nil {
+	if err := FillBenchmarkSourceMailbox(cl); err != nil {
 		return err
 	}
 
@@ -89,12 +89,12 @@ func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
 }
 
 func (c *Copy) TearDown(ctx context.Context, addr net.Addr) error {
-	cl, err := utils.NewClient(addr.String())
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
 	if err := cl.Delete(c.dstMailbox); err != nil {
 		return err
@@ -104,7 +104,7 @@ func (c *Copy) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (c *Copy) Run(ctx context.Context, addr net.Addr) error {
-	utils.RunParallelClients(addr, true, func(cl *client.Client, index uint) {
+	RunParallelClients(addr, true, func(cl *client.Client, index uint) {
 		var copyFn func(*client.Client, *imap.SeqSet, string) error
 		if *flags.UIDMode {
 			copyFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {

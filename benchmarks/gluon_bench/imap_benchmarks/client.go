@@ -1,4 +1,4 @@
-package utils
+package imap_benchmarks
 
 import (
 	"bufio"
@@ -10,11 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bradenaw/juniper/xslices"
-
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
+	"github.com/bradenaw/juniper/xslices"
 	"github.com/emersion/go-imap"
-
 	"github.com/emersion/go-imap/client"
 )
 
@@ -24,7 +23,7 @@ func NewClient(addr string) (*client.Client, error) {
 		return nil, err
 	}
 
-	if err := client.Login(UserName, UserPassword); err != nil {
+	if err := client.Login(utils.UserName, utils.UserPassword); err != nil {
 		return nil, err
 	}
 
@@ -220,4 +219,14 @@ func RunParallelClientsWithMailboxes(addr net.Addr, mailboxes []MailboxInfo, fn 
 	}
 
 	wg.Wait()
+}
+
+func FillBenchmarkSourceMailbox(cl *client.Client) error {
+	if *flags.FillSourceMailbox != 0 {
+		if err := BuildMailbox(cl, *flags.Mailbox, int(*flags.FillSourceMailbox)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -1,4 +1,4 @@
-package benchmarks
+package imap_benchmarks
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/bradenaw/juniper/xslices"
@@ -25,8 +26,8 @@ type SearchText struct {
 	searchCount uint32
 }
 
-func NewSearchText() *SearchText {
-	return &SearchText{}
+func NewSearchText() benchmark.Benchmark {
+	return NewIMAPBenchmarkRunner(&SearchText{})
 }
 
 func (*SearchText) Name() string {
@@ -34,14 +35,14 @@ func (*SearchText) Name() string {
 }
 
 func (s *SearchText) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := utils.NewClient(addr.String())
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
-	if err := utils.FillBenchmarkSourceMailbox(cl); err != nil {
+	if err := FillBenchmarkSourceMailbox(cl); err != nil {
 		return err
 	}
 
@@ -82,7 +83,7 @@ func (*SearchText) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (s *SearchText) Run(ctx context.Context, addr net.Addr) error {
-	utils.RunParallelClients(addr, true, func(cl *client.Client, index uint) {
+	RunParallelClients(addr, true, func(cl *client.Client, index uint) {
 		for i := uint32(0); i < s.searchCount; i++ {
 			keywordIndex := rand.Intn(len(s.queries))
 			criteria := imap.NewSearchCriteria()
@@ -110,8 +111,8 @@ type SearchSince struct {
 	dates []string
 }
 
-func NewSearchSince() *SearchSince {
-	return &SearchSince{}
+func NewSearchSince() benchmark.Benchmark {
+	return NewIMAPBenchmarkRunner(&SearchSince{})
 }
 
 func (*SearchSince) Name() string {
@@ -119,14 +120,14 @@ func (*SearchSince) Name() string {
 }
 
 func (s *SearchSince) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := utils.NewClient(addr.String())
+	cl, err := NewClient(addr.String())
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseClient(cl)
+	defer CloseClient(cl)
 
-	if err := utils.FillBenchmarkSourceMailbox(cl); err != nil {
+	if err := FillBenchmarkSourceMailbox(cl); err != nil {
 		return err
 	}
 
@@ -177,7 +178,7 @@ func (*SearchSince) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (s *SearchSince) Run(ctx context.Context, addr net.Addr) error {
-	utils.RunParallelClients(addr, true, func(cl *client.Client, index uint) {
+	RunParallelClients(addr, true, func(cl *client.Client, index uint) {
 		for _, d := range s.dates {
 			criteria := imap.NewSearchCriteria()
 
