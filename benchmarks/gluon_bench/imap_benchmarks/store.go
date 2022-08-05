@@ -3,7 +3,6 @@ package imap_benchmarks
 import (
 	"context"
 	"flag"
-	"fmt"
 	"net"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
@@ -20,11 +19,12 @@ var (
 )
 
 type StoreBench struct {
+	*stateTracker
 	seqSets *ParallelSeqSet
 }
 
 func NewStore() benchmark.Benchmark {
-	return NewIMAPBenchmarkRunner(&StoreBench{})
+	return NewIMAPBenchmarkRunner(&StoreBench{stateTracker: newStateTracker()})
 }
 
 func (*StoreBench) Name() string {
@@ -32,59 +32,43 @@ func (*StoreBench) Name() string {
 }
 
 func (s *StoreBench) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := NewClient(addr.String())
-	if err != nil {
-		return err
-	}
+	return WithClient(addr, func(cl *client.Client) error {
+		if _, err := s.createAndFillRandomMBox(cl); err != nil {
+			return err
+		}
 
-	defer CloseClient(cl)
+		storeCount := uint32(*storeCountFlag)
+		if storeCount == 0 {
+			storeCount = uint32(*flags.MessageCount) / 2
+		}
 
-	if err := FillBenchmarkSourceMailbox(cl); err != nil {
-		return err
-	}
+		seqSets, err := NewParallelSeqSet(storeCount,
+			*flags.ParallelClients,
+			*storeListFlag,
+			*storeAllFlag,
+			*flags.RandomSeqSetIntervals,
+			false,
+			*flags.UIDMode)
 
-	status, err := cl.Status(*flags.Mailbox, []imap.StatusItem{imap.StatusMessages})
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	messageCount := status.Messages
+		s.seqSets = seqSets
 
-	if messageCount == 0 {
-		return fmt.Errorf("mailbox '%v' has no messages", *flags.Mailbox)
-	}
-
-	storeCount := uint32(*storeCountFlag)
-	if storeCount == 0 {
-		storeCount = messageCount / 2
-	}
-
-	seqSets, err := NewParallelSeqSet(storeCount,
-		*flags.ParallelClients,
-		*storeListFlag,
-		*storeAllFlag,
-		*flags.RandomSeqSetIntervals,
-		false,
-		*flags.UIDMode)
-
-	if err != nil {
-		return err
-	}
-
-	s.seqSets = seqSets
-
-	return nil
+		return nil
+	})
 }
 
-func (*StoreBench) TearDown(ctx context.Context, addr net.Addr) error {
-	return nil
+func (s *StoreBench) TearDown(ctx context.Context, addr net.Addr) error {
+	return s.cleanupWithAddr(addr)
 }
 
 func (s *StoreBench) Run(ctx context.Context, addr net.Addr) error {
 	items := []string{"FLAGS", "-FLAGS", "+FLAGS"}
 	flagList := []string{imap.DeletedFlag, imap.SeenFlag, imap.AnsweredFlag, imap.FlaggedFlag}
 
-	RunParallelClients(addr, false, func(cl *client.Client, index uint) {
+	RunParallelClientsWithMailbox(addr, s.MBoxes[0], false, func(cl *client.Client, index uint) {
 		var storeFn func(*client.Client, *imap.SeqSet, int) error
 		if *flags.UIDMode {
 			storeFn = func(cl *client.Client, set *imap.SeqSet, index int) error {
@@ -104,4 +88,8 @@ func (s *StoreBench) Run(ctx context.Context, addr net.Addr) error {
 	})
 
 	return nil
+}
+
+func init() {
+	benchmark.RegisterBenchmark(NewStore())
 }

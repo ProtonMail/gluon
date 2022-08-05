@@ -11,7 +11,6 @@ import (
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
-	"github.com/google/uuid"
 )
 
 var (
@@ -22,12 +21,13 @@ var (
 )
 
 type Expunge struct {
-	seqSets   *ParallelSeqSet
-	mailboxes []string
+	*stateTracker
+	seqSets  *ParallelSeqSet
+	mboxInfo []MailboxInfo
 }
 
 func NewExpunge() benchmark.Benchmark {
-	return NewIMAPBenchmarkRunner(&Expunge{})
+	return NewIMAPBenchmarkRunner(&Expunge{stateTracker: newStateTracker()})
 }
 
 func (*Expunge) Name() string {
@@ -35,102 +35,62 @@ func (*Expunge) Name() string {
 }
 
 func (e *Expunge) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := NewClient(addr.String())
-	if err != nil {
-		return err
-	}
+	return WithClient(addr, func(cl *client.Client) error {
+		if *expungeSameMBoxFlag {
+			if _, err := e.createAndFillRandomMBox(cl); err != nil {
+				return nil
+			}
 
-	defer CloseClient(cl)
+			expungeCount := uint32(*expungeCountFlag)
+			if expungeCount == 0 {
+				expungeCount = uint32(*flags.MessageCount) / 2
+			}
 
-	if *expungeSameMBoxFlag {
-		if err := FillBenchmarkSourceMailbox(cl); err != nil {
-			return err
-		}
+			e.seqSets = NewParallelSeqSetExpunge(expungeCount,
+				*flags.ParallelClients,
+				*flags.RandomSeqSetIntervals,
+				*flags.UIDMode,
+			)
 
-		status, err := cl.Status(*flags.Mailbox, []imap.StatusItem{imap.StatusMessages})
-		if err != nil {
-			return err
-		}
+			e.mboxInfo = make([]MailboxInfo, *flags.ParallelClients)
+			for i := 0; i < len(e.mboxInfo); i++ {
+				e.mboxInfo[i] = MailboxInfo{Name: e.MBoxes[0], ReadOnly: false}
+			}
+		} else {
+			for i := uint(0); i < *flags.ParallelClients; i++ {
+				if _, err := e.createAndFillRandomMBox(cl); err != nil {
+					return err
+				}
+			}
 
-		messageCount := status.Messages
+			seqSets, err := NewParallelSeqSet(uint32(*flags.MessageCount),
+				*flags.ParallelClients,
+				*expungeListFlag,
+				*expungeAllFlag,
+				*flags.RandomSeqSetIntervals,
+				true,
+				*flags.UIDMode)
 
-		if messageCount == 0 {
-			return fmt.Errorf("mailbox '%v' has no messages", *flags.Mailbox)
-		}
-
-		expungeCount := uint32(*expungeCountFlag)
-		if expungeCount == 0 {
-			expungeCount = messageCount / 2
-		}
-
-		e.seqSets = NewParallelSeqSetExpunge(expungeCount,
-			*flags.ParallelClients,
-			*flags.RandomSeqSetIntervals,
-			*flags.UIDMode,
-		)
-
-		for i := uint(0); i < *flags.ParallelClients; i++ {
-			e.mailboxes = append(e.mailboxes, *flags.Mailbox)
-		}
-	} else {
-		e.mailboxes = make([]string, 0, *flags.ParallelClients)
-		for i := uint(0); i < *flags.ParallelClients; i++ {
-			e.mailboxes = append(e.mailboxes, uuid.NewString())
-		}
-
-		for _, v := range e.mailboxes {
-			if err := cl.Create(v); err != nil {
+			if err != nil {
 				return err
 			}
 
-			if err := BuildMailbox(cl, v, int(*flags.FillSourceMailbox)); err != nil {
-				return err
-			}
+			e.seqSets = seqSets
+
+			e.mboxInfo = xslices.Map(e.MBoxes, func(m string) MailboxInfo {
+				return MailboxInfo{Name: m, ReadOnly: false}
+			})
 		}
-
-		seqSets, err := NewParallelSeqSet(uint32(*flags.FillSourceMailbox),
-			*flags.ParallelClients,
-			*expungeListFlag,
-			*expungeAllFlag,
-			*flags.RandomSeqSetIntervals,
-			true,
-			*flags.UIDMode)
-
-		if err != nil {
-			return err
-		}
-
-		e.seqSets = seqSets
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func (e *Expunge) TearDown(ctx context.Context, addr net.Addr) error {
-	cl, err := NewClient(addr.String())
-	if err != nil {
-		return err
-	}
-
-	defer CloseClient(cl)
-
-	if !*expungeSameMBoxFlag {
-		for _, v := range e.mailboxes {
-			if err := cl.Delete(v); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	return e.cleanupWithAddr(addr)
 }
 
 func (e *Expunge) Run(ctx context.Context, addr net.Addr) error {
-	mboxInfo := xslices.Map(e.mailboxes, func(m string) MailboxInfo {
-		return MailboxInfo{Name: m, ReadOnly: false}
-	})
-
-	RunParallelClientsWithMailboxes(addr, mboxInfo, func(cl *client.Client, index uint) {
+	RunParallelClientsWithMailboxes(addr, e.mboxInfo, func(cl *client.Client, index uint) {
 		var expungeFn func(*client.Client, *imap.SeqSet) error
 		if *flags.UIDMode {
 			expungeFn = func(cl *client.Client, set *imap.SeqSet) error {
@@ -156,4 +116,8 @@ func (e *Expunge) Run(ctx context.Context, addr net.Addr) error {
 	})
 
 	return nil
+}
+
+func init() {
+	benchmark.RegisterBenchmark(NewExpunge())
 }

@@ -21,49 +21,77 @@ var searchCountFlag = flag.Uint("search-count", 0, "Total number of messages to 
 var searchTextListFlag = flag.String("search-text-list", "", "Use a list of new line separate search queries instead instead of the default list.")
 var searchSinceListFlag = flag.String("search-since-list", "", "Use a list of new line dates instead of random generated.")
 
-type SearchText struct {
+type SearchQuery interface {
+	Name() string
+	Setup(context.Context, *client.Client, uint32) error
+	Run(context.Context, *client.Client, uint) error
+	TearDown(context.Context, *client.Client) error
+}
+
+type Search struct {
+	*stateTracker
+	queries []string
+	query   SearchQuery
+}
+
+func NewSearch(query SearchQuery) benchmark.Benchmark {
+	return NewIMAPBenchmarkRunner(&Search{stateTracker: newStateTracker(), query: query})
+}
+
+func (s *Search) Name() string {
+	return s.query.Name()
+}
+
+func (s *Search) Setup(ctx context.Context, addr net.Addr) error {
+	return WithClient(addr, func(cl *client.Client) error {
+
+		if _, err := s.createAndFillRandomMBox(cl); err != nil {
+			return err
+		}
+
+		searchCount := uint32(*searchCountFlag)
+		if searchCount == 0 {
+			searchCount = uint32(*flags.MessageCount) / 2
+		}
+
+		if err := s.query.Setup(ctx, cl, searchCount); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (s *Search) TearDown(ctx context.Context, addr net.Addr) error {
+	return WithClient(addr, func(cl *client.Client) error {
+		if err := s.query.TearDown(ctx, cl); err != nil {
+			return err
+		}
+
+		return s.cleanup(cl)
+	})
+}
+
+func (s *Search) Run(ctx context.Context, addr net.Addr) error {
+	RunParallelClientsWithMailbox(addr, s.MBoxes[0], true, func(cl *client.Client, index uint) {
+		if err := s.query.Run(ctx, cl, index); err != nil {
+			panic(err)
+		}
+	})
+
+	return nil
+}
+
+type SearchTextQuery struct {
 	queries     []string
 	searchCount uint32
 }
 
-func NewSearchText() benchmark.Benchmark {
-	return NewIMAPBenchmarkRunner(&SearchText{})
-}
-
-func (*SearchText) Name() string {
+func (s *SearchTextQuery) Name() string {
 	return "search-text"
 }
 
-func (s *SearchText) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := NewClient(addr.String())
-	if err != nil {
-		return err
-	}
-
-	defer CloseClient(cl)
-
-	if err := FillBenchmarkSourceMailbox(cl); err != nil {
-		return err
-	}
-
-	status, err := cl.Status(*flags.Mailbox, []imap.StatusItem{imap.StatusMessages})
-	if err != nil {
-		return err
-	}
-
-	messageCount := status.Messages
-
-	if messageCount == 0 {
-		return fmt.Errorf("mailbox '%v' has no messages", *flags.Mailbox)
-	}
-
-	searchCount := uint32(*searchCountFlag)
-	if searchCount == 0 {
-		searchCount = messageCount / 2
-	}
-
-	s.searchCount = searchCount
-
+func (s *SearchTextQuery) Setup(ctx context.Context, cl *client.Client, searchCount uint32) error {
 	if len(*searchTextListFlag) != 0 {
 		queries, err := utils.ReadLinesFromFile(*searchTextListFlag)
 		if err != nil {
@@ -75,78 +103,47 @@ func (s *SearchText) Setup(ctx context.Context, addr net.Addr) error {
 		s.queries = strings.Split(utils.MessageEmbedded, " ")
 	}
 
+	s.searchCount = searchCount
+
 	return nil
 }
 
-func (*SearchText) TearDown(ctx context.Context, addr net.Addr) error {
+func (s *SearchTextQuery) TearDown(ctx context.Context, cl *client.Client) error {
 	return nil
 }
 
-func (s *SearchText) Run(ctx context.Context, addr net.Addr) error {
-	RunParallelClients(addr, true, func(cl *client.Client, index uint) {
-		for i := uint32(0); i < s.searchCount; i++ {
-			keywordIndex := rand.Intn(len(s.queries))
-			criteria := imap.NewSearchCriteria()
+func (s *SearchTextQuery) Run(ctx context.Context, cl *client.Client, workerIndex uint) error {
+	for i := uint32(0); i < s.searchCount; i++ {
+		keywordIndex := rand.Intn(len(s.queries))
+		criteria := imap.NewSearchCriteria()
 
-			fieldsStr := []string{"TEXT", s.queries[keywordIndex]}
+		fieldsStr := []string{"TEXT", s.queries[keywordIndex]}
 
-			fields := xslices.Map(fieldsStr, func(v string) interface{} {
-				return interface{}(v)
-			})
+		fields := xslices.Map(fieldsStr, func(v string) interface{} {
+			return interface{}(v)
+		})
 
-			if err := criteria.ParseWithCharset(fields, nil); err != nil {
-				panic(err)
-			}
-
-			if _, err := cl.Search(criteria); err != nil {
-				panic(err)
-			}
+		if err := criteria.ParseWithCharset(fields, nil); err != nil {
+			panic(err)
 		}
-	})
+
+		if _, err := cl.Search(criteria); err != nil {
+			panic(err)
+		}
+	}
 
 	return nil
 }
 
-type SearchSince struct {
+type SearchSinceQuery struct {
 	dates []string
 }
 
-func NewSearchSince() benchmark.Benchmark {
-	return NewIMAPBenchmarkRunner(&SearchSince{})
-}
-
-func (*SearchSince) Name() string {
+func (*SearchSinceQuery) Name() string {
 	return "search-since"
 }
 
-func (s *SearchSince) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := NewClient(addr.String())
-	if err != nil {
-		return err
-	}
-
-	defer CloseClient(cl)
-
-	if err := FillBenchmarkSourceMailbox(cl); err != nil {
-		return err
-	}
-
-	status, err := cl.Status(*flags.Mailbox, []imap.StatusItem{imap.StatusMessages})
-	if err != nil {
-		return err
-	}
-
-	messageCount := status.Messages
-
-	if messageCount == 0 {
-		return fmt.Errorf("mailbox '%v' has no messages", *flags.Mailbox)
-	}
-
-	searchCount := uint32(*searchCountFlag)
-	if searchCount == 0 {
-		searchCount = messageCount / 2
-	}
-
+func (s *SearchSinceQuery) Setup(ctx context.Context, cl *client.Client, searchCount uint32) error {
 	if len(*searchSinceListFlag) != 0 {
 		dates, err := utils.ReadLinesFromFile(*searchSinceListFlag)
 		if err != nil {
@@ -173,30 +170,33 @@ func (s *SearchSince) Setup(ctx context.Context, addr net.Addr) error {
 	return nil
 }
 
-func (*SearchSince) TearDown(ctx context.Context, addr net.Addr) error {
+func (*SearchSinceQuery) TearDown(ctx context.Context, cl *client.Client) error {
 	return nil
 }
 
-func (s *SearchSince) Run(ctx context.Context, addr net.Addr) error {
-	RunParallelClients(addr, true, func(cl *client.Client, index uint) {
-		for _, d := range s.dates {
-			criteria := imap.NewSearchCriteria()
+func (s *SearchSinceQuery) Run(ctx context.Context, cl *client.Client, workerIndex uint) error {
+	for _, d := range s.dates {
+		criteria := imap.NewSearchCriteria()
 
-			fieldsStr := []string{"SINCE", d}
+		fieldsStr := []string{"SINCE", d}
 
-			fields := xslices.Map(fieldsStr, func(v string) interface{} {
-				return interface{}(v)
-			})
+		fields := xslices.Map(fieldsStr, func(v string) interface{} {
+			return interface{}(v)
+		})
 
-			if err := criteria.ParseWithCharset(fields, nil); err != nil {
-				panic(err)
-			}
-
-			if _, err := cl.Search(criteria); err != nil {
-				panic(err)
-			}
+		if err := criteria.ParseWithCharset(fields, nil); err != nil {
+			panic(err)
 		}
-	})
+
+		if _, err := cl.Search(criteria); err != nil {
+			panic(err)
+		}
+	}
 
 	return nil
+}
+
+func init() {
+	benchmark.RegisterBenchmark(NewSearch(&SearchSinceQuery{}))
+	benchmark.RegisterBenchmark(NewSearch(&SearchTextQuery{}))
 }

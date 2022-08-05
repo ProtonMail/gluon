@@ -3,7 +3,6 @@ package imap_benchmarks
 import (
 	"context"
 	"flag"
-	"fmt"
 	"net"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
@@ -20,11 +19,12 @@ var (
 )
 
 type Fetch struct {
+	*stateTracker
 	seqSets *ParallelSeqSet
 }
 
 func NewFetch() benchmark.Benchmark {
-	return NewIMAPBenchmarkRunner(&Fetch{})
+	return NewIMAPBenchmarkRunner(&Fetch{stateTracker: newStateTracker()})
 }
 
 func (*Fetch) Name() string {
@@ -32,56 +32,39 @@ func (*Fetch) Name() string {
 }
 
 func (f *Fetch) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := NewClient(addr.String())
-	if err != nil {
-		return err
-	}
+	return WithClient(addr, func(cl *client.Client) error {
+		if _, err := f.createAndFillRandomMBox(cl); err != nil {
+			return err
+		}
 
-	defer CloseClient(cl)
+		fetchCount := uint32(*fetchCountFlag)
+		if fetchCount == 0 {
+			fetchCount = uint32(*flags.MessageCount) / 2
+		}
 
-	if err := FillBenchmarkSourceMailbox(cl); err != nil {
-		return err
-	}
+		seqSets, err := NewParallelSeqSet(fetchCount,
+			*flags.ParallelClients,
+			*fetchListFlag,
+			*fetchAllFlag,
+			*flags.RandomSeqSetIntervals,
+			false,
+			*flags.UIDMode)
 
-	status, err := cl.Status(*flags.Mailbox, []imap.StatusItem{imap.StatusMessages})
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	messageCount := status.Messages
-
-	if messageCount == 0 {
-		return fmt.Errorf("mailbox '%v' has no messages", *flags.Mailbox)
-	}
-
-	fetchCount := uint32(*fetchCountFlag)
-	if fetchCount == 0 {
-		fetchCount = messageCount / 2
-	}
-
-	seqSets, err := NewParallelSeqSet(fetchCount,
-		*flags.ParallelClients,
-		*fetchListFlag,
-		*fetchAllFlag,
-		*flags.RandomSeqSetIntervals,
-		false,
-		*flags.UIDMode)
-
-	if err != nil {
-		return err
-	}
-
-	f.seqSets = seqSets
-
-	return nil
+		f.seqSets = seqSets
+		return nil
+	})
 }
 
-func (*Fetch) TearDown(ctx context.Context, addr net.Addr) error {
-	return nil
+func (f *Fetch) TearDown(ctx context.Context, addr net.Addr) error {
+	return f.cleanupWithAddr(addr)
 }
 
 func (f *Fetch) Run(ctx context.Context, addr net.Addr) error {
-	RunParallelClients(addr, *fetchReadOnly, func(cl *client.Client, index uint) {
+	RunParallelClientsWithMailbox(addr, f.MBoxes[0], *fetchReadOnly, func(cl *client.Client, index uint) {
 		var fetchFn func(*client.Client, *imap.SeqSet) error
 		if *flags.UIDMode {
 			fetchFn = func(cl *client.Client, set *imap.SeqSet) error {
@@ -101,4 +84,8 @@ func (f *Fetch) Run(ctx context.Context, addr net.Addr) error {
 	})
 
 	return nil
+}
+
+func init() {
+	benchmark.RegisterBenchmark(NewFetch())
 }

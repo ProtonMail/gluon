@@ -4,10 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"entgo.io/ent/dialect"
 	"fmt"
 	"net"
 	"path/filepath"
+
+	"entgo.io/ent/dialect"
 
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"

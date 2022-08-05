@@ -16,27 +16,8 @@ import (
 	"github.com/emersion/go-imap/client"
 )
 
-func NewClient(addr string) (*client.Client, error) {
-	client, err := client.Dial(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := client.Login(*flags.UserName, *flags.UserPassword); err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
 func AppendToMailbox(cl *client.Client, mailboxName string, literal string, time time.Time, flags ...string) error {
 	return cl.Append(mailboxName, flags, time, strings.NewReader(literal))
-}
-
-func CloseClient(cl *client.Client) {
-	if err := cl.Logout(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to close client: %v\n", err)
-	}
 }
 
 func FetchMessage(cl *client.Client, sequenceSet *imap.SeqSet, items ...imap.FetchItem) error {
@@ -177,10 +158,10 @@ type MailboxInfo struct {
 	ReadOnly bool
 }
 
-func RunParallelClients(addr net.Addr, readOnly bool, fn func(*client.Client, uint)) {
+func RunParallelClientsWithMailbox(addr net.Addr, mbox string, readOnly bool, fn func(*client.Client, uint)) {
 	mailboxes := make([]MailboxInfo, *flags.ParallelClients)
 	for i := uint(0); i < *flags.ParallelClients; i++ {
-		mailboxes[i] = MailboxInfo{Name: *flags.Mailbox, ReadOnly: readOnly}
+		mailboxes[i] = MailboxInfo{Name: mbox, ReadOnly: readOnly}
 	}
 
 	RunParallelClientsWithMailboxes(addr, mailboxes, fn)
@@ -191,6 +172,18 @@ func RunParallelClientsWithMailboxes(addr net.Addr, mailboxes []MailboxInfo, fn 
 		panic("Mailbox count doesn't match worker count")
 	}
 
+	RunParallelClients(addr, func(cl *client.Client, index uint) {
+		mbox := mailboxes[index]
+
+		if _, err := cl.Select(mbox.Name, mbox.ReadOnly); err != nil {
+			panic(err)
+		}
+
+		fn(cl, index)
+	})
+}
+
+func RunParallelClients(addr net.Addr, fn func(*client.Client, uint)) {
 	wg := sync.WaitGroup{}
 
 	for i := uint(0); i < *flags.ParallelClients; i++ {
@@ -199,33 +192,53 @@ func RunParallelClientsWithMailboxes(addr net.Addr, mailboxes []MailboxInfo, fn 
 		go func(index uint) {
 			defer wg.Done()
 
-			cl, err := NewClient(addr.String())
+			if err := WithClient(addr, func(c *client.Client) error {
+				fn(c, index)
 
-			if err != nil {
+				return nil
+			}); err != nil {
 				panic(err)
 			}
-
-			defer CloseClient(cl)
-
-			mbox := mailboxes[index]
-
-			if _, err := cl.Select(mbox.Name, mbox.ReadOnly); err != nil {
-				panic(err)
-			}
-
-			fn(cl, index)
 		}(i)
 	}
 
 	wg.Wait()
 }
 
-func FillBenchmarkSourceMailbox(cl *client.Client) error {
-	if *flags.FillSourceMailbox != 0 {
-		if err := BuildMailbox(cl, *flags.Mailbox, int(*flags.FillSourceMailbox)); err != nil {
-			return err
-		}
+func FillMailbox(cl *client.Client, mbox string) error {
+	if *flags.MessageCount == 0 {
+		return fmt.Errorf("message count can't be 0")
 	}
 
-	return nil
+	return BuildMailbox(cl, mbox, int(*flags.MessageCount))
+}
+
+func WithClient(addr net.Addr, fn func(*client.Client) error) error {
+	cl, err := newClient(addr.String())
+	if err != nil {
+		return err
+	}
+
+	defer closeClient(cl)
+
+	return fn(cl)
+}
+
+func newClient(addr string) (*client.Client, error) {
+	client, err := client.Dial(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := client.Login(*flags.UserName, *flags.UserPassword); err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func closeClient(cl *client.Client) {
+	if err := cl.Logout(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to close client: %v\n", err)
+	}
 }

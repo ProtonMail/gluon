@@ -19,3 +19,17 @@ type Benchmark interface {
 	// TearDown clear the benchmark state, this is not timed.
 	TearDown(ctx context.Context) error
 }
+
+var benchmarks = make(map[string]Benchmark)
+
+func RegisterBenchmark(benchmark Benchmark) {
+	if _, ok := benchmarks[benchmark.Name()]; ok {
+		panic("Benchmark with this name already exists")
+	}
+
+	benchmarks[benchmark.Name()] = benchmark
+}
+
+func GetBenchmarks() map[string]Benchmark {
+	return benchmarks
+}
