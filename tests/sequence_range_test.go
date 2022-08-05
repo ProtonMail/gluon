@@ -135,3 +135,17 @@ func TestUIDSequenceRange(t *testing.T) {
 		c.OK(`A017`)
 	})
 }
+
+func TestWildcard(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		// Create an empty mailbox.
+		c.C("tag create mbox").OK("tag")
+		c.C("tag select mbox").OK("tag")
+
+		// FETCH with wildcard returns BAD.
+		c.C("tag fetch * (flags)").BAD("tag")
+
+		// UID FETCH with wildcard returns OK.
+		c.C("tag uid fetch * (flags)").OK("tag")
+	})
+}
