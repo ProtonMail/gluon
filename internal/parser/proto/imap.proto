@@ -190,7 +190,7 @@ message Search {
 message SearchKey {
   SearchKeyword keyword = 1;
 
-  string      text = 2;
+  bytes       text = 2;
   string      date = 3;
   string      flag = 4;
   string      field = 5;

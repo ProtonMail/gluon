@@ -377,7 +377,7 @@ TEST_F(ParserTest, SearchNotFrom) {
           "flag": "",
           "keyword": "SearchKWFrom",
           "size": 0,
-          "text": "Smith"
+          "text": "U21pdGg="
         },
         "size": 0,
         "text": ""
@@ -407,7 +407,7 @@ TEST_F(ParserTest, SearchOrFrom) {
           "flag": "",
           "keyword": "SearchKWFrom",
           "size": 0,
-          "text": "Smith"
+          "text": "U21pdGg="
         },
         "rightOp": {
           "children": [],
@@ -416,7 +416,7 @@ TEST_F(ParserTest, SearchOrFrom) {
           "flag": "",
           "keyword": "SearchKWFrom",
           "size": 0,
-          "text": "Bob"
+          "text": "Qm9i"
         },
         "size": 0,
         "text": ""
@@ -440,7 +440,7 @@ TEST_F(ParserTest, SearchBcc) {
         "flag": "",
         "keyword": "SearchKWBcc",
         "size": 0,
-        "text": "mail@example.com"
+        "text": "bWFpbEBleGFtcGxlLmNvbQ=="
       }
     ]
   }
@@ -585,7 +585,7 @@ TEST_F(ParserTest, SearchBody) {
         "flag": "",
         "keyword": "SearchKWBody",
         "size": 0,
-        "text": "some body"
+        "text": "c29tZSBib2R5"
       }
     ]
   }
@@ -605,7 +605,7 @@ TEST_F(ParserTest, SearchCc) {
         "flag": "",
         "keyword": "SearchKWCc",
         "size": 0,
-        "text": "mail@example.com"
+        "text": "bWFpbEBleGFtcGxlLmNvbQ=="
       }
     ]
   }
@@ -626,7 +626,7 @@ TEST_F(ParserTest, SearchFrom) {
         "flag": "",
         "keyword": "SearchKWFrom",
         "size": 0,
-        "text": "mail@example.com"
+        "text": "bWFpbEBleGFtcGxlLmNvbQ=="
       }
     ]
   }
@@ -688,7 +688,7 @@ TEST_F(ParserTest, SearchSubject) {
         "flag": "",
         "keyword": "SearchKWSubject",
         "size": 0,
-        "text": "some subject"
+        "text": "c29tZSBzdWJqZWN0"
       }
     ]
   }
@@ -708,7 +708,7 @@ TEST_F(ParserTest, SearchText) {
         "flag": "",
         "keyword": "SearchKWText",
         "size": 0,
-        "text": "some text"
+        "text": "c29tZSB0ZXh0"
       }
     ]
   }
@@ -729,7 +729,7 @@ TEST_F(ParserTest, SearchTo) {
         "flag": "",
         "keyword": "SearchKWTo",
         "size": 0,
-        "text": "mail@example.com"
+        "text": "bWFpbEBleGFtcGxlLmNvbQ=="
       }
     ]
   }
@@ -790,7 +790,7 @@ TEST_F(ParserTest, SearchHeader) {
         "flag": "",
         "keyword": "SearchKWHeader",
         "size": 0,
-        "text": "string"
+        "text": "c3RyaW5n"
       }
     ]
   }
@@ -898,7 +898,7 @@ TEST_F(ParserTest, SearchTextWithCharset) {
         "flag": "",
         "keyword": "SearchKWText",
         "size": 0,
-        "text": "some text"
+        "text": "c29tZSB0ZXh0"
       }
     ]
   }
@@ -921,7 +921,7 @@ TEST_F(ParserTest, SearchChildren) {
             "flag": "",
             "keyword": "SearchKWText",
             "size": 0,
-            "text": "some text"
+            "text": "c29tZSB0ZXh0"
           },
           {
             "children": [],
@@ -930,7 +930,7 @@ TEST_F(ParserTest, SearchChildren) {
             "flag": "",
             "keyword": "SearchKWText",
             "size": 0,
-            "text": "some other text"
+            "text": "c29tZSBvdGhlciB0ZXh0"
           }
         ],
         "date": "",
@@ -962,7 +962,7 @@ TEST_F(ParserTest, SearchLiteralText) {
         "flag": "",
         "keyword": "SearchKWText",
         "size": 0,
-        "text": "hello!"
+        "text": "aGVsbG8h"
       }
     ]
   }

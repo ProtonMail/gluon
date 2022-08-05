@@ -4,21 +4,51 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"golang.org/x/text/encoding/htmlindex"
 )
 
-func TestSearchCharSet(t *testing.T) {
+func TestSearchCharSetUTF8(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		c.C(`tag select inbox`).OK("tag")
+
+		// Encode "ééé" as UTF-8.
+		b := enc("ééé", "UTF-8")
+
+		// Append a message with that as the body.
+		c.doAppend("inbox", "To: 1@pm.me\r\n\r\nééé").expect("OK")
+
+		// Search for it with UTF-8 encoding.
+		c.Cf(`TAG SEARCH CHARSET UTF-8 BODY {%v}`, len(b)).Continue().Cb(b).S("* SEARCH 1").OK("TAG")
+	})
+}
+
+func TestSearchCharSetISO88591(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		c.C(`tag select inbox`).OK("tag")
+
+		// Encode "ééé" as ISO-8859-1.
+		b := enc("ééé", "ISO-8859-1")
+
+		// Append a message with that as the body.
+		c.doAppend("inbox", "To: 1@pm.me\r\n\r\nééé").expect("OK")
+
+		// Search for it with ISO-8859-1 encoding.
+		c.Cf(`TAG SEARCH CHARSET ISO-8859-1 BODY {%v}`, len(b)).Continue().Cb(b).S("* SEARCH 1").OK("TAG")
+	})
+}
+
+func TestSearchCharSetASCII(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
-		c.C("A001 search CHARSET UTF-8 TEXT foo")
+		c.C("A001 search CHARSET US-ASCII TEXT foo")
 		c.S("* SEARCH 75")
 		c.OK("A001")
 	})
 }
 
-// TODO: GOMSRV-184 .
-func _TestSearchCharSetInvalid(t *testing.T) {
+func TestSearchCharSetInvalid(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
-		c.C("A001 search CHARSET invalid-charset TEXT foo")
-		c.NO("A001")
+		c.C("A001 search CHARSET invalid-charset TEXT foo").NO("A001", "BADCHARSET")
 	})
 }
 
@@ -672,4 +702,18 @@ func TestSearchList(t *testing.T) {
 		c.S("* SEARCH " + seq(20, 30))
 		c.OK("A004")
 	})
+}
+
+func enc(text, encoding string) []byte {
+	enc, err := htmlindex.Get(encoding)
+	if err != nil {
+		panic(err)
+	}
+
+	b, err := enc.NewEncoder().Bytes([]byte(text))
+	if err != nil {
+		panic(err)
+	}
+
+	return b
 }

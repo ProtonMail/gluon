@@ -69,6 +69,14 @@ func (s *testConnection) C(value string) *testConnection {
 	return s
 }
 
+func (s *testConnection) Cb(b []byte) *testConnection {
+	n, err := s.conn.Write(append(b, []byte("\r\n")...))
+	require.NoError(s.tb, err)
+	require.Greater(s.tb, n, 0)
+
+	return s
+}
+
 func (s *testConnection) Cf(format string, a ...any) *testConnection {
 	return s.C(fmt.Sprintf(format, a...))
 }
@@ -115,6 +123,13 @@ func (s *testConnection) Sxe(want ...string) *testConnection {
 			want = slices.Delete(want, idx, idx+1)
 		}
 	}
+
+	return s
+}
+
+// Continue is a shortcut for a server continuation request.
+func (s *testConnection) Continue() *testConnection {
+	s.Sx("\\+")
 
 	return s
 }
