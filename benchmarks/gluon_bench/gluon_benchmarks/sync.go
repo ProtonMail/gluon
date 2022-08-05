@@ -165,3 +165,7 @@ func (s *Sync) TearDown(ctx context.Context) error {
 
 	return nil
 }
+
+func init() {
+	benchmark.RegisterBenchmark(NewSync())
+}

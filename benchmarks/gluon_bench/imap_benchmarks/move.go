@@ -11,7 +11,6 @@ import (
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
-	"github.com/google/uuid"
 )
 
 var (
@@ -21,6 +20,7 @@ var (
 )
 
 type Move struct {
+	*stateTracker
 	seqSets       *ParallelSeqSet
 	messageCounts []uint32
 	srcMailboxes  []string
@@ -28,7 +28,7 @@ type Move struct {
 }
 
 func NewMove() benchmark.Benchmark {
-	return NewIMAPBenchmarkRunner(&Move{})
+	return NewIMAPBenchmarkRunner(&Move{stateTracker: newStateTracker()})
 }
 
 func (*Move) Name() string {
@@ -36,106 +36,59 @@ func (*Move) Name() string {
 }
 
 func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
-	if *flags.FillSourceMailbox == 0 {
+	if *flags.MessageCount == 0 {
 		return fmt.Errorf("move benchmark requires a message count > 0")
 	}
 
-	cl, err := NewClient(addr.String())
-	if err != nil {
-		return err
-	}
+	return WithClient(addr, func(cl *client.Client) error {
+		m.srcMailboxes = make([]string, 0, *flags.ParallelClients)
+		m.dstMailboxes = make([]string, 0, *flags.ParallelClients)
 
-	defer CloseClient(cl)
-
-	srcMailboxes := make([]string, 0, *flags.ParallelClients)
-	dstMailboxes := make([]string, 0, *flags.ParallelClients)
-
-	for i := uint(0); i < *flags.ParallelClients; i++ {
-		srcMailboxes = append(srcMailboxes, uuid.NewString())
-	}
-
-	if *moveIntoSameDstFlag {
-		dstMailboxes = []string{uuid.NewString()}
-	} else {
 		for i := uint(0); i < *flags.ParallelClients; i++ {
-			dstMailboxes = append(dstMailboxes, uuid.NewString())
+			mbox, err := m.createAndFillRandomMBox(cl)
+			if err != nil {
+				return err
+			}
+
+			m.srcMailboxes = append(m.srcMailboxes, mbox)
 		}
-	}
 
-	m.srcMailboxes = srcMailboxes
-	m.dstMailboxes = dstMailboxes
-
-	// Delete mailboxes if they exist
-	for _, v := range srcMailboxes {
-		if err := cl.Delete(v); err != nil {
-			// ignore errors
+		var dstMboxCount uint
+		if *moveIntoSameDstFlag {
+			dstMboxCount = 1
+		} else {
+			dstMboxCount = *flags.ParallelClients
 		}
-	}
 
-	for _, v := range dstMailboxes {
-		if err := cl.Delete(v); err != nil {
-			// ignore errors
+		for i := uint(0); i < dstMboxCount; i++ {
+			mbox, err := m.createRandomMBox(cl)
+			if err != nil {
+				return err
+			}
+
+			m.dstMailboxes = append(m.dstMailboxes, mbox)
 		}
-	}
 
-	// Create mailboxes
-	for _, v := range srcMailboxes {
-		if err := cl.Create(v); err != nil {
+		seqSets, err := NewParallelSeqSet(uint32(*flags.MessageCount),
+			*flags.ParallelClients,
+			*moveListFlag,
+			*moveAllFlag,
+			*flags.RandomSeqSetIntervals,
+			true,
+			*flags.UIDMode)
+
+		if err != nil {
 			return err
 		}
-	}
 
-	for _, v := range dstMailboxes {
-		if err := cl.Create(v); err != nil {
-			return err
-		}
-	}
+		m.seqSets = seqSets
 
-	// Fill srcMailboxes
-	for _, v := range srcMailboxes {
-		if err := BuildMailbox(cl, v, int(*flags.FillSourceMailbox)); err != nil {
-			return err
-		}
-	}
-
-	seqSets, err := NewParallelSeqSet(uint32(*flags.FillSourceMailbox),
-		*flags.ParallelClients,
-		*moveListFlag,
-		*moveAllFlag,
-		*flags.RandomSeqSetIntervals,
-		true,
-		*flags.UIDMode)
-
-	if err != nil {
-		return err
-	}
-
-	m.seqSets = seqSets
-
-	return nil
+		return nil
+	})
 }
 
 func (m *Move) TearDown(ctx context.Context, addr net.Addr) error {
-	cl, err := NewClient(addr.String())
-	if err != nil {
-		return err
-	}
-
-	defer CloseClient(cl)
-
-	for _, v := range m.srcMailboxes {
-		if err := cl.Delete(v); err != nil {
-			return err
-		}
-	}
-
-	for _, v := range m.dstMailboxes {
-		if err := cl.Delete(v); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return m.cleanupWithAddr(addr)
 }
 
 func (m *Move) Run(ctx context.Context, addr net.Addr) error {
@@ -172,4 +125,8 @@ func (m *Move) Run(ctx context.Context, addr net.Addr) error {
 	})
 
 	return nil
+}
+
+func init() {
+	benchmark.RegisterBenchmark(NewMove())
 }

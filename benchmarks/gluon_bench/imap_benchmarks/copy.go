@@ -3,14 +3,12 @@ package imap_benchmarks
 import (
 	"context"
 	"flag"
-	"fmt"
 	"net"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
-	"github.com/google/uuid"
 )
 
 var (
@@ -20,13 +18,13 @@ var (
 )
 
 type Copy struct {
-	seqSets    *ParallelSeqSet
-	dstMailbox string
+	*stateTracker
+	seqSets *ParallelSeqSet
 }
 
 func NewCopy() benchmark.Benchmark {
 	return NewIMAPBenchmarkRunner(&Copy{
-		dstMailbox: uuid.NewString(),
+		stateTracker: newStateTracker(),
 	})
 }
 
@@ -35,76 +33,47 @@ func (*Copy) Name() string {
 }
 
 func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
-	cl, err := NewClient(addr.String())
-	if err != nil {
-		return err
-	}
+	return WithClient(addr, func(cl *client.Client) error {
+		if _, err := c.createAndFillRandomMBox(cl); err != nil {
+			return err
+		}
 
-	defer CloseClient(cl)
+		if _, err := c.createRandomMBox(cl); err != nil {
+			return err
+		}
 
-	if err := FillBenchmarkSourceMailbox(cl); err != nil {
-		return err
-	}
+		copyCount := uint32(*copyCountFlag)
+		if copyCount == 0 {
+			copyCount = uint32(*flags.MessageCount / 2)
+		}
 
-	//Delete mailbox if it exists
-	if err := cl.Delete(c.dstMailbox); err != nil {
-		// ignore error
-	}
+		seqSets, err := NewParallelSeqSet(copyCount,
+			*flags.ParallelClients,
+			*copyListFlag,
+			*copyAllFlag,
+			*flags.RandomSeqSetIntervals,
+			false,
+			*flags.UIDMode)
 
-	if err := cl.Create(c.dstMailbox); err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	status, err := cl.Status(*flags.Mailbox, []imap.StatusItem{imap.StatusMessages})
-	if err != nil {
-		return err
-	}
+		c.seqSets = seqSets
 
-	messageCount := status.Messages
-
-	if messageCount == 0 {
-		return fmt.Errorf("mailbox '%v' has no messages", *flags.Mailbox)
-	}
-
-	copyCount := uint32(*copyCountFlag)
-	if copyCount == 0 {
-		copyCount = uint32(messageCount / 2)
-	}
-
-	seqSets, err := NewParallelSeqSet(copyCount,
-		*flags.ParallelClients,
-		*copyListFlag,
-		*copyAllFlag,
-		*flags.RandomSeqSetIntervals,
-		false,
-		*flags.UIDMode)
-
-	if err != nil {
-		return err
-	}
-
-	c.seqSets = seqSets
-
-	return nil
+		return nil
+	})
 }
 
 func (c *Copy) TearDown(ctx context.Context, addr net.Addr) error {
-	cl, err := NewClient(addr.String())
-	if err != nil {
-		return err
-	}
-
-	defer CloseClient(cl)
-
-	if err := cl.Delete(c.dstMailbox); err != nil {
-		return err
-	}
-
-	return nil
+	return c.cleanupWithAddr(addr)
 }
 
 func (c *Copy) Run(ctx context.Context, addr net.Addr) error {
-	RunParallelClients(addr, true, func(cl *client.Client, index uint) {
+	srcMBox := c.MBoxes[0]
+	dstMBox := c.MBoxes[1]
+
+	RunParallelClientsWithMailbox(addr, srcMBox, true, func(cl *client.Client, index uint) {
 		var copyFn func(*client.Client, *imap.SeqSet, string) error
 		if *flags.UIDMode {
 			copyFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {
@@ -117,11 +86,15 @@ func (c *Copy) Run(ctx context.Context, addr net.Addr) error {
 		}
 
 		for _, v := range c.seqSets.Get(index) {
-			if err := copyFn(cl, v, c.dstMailbox); err != nil {
+			if err := copyFn(cl, v, dstMBox); err != nil {
 				panic(err)
 			}
 		}
 	})
 
 	return nil
+}
+
+func init() {
+	benchmark.RegisterBenchmark(NewCopy())
 }
