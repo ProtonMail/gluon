@@ -2,19 +2,19 @@ package tests
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal"
-	"github.com/ProtonMail/gluon/store"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -186,6 +186,8 @@ func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) 
 	defer goleak.VerifyNone(tb, goleak.IgnoreCurrent())
 
 	gluonPath := options.pathGenerator.GenerateBackendPath()
+	storePath := options.pathGenerator.GenerateStorePath()
+
 	logrus.Tracef("Backend Path: %v", gluonPath)
 	server, err := gluon.New(
 		gluonPath,
@@ -200,6 +202,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) 
 		),
 		gluon.WithVersionInfo(TestServerVersionInfo.Version.Major, TestServerVersionInfo.Version.Minor, TestServerVersionInfo.Version.Patch,
 			TestServerVersionInfo.Name, TestServerVersionInfo.Vendor, TestServerVersionInfo.SupportURL),
+		gluon.WithDataPath(storePath),
 	)
 	require.NoError(tb, err)
 
@@ -220,15 +223,11 @@ func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) 
 			defaultAttributes,
 		)
 
-		storePath := options.pathGenerator.GenerateStorePath()
+		// Force USER ID to be consistent.
+		hash := sha256.Sum256([]byte(creds.usernames[0]))
+		userID := hex.EncodeToString(hash[:])
 
-		logrus.Tracef("User Store Path: %v=%v", creds.usernames[0], storePath)
-		store, err := store.NewOnDiskStore(storePath, []byte(creds.password))
-		require.NoError(tb, err)
-
-		entPath := options.pathGenerator.GenerateUserPath(creds.usernames[0])
-		logrus.Tracef("User DB path: %v=%v", creds.usernames[0], entPath)
-		userID, err := server.AddUser(ctx, conn, store, dialect.SQLite, entPath)
+		err := server.LoadUser(ctx, conn, userID, creds.password)
 		require.NoError(tb, err)
 
 		require.NoError(tb, conn.Sync(ctx))
@@ -238,7 +237,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) 
 		}
 
 		conns[userID] = conn
-		dbPaths[userID] = entPath
+		dbPaths[userID] = filepath.Join(server.GetDataPath(), fmt.Sprintf("%v.db", userID))
 	}
 
 	listener, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))

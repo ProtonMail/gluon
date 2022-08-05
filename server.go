@@ -7,20 +7,24 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"path"
+	"path/filepath"
 	"runtime/pprof"
 	"strconv"
+	"strings"
 	"sync"
 
-	"github.com/ProtonMail/gluon/profiling"
-
-	"github.com/ProtonMail/gluon/internal"
-
+	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
+	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/session"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/store"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -53,6 +57,9 @@ type Server struct {
 
 	versionInfo        internal.VersionInfo
 	cmdExecProfBuilder profiling.CmdProfilerBuilder
+
+	storeBuilder store.StoreBuilder
+	dataPath     string
 }
 
 // New creates a new server with the given options.
@@ -69,32 +76,74 @@ func New(dir string, withOpt ...Option) (*Server, error) {
 		sessions:           make(map[int]*session.Session),
 		watchers:           make(map[chan events.Event]struct{}),
 		cmdExecProfBuilder: &profiling.NullCmdExecProfilerBuilder{},
+		storeBuilder:       &store.OnDiskStoreBuilder{},
+		dataPath:           os.TempDir(),
 	}
 
 	for _, opt := range withOpt {
 		opt.config(server)
 	}
 
+	if err := os.MkdirAll(server.dataPath, 0o700); err != nil {
+		return nil, err
+	}
+
 	return server, nil
 }
 
-// AddUser makes a user available to the mailserver.
-func (s *Server) AddUser(ctx context.Context, conn connector.Connector, store store.Store, driver, source string) (string, error) {
-	client, err := ent.Open(driver, source)
-	if err != nil {
+func getDatabasePath(userPath, userID string) string {
+	return fmt.Sprintf("file:%v?cache=shared&_fk=1", filepath.Join(userPath, fmt.Sprintf("%v.db", userID)))
+}
+
+// AddUser creates a new user and generates new unique ID for this user. If you have an existing userID, please use
+// LoadUser instead.
+func (s *Server) AddUser(ctx context.Context, conn connector.Connector, encryptionPassphrase string) (string, error) {
+	userID := s.backend.NewUserID()
+
+	if err := s.LoadUser(ctx, conn, userID, encryptionPassphrase); err != nil {
 		return "", err
 	}
 
-	userID, err := s.backend.AddUser(ctx, conn, store, client)
+	return userID, nil
+}
+
+// LoadUser loads an existing user's data from disk. This function can also be used to assign a custom userID to a mail
+// server user.
+func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID, encryptionPassphrase string) error {
+	userPath, err := s.GetUserDataPath(userID)
 	if err != nil {
-		return "", err
+		return err
+	}
+
+	if err := os.MkdirAll(userPath, 0o700); err != nil {
+		return err
+	}
+
+	store, err := s.storeBuilder.New(s.dataPath, userID, encryptionPassphrase)
+	if err != nil {
+		return err
+	}
+
+	source := getDatabasePath(s.dataPath, userID)
+	client, err := ent.Open(dialect.SQLite, source)
+
+	if err != nil {
+		if err := store.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close storage")
+		}
+
+		return err
+	}
+
+	if err := s.backend.AddUser(ctx, userID, conn, store, client); err != nil {
+		return err
 	}
 
 	s.publish(events.EventUserAdded{
 		UserID: userID,
 	})
 
-	return userID, nil
+	return nil
 }
 
 // RemoveUser removes a user from the mailserver.
@@ -184,6 +233,18 @@ func (s *Server) Close(ctx context.Context) error {
 
 func (s *Server) GetVersionInfo() internal.VersionInfo {
 	return s.versionInfo
+}
+
+func (s *Server) GetDataPath() string {
+	return s.dataPath
+}
+
+func (s *Server) GetUserDataPath(userID string) (string, error) {
+	if strings.ContainsAny(userID, "./\\") {
+		return "", fmt.Errorf("not a valid user id")
+	}
+
+	return path.Join(s.dataPath, userID), nil
 }
 
 func (s *Server) addListener(l net.Listener) {

@@ -3,18 +3,13 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"time"
 
-	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/store"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/profile"
 	"github.com/sirupsen/logrus"
 )
@@ -53,7 +48,9 @@ func main() {
 	server, err := gluon.New(temp(), gluon.WithLogger(
 		loggerIn,
 		loggerOut,
-	))
+	),
+		gluon.WithDataPath(temp()),
+	)
 
 	defer server.Close(ctx)
 
@@ -91,17 +88,10 @@ func addUser(ctx context.Context, server *gluon.Server, addresses []string, pass
 		imap.NewFlagSet(),
 	)
 
-	store, err := store.NewOnDiskStore(temp(), []byte("passphrase"))
-	if err != nil {
-		return err
-	}
-
 	userID, err := server.AddUser(
 		ctx,
 		connector,
-		store,
-		dialect.SQLite,
-		fmt.Sprintf("file:%v?cache=shared&_fk=1", filepath.Join(temp(), fmt.Sprintf("%v.db", "userID"))),
+		password,
 	)
 	if err != nil {
 		return err

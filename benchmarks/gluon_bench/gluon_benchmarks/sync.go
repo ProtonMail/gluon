@@ -2,15 +2,10 @@ package gluon_benchmarks
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"flag"
-	"fmt"
 	"math/rand"
-	"path/filepath"
 	"time"
 
-	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
@@ -18,7 +13,6 @@ import (
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -47,7 +41,9 @@ func (s *Sync) Setup(ctx context.Context, benchmarkDir string) error {
 	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 
-	opts := []gluon.Option{gluon.WithLogger(loggerIn, loggerOut)}
+	opts := []gluon.Option{gluon.WithLogger(loggerIn, loggerOut),
+		gluon.WithDataPath(benchmarkDir),
+	}
 
 	server, err := gluon.New(benchmarkDir, opts...)
 
@@ -57,7 +53,7 @@ func (s *Sync) Setup(ctx context.Context, benchmarkDir string) error {
 
 	s.server = server
 
-	connector, err := s.setupConnector(ctx, benchmarkDir)
+	connector, err := s.setupConnector(ctx)
 	if err != nil {
 		return err
 	}
@@ -67,23 +63,8 @@ func (s *Sync) Setup(ctx context.Context, benchmarkDir string) error {
 	return nil
 }
 
-func (s *Sync) setupConnector(ctx context.Context, benchmarkPath string) (utils.ConnectorImpl, error) {
+func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) {
 	c, err := utils.NewConnector(*flags.Connector)
-	if err != nil {
-		return nil, err
-	}
-
-	hash := sha256.Sum256([]byte(*flags.UserName))
-	id := hex.EncodeToString(hash[:])
-
-	storePath := filepath.Join(benchmarkPath, id+".store")
-	dbPath := filepath.Join(benchmarkPath, id+".db")
-
-	if *flags.Verbose {
-		fmt.Printf("Adding user ID=%v\n  BenchPath:'%v'\n  DBPath:'%v'\n", id, storePath, dbPath)
-	}
-
-	store, err := store.NewOnDiskStore(storePath, []byte(*flags.UserPassword))
 	if err != nil {
 		return nil, err
 	}
@@ -119,13 +100,10 @@ func (s *Sync) setupConnector(ctx context.Context, benchmarkPath string) (utils.
 		s.mailboxes = append(s.mailboxes, mboxID)
 	}
 
-	_, err = s.server.AddUser(
+	if _, err = s.server.AddUser(
 		ctx,
 		c.Connector(),
-		store,
-		dialect.SQLite,
-		fmt.Sprintf("file:%v?cache=shared&_fk=1", dbPath))
-	if err != nil {
+		*flags.UserPassword); err != nil {
 		return nil, err
 	}
 

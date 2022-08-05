@@ -2,19 +2,13 @@ package server
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"net"
-	"path/filepath"
-
-	"entgo.io/ent/dialect"
 
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/store"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 )
@@ -43,6 +37,7 @@ func (*LocalServerBuilder) New(ctx context.Context, serverPath string, profiler 
 
 	opts = append(opts, gluon.WithLogger(loggerIn, loggerOut))
 	opts = append(opts, gluon.WithCmdProfiler(profiler))
+	opts = append(opts, gluon.WithDataPath(serverPath))
 
 	server, err := gluon.New(serverPath, opts...)
 
@@ -50,7 +45,7 @@ func (*LocalServerBuilder) New(ctx context.Context, serverPath string, profiler 
 		return nil, err
 	}
 
-	if err := addUser(ctx, server, serverPath); err != nil {
+	if err := addUser(ctx, server); err != nil {
 		return nil, err
 	}
 
@@ -71,35 +66,19 @@ func (*LocalServerBuilder) New(ctx context.Context, serverPath string, profiler 
 	}, nil
 }
 
-func addUser(ctx context.Context, server *gluon.Server, path string) error {
-	hash := sha256.Sum256([]byte(*flags.UserName))
-	id := hex.EncodeToString(hash[:])
-
+func addUser(ctx context.Context, server *gluon.Server) error {
 	c, err := utils.NewConnector(*flags.Connector)
 	if err != nil {
 		return nil
 	}
 
-	storePath := filepath.Join(path, id+".store")
-	dbPath := filepath.Join(path, id+".db")
-
-	if *flags.Verbose {
-		fmt.Printf("Adding user ID=%v\n  BenchPath:'%v'\n  DBPath:'%v'\n", id, storePath, dbPath)
-	}
-
-	store, err := store.NewOnDiskStore(storePath, []byte(*flags.UserPassword))
-	if err != nil {
-		return err
-	}
-
-	_, err = server.AddUser(
+	if userID, err := server.AddUser(
 		ctx,
 		c.Connector(),
-		store,
-		dialect.SQLite,
-		fmt.Sprintf("file:%v?cache=shared&_fk=1", dbPath))
-	if err != nil {
+		*flags.UserPassword); err != nil {
 		return err
+	} else if *flags.Verbose {
+		fmt.Printf("Adding user ID=%v\n", userID)
 	}
 
 	if err := c.Sync(context.Background()); err != nil {
