@@ -4,9 +4,9 @@ import (
 	"crypto/tls"
 	"io"
 
-	"github.com/ProtonMail/gluon/profiling"
-
 	"github.com/ProtonMail/gluon/internal"
+	"github.com/ProtonMail/gluon/profiling"
+	"github.com/ProtonMail/gluon/store"
 )
 
 // Option represents a type that can be used to configure the server.
@@ -95,4 +95,28 @@ func (c *withCmdExecProfiler) config(server *Server) {
 // WithCmdProfiler allows a specific CmdProfilerBuilder to be set for the server's execution.
 func WithCmdProfiler(builder profiling.CmdProfilerBuilder) Option {
 	return &withCmdExecProfiler{builder: builder}
+}
+
+type withStoreBuilder struct {
+	builder store.StoreBuilder
+}
+
+func (w *withStoreBuilder) config(server *Server) {
+	server.storeBuilder = w.builder
+}
+
+func WithStoreBuilder(builder store.StoreBuilder) Option {
+	return &withStoreBuilder{builder: builder}
+}
+
+type withDataPath struct {
+	path string
+}
+
+func (w *withDataPath) config(server *Server) {
+	server.dataPath = w.path
+}
+
+func WithDataPath(path string) Option {
+	return &withDataPath{path: path}
 }

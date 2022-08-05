@@ -124,3 +124,15 @@ func (c *onDiskStore) Delete(ids ...string) error {
 
 	return nil
 }
+
+func (c *onDiskStore) Close() error {
+	return nil
+}
+
+type OnDiskStoreBuilder struct{}
+
+func (*OnDiskStoreBuilder) New(path, userID, userPassword string) (Store, error) {
+	storePath := filepath.Join(path, userID)
+
+	return NewOnDiskStore(storePath, []byte(userPassword))
+}

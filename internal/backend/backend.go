@@ -38,29 +38,31 @@ func New(dir string) (*Backend, error) {
 	}, nil
 }
 
+func (b *Backend) NewUserID() string {
+	return uuid.NewString()
+}
+
 func (b *Backend) SetDelimiter(delim string) {
 	b.delim = delim
 }
 
-func (b *Backend) AddUser(ctx context.Context, conn connector.Connector, store store.Store, client *ent.Client) (string, error) {
+func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Connector, store store.Store, client *ent.Client) error {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
-	userID := uuid.NewString()
-
 	remote, err := b.remote.AddUser(ctx, userID, conn)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	user, err := newUser(ctx, userID, client, remote, store, b.delim)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	b.users[userID] = user
 
-	return userID, nil
+	return nil
 }
 
 func (b *Backend) RemoveUser(ctx context.Context, userID string) error {

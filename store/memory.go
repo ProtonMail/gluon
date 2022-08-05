@@ -63,3 +63,12 @@ func (c *inMemoryStore) Delete(ids ...string) error {
 
 	return nil
 }
+
+func (c *inMemoryStore) Close() error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.data = make(map[string][]byte)
+
+	return nil
+}
