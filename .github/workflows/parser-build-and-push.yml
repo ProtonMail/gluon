@@ -47,6 +47,8 @@ jobs:
     steps:
       - name: Get sources
         uses: actions/checkout@v3
+        with:
+          persist-credentials: false
 
       - name: Remove old static libs
         if: needs.check.outputs.changed == 'true'
@@ -79,7 +81,7 @@ jobs:
           git config --local user.email "leander.beernaert@proton.ch"
           git config --local user.name "Leander Beernaert"
           git add internal/parser/lib
-          git commit -m "[AUTO] Parser libraries update]"
+          git commit -m "[AUTO] Parser libraries update"
 
       - name: Push
         if: needs.check.outputs.changed == 'true'
