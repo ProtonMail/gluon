@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime/pprof"
 	"strconv"
@@ -244,7 +243,7 @@ func (s *Server) GetUserDataPath(userID string) (string, error) {
 		return "", fmt.Errorf("not a valid user id")
 	}
 
-	return path.Join(s.dataPath, userID), nil
+	return filepath.Join(s.dataPath, userID), nil
 }
 
 func (s *Server) addListener(l net.Listener) {
