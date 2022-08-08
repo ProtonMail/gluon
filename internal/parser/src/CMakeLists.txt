@@ -7,10 +7,12 @@ add_library(parser STATIC
   visitor.cpp
 )
 
-target_link_libraries(parser 
+target_link_libraries(parser
   PUBLIC parser_gen proto
 )
 
-target_include_directories(parser 
+target_include_directories(parser
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+# Force parser rebuild
