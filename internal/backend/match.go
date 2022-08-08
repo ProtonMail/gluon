@@ -67,28 +67,8 @@ func getMatches(
 
 // GOMSRV-100: validate this implementation.
 func match(ref, pattern, del, mailboxName string) (string, bool) {
-	// An empty ("" string) mailbox name argument is a special request to
-	// return the hierarchy delimiter and the root name of the name given
-	// in the reference. The value returned as the root MAY be the empty
-	// string if the reference is non-rooted or is an empty string.
 	if pattern == "" {
-		var res string
-
-		if strings.HasPrefix(ref, del) {
-			res += del
-		}
-
-		split := strings.Split(ref, del)
-
-		if len(split) > 0 {
-			res += split[0]
-		}
-
-		if res != "" && res != "/" {
-			res += del
-		}
-
-		return res, true
+		return matchRoot(ref, del)
 	}
 
 	rx := fmt.Sprintf("^%v", regexp.QuoteMeta(ref+pattern))
@@ -105,10 +85,37 @@ func match(ref, pattern, del, mailboxName string) (string, bool) {
 	// The character "%" is similar to "*", but it does not match a hierarchy delimiter.
 	rx = strings.ReplaceAll(rx, "%", fmt.Sprintf("[^%v]*", del))
 
-	res := regexp.MustCompile(rx).FindAllString(mailboxName, 1)
-	if len(res) == 0 {
-		return "", false
+	if res := regexp.MustCompile(rx).FindAllString(mailboxName, 1); len(res) > 0 {
+		return res[0], true
 	}
 
-	return res[0], true
+	return "", false
+}
+
+// An empty ("" string) mailbox name argument is a special request to
+// return the hierarchy delimiter and the root name of the name given
+// in the reference. The value returned as the root MAY be the empty
+// string if the reference is non-rooted or is an empty string.
+func matchRoot(ref, del string) (string, bool) {
+	if strings.Index(ref, del) < 0 {
+		return "", true
+	}
+
+	var res string
+
+	if strings.HasPrefix(ref, del) {
+		res += del
+	}
+
+	split := strings.Split(ref, del)
+
+	if len(split) > 0 {
+		res += split[0]
+	}
+
+	if res != "" && res != del {
+		res += del
+	}
+
+	return res, true
 }
