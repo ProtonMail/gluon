@@ -84,6 +84,6 @@ jobs:
         if: needs.check.outputs.changed == 'true'
         uses: ad-m/github-push-action@master
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: $GLUON_BUILD_BOT_TOKEN
         with:
           branch: ${{ github.ref }}
