@@ -30,6 +30,18 @@ func TestMatch(t *testing.T) {
 			want:      "/",
 		},
 		{
+			ref:       "some.",
+			pattern:   "",
+			delimiter: ".",
+			want:      "some.",
+		},
+		{
+			ref:       "some",
+			pattern:   "",
+			delimiter: ".",
+			want:      "",
+		},
+		{
 			ref:       "",
 			pattern:   "*",
 			delimiter: "/",
@@ -56,6 +68,13 @@ func TestMatch(t *testing.T) {
 			delimiter: "/",
 			name:      "~/Mail/foo/bar",
 			want:      "~/Mail/foo",
+		},
+		{
+			ref:       "some.",
+			pattern:   "thing",
+			delimiter: ".",
+			name:      "some.thing",
+			want:      "some.thing",
 		},
 	}
 

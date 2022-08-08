@@ -41,7 +41,6 @@ func (state *State) UserID() string {
 
 func (state *State) List(ctx context.Context, ref, pattern string, subscribed bool, fn func(map[string]Match) error) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
-
 		mailboxes, err := DBGetAllMailboxes(ctx, tx.Client())
 		if err != nil {
 			return err
