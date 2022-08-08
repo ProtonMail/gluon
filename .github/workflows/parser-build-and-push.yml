@@ -83,7 +83,6 @@ jobs:
       - name: Push
         if: needs.check.outputs.changed == 'true'
         uses: ad-m/github-push-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GLUON_BUILD_BOT_TOKEN }}
         with:
           branch: ${{ github.ref }}
+          github_token: ${{ secrets.GLUON_BUILD_BOT_TOKEN }}
