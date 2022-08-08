@@ -81,7 +81,7 @@ jobs:
           git config --local user.email "GluonParserBuilder@github.com"
           git config --local user.name "GluonParserBuilder"
           git add internal/parser/lib
-          git commit -m "[AUTO] Parser libraries update"
+          git commit -m "[skip ci] Auto: Parser libraries update"
 
       - name: Push
         if: needs.check.outputs.changed == 'true'
