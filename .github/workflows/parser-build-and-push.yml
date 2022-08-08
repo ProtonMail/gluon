@@ -20,8 +20,8 @@ jobs:
         with:
           files: internal/parser
           files_ignore: |
-            *.a
-            *.lib
+            **/*.a
+            **/*.lib
 
   build:
     strategy:
