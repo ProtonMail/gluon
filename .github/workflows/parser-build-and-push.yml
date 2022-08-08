@@ -76,6 +76,8 @@ jobs:
       - name: Commit files
         if: needs.check.outputs.changed == 'true'
         run : |
+          git config --local user.email "leander.beernaert@proton.ch"
+          git config --local user.name "Leander Beernaert"
           git add internal/parser/lib
           git commit -m "[AUTO] Parser libraries update]"
 
