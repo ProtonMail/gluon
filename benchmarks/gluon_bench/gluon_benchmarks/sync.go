@@ -12,7 +12,6 @@ import (
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/profiling"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -123,9 +122,7 @@ func (s *Sync) Run(ctx context.Context) (*reporter.BenchmarkRun, error) {
 		return nil, err
 	}
 
-	var cmdTimings [profiling.CmdTypeTotal][]time.Duration
-
-	return reporter.NewBenchmarkRun(timer.Elapsed(), cmdTimings), nil
+	return reporter.NewBenchmarkRunSingle(timer.Elapsed(), nil), nil
 }
 
 func (s *Sync) TearDown(ctx context.Context) error {

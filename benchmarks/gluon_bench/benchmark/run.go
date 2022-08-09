@@ -76,18 +76,18 @@ func RunMain() {
 
 		numRuns := *flags.BenchmarkRuns
 
-		var benchmarkRuns = make([]*reporter.BenchmarkRun, 0, numRuns)
+		var benchmarkStats = make([]*reporter.BenchmarkStatistics, 0, numRuns)
 
 		for r := uint(0); r < numRuns; r++ {
 			if *flags.Verbose {
 				fmt.Printf("IMAPBenchmark Run: %v\n", r)
 			}
 
-			benchRun := measureBenchmark(benchDirConfig, r, v)
-			benchmarkRuns = append(benchmarkRuns, benchRun)
+			benchStat := measureBenchmark(benchDirConfig, r, v)
+			benchmarkStats = append(benchmarkStats, benchStat)
 		}
 
-		benchmarkReports = append(benchmarkReports, reporter.NewBenchmarkReport(v.Name(), benchmarkRuns...))
+		benchmarkReports = append(benchmarkReports, reporter.NewBenchmarkReport(v.Name(), benchmarkStats...))
 
 		if *flags.Verbose {
 			fmt.Printf("End IMAPBenchmark: %v\n", v.Name())
@@ -109,7 +109,7 @@ func RunMain() {
 	}
 }
 
-func measureBenchmark(dirConfig BenchDirConfig, iteration uint, bench Benchmark) *reporter.BenchmarkRun {
+func measureBenchmark(dirConfig BenchDirConfig, iteration uint, bench Benchmark) *reporter.BenchmarkStatistics {
 	benchPath, err := dirConfig.Get()
 
 	if err != nil {
@@ -140,5 +140,5 @@ func measureBenchmark(dirConfig BenchDirConfig, iteration uint, bench Benchmark)
 		panic(fmt.Sprintf("Failed to teardown benchmark %v: %v", bench.Name(), err))
 	}
 
-	return benchRun
+	return reporter.NewBenchmarkStatistics(benchRun.Extra, benchRun.Durations...)
 }

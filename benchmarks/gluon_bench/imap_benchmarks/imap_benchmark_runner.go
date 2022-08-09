@@ -54,7 +54,7 @@ func (i *IMAPBenchmarkRunner) Run(ctx context.Context) (*reporter.BenchmarkRun, 
 		return nil, err
 	}
 
-	return reporter.NewBenchmarkRun(scopedTimer.Elapsed(), i.cmdProfilerBuilder.Merge()), nil
+	return NewIMAPBenchmarkRun(scopedTimer.Elapsed(), i.cmdProfilerBuilder.Merge()), nil
 }
 
 // TearDown clear the benchmark state, this is not timed.
