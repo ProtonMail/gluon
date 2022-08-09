@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/bradenaw/juniper/xslices"
-
-	"github.com/ProtonMail/gluon/profiling"
 )
 
 type BenchmarkStatistics struct {
@@ -21,22 +20,33 @@ type BenchmarkStatistics struct {
 	Percentile10 time.Duration
 	RMS          time.Duration
 	SampleCount  int
+	Extra        BenchmarkExtra
 }
 
 func (b *BenchmarkStatistics) String() string {
-	return fmt.Sprintf("SampleCount:%04d Total:%v Fastest:%v Slowest:%v Average:%v Median:%v 90thPercentile:%v 10thPercentile:%v RMS:%v",
+	builder := strings.Builder{}
+	builder.WriteString(fmt.Sprintf("SampleCount:%04d Total:%v Fastest:%v Slowest:%v Average:%v Median:%v 90thPercentile:%v 10thPercentile:%v RMS:%v",
 		b.SampleCount, b.Total, b.Fastest, b.Slowest, b.Average,
 		b.Median, b.Percentile90, b.Percentile10, b.RMS,
-	)
+	))
+
+	if b.Extra != nil {
+		builder.WriteString(" Extra:\n")
+		builder.WriteString(b.Extra.String())
+	}
+
+	return builder.String()
 }
 
-func NewBenchmarkStatistics(durations ...time.Duration) BenchmarkStatistics {
+func NewBenchmarkStatistics(extra BenchmarkExtra, durations ...time.Duration) *BenchmarkStatistics {
 	sortedDurations := durations
 	sort.Slice(sortedDurations, func(i1, i2 int) bool {
 		return sortedDurations[i1] < sortedDurations[i2]
 	})
 
-	statistics := BenchmarkStatistics{}
+	statistics := &BenchmarkStatistics{
+		Extra: extra,
+	}
 	statistics.SampleCount = len(sortedDurations)
 
 	if statistics.SampleCount == 1 {
@@ -75,32 +85,35 @@ func NewBenchmarkStatistics(durations ...time.Duration) BenchmarkStatistics {
 	return statistics
 }
 
-type BenchmarkRun struct {
-	Duration      time.Duration
-	CmdStatistics [profiling.CmdTypeTotal]BenchmarkStatistics
+type BenchmarkExtra interface {
+	String() string
 }
 
-func NewBenchmarkRun(duration time.Duration, cmdTimings [profiling.CmdTypeTotal][]time.Duration) *BenchmarkRun {
-	var cmdStatistic [profiling.CmdTypeTotal]BenchmarkStatistics
-	for i, v := range cmdTimings {
-		cmdStatistic[i] = NewBenchmarkStatistics(v...)
-	}
+type BenchmarkRun struct {
+	Durations []time.Duration
+	Extra     BenchmarkExtra
+}
 
-	return &BenchmarkRun{Duration: duration, CmdStatistics: cmdStatistic}
+func NewBenchmarkRunSingle(duration time.Duration, extra BenchmarkExtra) *BenchmarkRun {
+	return &BenchmarkRun{Durations: []time.Duration{duration}, Extra: extra}
+}
+
+func NewBenchmarkRun(durations []time.Duration, extra BenchmarkExtra) *BenchmarkRun {
+	return &BenchmarkRun{Durations: durations, Extra: extra}
 }
 
 type BenchmarkReport struct {
 	Name       string
-	Runs       []*BenchmarkRun
-	Statistics BenchmarkStatistics
+	Runs       []*BenchmarkStatistics
+	Statistics *BenchmarkStatistics
 }
 
-func NewBenchmarkReport(name string, runs ...*BenchmarkRun) *BenchmarkReport {
-	durations := xslices.Map(runs, func(r *BenchmarkRun) time.Duration {
-		return r.Duration
+func NewBenchmarkReport(name string, runs ...*BenchmarkStatistics) *BenchmarkReport {
+	durations := xslices.Map(runs, func(r *BenchmarkStatistics) time.Duration {
+		return r.Total
 	})
 
-	return &BenchmarkReport{Name: name, Runs: runs, Statistics: NewBenchmarkStatistics(durations...)}
+	return &BenchmarkReport{Name: name, Runs: runs, Statistics: NewBenchmarkStatistics(nil, durations...)}
 }
 
 // BenchmarkReporter is the interface that is required to be implemented by any report generation tool.

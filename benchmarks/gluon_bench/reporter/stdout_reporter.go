@@ -2,8 +2,6 @@ package reporter
 
 import (
 	"fmt"
-
-	"github.com/ProtonMail/gluon/profiling"
 )
 
 // StdOutReporter prints the benchmark report to os.Stdout.
@@ -15,15 +13,7 @@ func (*StdOutReporter) ProduceReport(reports []*BenchmarkReport) error {
 		fmt.Printf("[%02d] %v\n", i, v.Statistics.String())
 
 		for r, v := range v.Runs {
-			fmt.Printf("[%02d] Run %02d - Time: %v\n", i, r, v.Duration)
-
-			for n, v := range v.CmdStatistics {
-				if v.SampleCount == 0 {
-					continue
-				}
-
-				fmt.Printf("[%02d] [%02d] [%v] %v\n", i, r, profiling.CmdTypeToString(n), v.String())
-			}
+			fmt.Printf("[%02d] Run %02d - %v\n", i, r, v.String())
 		}
 	}
 
