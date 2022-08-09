@@ -3,11 +3,12 @@ package imap_benchmarks
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
-	"github.com/ProtonMail/gluon/profiling"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
+	"github.com/ProtonMail/gluon/profiling"
 )
 
 // IMAPBenchmark is intended to be used to build benchmarks which bench IMAP commands on a given server.
