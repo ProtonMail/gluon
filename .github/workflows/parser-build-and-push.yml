@@ -78,8 +78,8 @@ jobs:
       - name: Commit files
         if: needs.check.outputs.changed == 'true'
         run : |
-          git config --local user.email "GluonParserBuilder@github.com"
-          git config --local user.name "GluonParserBuilder"
+          git config --local user.email "gluon-build-bot@proton.me"
+          git config --local user.name "Gluon Build Bot"
           git add internal/parser/lib
           git commit -m "[skip ci] Auto: Parser libraries update"
 
