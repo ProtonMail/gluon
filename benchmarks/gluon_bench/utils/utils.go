@@ -43,3 +43,27 @@ func ReadLinesFromFile(path string) ([]string, error) {
 
 	return lines, nil
 }
+
+type DurationCollector struct {
+	durations []time.Duration
+	timer     ScopedTimer
+}
+
+func NewDurationCollector(capacity int) *DurationCollector {
+	return &DurationCollector{
+		durations: make([]time.Duration, 0, capacity),
+	}
+}
+
+func (d *DurationCollector) Start() {
+	d.timer.Start()
+}
+
+func (d *DurationCollector) Stop() {
+	d.timer.Stop()
+	d.durations = append(d.durations, d.timer.Elapsed())
+}
+
+func (d *DurationCollector) Durations() []time.Duration {
+	return d.durations
+}
