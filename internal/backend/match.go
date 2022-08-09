@@ -66,12 +66,8 @@ func getMatches(
 }
 
 // GOMSRV-100: validate this implementation.
-func match(ref, pattern, del, mailboxName string) (string, bool) {
-	if pattern == "" {
-		return matchRoot(ref, del)
-	}
-
-	rx := fmt.Sprintf("^%v", regexp.QuoteMeta(ref+pattern))
+func match(ref, pattern, del, name string) (string, bool) {
+	rx := fmt.Sprintf("^%v", regexp.QuoteMeta(canon(ref+pattern, del)))
 
 	// If the "%" wildcard is the last character of a mailbox name argument,
 	// matching levels of hierarchy are also returned.
@@ -85,7 +81,7 @@ func match(ref, pattern, del, mailboxName string) (string, bool) {
 	// The character "%" is similar to "*", but it does not match a hierarchy delimiter.
 	rx = strings.ReplaceAll(rx, "%", fmt.Sprintf("[^%v]*", del))
 
-	if res := regexp.MustCompile(rx).FindAllString(mailboxName, 1); len(res) > 0 {
+	if res := regexp.MustCompile(rx).FindAllString(name, 1); len(res) > 0 {
 		return res[0], true
 	}
 
@@ -96,9 +92,9 @@ func match(ref, pattern, del, mailboxName string) (string, bool) {
 // return the hierarchy delimiter and the root name of the name given
 // in the reference. The value returned as the root MAY be the empty
 // string if the reference is non-rooted or is an empty string.
-func matchRoot(ref, del string) (string, bool) {
+func getRoot(ref, del string) string {
 	if strings.Index(ref, del) < 0 {
-		return "", true
+		return ""
 	}
 
 	var res string
@@ -117,5 +113,5 @@ func matchRoot(ref, del string) (string, bool) {
 		res += del
 	}
 
-	return res, true
+	return res
 }

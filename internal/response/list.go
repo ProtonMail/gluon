@@ -12,10 +12,14 @@ import (
 type list struct {
 	name, del string
 	att       imap.FlagSet
+	sub       bool
 }
 
-func List() *list {
-	return &list{att: imap.NewFlagSet()}
+func List(sub bool) *list {
+	return &list{
+		att: imap.NewFlagSet(),
+		sub: sub,
+	}
 }
 
 func (r *list) WithName(name string) *list {
@@ -49,5 +53,13 @@ func (r *list) String() string {
 		panic(err)
 	}
 
-	return fmt.Sprintf(`* LIST (%v) %v %v`, join(r.att.ToSlice()), del, strconv.Quote(enc))
+	var sub string
+
+	if r.sub {
+		sub = "LSUB"
+	} else {
+		sub = "LIST"
+	}
+
+	return fmt.Sprintf(`* %v (%v) %v %v`, sub, join(r.att.ToSlice()), del, strconv.Quote(enc))
 }

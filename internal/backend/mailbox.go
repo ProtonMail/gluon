@@ -148,7 +148,7 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are copied the response object will be nil.
 func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
-	mbox, err := m.tx.Mailbox.Query().Where(mailbox.Name(name)).Only(ctx)
+	mbox, err := m.tx.Mailbox.Query().Where(mailbox.Name(canon(name, m.state.delimiter))).Only(ctx)
 	if err != nil {
 		return nil, ErrNoSuchMailbox
 	}
@@ -186,7 +186,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are moved the response object will be nil.
 func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
-	mbox, err := m.tx.Mailbox.Query().Where(mailbox.Name(name)).Only(ctx)
+	mbox, err := m.tx.Mailbox.Query().Where(mailbox.Name(canon(name, m.state.delimiter))).Only(ctx)
 	if err != nil {
 		return nil, ErrNoSuchMailbox
 	}

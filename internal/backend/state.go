@@ -39,23 +39,81 @@ func (state *State) UserID() string {
 	return state.userID
 }
 
-func (state *State) List(ctx context.Context, ref, pattern string, subscribed bool, fn func(map[string]Match) error) error {
+func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, ch chan response.Response) error {
 	return state.tx(ctx, func(tx *ent.Tx) error {
+		// An empty ("" string) mailbox name argument is a special request to
+		// return the hierarchy delimiter and the root name of the name given
+		// in the reference. The value returned as the root MAY be the empty
+		// string if the reference is non-rooted or is an empty string.
+		if pattern == "" {
+			ch <- response.List(lsub).
+				WithName(getRoot(ref, state.delimiter)).
+				WithDelimiter(state.delimiter).
+				WithAttributes(imap.NewFlagSet(imap.AttrNoSelect))
+
+			return nil
+		}
+
 		mailboxes, err := DBGetAllMailboxes(ctx, tx.Client())
 		if err != nil {
 			return err
 		}
 
-		matches, err := getMatches(ctx, mailboxes, ref, pattern, state.delimiter, subscribed)
-		if err != nil {
-			return err
+		fullMatch := make(map[string]imap.FlagSet)
+		nameMatch := make(map[string]imap.FlagSet)
+
+		for _, mailbox := range mailboxes {
+			if lsub && !mailbox.Subscribed {
+				continue
+			}
+
+			if name, ok := match(ref, pattern, state.delimiter, mailbox.Name); ok {
+				if mailbox.Name == name {
+					atts := imap.NewFlagSetFromSlice(xslices.Map(mailbox.Edges.Attributes, func(flag *ent.MailboxAttr) string {
+						return flag.Value
+					}))
+
+					recent, err := DBGetMailboxRecentCount(ctx, mailbox)
+					if err != nil {
+						return err
+					}
+
+					if recent > 0 {
+						atts = atts.Add(imap.AttrMarked)
+					} else {
+						atts = atts.Add(imap.AttrUnmarked)
+					}
+
+					fullMatch[mailbox.Name] = atts
+				} else {
+					nameMatch[name] = imap.NewFlagSet(imap.AttrNoSelect)
+				}
+			}
 		}
 
-		return fn(matches)
+		for name, atts := range fullMatch {
+			ch <- response.List(lsub).
+				WithName(name).
+				WithDelimiter(state.delimiter).
+				WithAttributes(atts)
+
+			delete(nameMatch, name)
+		}
+
+		for name, atts := range nameMatch {
+			ch <- response.List(lsub).
+				WithName(name).
+				WithDelimiter(state.delimiter).
+				WithAttributes(atts)
+		}
+
+		return nil
 	})
 }
 
 func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) error) error {
+	name = canon(name, state.delimiter)
+
 	return state.tx(ctx, func(tx *ent.Tx) error {
 		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
@@ -85,6 +143,8 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 }
 
 func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) error) error {
+	name = canon(name, state.delimiter)
+
 	return state.tx(ctx, func(tx *ent.Tx) error {
 		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
@@ -110,9 +170,11 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 }
 
 func (state *State) Create(ctx context.Context, name string) error {
+	name = canon(name, state.delimiter)
+
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		// If the mailbox name is suffixed with the server's hierarchy separator, remove the separator and still create
-		// the mailbox
+		// If the mailbox name is suffixed with the server's hierarchy separator,
+		// remove the separator and still create the mailbox.
 		if strings.HasSuffix(name, state.delimiter) {
 			name = strings.TrimRight(name, state.delimiter)
 		}
@@ -144,6 +206,8 @@ func (state *State) Create(ctx context.Context, name string) error {
 }
 
 func (state *State) Delete(ctx context.Context, name string) error {
+	name = canon(name, state.delimiter)
+
 	return state.tx(ctx, func(tx *ent.Tx) error {
 		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
@@ -155,8 +219,12 @@ func (state *State) Delete(ctx context.Context, name string) error {
 }
 
 func (state *State) Rename(ctx context.Context, oldName, newName string) error {
+	oldName = canon(oldName, state.delimiter)
+	newName = canon(newName, state.delimiter)
+
 	return state.tx(ctx, func(tx *ent.Tx) error {
 		client := tx.Client()
+
 		mbox, err := DBGetMailboxByName(ctx, client, oldName)
 		if err != nil {
 			return ErrNoSuchMailbox
@@ -214,6 +282,8 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 }
 
 func (state *State) Subscribe(ctx context.Context, name string) error {
+	name = canon(name, state.delimiter)
+
 	return state.tx(ctx, func(tx *ent.Tx) error {
 		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
@@ -227,6 +297,8 @@ func (state *State) Subscribe(ctx context.Context, name string) error {
 }
 
 func (state *State) Unsubscribe(ctx context.Context, name string) error {
+	name = canon(name, state.delimiter)
+
 	return state.tx(ctx, func(tx *ent.Tx) error {
 		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
@@ -251,6 +323,8 @@ func (state *State) Idle(ctx context.Context, fn func([]response.Response, chan 
 }
 
 func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) error) error {
+	name = canon(name, state.delimiter)
+
 	return state.tx(ctx, func(tx *ent.Tx) error {
 		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
@@ -506,4 +580,14 @@ func (state *State) close(ctx context.Context, tx *ent.Tx) error {
 	state.res = nil
 
 	return nil
+}
+
+func canon(name, del string) string {
+	return strings.Join(xslices.Map(strings.Split(name, del), func(name string) string {
+		if strings.EqualFold(name, imap.Inbox) {
+			return imap.Inbox
+		}
+
+		return name
+	}), del)
 }
