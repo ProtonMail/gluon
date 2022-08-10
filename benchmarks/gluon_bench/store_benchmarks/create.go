@@ -7,6 +7,7 @@ import (
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/timing"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
@@ -27,7 +28,7 @@ func (*Create) TearDown(ctx context.Context, store store.Store) error {
 }
 
 func (*Create) Run(ctx context.Context, st store.Store) (*reporter.BenchmarkRun, error) {
-	return RunStoreWorkers(ctx, st, func(ctx context.Context, s store.Store, dc *utils.DurationCollector, u uint) error {
+	return RunStoreWorkers(ctx, st, func(ctx context.Context, s store.Store, dc *timing.Collector, u uint) error {
 		messages := []string{utils.MessageAfterNoonMeeting, utils.MessageMultiPartMixed, utils.MessageEmbedded}
 		messagesLen := len(messages)
 

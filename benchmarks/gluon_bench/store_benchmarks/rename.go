@@ -6,7 +6,7 @@ import (
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/timing"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
 )
@@ -41,7 +41,7 @@ func (*Rename) TearDown(ctx context.Context, store store.Store) error {
 }
 
 func (r *Rename) Run(ctx context.Context, st store.Store) (*reporter.BenchmarkRun, error) {
-	return RunStoreWorkersSplitRange(ctx, st, uint(len(r.uuids)), func(ctx context.Context, s store.Store, dc *utils.DurationCollector, start, end uint) error {
+	return RunStoreWorkersSplitRange(ctx, st, uint(len(r.uuids)), func(ctx context.Context, s store.Store, dc *timing.Collector, start, end uint) error {
 		for i := start; i < end; i++ {
 			dc.Start()
 			err := s.Update(r.uuids[i], r.uuidsRenamed[i])
