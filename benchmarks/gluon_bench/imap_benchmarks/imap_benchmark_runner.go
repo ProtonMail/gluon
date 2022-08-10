@@ -8,6 +8,7 @@ import (
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/imap_benchmarks/server"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/timing"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 )
 
@@ -42,7 +43,7 @@ func (i *IMAPBenchmarkRunner) Setup(ctx context.Context, benchmarkDir string) er
 
 // Run performs the actual benchmark, this is timed.
 func (i *IMAPBenchmarkRunner) Run(ctx context.Context) (*reporter.BenchmarkRun, error) {
-	scopedTimer := utils.ScopedTimer{}
+	scopedTimer := timing.Timer{}
 
 	scopedTimer.Start()
 

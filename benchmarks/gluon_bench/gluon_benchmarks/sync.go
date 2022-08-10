@@ -11,6 +11,7 @@ import (
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/timing"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/google/uuid"
@@ -113,7 +114,7 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 }
 
 func (s *Sync) Run(ctx context.Context) (*reporter.BenchmarkRun, error) {
-	timer := utils.ScopedTimer{}
+	timer := timing.Timer{}
 
 	timer.Start()
 
