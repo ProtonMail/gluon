@@ -9,5 +9,5 @@ type Store interface {
 }
 
 type StoreBuilder interface {
-	New(directory, userID, encryptionPassphrase string) (Store, error)
+	New(directory, userID string, encryptionPassphrase []byte) (Store, error)
 }

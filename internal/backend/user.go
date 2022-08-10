@@ -114,6 +114,10 @@ func (user *user) close(ctx context.Context) error {
 	// Wait until the connector update go routine has finished.
 	user.updateWG.Wait()
 
+	if err := user.store.Close(); err != nil {
+		return fmt.Errorf("failed to close user client storage: %w", err)
+	}
+
 	if err := user.client.Close(); err != nil {
 		return fmt.Errorf("failed to close user client: %w", err)
 	}

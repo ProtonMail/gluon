@@ -96,7 +96,7 @@ func getDatabasePath(userPath, userID string) string {
 
 // AddUser creates a new user and generates new unique ID for this user. If you have an existing userID, please use
 // LoadUser instead.
-func (s *Server) AddUser(ctx context.Context, conn connector.Connector, encryptionPassphrase string) (string, error) {
+func (s *Server) AddUser(ctx context.Context, conn connector.Connector, encryptionPassphrase []byte) (string, error) {
 	userID := s.backend.NewUserID()
 
 	if err := s.LoadUser(ctx, conn, userID, encryptionPassphrase); err != nil {
@@ -108,7 +108,7 @@ func (s *Server) AddUser(ctx context.Context, conn connector.Connector, encrypti
 
 // LoadUser loads an existing user's data from disk. This function can also be used to assign a custom userID to a mail
 // server user.
-func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID, encryptionPassphrase string) error {
+func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, encryptionPassphrase []byte) error {
 	userPath, err := s.GetUserDataPath(userID)
 	if err != nil {
 		return err
