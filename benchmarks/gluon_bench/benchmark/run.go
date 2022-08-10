@@ -71,7 +71,7 @@ func RunMain() {
 
 	for _, v := range benchmarks {
 		if *flags.Verbose {
-			fmt.Printf("Begin IMAPBenchmark: %v\n", v.Name())
+			fmt.Printf("Begin Benchmark: %v\n", v.Name())
 		}
 
 		numRuns := *flags.BenchmarkRuns
@@ -80,7 +80,7 @@ func RunMain() {
 
 		for r := uint(0); r < numRuns; r++ {
 			if *flags.Verbose {
-				fmt.Printf("IMAPBenchmark Run: %v\n", r)
+				fmt.Printf("Benchmark Run: %v\n", r)
 			}
 
 			benchStat := measureBenchmark(benchDirConfig, r, v)
@@ -90,7 +90,7 @@ func RunMain() {
 		benchmarkReports = append(benchmarkReports, reporter.NewBenchmarkReport(v.Name(), benchmarkStats...))
 
 		if *flags.Verbose {
-			fmt.Printf("End IMAPBenchmark: %v\n", v.Name())
+			fmt.Printf("End Benchmark: %v\n", v.Name())
 		}
 	}
 
@@ -119,7 +119,7 @@ func measureBenchmark(dirConfig BenchDirConfig, iteration uint, bench Benchmark)
 	benchPath = filepath.Join(benchPath, fmt.Sprintf("%v-%d", bench.Name(), iteration))
 
 	if *flags.Verbose {
-		fmt.Printf("IMAPBenchmark Data Path: %v\n", benchPath)
+		fmt.Printf("Benchmark Data Path: %v\n", benchPath)
 	}
 
 	if err := os.MkdirAll(benchPath, 0o777); err != nil {
