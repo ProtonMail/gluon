@@ -33,7 +33,7 @@ func NewSync() benchmark.Benchmark {
 }
 
 func (s *Sync) Name() string {
-	return "sync"
+	return "gluon-sync"
 }
 
 func (s *Sync) Setup(ctx context.Context, benchmarkDir string) error {

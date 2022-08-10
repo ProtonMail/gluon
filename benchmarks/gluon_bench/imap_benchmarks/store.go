@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	storeCountFlag  = flag.Uint("store-count", 0, "Total number of messages to store during store benchmarks.")
-	storeListFlag   = flag.String("store-list", "", "Use a list of predefined sequences to store rather than random generated.")
-	storeSilentFlag = flag.Bool("store-silent", false, "When set to true, request silent updates that do not produce any responses")
-	storeAllFlag    = flag.Bool("store-all", false, "If set, perform one store for all messages.")
+	storeCountFlag  = flag.Uint("imap-store-count", 0, "Total number of messages to store during store benchmarks.")
+	storeListFlag   = flag.String("imap-store-list", "", "Use a list of predefined sequences to store rather than random generated.")
+	storeSilentFlag = flag.Bool("imap-store-silent", false, "When set to true, request silent updates that do not produce any responses")
+	storeAllFlag    = flag.Bool("imap-store-all", false, "If set, perform one store for all messages.")
 )
 
 type StoreBench struct {
@@ -28,7 +28,7 @@ func NewStore() benchmark.Benchmark {
 }
 
 func (*StoreBench) Name() string {
-	return "store"
+	return "imap-store"
 }
 
 func (s *StoreBench) Setup(ctx context.Context, addr net.Addr) error {
@@ -39,16 +39,16 @@ func (s *StoreBench) Setup(ctx context.Context, addr net.Addr) error {
 
 		storeCount := uint32(*storeCountFlag)
 		if storeCount == 0 {
-			storeCount = uint32(*flags.MessageCount) / 2
+			storeCount = uint32(*flags.IMAPMessageCount) / 2
 		}
 
 		seqSets, err := NewParallelSeqSet(storeCount,
-			*flags.ParallelClients,
+			*flags.IMAPParallelClients,
 			*storeListFlag,
 			*storeAllFlag,
-			*flags.RandomSeqSetIntervals,
+			*flags.IMAPRandomSeqSetIntervals,
 			false,
-			*flags.UIDMode)
+			*flags.IMAPUIDMode)
 
 		if err != nil {
 			return err
@@ -70,7 +70,7 @@ func (s *StoreBench) Run(ctx context.Context, addr net.Addr) error {
 
 	RunParallelClientsWithMailbox(addr, s.MBoxes[0], false, func(cl *client.Client, index uint) {
 		var storeFn func(*client.Client, *imap.SeqSet, int) error
-		if *flags.UIDMode {
+		if *flags.IMAPUIDMode {
 			storeFn = func(cl *client.Client, set *imap.SeqSet, index int) error {
 				return UIDStore(cl, set, items[index%len(items)], *storeSilentFlag, flagList[index%len(flagList)])
 			}

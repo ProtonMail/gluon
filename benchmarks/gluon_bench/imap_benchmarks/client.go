@@ -159,8 +159,8 @@ type MailboxInfo struct {
 }
 
 func RunParallelClientsWithMailbox(addr net.Addr, mbox string, readOnly bool, fn func(*client.Client, uint)) {
-	mailboxes := make([]MailboxInfo, *flags.ParallelClients)
-	for i := uint(0); i < *flags.ParallelClients; i++ {
+	mailboxes := make([]MailboxInfo, *flags.IMAPParallelClients)
+	for i := uint(0); i < *flags.IMAPParallelClients; i++ {
 		mailboxes[i] = MailboxInfo{Name: mbox, ReadOnly: readOnly}
 	}
 
@@ -168,7 +168,7 @@ func RunParallelClientsWithMailbox(addr net.Addr, mbox string, readOnly bool, fn
 }
 
 func RunParallelClientsWithMailboxes(addr net.Addr, mailboxes []MailboxInfo, fn func(*client.Client, uint)) {
-	if len(mailboxes) != int(*flags.ParallelClients) {
+	if len(mailboxes) != int(*flags.IMAPParallelClients) {
 		panic("Mailbox count doesn't match worker count")
 	}
 
@@ -186,7 +186,7 @@ func RunParallelClientsWithMailboxes(addr net.Addr, mailboxes []MailboxInfo, fn 
 func RunParallelClients(addr net.Addr, fn func(*client.Client, uint)) {
 	wg := sync.WaitGroup{}
 
-	for i := uint(0); i < *flags.ParallelClients; i++ {
+	for i := uint(0); i < *flags.IMAPParallelClients; i++ {
 		wg.Add(1)
 
 		go func(index uint) {
@@ -206,11 +206,11 @@ func RunParallelClients(addr net.Addr, fn func(*client.Client, uint)) {
 }
 
 func FillMailbox(cl *client.Client, mbox string) error {
-	if *flags.MessageCount == 0 {
+	if *flags.IMAPMessageCount == 0 {
 		return fmt.Errorf("message count can't be 0")
 	}
 
-	return BuildMailbox(cl, mbox, int(*flags.MessageCount))
+	return BuildMailbox(cl, mbox, int(*flags.IMAPMessageCount))
 }
 
 func WithClient(addr net.Addr, fn func(*client.Client) error) error {

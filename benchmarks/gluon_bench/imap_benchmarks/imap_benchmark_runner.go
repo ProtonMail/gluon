@@ -75,8 +75,8 @@ func (i *IMAPBenchmarkRunner) TearDown(ctx context.Context) error {
 func NewIMAPBenchmarkRunner(bench IMAPBenchmark) benchmark.Benchmark {
 	var serverBuilder server.ServerBuilder
 
-	if len(*flags.RemoteServer) != 0 {
-		builder, err := server.NewRemoteServerBuilder(*flags.RemoteServer)
+	if len(*flags.IMAPRemoteServer) != 0 {
+		builder, err := server.NewRemoteServerBuilder(*flags.IMAPRemoteServer)
 		if err != nil {
 			panic(fmt.Sprintf("Invalid Server address: %v", err))
 		}

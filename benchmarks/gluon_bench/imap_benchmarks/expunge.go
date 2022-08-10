@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	expungeCountFlag    = flag.Uint("expunge-count", 0, "Total number of messages to expunge during expunge benchmarks.")
-	expungeSameMBoxFlag = flag.Bool("expunge-same-mbox", false, "When true run all the expunge test on the same inbox rather than separate ones in parallel.")
-	expungeListFlag     = flag.String("expunge-list", "", "Use a list of predefined sequences to expunge rather than random generated. Only works when -expunge-same-mbox is not set.")
-	expungeAllFlag      = flag.Bool("expunge-all", false, "If set, perform a expunge of the all messages. Only works when -expunge-same-mbox is not set.")
+	expungeCountFlag    = flag.Uint("imap-expunge-count", 0, "Total number of messages to expunge during expunge benchmarks.")
+	expungeSameMBoxFlag = flag.Bool("imap-expunge-same-mbox", false, "When true run all the expunge test on the same inbox rather than separate ones in parallel.")
+	expungeListFlag     = flag.String("imap-expunge-list", "", "Use a list of predefined sequences to expunge rather than random generated. Only works when -expunge-same-mbox is not set.")
+	expungeAllFlag      = flag.Bool("imap-expunge-all", false, "If set, perform a expunge of the all messages. Only works when -expunge-same-mbox is not set.")
 )
 
 type Expunge struct {
@@ -31,7 +31,7 @@ func NewExpunge() benchmark.Benchmark {
 }
 
 func (*Expunge) Name() string {
-	return "expunge"
+	return "imap-expunge"
 }
 
 func (e *Expunge) Setup(ctx context.Context, addr net.Addr) error {
@@ -43,33 +43,33 @@ func (e *Expunge) Setup(ctx context.Context, addr net.Addr) error {
 
 			expungeCount := uint32(*expungeCountFlag)
 			if expungeCount == 0 {
-				expungeCount = uint32(*flags.MessageCount) / 2
+				expungeCount = uint32(*flags.IMAPMessageCount) / 2
 			}
 
 			e.seqSets = NewParallelSeqSetExpunge(expungeCount,
-				*flags.ParallelClients,
-				*flags.RandomSeqSetIntervals,
-				*flags.UIDMode,
+				*flags.IMAPParallelClients,
+				*flags.IMAPRandomSeqSetIntervals,
+				*flags.IMAPUIDMode,
 			)
 
-			e.mboxInfo = make([]MailboxInfo, *flags.ParallelClients)
+			e.mboxInfo = make([]MailboxInfo, *flags.IMAPParallelClients)
 			for i := 0; i < len(e.mboxInfo); i++ {
 				e.mboxInfo[i] = MailboxInfo{Name: e.MBoxes[0], ReadOnly: false}
 			}
 		} else {
-			for i := uint(0); i < *flags.ParallelClients; i++ {
+			for i := uint(0); i < *flags.IMAPParallelClients; i++ {
 				if _, err := e.createAndFillRandomMBox(cl); err != nil {
 					return err
 				}
 			}
 
-			seqSets, err := NewParallelSeqSet(uint32(*flags.MessageCount),
-				*flags.ParallelClients,
+			seqSets, err := NewParallelSeqSet(uint32(*flags.IMAPMessageCount),
+				*flags.IMAPParallelClients,
 				*expungeListFlag,
 				*expungeAllFlag,
-				*flags.RandomSeqSetIntervals,
+				*flags.IMAPRandomSeqSetIntervals,
 				true,
-				*flags.UIDMode)
+				*flags.IMAPUIDMode)
 
 			if err != nil {
 				return err
@@ -92,7 +92,7 @@ func (e *Expunge) TearDown(ctx context.Context, addr net.Addr) error {
 func (e *Expunge) Run(ctx context.Context, addr net.Addr) error {
 	RunParallelClientsWithMailboxes(addr, e.mboxInfo, func(cl *client.Client, index uint) {
 		var expungeFn func(*client.Client, *imap.SeqSet) error
-		if *flags.UIDMode {
+		if *flags.IMAPUIDMode {
 			expungeFn = func(cl *client.Client, set *imap.SeqSet) error {
 				if err := UIDStore(cl, set, "+FLAGS", true, imap.DeletedFlag); err != nil {
 					return err
