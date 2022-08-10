@@ -15,6 +15,7 @@ import (
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal"
+	"github.com/ProtonMail/gluon/store"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -177,6 +178,14 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 	return options
 }
 
+// Wrapper to ensure we always pass 32bytes worth of encryption key to the tests.
+type testBadgerStoreBuilder struct{}
+
+func (*testBadgerStoreBuilder) New(directory, userID string, encryptionPassphrase []byte) (store.Store, error) {
+	encryptionBytes := sha256.Sum256(encryptionPassphrase)
+	return store.NewBadgerStore(directory, userID, encryptionBytes[:])
+}
+
 // runServerWithPaths initializes and starts the mailserver using a pathGenerator.
 func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) {
 	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
@@ -203,6 +212,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) 
 		gluon.WithVersionInfo(TestServerVersionInfo.Version.Major, TestServerVersionInfo.Version.Minor, TestServerVersionInfo.Version.Patch,
 			TestServerVersionInfo.Name, TestServerVersionInfo.Vendor, TestServerVersionInfo.SupportURL),
 		gluon.WithDataPath(storePath),
+		gluon.WithStoreBuilder(&testBadgerStoreBuilder{}),
 	)
 	require.NoError(tb, err)
 
@@ -227,7 +237,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) 
 		hash := sha256.Sum256([]byte(creds.usernames[0]))
 		userID := hex.EncodeToString(hash[:])
 
-		err := server.LoadUser(ctx, conn, userID, creds.password)
+		err := server.LoadUser(ctx, conn, userID, []byte(creds.password))
 		require.NoError(tb, err)
 
 		require.NoError(tb, conn.Sync(ctx))

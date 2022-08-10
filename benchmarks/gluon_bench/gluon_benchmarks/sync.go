@@ -2,6 +2,7 @@ package gluon_benchmarks
 
 import (
 	"context"
+	"crypto/sha256"
 	"flag"
 	"math/rand"
 	"time"
@@ -99,10 +100,12 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 		s.mailboxes = append(s.mailboxes, mboxID)
 	}
 
+	encryptionBytes := sha256.Sum256([]byte(*flags.UserPassword))
+
 	if _, err = s.server.AddUser(
 		ctx,
 		c.Connector(),
-		*flags.UserPassword); err != nil {
+		encryptionBytes[:]); err != nil {
 		return nil, err
 	}
 

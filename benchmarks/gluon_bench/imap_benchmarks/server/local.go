@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"net"
 
@@ -72,10 +73,12 @@ func addUser(ctx context.Context, server *gluon.Server) error {
 		return nil
 	}
 
+	encryptionBytes := sha256.Sum256([]byte(*flags.UserPassword))
+
 	if userID, err := server.AddUser(
 		ctx,
 		c.Connector(),
-		*flags.UserPassword); err != nil {
+		encryptionBytes[:]); err != nil {
 		return err
 	} else if *flags.Verbose {
 		fmt.Printf("Adding user ID=%v\n", userID)

@@ -91,7 +91,7 @@ func addUser(ctx context.Context, server *gluon.Server, addresses []string, pass
 	userID, err := server.AddUser(
 		ctx,
 		connector,
-		password,
+		[]byte(password),
 	)
 	if err != nil {
 		return err

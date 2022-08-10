@@ -131,8 +131,8 @@ func (c *onDiskStore) Close() error {
 
 type OnDiskStoreBuilder struct{}
 
-func (*OnDiskStoreBuilder) New(path, userID, userPassword string) (Store, error) {
+func (*OnDiskStoreBuilder) New(path, userID string, userPassword []byte) (Store, error) {
 	storePath := filepath.Join(path, userID)
 
-	return NewOnDiskStore(storePath, []byte(userPassword))
+	return NewOnDiskStore(storePath, userPassword)
 }
