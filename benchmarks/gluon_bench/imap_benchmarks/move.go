@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	moveListFlag        = flag.String("move-list", "", "Use a list of predefined sequences to move rather than random generated.")
-	moveAllFlag         = flag.Bool("move-all", false, "If set, perform a move of the all messages.")
-	moveIntoSameDstFlag = flag.Bool("move-into-same-dst", false, "If set, rather than moving each unique mailbox into separate unique mailboxes, move all messages into one common destination mailbox.")
+	moveListFlag        = flag.String("imap-move-list", "", "Use a list of predefined sequences to move rather than random generated.")
+	moveAllFlag         = flag.Bool("imap-move-all", false, "If set, perform a move of the all messages.")
+	moveIntoSameDstFlag = flag.Bool("imap-move-into-same-dst", false, "If set, rather than moving each unique mailbox into separate unique mailboxes, move all messages into one common destination mailbox.")
 )
 
 type Move struct {
@@ -32,19 +32,19 @@ func NewMove() benchmark.Benchmark {
 }
 
 func (*Move) Name() string {
-	return "move"
+	return "imap-move"
 }
 
 func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
-	if *flags.MessageCount == 0 {
+	if *flags.IMAPMessageCount == 0 {
 		return fmt.Errorf("move benchmark requires a message count > 0")
 	}
 
 	return WithClient(addr, func(cl *client.Client) error {
-		m.srcMailboxes = make([]string, 0, *flags.ParallelClients)
-		m.dstMailboxes = make([]string, 0, *flags.ParallelClients)
+		m.srcMailboxes = make([]string, 0, *flags.IMAPParallelClients)
+		m.dstMailboxes = make([]string, 0, *flags.IMAPParallelClients)
 
-		for i := uint(0); i < *flags.ParallelClients; i++ {
+		for i := uint(0); i < *flags.IMAPParallelClients; i++ {
 			mbox, err := m.createAndFillRandomMBox(cl)
 			if err != nil {
 				return err
@@ -57,7 +57,7 @@ func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
 		if *moveIntoSameDstFlag {
 			dstMboxCount = 1
 		} else {
-			dstMboxCount = *flags.ParallelClients
+			dstMboxCount = *flags.IMAPParallelClients
 		}
 
 		for i := uint(0); i < dstMboxCount; i++ {
@@ -69,13 +69,13 @@ func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
 			m.dstMailboxes = append(m.dstMailboxes, mbox)
 		}
 
-		seqSets, err := NewParallelSeqSet(uint32(*flags.MessageCount),
-			*flags.ParallelClients,
+		seqSets, err := NewParallelSeqSet(uint32(*flags.IMAPMessageCount),
+			*flags.IMAPParallelClients,
 			*moveListFlag,
 			*moveAllFlag,
-			*flags.RandomSeqSetIntervals,
+			*flags.IMAPRandomSeqSetIntervals,
 			true,
-			*flags.UIDMode)
+			*flags.IMAPUIDMode)
 
 		if err != nil {
 			return err
@@ -101,7 +101,7 @@ func (m *Move) Run(ctx context.Context, addr net.Addr) error {
 
 	RunParallelClientsWithMailboxes(addr, mboxInfos, func(cl *client.Client, index uint) {
 		var moveFn func(*client.Client, *imap.SeqSet, string) error
-		if *flags.UIDMode {
+		if *flags.IMAPUIDMode {
 			moveFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {
 				return cl.UidMove(set, mailbox)
 			}

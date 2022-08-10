@@ -19,16 +19,16 @@ func NewAppend() benchmark.Benchmark {
 }
 
 func (a *Append) Name() string {
-	return "append"
+	return "imap-append"
 }
 
 func (a *Append) Setup(ctx context.Context, addr net.Addr) error {
-	if *flags.MessageCount == 0 {
+	if *flags.IMAPMessageCount == 0 {
 		return fmt.Errorf("invalid message count")
 	}
 
 	return WithClient(addr, func(cl *client.Client) error {
-		for i := uint(0); i < *flags.ParallelClients; i++ {
+		for i := uint(0); i < *flags.IMAPParallelClients; i++ {
 			if _, err := a.createRandomMBox(cl); err != nil {
 				return err
 			}
@@ -44,7 +44,7 @@ func (a *Append) TearDown(ctx context.Context, addr net.Addr) error {
 
 func (a *Append) Run(ctx context.Context, addr net.Addr) error {
 	RunParallelClients(addr, func(c *client.Client, u uint) {
-		if err := BuildMailbox(c, a.MBoxes[u], int(*flags.MessageCount)); err != nil {
+		if err := BuildMailbox(c, a.MBoxes[u], int(*flags.IMAPMessageCount)); err != nil {
 			panic(err)
 		}
 	})

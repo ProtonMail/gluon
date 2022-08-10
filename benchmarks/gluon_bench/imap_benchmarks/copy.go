@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	copyCountFlag = flag.Uint("copy-count", 0, "Total number of messages to copy during copy benchmarks.")
-	copyListFlag  = flag.String("copy-list", "", "Use a list of predefined sequences to copy rather than random generated.")
-	copyAllFlag   = flag.Bool("copy-all", false, "If set, perform a copy of the all messages.")
+	copyCountFlag = flag.Uint("imap-copy-count", 0, "Total number of messages to copy during copy benchmarks.")
+	copyListFlag  = flag.String("imap-copy-list", "", "Use a list of predefined sequences to copy rather than random generated.")
+	copyAllFlag   = flag.Bool("imap-copy-all", false, "If set, perform a copy of the all messages.")
 )
 
 type Copy struct {
@@ -29,7 +29,7 @@ func NewCopy() benchmark.Benchmark {
 }
 
 func (*Copy) Name() string {
-	return "copy"
+	return "imap-copy"
 }
 
 func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
@@ -44,16 +44,16 @@ func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
 
 		copyCount := uint32(*copyCountFlag)
 		if copyCount == 0 {
-			copyCount = uint32(*flags.MessageCount / 2)
+			copyCount = uint32(*flags.IMAPMessageCount / 2)
 		}
 
 		seqSets, err := NewParallelSeqSet(copyCount,
-			*flags.ParallelClients,
+			*flags.IMAPParallelClients,
 			*copyListFlag,
 			*copyAllFlag,
-			*flags.RandomSeqSetIntervals,
+			*flags.IMAPRandomSeqSetIntervals,
 			false,
-			*flags.UIDMode)
+			*flags.IMAPUIDMode)
 
 		if err != nil {
 			return err
@@ -75,7 +75,7 @@ func (c *Copy) Run(ctx context.Context, addr net.Addr) error {
 
 	RunParallelClientsWithMailbox(addr, srcMBox, true, func(cl *client.Client, index uint) {
 		var copyFn func(*client.Client, *imap.SeqSet, string) error
-		if *flags.UIDMode {
+		if *flags.IMAPUIDMode {
 			copyFn = func(cl *client.Client, set *imap.SeqSet, mailbox string) error {
 				return cl.UidCopy(set, mailbox)
 			}

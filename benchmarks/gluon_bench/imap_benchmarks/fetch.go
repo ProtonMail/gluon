@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	fetchCountFlag = flag.Uint("fetch-count", 0, "Total number of messages to fetch during fetch benchmarks.")
-	fetchListFlag  = flag.String("fetch-list", "", "Use a list of predefined sequences to fetch rather than random generated.")
-	fetchReadOnly  = flag.Bool("fetch-read-only", false, "If set, perform fetches in read-only mode.")
-	fetchAllFlag   = flag.Bool("fetch-all", false, "If set, perform one fetch for all messages.")
+	fetchCountFlag = flag.Uint("imap-fetch-count", 0, "Total number of messages to fetch during fetch benchmarks.")
+	fetchListFlag  = flag.String("imap-fetch-list", "", "Use a list of predefined sequences to fetch rather than random generated.")
+	fetchReadOnly  = flag.Bool("imap-fetch-read-only", false, "If set, perform fetches in read-only mode.")
+	fetchAllFlag   = flag.Bool("imap-fetch-all", false, "If set, perform one fetch for all messages.")
 )
 
 type Fetch struct {
@@ -28,7 +28,7 @@ func NewFetch() benchmark.Benchmark {
 }
 
 func (*Fetch) Name() string {
-	return "fetch"
+	return "imap-fetch"
 }
 
 func (f *Fetch) Setup(ctx context.Context, addr net.Addr) error {
@@ -39,16 +39,16 @@ func (f *Fetch) Setup(ctx context.Context, addr net.Addr) error {
 
 		fetchCount := uint32(*fetchCountFlag)
 		if fetchCount == 0 {
-			fetchCount = uint32(*flags.MessageCount) / 2
+			fetchCount = uint32(*flags.IMAPMessageCount) / 2
 		}
 
 		seqSets, err := NewParallelSeqSet(fetchCount,
-			*flags.ParallelClients,
+			*flags.IMAPParallelClients,
 			*fetchListFlag,
 			*fetchAllFlag,
-			*flags.RandomSeqSetIntervals,
+			*flags.IMAPRandomSeqSetIntervals,
 			false,
-			*flags.UIDMode)
+			*flags.IMAPUIDMode)
 
 		if err != nil {
 			return err
@@ -66,7 +66,7 @@ func (f *Fetch) TearDown(ctx context.Context, addr net.Addr) error {
 func (f *Fetch) Run(ctx context.Context, addr net.Addr) error {
 	RunParallelClientsWithMailbox(addr, f.MBoxes[0], *fetchReadOnly, func(cl *client.Client, index uint) {
 		var fetchFn func(*client.Client, *imap.SeqSet) error
-		if *flags.UIDMode {
+		if *flags.IMAPUIDMode {
 			fetchFn = func(cl *client.Client, set *imap.SeqSet) error {
 				return UIDFetchMessage(cl, set, imap.FetchAll)
 			}

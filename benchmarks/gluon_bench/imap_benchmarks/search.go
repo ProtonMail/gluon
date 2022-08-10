@@ -17,9 +17,9 @@ import (
 	"github.com/emersion/go-imap/client"
 )
 
-var searchCountFlag = flag.Uint("search-count", 0, "Total number of messages to search during search benchmarks.")
-var searchTextListFlag = flag.String("search-text-list", "", "Use a list of new line separate search queries instead instead of the default list.")
-var searchSinceListFlag = flag.String("search-since-list", "", "Use a list of new line dates instead of random generated.")
+var searchCountFlag = flag.Uint("imap-search-count", 0, "Total number of messages to search during search benchmarks.")
+var searchTextListFlag = flag.String("imap-search-text-list", "", "Use a list of new line separate search queries instead instead of the default list.")
+var searchSinceListFlag = flag.String("imap-search-since-list", "", "Use a list of new line dates instead of random generated.")
 
 type SearchQuery interface {
 	Name() string
@@ -51,7 +51,7 @@ func (s *Search) Setup(ctx context.Context, addr net.Addr) error {
 
 		searchCount := uint32(*searchCountFlag)
 		if searchCount == 0 {
-			searchCount = uint32(*flags.MessageCount) / 2
+			searchCount = uint32(*flags.IMAPMessageCount) / 2
 		}
 
 		if err := s.query.Setup(ctx, cl, searchCount); err != nil {
@@ -88,7 +88,7 @@ type SearchTextQuery struct {
 }
 
 func (s *SearchTextQuery) Name() string {
-	return "search-text"
+	return "imap-search-text"
 }
 
 func (s *SearchTextQuery) Setup(ctx context.Context, cl *client.Client, searchCount uint32) error {
@@ -140,7 +140,7 @@ type SearchSinceQuery struct {
 }
 
 func (*SearchSinceQuery) Name() string {
-	return "search-since"
+	return "imap-search-since"
 }
 
 func (s *SearchSinceQuery) Setup(ctx context.Context, cl *client.Client, searchCount uint32) error {
