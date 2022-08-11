@@ -10,7 +10,7 @@ namespace parser {
 
 class Visitor : public imap::IMAPParserBaseVisitor {
  public:
-  Visitor(const std::map<std::string, std::string>&);
+  Visitor(const std::map<std::string, std::string>&, const std::string&);
 
   // 2.2.1. Client Protocol Sender and Server Protocol Receiver
   antlrcpp::Any visitTag(imap::IMAPParser::TagContext*) override;
@@ -165,6 +165,7 @@ class Visitor : public imap::IMAPParserBaseVisitor {
 
  private:
   std::map<std::string, std::string> mLiterals;
+  std::string mDel;
 };
 
 }  // namespace parser

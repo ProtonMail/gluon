@@ -27,14 +27,14 @@ func (e *UnmarshalError) Error() string {
 
 // On error the first type can potentially contain tag of the command that triggered the error or empty string
 // otherwise. If an error occurs the *proto.Command return result will be nil.
-func parse(line []byte, literals map[string][]byte) (string, *proto.Command, error) {
+func parse(line []byte, literals map[string][]byte, del string) (string, *proto.Command, error) {
 	lit := parser.NewStringMap()
 
 	for k, v := range literals {
 		lit.Set(k, string(v))
 	}
 
-	parseResult := parser.Parse(string(line), lit)
+	parseResult := parser.Parse(string(line), lit, del)
 
 	if parseError := parseResult.GetError(); len(parseError) != 0 {
 		return parseResult.GetTag(), nil, &ParserError{error: parseError}

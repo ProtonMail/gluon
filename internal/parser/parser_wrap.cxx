@@ -565,9 +565,10 @@ void _wrap_delete_ParseResult_parser_6ffc9200ef2d0bf8(parser::ParseResult *_swig
 }
 
 
-parser::ParseResult *_wrap_parse_parser_6ffc9200ef2d0bf8(_gostring_ _swig_go_0, std::map< std::string,std::string,std::less< std::string > > *_swig_go_1) {
+parser::ParseResult *_wrap_parse_parser_6ffc9200ef2d0bf8(_gostring_ _swig_go_0, std::map< std::string,std::string,std::less< std::string > > *_swig_go_1, _gostring_ _swig_go_2) {
   std::string *arg1 = 0 ;
   std::map< std::string,std::string,std::less< std::string > > *arg2 = 0 ;
+  std::string *arg3 = 0 ;
   parser::ParseResult result;
   parser::ParseResult *_swig_go_result;
   
@@ -577,7 +578,11 @@ parser::ParseResult *_wrap_parse_parser_6ffc9200ef2d0bf8(_gostring_ _swig_go_0, 
   
   arg2 = *(std::map< std::string,std::string,std::less< std::string > > **)&_swig_go_1; 
   
-  result = parser::parse((std::string const &)*arg1,(std::map< std::string,std::string,std::less< std::string > > const &)*arg2);
+  std::string arg3_str(_swig_go_2.p, _swig_go_2.n);
+  arg3 = &arg3_str;
+  
+  
+  result = parser::parse((std::string const &)*arg1,(std::map< std::string,std::string,std::less< std::string > > const &)*arg2,(std::string const &)*arg3);
   *(parser::ParseResult **)&_swig_go_result = new parser::ParseResult(result); 
   return _swig_go_result;
 }

@@ -53,7 +53,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-12, windows-latest]
     runs-on: ${{ matrix.os }}
-    needs: build
+    needs: [build, check]
     steps:
       - name: Get sources
         uses: actions/checkout@v3

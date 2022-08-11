@@ -17,10 +17,6 @@ func (s *Session) handleStatus(ctx context.Context, tag string, cmd *proto.Statu
 		return err
 	}
 
-	if strings.EqualFold(nameUTF8, imap.Inbox) {
-		nameUTF8 = imap.Inbox
-	}
-
 	if err := s.state.Mailbox(ctx, nameUTF8, func(mailbox *backend.Mailbox) error {
 		if mailbox.Selected() {
 			if err := flush(ctx, mailbox, true, ch); err != nil {

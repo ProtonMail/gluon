@@ -15,5 +15,5 @@ func TestParserDoesntCrashWithInvalidByteSequence(t *testing.T) {
 		192, 43, 192, 47, 0, 158, 192, 36, 192, 40, 0, 107, 192, 35, 192, 39, 0, 103, 192, 10,
 	}
 	text := string(bytes)
-	Parse(text, NewStringMap())
+	Parse(text, NewStringMap(), "/")
 }

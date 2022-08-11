@@ -19,7 +19,7 @@ struct ParseResult {
   std::string error;
 };
 
-ParseResult parse(const std::string&, const std::map<std::string, std::string>&);
+ParseResult parse(const std::string&, const std::map<std::string, std::string>&, const std::string&);
 
 }  // namespace parser
 

@@ -16,7 +16,7 @@ type command struct {
 	cmd *proto.Command
 }
 
-func (s *Session) getCommandCh(ctx context.Context) <-chan command {
+func (s *Session) getCommandCh(ctx context.Context, del string) <-chan command {
 	cmdCh := make(chan command)
 
 	go func() {
@@ -24,7 +24,7 @@ func (s *Session) getCommandCh(ctx context.Context) <-chan command {
 		pprof.Do(ctx, labels, func(_ context.Context) {
 			defer close(cmdCh)
 			for {
-				tag, cmd, err := s.readCommand()
+				tag, cmd, err := s.readCommand(del)
 				if err != nil {
 					if errors.Is(err, io.EOF) {
 						return
@@ -55,7 +55,7 @@ func (s *Session) getCommandCh(ctx context.Context) <-chan command {
 	return cmdCh
 }
 
-func (s *Session) readCommand() (string, *proto.Command, error) {
+func (s *Session) readCommand(del string) (string, *proto.Command, error) {
 	line, literals, err := s.liner.Read(func() error { return response.Continuation().Send(s) })
 	if err != nil {
 		return "", nil, err
@@ -63,7 +63,7 @@ func (s *Session) readCommand() (string, *proto.Command, error) {
 
 	s.logIncoming(string(line))
 
-	tag, cmd, err := parse(line, literals)
+	tag, cmd, err := parse(line, literals, del)
 	if err != nil {
 		return tag, cmd, err
 	}

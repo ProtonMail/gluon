@@ -128,11 +128,12 @@ func DBGetAllMailboxes(ctx context.Context, client *ent.Client) ([]*ent.Mailbox,
 	queryOffset := 0
 
 	for i := 0; ; i += QueryLimit {
-		result, err := client.Mailbox.Query().Where(mailbox.IDGT(queryOffset)).WithAttributes().
-			Limit(QueryLimit).Order(func(selector *sql.Selector) {
-			selector.OrderBy(mailbox.FieldID)
-		}).All(ctx)
-
+		result, err := client.Mailbox.Query().
+			Where(mailbox.IDGT(queryOffset)).
+			WithAttributes().
+			Limit(QueryLimit).
+			Order(func(selector *sql.Selector) { selector.OrderBy(mailbox.FieldID) }).
+			All(ctx)
 		if err != nil {
 			return nil, err
 		}

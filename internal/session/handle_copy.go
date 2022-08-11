@@ -3,9 +3,7 @@ package session
 import (
 	"context"
 	"errors"
-	"strings"
 
-	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -16,10 +14,6 @@ func (s *Session) handleCopy(ctx context.Context, tag string, cmd *proto.Copy, m
 	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
 	if err != nil {
 		return err
-	}
-
-	if strings.EqualFold(nameUTF8, imap.Inbox) {
-		nameUTF8 = imap.Inbox
 	}
 
 	item, err := mailbox.Copy(ctx, cmd.GetSequenceSet(), nameUTF8)

@@ -12,9 +12,10 @@ class ParserTest : public testing::Test {
     std::string tag;
     std::string json;
   };
+  
   Result parse(std::string input, std::map<std::string, std::string> literals) {
     auto command = proto::Command{};
-    parser::ParseResult parseResult = parser::parse(input + "\r\n", literals);
+    parser::ParseResult parseResult = parser::parse(input + "\r\n", literals, "/");
     if (!parseResult.error.empty()) {
       return Result{
           parseResult.tag,
@@ -135,6 +136,17 @@ TEST_F(ParserTest, Select) {
 })");
 }
 
+TEST_F(ParserTest, SelectInboxLowercase) {
+  auto result = parse("A142 SELECT inbox", {});
+
+  EXPECT_EQ(result.tag, "A142");
+  EXPECT_EQ(result.json, R"({
+  "select": {
+    "mailbox": "INBOX"
+  }
+})");
+}
+
 TEST_F(ParserTest, Examine) {
   auto result = parse("A932 EXAMINE blurdybloop", {});
 
@@ -153,6 +165,28 @@ TEST_F(ParserTest, Create) {
   EXPECT_EQ(result.json, R"({
   "create": {
     "mailbox": "foo/bar"
+  }
+})");
+}
+
+TEST_F(ParserTest, CreateInboxChild) {
+  auto result = parse("A003 CREATE inbox/bar", {});
+
+  EXPECT_EQ(result.tag, "A003");
+  EXPECT_EQ(result.json, R"({
+  "create": {
+    "mailbox": "INBOX/bar"
+  }
+})");
+}
+
+TEST_F(ParserTest, CreateInboxx) {
+  auto result = parse("A003 CREATE inboxx", {});
+
+  EXPECT_EQ(result.tag, "A003");
+  EXPECT_EQ(result.json, R"({
+  "create": {
+    "mailbox": "inboxx"
   }
 })");
 }
@@ -1398,6 +1432,48 @@ TEST_F(ParserTest, Move) {
   EXPECT_EQ(result.json, R"({
   "move": {
     "mailbox": "Target",
+    "sequenceSet": {
+      "items": [
+        {
+          "range": {
+            "begin": "1",
+            "end": "*"
+          }
+        }
+      ]
+    }
+  }
+})");
+}
+
+TEST_F(ParserTest, MoveInbox) {
+  auto result = parse("A023 MOVE 1:* inbox", {});
+
+  EXPECT_EQ(result.tag, "A023");
+  EXPECT_EQ(result.json, R"({
+  "move": {
+    "mailbox": "INBOX",
+    "sequenceSet": {
+      "items": [
+        {
+          "range": {
+            "begin": "1",
+            "end": "*"
+          }
+        }
+      ]
+    }
+  }
+})");
+}
+
+TEST_F(ParserTest, MoveInboxQuoted) {
+  auto result = parse("A023 MOVE 1:* \"inbox\"", {});
+
+  EXPECT_EQ(result.tag, "A023");
+  EXPECT_EQ(result.json, R"({
+  "move": {
+    "mailbox": "INBOX",
     "sequenceSet": {
       "items": [
         {

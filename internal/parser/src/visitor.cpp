@@ -2,9 +2,16 @@
 #include <algorithm>
 #include <iostream>
 
+#ifdef _WIN32
+#include <string.h>
+#define strncasecmp _strnicmp
+#else // assuming POSIX or BSD compliant system
+#include <strings.h>
+#endif
+
 namespace parser {
 
-Visitor::Visitor(const std::map<std::string, std::string>& literals) : mLiterals{literals} {}
+Visitor::Visitor(const std::map<std::string, std::string>& literals, const std::string& del) : mLiterals{literals}, mDel{del} {}
 
 antlrcpp::Any Visitor::visitTag(imap::IMAPParser::TagContext* ctx) {
   return ctx->getText();
@@ -177,11 +184,28 @@ antlrcpp::Any Visitor::visitLogin(imap::IMAPParser::LoginContext* ctx) {
 }
 
 antlrcpp::Any Visitor::visitMboxInbox(imap::IMAPParser::MboxInboxContext* ctx) {
-  return ctx->getText();
+  return std::string{"INBOX"};
 }
 
 antlrcpp::Any Visitor::visitMboxOther(imap::IMAPParser::MboxOtherContext* ctx) {
-  return visit(ctx->astring());
+  auto mbox = visit(ctx->astring()).as<std::string>();
+
+  if (mbox.size() < 5)
+    return mbox;
+
+  auto inbox = strncasecmp(mbox.c_str(), "INBOX", 5) == 0;
+
+  if (inbox && mbox.size() == 5)
+    return std::string{"INBOX"};
+
+  if (auto pos = mbox.find(this->mDel); pos == std::string::npos || pos > 5)
+    return mbox;
+
+  if (inbox) 
+    for (auto it = mbox.begin(); it < mbox.begin() + 5; it++)
+      *it = toupper(*it);
+
+  return mbox;
 }
 
 antlrcpp::Any Visitor::visitListMboxRaw(imap::IMAPParser::ListMboxRawContext* ctx) {

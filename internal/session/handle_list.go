@@ -2,9 +2,7 @@ package session
 
 import (
 	"context"
-	"strings"
 
-	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -15,10 +13,6 @@ func (s *Session) handleList(ctx context.Context, tag string, cmd *proto.List, c
 	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
 	if err != nil {
 		return err
-	}
-
-	if strings.EqualFold(nameUTF8, imap.Inbox) {
-		nameUTF8 = imap.Inbox
 	}
 
 	return s.state.List(ctx, cmd.GetReference(), nameUTF8, false, func(matches map[string]backend.Match) error {

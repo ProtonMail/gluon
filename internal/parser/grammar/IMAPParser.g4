@@ -93,7 +93,7 @@ commandAuth: append | create | del | examine | list | lsub | rename | select | s
 
 mailbox
 	: I N B O X		# mboxInbox
-	| astring			# mboxOther
+	| astring		# mboxOther
 	;
 
 listMailbox
