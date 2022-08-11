@@ -45,6 +45,10 @@ func (b *Backend) SetDelimiter(delim string) {
 	b.delim = delim
 }
 
+func (b *Backend) GetDelimiter() string {
+	return b.delim
+}
+
 func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Connector, store store.Store, db *DB) error {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()

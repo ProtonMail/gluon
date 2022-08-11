@@ -71,7 +71,7 @@ func match(ref, pattern, del, mailboxName string) (string, bool) {
 		return matchRoot(ref, del)
 	}
 
-	rx := fmt.Sprintf("^%v", regexp.QuoteMeta(ref+pattern))
+	rx := fmt.Sprintf("^%v", regexp.QuoteMeta(canon(ref+pattern, del)))
 
 	// If the "%" wildcard is the last character of a mailbox name argument,
 	// matching levels of hierarchy are also returned.
@@ -118,4 +118,14 @@ func matchRoot(ref, del string) (string, bool) {
 	}
 
 	return res, true
+}
+
+func canon(name, del string) string {
+	return strings.Join(xslices.Map(strings.Split(name, del), func(name string) string {
+		if strings.EqualFold(name, imap.Inbox) {
+			return imap.Inbox
+		}
+
+		return name
+	}), del)
 }

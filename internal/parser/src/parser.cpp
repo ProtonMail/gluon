@@ -8,7 +8,7 @@
 
 namespace parser {
 
-ParseResult parse(const std::string& input, const std::map<std::string, std::string>& literals) {
+ParseResult parse(const std::string& input, const std::map<std::string, std::string>& literals, const std::string& del) {
   ParseResult result;
   try {
     antlr4::ANTLRInputStream inputStream{input};
@@ -26,7 +26,7 @@ ParseResult parse(const std::string& input, const std::map<std::string, std::str
     if (errorListener.didError()) {
       result.error = *errorListener.m_errorMessage;
     } else {
-      result.command = Visitor{literals}.visit(commandCtx).as<proto::Command>().SerializeAsString();
+      result.command = Visitor{literals, del}.visit(commandCtx).as<proto::Command>().SerializeAsString();
     }
     if (auto tagCtx = commandCtx->tag(); tagCtx != nullptr) {
       result.tag = tagCtx->getText();

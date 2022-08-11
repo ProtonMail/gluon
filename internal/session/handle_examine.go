@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
@@ -15,10 +14,6 @@ func (s *Session) handleExamine(ctx context.Context, tag string, cmd *proto.Exam
 	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
 	if err != nil {
 		return err
-	}
-
-	if strings.EqualFold(nameUTF8, imap.Inbox) {
-		nameUTF8 = imap.Inbox
 	}
 
 	if err := s.state.Examine(ctx, nameUTF8, func(mailbox *backend.Mailbox) error {

@@ -117,7 +117,7 @@ func (s *Session) Serve(ctx context.Context) error {
 		return err
 	}
 
-	if err := s.serve(ctx, s.getCommandCh(ctx)); err != nil {
+	if err := s.serve(ctx, s.getCommandCh(ctx, s.backend.GetDelimiter())); err != nil {
 		logrus.WithError(err).Errorf("Failed to serve session %v", s.sessionID)
 		return err
 	}

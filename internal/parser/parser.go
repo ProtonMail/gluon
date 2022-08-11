@@ -41,6 +41,7 @@ typedef _gostring_ swig_type_10;
 typedef _gostring_ swig_type_11;
 typedef _gostring_ swig_type_12;
 typedef _gostring_ swig_type_13;
+typedef _gostring_ swig_type_14;
 extern void _wrap_Swig_free_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
 extern uintptr_t _wrap_Swig_malloc_parser_6ffc9200ef2d0bf8(swig_intgo arg1);
 extern uintptr_t _wrap_new_StringMap__SWIG_0_parser_6ffc9200ef2d0bf8(void);
@@ -61,7 +62,7 @@ extern void _wrap_ParseResult_error_set_parser_6ffc9200ef2d0bf8(uintptr_t arg1, 
 extern swig_type_12 _wrap_ParseResult_error_get_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
 extern uintptr_t _wrap_new_ParseResult_parser_6ffc9200ef2d0bf8(void);
 extern void _wrap_delete_ParseResult_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern uintptr_t _wrap_parse_parser_6ffc9200ef2d0bf8(swig_type_13 arg1, uintptr_t arg2);
+extern uintptr_t _wrap_parse_parser_6ffc9200ef2d0bf8(swig_type_13 arg1, uintptr_t arg2, swig_type_14 arg3);
 #undef intgo
 */
 import "C"
@@ -310,13 +311,17 @@ type ParseResult interface {
 	GetError() (_swig_ret string)
 }
 
-func Parse(arg1 string, arg2 StringMap) (_swig_ret ParseResult) {
+func Parse(arg1 string, arg2 StringMap, arg3 string) (_swig_ret ParseResult) {
 	var swig_r ParseResult
 	_swig_i_0 := arg1
 	_swig_i_1 := arg2.Swigcptr()
-	swig_r = (ParseResult)(SwigcptrParseResult(C._wrap_parse_parser_6ffc9200ef2d0bf8(*(*C.swig_type_13)(unsafe.Pointer(&_swig_i_0)), C.uintptr_t(_swig_i_1))))
+	_swig_i_2 := arg3
+	swig_r = (ParseResult)(SwigcptrParseResult(C._wrap_parse_parser_6ffc9200ef2d0bf8(*(*C.swig_type_13)(unsafe.Pointer(&_swig_i_0)), C.uintptr_t(_swig_i_1), *(*C.swig_type_14)(unsafe.Pointer(&_swig_i_2)))))
 	if Swig_escape_always_false {
 		Swig_escape_val = arg1
+	}
+	if Swig_escape_always_false {
+		Swig_escape_val = arg3
 	}
 	return swig_r
 }
