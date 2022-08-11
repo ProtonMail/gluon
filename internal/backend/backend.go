@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/ProtonMail/gluon/connector"
-	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/remote"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
@@ -46,7 +45,7 @@ func (b *Backend) SetDelimiter(delim string) {
 	b.delim = delim
 }
 
-func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Connector, store store.Store, client *ent.Client) error {
+func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Connector, store store.Store, db *DB) error {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
@@ -55,7 +54,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		return err
 	}
 
-	user, err := newUser(ctx, userID, client, remote, store, b.delim)
+	user, err := newUser(ctx, userID, db, remote, store, b.delim)
 	if err != nil {
 		return err
 	}

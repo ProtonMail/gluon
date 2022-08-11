@@ -19,8 +19,7 @@ type user struct {
 	store     store.Store
 	delimiter string
 
-	client *ent.Client
-	txLock sync.Mutex
+	db *DB
 
 	states      map[int]*State
 	statesLock  sync.RWMutex
@@ -29,8 +28,8 @@ type user struct {
 	updateWG sync.WaitGroup
 }
 
-func newUser(ctx context.Context, userID string, client *ent.Client, remote *remote.User, store store.Store, delimiter string) (*user, error) {
-	if err := client.Schema.Create(context.Background()); err != nil {
+func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, store store.Store, delimiter string) (*user, error) {
+	if err := db.Init(ctx); err != nil {
 		return nil, err
 	}
 
@@ -39,7 +38,7 @@ func newUser(ctx context.Context, userID string, client *ent.Client, remote *rem
 		remote:    remote,
 		store:     store,
 		delimiter: delimiter,
-		client:    client,
+		db:        db,
 		states:    make(map[int]*State),
 	}
 
@@ -70,37 +69,9 @@ func newUser(ctx context.Context, userID string, client *ent.Client, remote *rem
 
 // tx is a helper function that runs a sequence of ent client calls in a transaction.
 func (user *user) tx(ctx context.Context, fn func(tx *ent.Tx) error) error {
-	user.txLock.Lock()
-	defer user.txLock.Unlock()
-
-	tx, err := user.client.Tx(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if v := recover(); v != nil {
-			if err := tx.Rollback(); err != nil {
-				panic(fmt.Errorf("rolling back while recovering (%v): %w", v, err))
-			}
-
-			panic(v)
-		}
-	}()
-
-	if err := fn(tx); err != nil {
-		if rerr := tx.Rollback(); rerr != nil {
-			return fmt.Errorf("rolling back transaction: %w", rerr)
-		}
-
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("committing transaction: %w", err)
-	}
-
-	return nil
+	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return fn(tx)
+	})
 }
 
 // close closes the backend user.
@@ -118,8 +89,8 @@ func (user *user) close(ctx context.Context) error {
 		return fmt.Errorf("failed to close user client storage: %w", err)
 	}
 
-	if err := user.client.Close(); err != nil {
-		return fmt.Errorf("failed to close user client: %w", err)
+	if err := user.db.Close(); err != nil {
+		return fmt.Errorf("failed to close user db: %w", err)
 	}
 
 	return nil

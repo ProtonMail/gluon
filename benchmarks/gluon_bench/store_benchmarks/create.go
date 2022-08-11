@@ -2,6 +2,7 @@ package store_benchmarks
 
 import (
 	"context"
+
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"

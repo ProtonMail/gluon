@@ -14,12 +14,10 @@ import (
 	"strings"
 	"sync"
 
-	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
-	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/store"
@@ -90,10 +88,6 @@ func New(dir string, withOpt ...Option) (*Server, error) {
 	return server, nil
 }
 
-func getDatabasePath(userPath, userID string) string {
-	return fmt.Sprintf("file:%v?cache=shared&_fk=1", filepath.Join(userPath, fmt.Sprintf("%v.db", userID)))
-}
-
 // AddUser creates a new user and generates new unique ID for this user. If you have an existing userID, please use
 // LoadUser instead.
 func (s *Server) AddUser(ctx context.Context, conn connector.Connector, encryptionPassphrase []byte) (string, error) {
@@ -123,8 +117,7 @@ func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID 
 		return err
 	}
 
-	source := getDatabasePath(s.dataPath, userID)
-	client, err := ent.Open(dialect.SQLite, source)
+	client, err := backend.NewDB(s.dataPath, userID)
 
 	if err != nil {
 		if err := store.Close(); err != nil {
