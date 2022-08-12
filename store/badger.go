@@ -15,34 +15,12 @@ type BadgerStore struct {
 	wg       sync.WaitGroup
 }
 
-func logrusLevelToBadgerLevel(options badger.Options) badger.Options {
-	switch logrus.GetLevel() {
-	case logrus.InfoLevel:
-		return options.WithLoggingLevel(badger.INFO)
-	case logrus.TraceLevel:
-		fallthrough
-	case logrus.DebugLevel:
-		return options.WithLoggingLevel(badger.DEBUG)
-	case logrus.WarnLevel:
-		return options.WithLoggingLevel(badger.WARNING)
-	case logrus.FatalLevel:
-		fallthrough
-	case logrus.PanicLevel:
-		fallthrough
-	case logrus.ErrorLevel:
-		return options.WithLoggingLevel(badger.ERROR)
-	default:
-		return options.WithLoggingLevel(badger.ERROR)
-	}
-}
-
 func NewBadgerStore(path string, userID string, encryptionPassphrase []byte) (*BadgerStore, error) {
-	directory := filepath.Join(path, userID)
-	db, err := badger.Open(logrusLevelToBadgerLevel(badger.DefaultOptions(directory)).
+	db, err := badger.Open(badger.DefaultOptions(filepath.Join(path, userID)).
 		WithLogger(logrus.StandardLogger()).
 		WithEncryptionKey(encryptionPassphrase).
-		WithIndexCacheSize(128 * 1024 * 1024))
-
+		WithIndexCacheSize(128 * 1024 * 1024),
+	)
 	if err != nil {
 		return nil, nil
 	}
