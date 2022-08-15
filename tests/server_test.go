@@ -121,7 +121,7 @@ type testBadgerStoreBuilder struct{}
 
 func (*testBadgerStoreBuilder) New(directory, userID string, encryptionPassphrase []byte) (store.Store, error) {
 	encryptionBytes := sha256.Sum256(encryptionPassphrase)
-	return store.NewBadgerStore(directory, userID, encryptionBytes[:])
+	return store.NewTestBadgerStore(directory, userID, encryptionBytes[:])
 }
 
 // runServerWithPaths initializes and starts the mailserver using a pathGenerator.

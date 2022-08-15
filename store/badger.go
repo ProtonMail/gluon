@@ -32,6 +32,24 @@ func NewBadgerStore(path string, userID string, encryptionPassphrase []byte) (*B
 	return store, nil
 }
 
+func NewTestBadgerStore(path string, userID string, encryptionPassphrase []byte) (*BadgerStore, error) {
+	db, err := badger.Open(badger.DefaultOptions(filepath.Join(path, userID)).
+		WithLogger(logrus.StandardLogger()).
+		WithLoggingLevel(badger.ERROR).
+		WithEncryptionKey(encryptionPassphrase).
+		WithIndexCacheSize(128 * 1024 * 1024),
+	)
+	if err != nil {
+		return nil, nil
+	}
+
+	store := &BadgerStore{db: db, gcExitCh: make(chan struct{})}
+
+	store.startGCCollector()
+
+	return store, nil
+}
+
 func (b *BadgerStore) startGCCollector() {
 	// Garbage collection needs to be run manually by us at some point.
 	// See https://dgraph.io/docs/badger/get-started/#garbage-collection for more details.
