@@ -11,7 +11,7 @@ import (
 
 // Option represents a type that can be used to configure the server.
 type Option interface {
-	config(server *Server)
+	config(*serverBuilder)
 }
 
 // WithDelimiter instructs the server to use the given path delimiter instead of the default ('/').
@@ -25,8 +25,8 @@ type withDelimiter struct {
 	delimiter string
 }
 
-func (opt withDelimiter) config(server *Server) {
-	server.backend.SetDelimiter(opt.delimiter)
+func (opt withDelimiter) config(builder *serverBuilder) {
+	builder.delim = opt.delimiter
 }
 
 // WithTLS instructs the server to use the given TLS config.
@@ -40,8 +40,8 @@ type withTLS struct {
 	cfg *tls.Config
 }
 
-func (opt withTLS) config(server *Server) {
-	server.tlsConfig = opt.cfg
+func (opt withTLS) config(builder *serverBuilder) {
+	builder.tlsConfig = opt.cfg
 }
 
 // WithLogger instructs the server to write incoming and outgoing IMAP communication to the given io.Writers.
@@ -56,17 +56,17 @@ type withLogger struct {
 	in, out io.Writer
 }
 
-func (opt withLogger) config(server *Server) {
-	server.inLogger = opt.in
-	server.outLogger = opt.out
+func (opt withLogger) config(builder *serverBuilder) {
+	builder.inLogger = opt.in
+	builder.outLogger = opt.out
 }
 
 type withVersionInfo struct {
 	versionInfo internal.VersionInfo
 }
 
-func (vi *withVersionInfo) config(server *Server) {
-	server.versionInfo = vi.versionInfo
+func (vi *withVersionInfo) config(builder *serverBuilder) {
+	builder.versionInfo = vi.versionInfo
 }
 
 func WithVersionInfo(vmajor, vminor, vpatch int, name, vendor, supportURL string) Option {
@@ -88,8 +88,8 @@ type withCmdExecProfiler struct {
 	builder profiling.CmdProfilerBuilder
 }
 
-func (c *withCmdExecProfiler) config(server *Server) {
-	server.cmdExecProfBuilder = c.builder
+func (c *withCmdExecProfiler) config(builder *serverBuilder) {
+	builder.cmdExecProfBuilder = c.builder
 }
 
 // WithCmdProfiler allows a specific CmdProfilerBuilder to be set for the server's execution.
@@ -98,25 +98,25 @@ func WithCmdProfiler(builder profiling.CmdProfilerBuilder) Option {
 }
 
 type withStoreBuilder struct {
-	builder store.StoreBuilder
+	builder store.Builder
 }
 
-func (w *withStoreBuilder) config(server *Server) {
-	server.storeBuilder = w.builder
+func (w *withStoreBuilder) config(builder *serverBuilder) {
+	builder.storeBuilder = w.builder
 }
 
-func WithStoreBuilder(builder store.StoreBuilder) Option {
+func WithStoreBuilder(builder store.Builder) Option {
 	return &withStoreBuilder{builder: builder}
 }
 
-type withDataPath struct {
+type withDataDir struct {
 	path string
 }
 
-func (w *withDataPath) config(server *Server) {
-	server.dataPath = w.path
+func (w *withDataDir) config(builder *serverBuilder) {
+	builder.dir = w.path
 }
 
-func WithDataPath(path string) Option {
-	return &withDataPath{path: path}
+func WithDataDir(path string) Option {
+	return &withDataDir{path: path}
 }

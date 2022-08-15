@@ -218,7 +218,7 @@ func TestFlagsDuplicateAndCaseInsensitive(t *testing.T) {
 }
 
 func TestStoreFlagsPersistBetweenRuns(t *testing.T) {
-	options := defaultServerOptions(t, withPathGenerator(newFixedPathGenerator(t.TempDir(), t.TempDir(), t.TempDir())))
+	options := defaultServerOptions(t, withDataDir(t.TempDir()))
 
 	runOneToOneTestWithAuth(t, options, func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")

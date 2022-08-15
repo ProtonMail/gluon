@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sync"
 
 	"github.com/ProtonMail/gluon/connector"
@@ -13,6 +14,9 @@ import (
 )
 
 type Backend struct {
+	// dir is the directory in which backend files should be stored.
+	dir string
+
 	// remote manages operations to be performed on the API.
 	remote *remote.Manager
 
@@ -22,18 +26,23 @@ type Backend struct {
 	// users holds all registered backend users.
 	users     map[string]*user
 	usersLock sync.Mutex
+
+	// storeBuilder builds stores for the backend users.
+	storeBuilder store.Builder
 }
 
-func New(dir string) (*Backend, error) {
-	manager, err := remote.New(dir)
+func New(dir string, storeBuilder store.Builder, delim string) (*Backend, error) {
+	manager, err := remote.New(filepath.Join(dir, "remote"))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Backend{
-		remote: manager,
-		delim:  "/",
-		users:  make(map[string]*user),
+		dir:          dir,
+		remote:       manager,
+		storeBuilder: storeBuilder,
+		delim:        delim,
+		users:        make(map[string]*user),
 	}, nil
 }
 
@@ -41,17 +50,27 @@ func (b *Backend) NewUserID() string {
 	return uuid.NewString()
 }
 
-func (b *Backend) SetDelimiter(delim string) {
-	b.delim = delim
-}
-
 func (b *Backend) GetDelimiter() string {
 	return b.delim
 }
 
-func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Connector, store store.Store, db *DB) error {
+func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Connector, passphrase []byte) error {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
+
+	store, err := b.storeBuilder.New(filepath.Join(b.dir, "store"), userID, passphrase)
+	if err != nil {
+		return err
+	}
+
+	db, err := b.newDB(userID)
+	if err != nil {
+		if err := store.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close storage")
+		}
+
+		return err
+	}
 
 	remote, err := b.remote.AddUser(ctx, userID, conn)
 	if err != nil {

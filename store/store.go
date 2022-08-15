@@ -8,6 +8,6 @@ type Store interface {
 	Close() error
 }
 
-type StoreBuilder interface {
-	New(directory, userID string, encryptionPassphrase []byte) (Store, error)
+type Builder interface {
+	New(dir, userID string, passphrase []byte) (Store, error)
 }

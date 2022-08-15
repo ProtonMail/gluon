@@ -45,72 +45,10 @@ var (
 	}
 )
 
-type pathGenerator interface {
-	GenerateBackendPath() string
-	GenerateStorePath() string
-	GenerateUserPath(user string) string
-}
-
-type defaultPathGenerator struct {
-	tb testing.TB
-}
-
-func (dpg *defaultPathGenerator) GenerateBackendPath() string {
-	return dpg.tb.TempDir()
-}
-
-func (dpg *defaultPathGenerator) GenerateStorePath() string {
-	return dpg.tb.TempDir()
-}
-
-func (dpg *defaultPathGenerator) GenerateUserPath(user string) string {
-	tmpDir := dpg.tb.TempDir()
-	return getEntPath(tmpDir)
-}
-
-type fixedPathGenerator struct {
-	backendPath string
-	storePath   string
-	userPath    string
-	userPaths   map[string]string
-}
-
-func newFixedPathGenerator(backendPath, storePath, userPath string) pathGenerator {
-	return &fixedPathGenerator{
-		backendPath: backendPath,
-		userPath:    userPath,
-		storePath:   storePath,
-		userPaths:   make(map[string]string),
-	}
-}
-
-func (fpg *fixedPathGenerator) GenerateBackendPath() string {
-	return fpg.storePath
-}
-
-func (fpg *fixedPathGenerator) GenerateStorePath() string {
-	return fpg.storePath
-}
-
-func (fpg *fixedPathGenerator) GenerateUserPath(user string) string {
-	if v, ok := fpg.userPaths[user]; ok {
-		return v
-	}
-
-	newUserPath := getEntPath(fpg.userPath)
-	fpg.userPaths[user] = newUserPath
-
-	return newUserPath
-}
-
-func newDefaultPathGenerator(tb testing.TB) pathGenerator {
-	return &defaultPathGenerator{tb: tb}
-}
-
 type serverOptions struct {
 	credentials []credentials
 	delimiter   string
-	pathGenerator
+	dataDir     string
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -133,12 +71,12 @@ func (d *delimiterServerOption) apply(options *serverOptions) {
 	options.delimiter = d.delimiter
 }
 
-type pathGeneratorOption struct {
-	pg pathGenerator
+type dataDirOption struct {
+	dir string
 }
 
-func (pg *pathGeneratorOption) apply(options *serverOptions) {
-	options.pathGenerator = pg.pg
+func (opt *dataDirOption) apply(options *serverOptions) {
+	options.dataDir = opt.dir
 }
 
 type credentialsSeverOption struct {
@@ -153,8 +91,8 @@ func withDelimiter(delimiter string) serverOption {
 	return &delimiterServerOption{delimiter: delimiter}
 }
 
-func withPathGenerator(pg pathGenerator) serverOption {
-	return &pathGeneratorOption{pg: pg}
+func withDataDir(dir string) serverOption {
+	return &dataDirOption{dir: dir}
 }
 
 func withCredentials(credentials []credentials) serverOption {
@@ -167,8 +105,8 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 			usernames: []string{"user"},
 			password:  "pass",
 		}},
-		delimiter:     "/",
-		pathGenerator: newDefaultPathGenerator(tb),
+		delimiter: "/",
+		dataDir:   tb.TempDir(),
 	}
 
 	for _, op := range modifiers {
@@ -194,12 +132,12 @@ func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) 
 	// Setup goroutine leak detector here so that it doesn't report the goroutines created by logrus.
 	defer goleak.VerifyNone(tb, goleak.IgnoreCurrent())
 
-	gluonPath := options.pathGenerator.GenerateBackendPath()
-	storePath := options.pathGenerator.GenerateStorePath()
+	// Log the (temporary?) directory to store gluon data.
+	logrus.Tracef("Gluon Data Dir: %v", options.dataDir)
 
-	logrus.Tracef("Backend Path: %v", gluonPath)
+	// Create a new gluon server.
 	server, err := gluon.New(
-		gluonPath,
+		gluon.WithDataDir(options.dataDir),
 		gluon.WithDelimiter(options.delimiter),
 		gluon.WithTLS(&tls.Config{
 			Certificates: []tls.Certificate{testCert},
@@ -209,9 +147,14 @@ func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) 
 			loggerIn,
 			loggerOut,
 		),
-		gluon.WithVersionInfo(TestServerVersionInfo.Version.Major, TestServerVersionInfo.Version.Minor, TestServerVersionInfo.Version.Patch,
-			TestServerVersionInfo.Name, TestServerVersionInfo.Vendor, TestServerVersionInfo.SupportURL),
-		gluon.WithDataPath(storePath),
+		gluon.WithVersionInfo(
+			TestServerVersionInfo.Version.Major,
+			TestServerVersionInfo.Version.Minor,
+			TestServerVersionInfo.Version.Patch,
+			TestServerVersionInfo.Name,
+			TestServerVersionInfo.Vendor,
+			TestServerVersionInfo.SupportURL,
+		),
 		gluon.WithStoreBuilder(&testBadgerStoreBuilder{}),
 	)
 	require.NoError(tb, err)
@@ -247,7 +190,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) 
 		}
 
 		conns[userID] = conn
-		dbPaths[userID] = filepath.Join(server.GetDataPath(), fmt.Sprintf("%v.db", userID))
+		dbPaths[userID] = filepath.Join(server.GetDataPath(), "backend", "db", fmt.Sprintf("%v.db", userID))
 	}
 
 	listener, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))

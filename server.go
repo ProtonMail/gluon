@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"path/filepath"
 	"runtime/pprof"
 	"strconv"
@@ -27,6 +26,9 @@ import (
 
 // Server is the gluon IMAP server.
 type Server struct {
+	// dir holds the path to all of Gluon's data.
+	dir string
+
 	// backend provides the server with access to the IMAP backend.
 	backend *backend.Backend
 
@@ -52,40 +54,28 @@ type Server struct {
 	watchers     map[chan events.Event]struct{}
 	watchersLock sync.RWMutex
 
-	versionInfo        internal.VersionInfo
+	// storeBuilder builds message stores.
+	storeBuilder store.Builder
+
+	// cmdExecProfBuilder builds command profiling collectors.
 	cmdExecProfBuilder profiling.CmdProfilerBuilder
 
-	storeBuilder store.StoreBuilder
-	dataPath     string
+	// versionInfo holds info about the Gluon version.
+	versionInfo internal.VersionInfo
 }
 
 // New creates a new server with the given options.
-// It stores data in the given directory.
-func New(dir string, withOpt ...Option) (*Server, error) {
-	backend, err := backend.New(dir)
+func New(withOpt ...Option) (*Server, error) {
+	builder, err := newBuilder()
 	if err != nil {
 		return nil, err
 	}
 
-	server := &Server{
-		backend:            backend,
-		listeners:          make(map[net.Listener]struct{}),
-		sessions:           make(map[int]*session.Session),
-		watchers:           make(map[chan events.Event]struct{}),
-		cmdExecProfBuilder: &profiling.NullCmdExecProfilerBuilder{},
-		storeBuilder:       &store.OnDiskStoreBuilder{},
-		dataPath:           os.TempDir(),
-	}
-
 	for _, opt := range withOpt {
-		opt.config(server)
+		opt.config(builder)
 	}
 
-	if err := os.MkdirAll(server.dataPath, 0o700); err != nil {
-		return nil, err
-	}
-
-	return server, nil
+	return builder.build()
 }
 
 // AddUser creates a new user and generates new unique ID for this user. If you have an existing userID, please use
@@ -102,32 +92,8 @@ func (s *Server) AddUser(ctx context.Context, conn connector.Connector, encrypti
 
 // LoadUser loads an existing user's data from disk. This function can also be used to assign a custom userID to a mail
 // server user.
-func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, encryptionPassphrase []byte) error {
-	userPath, err := s.GetUserDataPath(userID)
-	if err != nil {
-		return err
-	}
-
-	if err := os.MkdirAll(userPath, 0o700); err != nil {
-		return err
-	}
-
-	store, err := s.storeBuilder.New(s.dataPath, userID, encryptionPassphrase)
-	if err != nil {
-		return err
-	}
-
-	client, err := backend.NewDB(s.dataPath, userID)
-
-	if err != nil {
-		if err := store.Close(); err != nil {
-			logrus.WithError(err).Error("Failed to close storage")
-		}
-
-		return err
-	}
-
-	if err := s.backend.AddUser(ctx, userID, conn, store, client); err != nil {
+func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, passphrase []byte) error {
+	if err := s.backend.AddUser(ctx, userID, conn, passphrase); err != nil {
 		return err
 	}
 
@@ -228,7 +194,7 @@ func (s *Server) GetVersionInfo() internal.VersionInfo {
 }
 
 func (s *Server) GetDataPath() string {
-	return s.dataPath
+	return s.dir
 }
 
 func (s *Server) GetUserDataPath(userID string) (string, error) {
@@ -236,7 +202,7 @@ func (s *Server) GetUserDataPath(userID string) (string, error) {
 		return "", fmt.Errorf("not a valid user id")
 	}
 
-	return filepath.Join(s.dataPath, userID), nil
+	return filepath.Join(s.dir, userID), nil
 }
 
 func (s *Server) addListener(l net.Listener) {

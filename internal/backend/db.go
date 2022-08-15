@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -67,17 +68,21 @@ func (d *DB) Close() error {
 	return d.db.Close()
 }
 
-func getDatabasePath(dataPath, userID string) string {
-	return fmt.Sprintf("file:%v?cache=shared&_fk=1", filepath.Join(dataPath, fmt.Sprintf("%v.db", userID)))
-}
+func (b *Backend) newDB(userID string) (*DB, error) {
+	dir := filepath.Join(b.dir, "db")
 
-func NewDB(dataPath, userID string) (*DB, error) {
-	dbPath := getDatabasePath(dataPath, userID)
-	client, err := ent.Open(dialect.SQLite, dbPath)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
 
+	client, err := ent.Open(dialect.SQLite, getDatabasePath(dir, userID))
 	if err != nil {
 		return nil, err
 	}
 
 	return &DB{db: client}, nil
+}
+
+func getDatabasePath(dir, userID string) string {
+	return fmt.Sprintf("file:%v?cache=shared&_fk=1", filepath.Join(dir, fmt.Sprintf("%v.db", userID)))
 }
