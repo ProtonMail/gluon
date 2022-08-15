@@ -390,16 +390,10 @@ func TestMessageErasedFromDB(t *testing.T) {
 	})
 }
 
+// This test checks whether any messages from a previous server that are written to the db and are cleared
+// on the next startup. We force the server to use the same directories and state to check for this.
 func TestMessageErasedFromDBOnStartup(t *testing.T) {
-	// This test checks whether any messages from a previous server that are written to the db and are cleared
-	// on the next startup. We force the server to use the same directories and state to check for this.
-	pathGenerator := newFixedPathGenerator(
-		t.TempDir(),
-		t.TempDir(),
-		t.TempDir(),
-	)
-
-	options := defaultServerOptions(t, withPathGenerator(pathGenerator))
+	options := defaultServerOptions(t, withDataDir(t.TempDir()))
 
 	runOneToOneTest(t, options, func(c *testConnection, s *testSession) {
 		// Create a mailbox.

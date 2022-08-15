@@ -38,10 +38,9 @@ func (*LocalServerBuilder) New(ctx context.Context, serverPath string, profiler 
 
 	opts = append(opts, gluon.WithLogger(loggerIn, loggerOut))
 	opts = append(opts, gluon.WithCmdProfiler(profiler))
-	opts = append(opts, gluon.WithDataPath(serverPath))
+	opts = append(opts, gluon.WithDataDir(serverPath))
 
-	server, err := gluon.New(serverPath, opts...)
-
+	server, err := gluon.New(opts...)
 	if err != nil {
 		return nil, err
 	}

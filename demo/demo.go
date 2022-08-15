@@ -20,6 +20,8 @@ var blockProfileFlag = flag.Bool("profile-lock", false, "Enable lock profiling."
 var profilePathFlag = flag.String("profile-path", "", "Path where to write profile data.")
 
 func main() {
+	ctx := context.Background()
+
 	flag.Parse()
 
 	if *cpuProfileFlag {
@@ -41,22 +43,15 @@ func main() {
 		logrus.SetLevel(level)
 	}
 
-	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
-	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
-
-	ctx := context.Background()
-	server, err := gluon.New(temp(), gluon.WithLogger(
-		loggerIn,
-		loggerOut,
-	),
-		gluon.WithDataPath(temp()),
-	)
-
-	defer server.Close(ctx)
-
+	server, err := gluon.New(gluon.WithLogger(
+		logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
+		logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
+	))
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to create server")
 	}
+
+	defer server.Close(ctx)
 
 	if err := addUser(ctx, server, []string{"user1@example.com", "alias1@example.com"}, "password1"); err != nil {
 		logrus.WithError(err).Fatal("Failed to add user")

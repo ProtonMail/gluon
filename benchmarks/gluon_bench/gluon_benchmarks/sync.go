@@ -42,12 +42,12 @@ func (s *Sync) Setup(ctx context.Context, benchmarkDir string) error {
 	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 
-	opts := []gluon.Option{gluon.WithLogger(loggerIn, loggerOut),
-		gluon.WithDataPath(benchmarkDir),
+	opts := []gluon.Option{
+		gluon.WithDataDir(benchmarkDir),
+		gluon.WithLogger(loggerIn, loggerOut),
 	}
 
-	server, err := gluon.New(benchmarkDir, opts...)
-
+	server, err := gluon.New(opts...)
 	if err != nil {
 		return err
 	}
