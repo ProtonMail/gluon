@@ -69,7 +69,7 @@ func (*LocalServerBuilder) New(ctx context.Context, serverPath string, profiler 
 func addUser(ctx context.Context, server *gluon.Server) error {
 	c, err := utils.NewConnector(*flags.Connector)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	encryptionBytes := sha256.Sum256([]byte(*flags.UserPassword))

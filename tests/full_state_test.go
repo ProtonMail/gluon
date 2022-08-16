@@ -127,7 +127,6 @@ func TestReceptionOnIdle(t *testing.T) {
 				}()
 				require.NoError(t, cli.Login("user", "pass"))
 				for i := 0; i < 3; i++ {
-					time.Sleep(100)
 					require.NoError(t, doAppendWithClientFromFile(t, cli, mailboxName, messagePath, time.Now()))
 				}
 			})

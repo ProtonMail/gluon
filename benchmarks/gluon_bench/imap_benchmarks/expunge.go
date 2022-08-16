@@ -38,7 +38,7 @@ func (e *Expunge) Setup(ctx context.Context, addr net.Addr) error {
 	return WithClient(addr, func(cl *client.Client) error {
 		if *expungeSameMBoxFlag {
 			if _, err := e.createAndFillRandomMBox(cl); err != nil {
-				return nil
+				return err
 			}
 
 			expungeCount := uint32(*expungeCountFlag)

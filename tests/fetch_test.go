@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -62,7 +61,7 @@ func TestFetchRFC822(t *testing.T) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		// Load message
-		fullMessageBytes, err := ioutil.ReadFile("testdata/afternoon-meeting.eml")
+		fullMessageBytes, err := os.ReadFile("testdata/afternoon-meeting.eml")
 		require.NoError(t, err)
 		fullMessage := string(fullMessageBytes)
 
@@ -82,7 +81,7 @@ func TestFetchRFC822Header(t *testing.T) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		// Load message
-		fullMessageBytes, err := ioutil.ReadFile("testdata/afternoon-meeting.eml")
+		fullMessageBytes, err := os.ReadFile("testdata/afternoon-meeting.eml")
 		require.NoError(t, err)
 		fullMessage := string(fullMessageBytes)
 
@@ -113,7 +112,7 @@ func TestFetchRFC822Text(t *testing.T) {
 		fillAndSelectAfternoonMeetingMailbox(t, client)
 
 		// Load message
-		fullMessageBytes, err := ioutil.ReadFile("testdata/afternoon-meeting.eml")
+		fullMessageBytes, err := os.ReadFile("testdata/afternoon-meeting.eml")
 		require.NoError(t, err)
 		fullMessage := string(fullMessageBytes)
 

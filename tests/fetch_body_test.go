@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -234,7 +234,7 @@ func TestFetchBodyMultiPart(t *testing.T) {
 
 		// Get full body
 		newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
-			fullMessageBytes, err := ioutil.ReadFile("testdata/multipart-mixed.eml")
+			fullMessageBytes, err := os.ReadFile("testdata/multipart-mixed.eml")
 			require.NoError(t, err)
 			fullMessage := string(fullMessageBytes)
 			builder.ignoreFlags()
@@ -314,7 +314,7 @@ func TestFetchBodyEmbedded(t *testing.T) {
 
 		// Get full body
 		newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
-			fullMessageBytes, err := ioutil.ReadFile("testdata/embedded-rfc822.eml")
+			fullMessageBytes, err := os.ReadFile("testdata/embedded-rfc822.eml")
 			require.NoError(t, err)
 			fullMessage := string(fullMessageBytes)
 			builder.ignoreFlags()
@@ -373,7 +373,7 @@ func TestFetchBodyPlain(t *testing.T) {
 
 		// Get full body
 		newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
-			fullMessageBytes, err := ioutil.ReadFile("testdata/text-plain.eml")
+			fullMessageBytes, err := os.ReadFile("testdata/text-plain.eml")
 			require.NoError(t, err)
 			fullMessage := string(fullMessageBytes)
 			builder.ignoreFlags()
