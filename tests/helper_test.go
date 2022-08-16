@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -257,7 +256,7 @@ func (validator *envelopeValidator) check(t testing.TB, envelope *goimap.Envelop
 }
 
 // Helper to validate go-imap-client's message. When the fields `validateEnvelope`, `validateBodyStructure`,
-//`validateInternalDate`, `validateBody` are nil, it implies that those fields were never set in the Message.
+// `validateInternalDate`, `validateBody` are nil, it implies that those fields were never set in the Message.
 type messageValidator struct {
 	validateSeqNum        func(testing.TB, uint32)
 	validateUid           func(testing.TB, uint32)
@@ -508,7 +507,7 @@ func (vb *validatorBuilder) wantSection(sectionStr goimap.FetchItem, lines ...st
 	vb.validateBody = append(vb.validateBody, func(t testing.TB, message *goimap.Message) {
 		literal := getBodySection(message, section)
 		require.NotNil(t, literal)
-		bytes, err := ioutil.ReadAll(literal)
+		bytes, err := io.ReadAll(literal)
 		require.NoError(t, err)
 		require.Equal(t, string(bytes), strings.Join(lines, "\r\n"))
 	})
@@ -553,7 +552,7 @@ func (vb *validatorBuilder) wantSectionAndSkipGLUONHeader(sectionStr goimap.Fetc
 	vb.validateBody = append(vb.validateBody, func(t testing.TB, message *goimap.Message) {
 		literal := getBodySection(message, section)
 		require.NotNil(t, literal)
-		bytes, err := ioutil.ReadAll(literal)
+		bytes, err := io.ReadAll(literal)
 		require.NoError(t, err)
 		require.Equal(t, skipGLUONHeader(string(bytes)), strings.Join(expected, "\r\n"))
 	})

@@ -18,8 +18,9 @@ func CreateRandomState(store store.Store, count uint) ([]string, error) {
 
 	for i := uint(0); i < count; i++ {
 		uuid := uuid.NewString()
+
 		if err := store.Set(uuid, data); err != nil {
-			return nil, nil
+			return nil, err
 		}
 
 		uuids = append(uuids, uuid)

@@ -140,7 +140,7 @@ func (conn *Dummy) GetLabel(ctx context.Context, labelID string) (imap.Mailbox, 
 func (conn *Dummy) CreateLabel(ctx context.Context, name []string) (imap.Mailbox, error) {
 	exclusive, err := conn.validateName(name)
 	if err != nil {
-		return imap.Mailbox{}, nil
+		return imap.Mailbox{}, err
 	}
 
 	mbox := conn.state.createLabel(name, exclusive)
