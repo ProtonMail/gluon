@@ -2,8 +2,11 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/ProtonMail/gluon/rfc822"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
@@ -11,17 +14,46 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name string) (*ent.Mailbox, error) {
+func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, name string) (*ent.Mailbox, error) {
 	internalID, res, err := state.remote.CreateMailbox(ctx, state.metadataID, strings.Split(name, state.delimiter))
 	if err != nil {
 		return nil, err
 	}
 
-	if err := state.apply(ctx, tx, imap.NewMailboxCreated(res)); err != nil {
+	exists, err := DBMailboxExistsWithID(ctx, tx.Client(), internalID)
+	if err != nil {
 		return nil, err
 	}
 
+	if !exists {
+		mbox, err := DBCreateMailbox(
+			ctx,
+			tx,
+			internalID,
+			res.ID,
+			strings.Join(res.Name, state.delimiter),
+			res.Flags,
+			res.PermanentFlags,
+			res.Attributes,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return mbox, nil
+	}
+
 	return DBGetMailboxByID(ctx, tx.Client(), internalID)
+}
+
+func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name string) error {
+	internalID, res, err := state.remote.CreateMailbox(ctx, state.metadataID, strings.Split(name, state.delimiter))
+	if err != nil {
+		return err
+	}
+
+	return DBCreateMailboxIfNotExists(ctx, tx, internalID, res, state.delimiter)
 }
 
 // TODO(REFACTOR): What if another client is selected in the same mailbox -- should we send expunge updates?
@@ -38,6 +70,7 @@ func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 		ctx,
 		state.metadataID,
 		mboxID,
+		strings.Split(oldName, state.delimiter),
 		strings.Split(newName, state.delimiter),
 	); err != nil {
 		return err
@@ -58,12 +91,43 @@ func (state *State) actionCreateMessage(ctx context.Context, tx *ent.Tx, mboxID 
 		return 0, err
 	}
 
-	if err := state.apply(ctx, tx, update); err != nil {
+	var reqs []*DBCreateMessageReq
+
+	{
+		msg := update.Messages[0]
+		literal, err := rfc822.SetHeaderValue(msg.Literal, InternalIDKey, string(internalID))
+		if err != nil {
+			return 0, fmt.Errorf("failed to set internal ID: %w", err)
+		}
+
+		if err := state.store.Set(string(internalID), literal); err != nil {
+			return 0, fmt.Errorf("failed to store message literal: %w", err)
+		}
+
+		reqs = append(reqs, &DBCreateMessageReq{
+			message:    msg.Message,
+			literal:    literal,
+			body:       msg.Body,
+			structure:  msg.Structure,
+			envelope:   msg.Envelope,
+			internalID: internalID,
+		})
+	}
+
+	if _, err := DBCreateMessages(ctx, tx, reqs...); err != nil {
+		return 0, fmt.Errorf("failed to create message: %w", err)
+	}
+
+	msgIDs := []imap.InternalMessageID{internalID}
+	messageUIDs, err := DBAddMessagesToMailbox(ctx, tx, msgIDs, mboxID.InternalID)
+
+	if err != nil {
 		return 0, err
 	}
 
-	messageUIDs, err := DBGetMessageUIDs(ctx, tx.Client(), mboxID.InternalID, []imap.InternalMessageID{internalID})
-	if err != nil {
+	if err := state.forStateInMailbox(mboxID.InternalID, func(state *State) error {
+		return state.pushResponder(ctx, tx, newExists(MessageIDPair{InternalID: internalID, RemoteID: res.ID}, messageUIDs[internalID]))
+	}); err != nil {
 		return 0, err
 	}
 

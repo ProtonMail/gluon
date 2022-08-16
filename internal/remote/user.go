@@ -13,9 +13,6 @@ import (
 type User struct {
 	userID string
 
-	// path is the path at which the operation queue will be saved to disk.
-	path string
-
 	// conn is what the user uses to perform API operations.
 	conn connector.Connector
 
@@ -33,10 +30,9 @@ type User struct {
 // newUser constructs a new user with the given (IMAP) credentials.
 // It serializes its operation queue to a file at the given filepath,
 // and performs remote operations using the given connector.
-func newUser(ctx context.Context, userID, path string, conn connector.Connector) (*User, error) {
+func newUser(ctx context.Context, userID string, conn connector.Connector) (*User, error) {
 	user := &User{
 		userID:            userID,
-		path:              path,
 		conn:              conn,
 		updatesCh:         make(chan imap.Update),
 		connMetadataStore: newConnMetadataStore(),

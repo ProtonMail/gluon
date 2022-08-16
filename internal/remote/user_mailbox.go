@@ -21,8 +21,12 @@ func (user *User) CreateMailbox(ctx context.Context, metadataID ConnMetadataID, 
 }
 
 // UpdateMailbox sets the name of the mailbox with the given ID to the given new name.
-func (user *User) UpdateMailbox(ctx context.Context, metadataID ConnMetadataID, mboxID imap.LabelID, newName []string) error {
+func (user *User) UpdateMailbox(ctx context.Context, metadataID ConnMetadataID, mboxID imap.LabelID, oldName, newName []string) error {
 	ctx = user.newContextWithIMAPID(ctx, metadataID)
+
+	if err := user.conn.ValidateUpdate(oldName, newName); err != nil {
+		return err
+	}
 
 	return user.conn.UpdateLabel(ctx, mboxID, newName)
 }

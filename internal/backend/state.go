@@ -129,12 +129,12 @@ func (state *State) Create(ctx context.Context, name string) error {
 				continue
 			}
 
-			if _, err := state.actionCreateMailbox(ctx, tx, superior); err != nil {
+			if err := state.actionCreateMailbox(ctx, tx, superior); err != nil {
 				return err
 			}
 		}
 
-		if _, err := state.actionCreateMailbox(ctx, tx, name); err != nil {
+		if err := state.actionCreateMailbox(ctx, tx, name); err != nil {
 			return err
 		}
 
@@ -177,7 +177,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 				continue
 			}
 
-			if _, err := state.actionCreateMailbox(ctx, tx, superior); err != nil {
+			if err := state.actionCreateMailbox(ctx, tx, superior); err != nil {
 				return err
 			}
 		}
@@ -308,7 +308,7 @@ func (state *State) Close(ctx context.Context) error {
 
 // renameInbox creates a new mailbox and moves everything there.
 func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mailbox, newName string) error {
-	mbox, err := state.actionCreateMailbox(ctx, tx, newName)
+	mbox, err := state.actionCreateAndGetMailbox(ctx, tx, newName)
 	if err != nil {
 		return err
 	}

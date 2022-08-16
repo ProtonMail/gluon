@@ -3,9 +3,7 @@ package remote
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/ProtonMail/gluon/connector"
@@ -41,12 +39,7 @@ func (m *Manager) AddUser(ctx context.Context, userID string, conn connector.Con
 	m.usersLock.Lock()
 	defer m.usersLock.Unlock()
 
-	path, err := m.getQueuePath(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := newUser(ctx, userID, path, conn)
+	user, err := newUser(ctx, userID, conn)
 	if err != nil {
 		return nil, err
 	}
@@ -71,15 +64,6 @@ func (m *Manager) RemoveUser(ctx context.Context, userID string) error {
 		return err
 	}
 
-	path, err := m.getQueuePath(userID)
-	if err != nil {
-		return err
-	}
-
-	if err := os.Remove(path); err != nil {
-		return err
-	}
-
 	delete(m.users, userID)
 
 	return nil
@@ -97,9 +81,4 @@ func (m *Manager) GetUserID(username, password string) (string, error) {
 	}
 
 	return "", ErrNoSuchUser
-}
-
-// getQueuePath returns a path for the user with the given ID to store its serialized operation queue.
-func (m *Manager) getQueuePath(userID string) (string, error) {
-	return filepath.Join(m.dir, fmt.Sprintf("%v.queue", userID)), nil
 }

@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"strings"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/ProtonMail/gluon/imap"
@@ -278,4 +279,28 @@ func DBTranslateRemoteMailboxIDs(ctx context.Context, client *ent.Client, mboxID
 	return xslices.Map(mboxes, func(m *ent.Mailbox) imap.InternalMailboxID {
 		return m.MailboxID
 	}), nil
+}
+
+func DBCreateMailboxIfNotExists(ctx context.Context, tx *ent.Tx, internalID imap.InternalMailboxID, mbox imap.Mailbox, delimiter string) error {
+	exists, err := DBMailboxExistsWithID(ctx, tx.Client(), internalID)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		if _, err := DBCreateMailbox(
+			ctx,
+			tx,
+			internalID,
+			mbox.ID,
+			strings.Join(mbox.Name, delimiter),
+			mbox.Flags,
+			mbox.PermanentFlags,
+			mbox.Attributes,
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
