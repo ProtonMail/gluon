@@ -36,14 +36,12 @@ type credentials struct {
 	password  string
 }
 
-var (
-	TestServerVersionInfo = internal.VersionInfo{
-		Name:       "gluon-test-server",
-		Version:    internal.Version{Major: 1, Minor: 1, Patch: 1},
-		Vendor:     "Proton",
-		SupportURL: "",
-	}
-)
+var TestServerVersionInfo = internal.VersionInfo{
+	Name:       "gluon-test-server",
+	Version:    internal.Version{Major: 1, Minor: 1, Patch: 1},
+	Vendor:     "Proton",
+	SupportURL: "",
+}
 
 type serverOptions struct {
 	credentials []credentials

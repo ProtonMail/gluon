@@ -74,7 +74,7 @@ func (ctq *CTQueue[T]) Pop() (T, bool) {
 }
 
 // TryPop attempts to pop an element of the queue, but if no elements are available it doesn't wait and exits
-//immediately.
+// immediately.
 func (ctq *CTQueue[T]) TryPop() (T, bool) {
 	ctq.cond.L.Lock()
 	defer ctq.cond.L.Unlock()

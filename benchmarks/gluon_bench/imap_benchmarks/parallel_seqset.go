@@ -186,12 +186,12 @@ func NewParallelSeqSetAll(numWorkers uint) *ParallelSeqSet {
 }
 
 // NewParallelSeqSet generates a parallel SeqSet based on the following conditions:
-// * If a listFile is not empty, it will load the sequence sets from that file.
-// * If generateAll is set to true, it will call NewParallelSeqSetAll.
-// * If none of the above are valid it will generate random collection of sequence sets which can be single or intervals
-//   based on whether generateIntervals is set to true.
-// 	 If randomDrain is set to true, it will generate non repeating sequences. E.g. Useful for move or delete benchmarks.
-//   If uid is set to true, it will assume the values are UIDs rather than sequence IDs.
+//   - If a listFile is not empty, it will load the sequence sets from that file.
+//   - If generateAll is set to true, it will call NewParallelSeqSetAll.
+//   - If none of the above are valid it will generate random collection of sequence sets which can be single or intervals
+//     based on whether generateIntervals is set to true.
+//     If randomDrain is set to true, it will generate non repeating sequences. E.g. Useful for move or delete benchmarks.
+//     If uid is set to true, it will assume the values are UIDs rather than sequence IDs.
 func NewParallelSeqSet(count uint32, numWorkers uint, listFile string, generateAll, generateIntervals, randomDrain, uid bool) (*ParallelSeqSet, error) {
 	if count == 0 {
 		return nil, fmt.Errorf("count can not be 0")

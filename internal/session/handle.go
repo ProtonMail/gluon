@@ -79,7 +79,8 @@ func (s *Session) handleCommand(ctx context.Context, tag string, cmd *proto.Comm
 }
 
 func (s *Session) handleAnyCommand(ctx context.Context, tag string, cmd *proto.Command,
-	ch chan response.Response, profiler profiling.CmdProfiler) error {
+	ch chan response.Response, profiler profiling.CmdProfiler,
+) error {
 	switch {
 	case cmd.GetCapability() != nil:
 		// 6.1.1 CAPABILITY Command
@@ -108,7 +109,8 @@ func (s *Session) handleAnyCommand(ctx context.Context, tag string, cmd *proto.C
 }
 
 func (s *Session) handleNotAuthenticatedCommand(ctx context.Context, tag string, cmd *proto.Command,
-	ch chan response.Response, profiler profiling.CmdProfiler) error {
+	ch chan response.Response, profiler profiling.CmdProfiler,
+) error {
 	switch {
 	case cmd.GetAuth() != nil:
 		// 6.2.2. AUTHENTICATE Command
@@ -126,7 +128,8 @@ func (s *Session) handleNotAuthenticatedCommand(ctx context.Context, tag string,
 }
 
 func (s *Session) handleAuthenticatedCommand(ctx context.Context, tag string, cmd *proto.Command,
-	ch chan response.Response, profiler profiling.CmdProfiler) error {
+	ch chan response.Response, profiler profiling.CmdProfiler,
+) error {
 	s.userLock.Lock()
 	defer s.userLock.Unlock()
 
@@ -229,7 +232,8 @@ func (s *Session) handleSelectedCommand(ctx context.Context, tag string, cmd *pr
 }
 
 func (s *Session) handleWithMailbox(ctx context.Context, tag string, cmd *proto.Command, mailbox *backend.Mailbox,
-	ch chan response.Response, profiler profiling.CmdProfiler) error {
+	ch chan response.Response, profiler profiling.CmdProfiler,
+) error {
 	switch {
 	case cmd.GetCheck() != nil:
 		profiler.Start(profiling.CmdTypeCheck)

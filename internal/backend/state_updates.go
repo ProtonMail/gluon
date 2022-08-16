@@ -15,8 +15,8 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 	}
 
 	client := tx.Client()
-	curFlags, err := DBGetMessageFlags(ctx, client, messageIDs)
 
+	curFlags, err := DBGetMessageFlags(ctx, client, messageIDs)
 	if err != nil {
 		return err
 	}
@@ -76,8 +76,8 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 	}
 
 	client := tx.Client()
-	curFlags, err := DBGetMessageFlags(ctx, client, messageIDs)
 
+	curFlags, err := DBGetMessageFlags(ctx, client, messageIDs)
 	if err != nil {
 		return err
 	}

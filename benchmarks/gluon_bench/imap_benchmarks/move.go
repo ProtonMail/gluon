@@ -76,7 +76,6 @@ func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
 			*flags.IMAPRandomSeqSetIntervals,
 			true,
 			*flags.IMAPUIDMode)
-
 		if err != nil {
 			return err
 		}

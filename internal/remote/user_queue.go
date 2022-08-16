@@ -21,7 +21,8 @@ type userOpQueue struct {
 }
 
 func newUserOpQueue() userOpQueue {
-	return userOpQueue{queue: queue.NewCTQueue[operation](),
+	return userOpQueue{
+		queue:              queue.NewCTQueue[operation](),
 		tempMessageIDTable: make(map[string]string),
 		tempMailboxIDTable: make(map[string]string),
 	}

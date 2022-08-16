@@ -47,11 +47,17 @@ func TestRenameAddHierarchy(t *testing.T) {
 
 	testCases := []renameTC{
 		// 0 - rename the first level.
-		{"foo", "bar.foo",
-			[]string{"INBOX", "bar", "bar.foo", "bar.foo.bar"}, "bar"},
+		{
+			"foo", "bar.foo",
+			[]string{"INBOX", "bar", "bar.foo", "bar.foo.bar"},
+			"bar",
+		},
 		// 1 - rename the last level.
-		{"foo.bar", "foo.rag.bar",
-			[]string{"INBOX", "foo", "foo.rag", "foo.rag.bar"}, "foo.rag"},
+		{
+			"foo.bar", "foo.rag.bar",
+			[]string{"INBOX", "foo", "foo.rag", "foo.rag.bar"},
+			"foo.rag",
+		},
 	}
 	initialMailbox := []string{"INBOX", "foo", "foo.bar"}
 

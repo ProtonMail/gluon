@@ -14,10 +14,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var cpuProfileFlag = flag.Bool("profile-cpu", false, "Enable CPU profiling.")
-var memProfileFlag = flag.Bool("profile-mem", false, "Enable Memory profiling.")
-var blockProfileFlag = flag.Bool("profile-lock", false, "Enable lock profiling.")
-var profilePathFlag = flag.String("profile-path", "", "Path where to write profile data.")
+var (
+	cpuProfileFlag   = flag.Bool("profile-cpu", false, "Enable CPU profiling.")
+	memProfileFlag   = flag.Bool("profile-mem", false, "Enable Memory profiling.")
+	blockProfileFlag = flag.Bool("profile-lock", false, "Enable lock profiling.")
+	profilePathFlag  = flag.String("profile-path", "", "Path where to write profile data.")
+)
 
 func main() {
 	ctx := context.Background()

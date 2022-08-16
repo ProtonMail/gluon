@@ -3305,7 +3305,7 @@ func (*Done) Descriptor() ([]byte, []int) {
 	return file_imap_proto_rawDescGZIP(), []int{42}
 }
 
-//  RFC6851 Move
+// RFC6851 Move
 type Move struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

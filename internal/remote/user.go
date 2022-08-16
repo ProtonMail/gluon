@@ -97,7 +97,7 @@ func (user *User) CloseAndFlushOperationQueue(ctx context.Context) error {
 		return err
 	}
 
-	//TODO: GODT-1647 fix double call to Close().
+	// TODO: GODT-1647 fix double call to Close().
 	if user.updatesCh != nil {
 		user.forwardWG.Wait()
 		user.updatesCh = nil
@@ -124,7 +124,7 @@ func (user *User) CloseAndSerializeOperationQueue(ctx context.Context) error {
 		return err
 	}
 
-	//TODO: GODT-1647 fix double call to Close().
+	// TODO: GODT-1647 fix double call to Close().
 	if user.updatesCh != nil {
 		user.forwardWG.Wait()
 		user.updatesCh = nil

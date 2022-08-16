@@ -273,7 +273,7 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 }
 
 func (conn *Dummy) Close(ctx context.Context) error {
-	//TODO: GODT-1647 fix double call to Close().
+	// TODO: GODT-1647 fix double call to Close().
 	if conn.updateCh != nil {
 		close(conn.updateCh)
 		conn.updateCh = nil

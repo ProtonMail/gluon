@@ -75,11 +75,15 @@ import (
 
 type _ unsafe.Pointer
 
-var Swig_escape_always_false bool
-var Swig_escape_val interface{}
+var (
+	Swig_escape_always_false bool
+	Swig_escape_val          interface{}
+)
 
-type _swig_fnptr *byte
-type _swig_memberptr *byte
+type (
+	_swig_fnptr     *byte
+	_swig_memberptr *byte
+)
 
 type _ sync.Mutex
 
