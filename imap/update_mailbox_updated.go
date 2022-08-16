@@ -10,11 +10,11 @@ import (
 type MailboxUpdated struct {
 	*updateWaiter
 
-	MailboxID   string
+	MailboxID   LabelID
 	MailboxName []string
 }
 
-func NewMailboxUpdated(mailboxID string, mailboxName []string) *MailboxUpdated {
+func NewMailboxUpdated(mailboxID LabelID, mailboxName []string) *MailboxUpdated {
 	return &MailboxUpdated{
 		updateWaiter: newUpdateWaiter(),
 		MailboxID:    mailboxID,
@@ -25,7 +25,7 @@ func NewMailboxUpdated(mailboxID string, mailboxName []string) *MailboxUpdated {
 func (u *MailboxUpdated) String() string {
 	return fmt.Sprintf(
 		"MailboxUpdated: MailboxID = %v, MailboxName = %v",
-		utils.ShortID(u.MailboxID),
+		u.MailboxID.ShortID(),
 		utils.ShortID(strings.Join(u.MailboxName, "/")),
 	)
 }

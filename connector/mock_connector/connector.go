@@ -80,7 +80,7 @@ func (mr *MockConnectorMockRecorder) CreateLabel(arg0, arg1 interface{}) *gomock
 }
 
 // CreateMessage mocks base method.
-func (m *MockConnector) CreateMessage(arg0 context.Context, arg1 string, arg2 []byte, arg3 imap.FlagSet, arg4 time.Time) (imap.Message, error) {
+func (m *MockConnector) CreateMessage(arg0 context.Context, arg1 imap.LabelID, arg2 []byte, arg3 imap.FlagSet, arg4 time.Time) (imap.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMessage", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(imap.Message)
@@ -95,7 +95,7 @@ func (mr *MockConnectorMockRecorder) CreateMessage(arg0, arg1, arg2, arg3, arg4 
 }
 
 // DeleteLabel mocks base method.
-func (m *MockConnector) DeleteLabel(arg0 context.Context, arg1 string) error {
+func (m *MockConnector) DeleteLabel(arg0 context.Context, arg1 imap.LabelID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteLabel", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -109,7 +109,7 @@ func (mr *MockConnectorMockRecorder) DeleteLabel(arg0, arg1 interface{}) *gomock
 }
 
 // GetLabel mocks base method.
-func (m *MockConnector) GetLabel(arg0 context.Context, arg1 string) (imap.Mailbox, error) {
+func (m *MockConnector) GetLabel(arg0 context.Context, arg1 imap.LabelID) (imap.Mailbox, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLabel", arg0, arg1)
 	ret0, _ := ret[0].(imap.Mailbox)
@@ -124,11 +124,11 @@ func (mr *MockConnectorMockRecorder) GetLabel(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // GetMessage mocks base method.
-func (m *MockConnector) GetMessage(arg0 context.Context, arg1 string) (imap.Message, []string, error) {
+func (m *MockConnector) GetMessage(arg0 context.Context, arg1 imap.MessageID) (imap.Message, []imap.LabelID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMessage", arg0, arg1)
 	ret0, _ := ret[0].(imap.Message)
-	ret1, _ := ret[1].([]string)
+	ret1, _ := ret[1].([]imap.LabelID)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -154,7 +154,7 @@ func (mr *MockConnectorMockRecorder) GetUpdates() *gomock.Call {
 }
 
 // LabelMessages mocks base method.
-func (m *MockConnector) LabelMessages(arg0 context.Context, arg1 []string, arg2 string) error {
+func (m *MockConnector) LabelMessages(arg0 context.Context, arg1 []imap.MessageID, arg2 imap.LabelID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LabelMessages", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -168,7 +168,7 @@ func (mr *MockConnectorMockRecorder) LabelMessages(arg0, arg1, arg2 interface{})
 }
 
 // MarkMessagesFlagged mocks base method.
-func (m *MockConnector) MarkMessagesFlagged(arg0 context.Context, arg1 []string, arg2 bool) error {
+func (m *MockConnector) MarkMessagesFlagged(arg0 context.Context, arg1 []imap.MessageID, arg2 bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarkMessagesFlagged", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -182,7 +182,7 @@ func (mr *MockConnectorMockRecorder) MarkMessagesFlagged(arg0, arg1, arg2 interf
 }
 
 // MarkMessagesSeen mocks base method.
-func (m *MockConnector) MarkMessagesSeen(arg0 context.Context, arg1 []string, arg2 bool) error {
+func (m *MockConnector) MarkMessagesSeen(arg0 context.Context, arg1 []imap.MessageID, arg2 bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarkMessagesSeen", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -220,7 +220,7 @@ func (mr *MockConnectorMockRecorder) Resume() *gomock.Call {
 }
 
 // UnlabelMessages mocks base method.
-func (m *MockConnector) UnlabelMessages(arg0 context.Context, arg1 []string, arg2 string) error {
+func (m *MockConnector) UnlabelMessages(arg0 context.Context, arg1 []imap.MessageID, arg2 imap.LabelID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnlabelMessages", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -234,7 +234,7 @@ func (mr *MockConnectorMockRecorder) UnlabelMessages(arg0, arg1, arg2 interface{
 }
 
 // UpdateLabel mocks base method.
-func (m *MockConnector) UpdateLabel(arg0 context.Context, arg1 string, arg2 []string) error {
+func (m *MockConnector) UpdateLabel(arg0 context.Context, arg1 imap.LabelID, arg2 []string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateLabel", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

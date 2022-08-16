@@ -3,6 +3,8 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/imap"
+	"github.com/bradenaw/juniper/xslices"
 	"runtime/pprof"
 	"sync"
 
@@ -107,6 +109,8 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 			return err
 		}
 
-		return user.store.Delete(ids...)
+		return user.store.Delete(xslices.Map(ids, func(i imap.InternalMessageID) string {
+			return string(i)
+		})...)
 	})
 }

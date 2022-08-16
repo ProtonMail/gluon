@@ -334,6 +334,7 @@ func (uq *UIDQuery) WithMailbox(opts ...func(*MailboxQuery)) *UIDQuery {
 //		GroupBy(uid.FieldUID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
+//
 func (uq *UIDQuery) GroupBy(field string, fields ...string) *UIDGroupBy {
 	grbuild := &UIDGroupBy{config: uq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -360,6 +361,7 @@ func (uq *UIDQuery) GroupBy(field string, fields ...string) *UIDGroupBy {
 //	client.UID.Query().
 //		Select(uid.FieldUID).
 //		Scan(ctx, &v)
+//
 func (uq *UIDQuery) Select(fields ...string) *UIDSelect {
 	uq.fields = append(uq.fields, fields...)
 	selbuild := &UIDSelect{UIDQuery: uq}

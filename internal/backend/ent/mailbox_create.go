@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailboxattr"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailboxflag"
@@ -24,8 +25,22 @@ type MailboxCreate struct {
 }
 
 // SetMailboxID sets the "MailboxID" field.
-func (mc *MailboxCreate) SetMailboxID(s string) *MailboxCreate {
-	mc.mutation.SetMailboxID(s)
+func (mc *MailboxCreate) SetMailboxID(imi imap.InternalMailboxID) *MailboxCreate {
+	mc.mutation.SetMailboxID(imi)
+	return mc
+}
+
+// SetRemoteID sets the "RemoteID" field.
+func (mc *MailboxCreate) SetRemoteID(ii imap.LabelID) *MailboxCreate {
+	mc.mutation.SetRemoteID(ii)
+	return mc
+}
+
+// SetNillableRemoteID sets the "RemoteID" field if the given value is not nil.
+func (mc *MailboxCreate) SetNillableRemoteID(ii *imap.LabelID) *MailboxCreate {
+	if ii != nil {
+		mc.SetRemoteID(*ii)
+	}
 	return mc
 }
 
@@ -279,6 +294,14 @@ func (mc *MailboxCreate) createSpec() (*Mailbox, *sqlgraph.CreateSpec) {
 			Column: mailbox.FieldMailboxID,
 		})
 		_node.MailboxID = value
+	}
+	if value, ok := mc.mutation.RemoteID(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: mailbox.FieldRemoteID,
+		})
+		_node.RemoteID = value
 	}
 	if value, ok := mc.mutation.Name(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{

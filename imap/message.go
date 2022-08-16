@@ -1,9 +1,11 @@
 package imap
 
-import "time"
+import (
+	"time"
+)
 
 type Message struct {
-	ID    string
+	ID    MessageID
 	Flags FlagSet
 	Date  time.Time
 }

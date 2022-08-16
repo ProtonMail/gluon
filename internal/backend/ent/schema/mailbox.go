@@ -5,6 +5,7 @@ import (
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 )
 
 // Mailbox holds the schema definition for the Mailbox entity.
@@ -15,7 +16,8 @@ type Mailbox struct {
 // Fields of the Mailbox.
 func (Mailbox) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("MailboxID"),
+		field.String("MailboxID").Unique().Immutable().GoType(imap.InternalMailboxID("")),
+		field.String("RemoteID").Optional().Unique().GoType(imap.LabelID("")),
 		field.String("Name").Unique(),
 		field.Int("UIDNext").Default(1),
 		field.Int("UIDValidity").Default(1),

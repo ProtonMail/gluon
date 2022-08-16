@@ -150,7 +150,7 @@ func (state *State) Delete(ctx context.Context, name string) error {
 			return ErrNoSuchMailbox
 		}
 
-		return state.actionDeleteMailbox(ctx, tx, mbox.MailboxID, name)
+		return state.actionDeleteMailbox(ctx, tx, mbox.RemoteID, name)
 	})
 }
 
@@ -204,12 +204,12 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 			newInferior := newName + strings.TrimPrefix(inferior, oldName)
 
-			if err := state.actionUpdateMailbox(ctx, tx, mbox.MailboxID, inferior, newInferior); err != nil {
+			if err := state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, inferior, newInferior); err != nil {
 				return err
 			}
 		}
 
-		return state.actionUpdateMailbox(ctx, tx, mbox.MailboxID, oldName, newName)
+		return state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, oldName, newName)
 	})
 }
 
@@ -257,7 +257,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 			return ErrNoSuchMailbox
 		}
 
-		if state.snap != nil && state.snap.mboxID == mbox.MailboxID {
+		if state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID {
 			return fn(newMailbox(tx, mbox, state, state.snap))
 		}
 
@@ -276,7 +276,7 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 	}
 
 	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := DBGetMailboxByID(ctx, tx.Client(), state.snap.mboxID)
+		mbox, err := DBGetMailboxByID(ctx, tx.Client(), state.snap.mboxID.InternalID)
 		if err != nil {
 			return err
 		}
@@ -319,15 +319,17 @@ func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mail
 		return err
 	}
 
-	messageIDs := xslices.Map(messages, func(messageUID *ent.UID) string {
-		return messageUID.Edges.Message.MessageID
+	messageIDs := xslices.Map(messages, func(messageUID *ent.UID) MessageIDPair {
+		return NewMessageIDPair(messageUID.Edges.Message)
 	})
 
-	if _, err := state.actionAddMessagesToMailbox(ctx, tx, messageIDs, mbox.MailboxID); err != nil {
+	mboxIDPair := NewMailboxIDPair(mbox)
+
+	if _, err := state.actionAddMessagesToMailbox(ctx, tx, messageIDs, mboxIDPair); err != nil {
 		return err
 	}
 
-	if err := state.actionRemoveMessagesFromMailbox(ctx, tx, messageIDs, inbox.MailboxID); err != nil {
+	if err := state.actionRemoveMessagesFromMailbox(ctx, tx, messageIDs, NewMailboxIDPair(inbox)); err != nil {
 		return err
 	}
 
@@ -366,8 +368,8 @@ func (state *State) endIdle() {
 	state.idleCh = nil
 }
 
-func (state *State) getLiteral(messageID string) ([]byte, error) {
-	return state.store.Get(messageID)
+func (state *State) getLiteral(messageID imap.InternalMessageID) ([]byte, error) {
+	return state.store.Get(string(messageID))
 }
 
 func (state *State) flushResponses(ctx context.Context, tx *ent.Tx, permitExpunge bool) ([]response.Response, error) {
@@ -431,7 +433,7 @@ func (state *State) popResponders(permitExpunge bool) []responder {
 
 	var pop, rem []responder
 
-	skipIDs := make(sets.Map[string])
+	skipIDs := make(sets.Map[imap.InternalMessageID])
 
 	for _, res := range state.res {
 		if permitExpunge {
@@ -456,12 +458,9 @@ func (state *State) popResponders(permitExpunge bool) []responder {
 	return pop
 }
 
-func (state *State) updateMailboxID(oldID, newID string) error {
-	state.resLock.Lock()
-	defer state.resLock.Unlock()
-
+func (state *State) updateMailboxRemoteID(internalID imap.InternalMailboxID, remoteID imap.LabelID) error {
 	if state.snap != nil {
-		if err := state.snap.updateMailboxID(oldID, newID); err != nil {
+		if err := state.snap.updateMailboxRemoteID(internalID, remoteID); err != nil {
 			return err
 		}
 	}
@@ -469,19 +468,10 @@ func (state *State) updateMailboxID(oldID, newID string) error {
 	return nil
 }
 
-func (state *State) updateMessageID(oldID, newID string) error {
-	state.resLock.Lock()
-	defer state.resLock.Unlock()
-
-	if state.snap != nil && state.snap.hasMessage(oldID) {
-		if err := state.snap.updateMessageID(oldID, newID); err != nil {
+func (state *State) updateMessageRemoteID(internalID imap.InternalMessageID, remoteID imap.MessageID) error {
+	if state.snap != nil && state.snap.hasMessage(internalID) {
+		if err := state.snap.updateMessageRemoteID(internalID, remoteID); err != nil {
 			return err
-		}
-	}
-
-	for _, update := range state.res {
-		if messageID := update.getMessageID(); messageID == oldID {
-			update.setMessageID(newID)
 		}
 	}
 

@@ -6,24 +6,23 @@ import (
 )
 
 // CreateMailbox creates a new mailbox with the given name.
-func (user *User) CreateMailbox(metadataID ConnMetadataID, name []string) (imap.Mailbox, error) {
+func (user *User) CreateMailbox(metadataID ConnMetadataID, name []string) (imap.InternalMailboxID, imap.Mailbox, error) {
 	flags, permFlags, attrs, err := user.conn.ValidateCreate(name)
 	if err != nil {
-		return imap.Mailbox{}, err
+		return "", imap.Mailbox{}, err
 	}
 
-	tempID := uuid.NewString()
+	internalID := imap.InternalMailboxID(uuid.NewString())
 
 	if err := user.pushOp(&OpMailboxCreate{
 		OperationBase: OperationBase{MetadataID: metadataID},
-		TempID:        tempID,
+		InternalID:    internalID,
 		Name:          name,
 	}); err != nil {
-		return imap.Mailbox{}, err
+		return "", imap.Mailbox{}, err
 	}
 
-	return imap.Mailbox{
-		ID:   tempID,
+	return internalID, imap.Mailbox{
 		Name: name,
 
 		Flags:          flags,
@@ -33,7 +32,7 @@ func (user *User) CreateMailbox(metadataID ConnMetadataID, name []string) (imap.
 }
 
 // UpdateMailbox sets the name of the mailbox with the given ID to the given new name.
-func (user *User) UpdateMailbox(metadataID ConnMetadataID, mboxID string, oldName, newName []string) error {
+func (user *User) UpdateMailbox(metadataID ConnMetadataID, mboxID imap.LabelID, oldName, newName []string) error {
 	if err := user.conn.ValidateUpdate(oldName, newName); err != nil {
 		return err
 	}
@@ -46,7 +45,7 @@ func (user *User) UpdateMailbox(metadataID ConnMetadataID, mboxID string, oldNam
 }
 
 // DeleteMailbox deletes the mailbox with the given ID and name.
-func (user *User) DeleteMailbox(metadataID ConnMetadataID, mboxID string, name []string) error {
+func (user *User) DeleteMailbox(metadataID ConnMetadataID, mboxID imap.LabelID, name []string) error {
 	if err := user.conn.ValidateDelete(name); err != nil {
 		return err
 	}

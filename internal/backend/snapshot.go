@@ -12,7 +12,7 @@ import (
 )
 
 type snapshot struct {
-	mboxID string
+	mboxID MailboxIDPair
 
 	state    *State
 	messages *snapMsgList
@@ -25,14 +25,14 @@ func newSnapshot(ctx context.Context, state *State, mbox *ent.Mailbox) (*snapsho
 	}
 
 	snap := &snapshot{
-		mboxID:   mbox.MailboxID,
+		mboxID:   NewMailboxIDPair(mbox),
 		state:    state,
 		messages: newMsgList(),
 	}
 
 	for _, msgUID := range msgUIDs {
 		snap.messages.insert(
-			msgUID.Edges.Message.MessageID,
+			NewMessageIDPair(msgUID.Edges.Message),
 			msgUID.UID,
 			newFlagSet(msgUID, msgUID.Edges.Message.Edges.Flags),
 		)
@@ -41,11 +41,11 @@ func newSnapshot(ctx context.Context, state *State, mbox *ent.Mailbox) (*snapsho
 	return snap, nil
 }
 
-func (snap *snapshot) hasMessage(messageID string) bool {
+func (snap *snapshot) hasMessage(messageID imap.InternalMessageID) bool {
 	return snap.messages.has(messageID)
 }
 
-func (snap *snapshot) getMessage(messageID string) (*snapMsg, error) {
+func (snap *snapshot) getMessage(messageID imap.InternalMessageID) (*snapMsg, error) {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
 		return nil, ErrNoSuchMessage
@@ -63,7 +63,7 @@ func (snap *snapshot) getMessageBySeq(seq int) (*snapMsg, error) {
 	return msg, nil
 }
 
-func (snap *snapshot) getMessageSeq(messageID string) (int, error) {
+func (snap *snapshot) getMessageSeq(messageID imap.InternalMessageID) (int, error) {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
 		return 0, ErrNoSuchMessage
@@ -72,7 +72,7 @@ func (snap *snapshot) getMessageSeq(messageID string) (int, error) {
 	return msg.Seq, nil
 }
 
-func (snap *snapshot) getMessageUID(messageID string) (int, error) {
+func (snap *snapshot) getMessageUID(messageID imap.InternalMessageID) (int, error) {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
 		return 0, ErrNoSuchMessage
@@ -81,7 +81,7 @@ func (snap *snapshot) getMessageUID(messageID string) (int, error) {
 	return msg.UID, nil
 }
 
-func (snap *snapshot) getMessageFlags(messageID string) (imap.FlagSet, error) {
+func (snap *snapshot) getMessageFlags(messageID imap.InternalMessageID) (imap.FlagSet, error) {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
 		return nil, ErrNoSuchMessage
@@ -90,7 +90,7 @@ func (snap *snapshot) getMessageFlags(messageID string) (imap.FlagSet, error) {
 	return msg.flags, nil
 }
 
-func (snap *snapshot) setMessageFlags(messageID string, flags imap.FlagSet) error {
+func (snap *snapshot) setMessageFlags(messageID imap.InternalMessageID, flags imap.FlagSet) error {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
 		return ErrNoSuchMessage
@@ -109,8 +109,8 @@ func (snap *snapshot) getAllMessages() []*snapMsg {
 	return snap.messages.all()
 }
 
-func (snap *snapshot) getAllMessageIDs() []string {
-	return xslices.Map(snap.messages.all(), func(msg *snapMsg) string {
+func (snap *snapshot) getAllMessageIDs() []MessageIDPair {
+	return xslices.Map(snap.messages.all(), func(msg *snapMsg) MessageIDPair {
 		return msg.ID
 	})
 }
@@ -218,8 +218,8 @@ func (snap *snapshot) getMessagesWithoutFlag(flag string) []*snapMsg {
 	})
 }
 
-func (snap *snapshot) appendMessage(ctx context.Context, tx *ent.Tx, messageID string) error {
-	msgUID, err := DBGetMailboxMessage(ctx, tx.Client(), snap.mboxID, messageID)
+func (snap *snapshot) appendMessage(ctx context.Context, tx *ent.Tx, messageID MessageIDPair) error {
+	msgUID, err := DBGetMailboxMessage(ctx, tx.Client(), snap.mboxID.InternalID, messageID.InternalID)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func (snap *snapshot) appendMessage(ctx context.Context, tx *ent.Tx, messageID s
 	return nil
 }
 
-func (snap *snapshot) expungeMessage(ctx context.Context, tx *ent.Tx, messageID string) error {
+func (snap *snapshot) expungeMessage(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID) error {
 	if ok := snap.messages.remove(messageID); !ok {
 		return ErrNoSuchMessage
 	}
@@ -241,18 +241,18 @@ func (snap *snapshot) expungeMessage(ctx context.Context, tx *ent.Tx, messageID 
 	return nil
 }
 
-func (snap *snapshot) updateMailboxID(oldID, newID string) error {
-	if snap.mboxID != oldID {
+func (snap *snapshot) updateMailboxRemoteID(internalID imap.InternalMailboxID, remoteID imap.LabelID) error {
+	if snap.mboxID.InternalID != internalID {
 		return ErrNoSuchMailbox
 	}
 
-	snap.mboxID = newID
+	snap.mboxID.RemoteID = remoteID
 
 	return nil
 }
 
-func (snap *snapshot) updateMessageID(oldID, newID string) error {
-	if ok := snap.messages.update(oldID, newID); !ok {
+func (snap *snapshot) updateMessageRemoteID(internalID imap.InternalMessageID, remoteID imap.MessageID) error {
+	if ok := snap.messages.update(internalID, remoteID); !ok {
 		return ErrNoSuchMessage
 	}
 

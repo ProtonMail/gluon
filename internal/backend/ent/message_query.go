@@ -326,7 +326,7 @@ func (mq *MessageQuery) WithUIDs(opts ...func(*UIDQuery)) *MessageQuery {
 // Example:
 //
 //	var v []struct {
-//		MessageID string `json:"MessageID,omitempty"`
+//		MessageID imap.InternalMessageID `json:"MessageID,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -334,6 +334,7 @@ func (mq *MessageQuery) WithUIDs(opts ...func(*UIDQuery)) *MessageQuery {
 //		GroupBy(message.FieldMessageID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
+//
 func (mq *MessageQuery) GroupBy(field string, fields ...string) *MessageGroupBy {
 	grbuild := &MessageGroupBy{config: mq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -354,12 +355,13 @@ func (mq *MessageQuery) GroupBy(field string, fields ...string) *MessageGroupBy 
 // Example:
 //
 //	var v []struct {
-//		MessageID string `json:"MessageID,omitempty"`
+//		MessageID imap.InternalMessageID `json:"MessageID,omitempty"`
 //	}
 //
 //	client.Message.Query().
 //		Select(message.FieldMessageID).
 //		Scan(ctx, &v)
+//
 func (mq *MessageQuery) Select(fields ...string) *MessageSelect {
 	mq.fields = append(mq.fields, fields...)
 	selbuild := &MessageSelect{MessageQuery: mq}

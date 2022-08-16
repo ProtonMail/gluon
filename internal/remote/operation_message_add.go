@@ -1,11 +1,14 @@
 package remote
 
-import "encoding/gob"
+import (
+	"encoding/gob"
+	"github.com/ProtonMail/gluon/imap"
+)
 
 type OpMessageAdd struct {
 	OperationBase
-	MessageIDs []string
-	MBoxID     string
+	MessageIDs []imap.MessageID
+	MBoxID     imap.LabelID
 }
 
 func init() {

@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/bradenaw/juniper/xslices"
-
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/sirupsen/logrus"
@@ -14,17 +12,12 @@ import (
 var ErrQueueClosed = errors.New("the queue is closed")
 
 type userOpQueue struct {
-	poppedOps          []operation
-	queue              *queue.CTQueue[operation]
-	tempMailboxIDTable map[string]string
-	tempMessageIDTable map[string]string
+	poppedOps []operation
+	queue     *queue.CTQueue[operation]
 }
 
 func newUserOpQueue() userOpQueue {
-	return userOpQueue{queue: queue.NewCTQueue[operation](),
-		tempMessageIDTable: make(map[string]string),
-		tempMailboxIDTable: make(map[string]string),
-	}
+	return userOpQueue{queue: queue.NewCTQueue[operation]()}
 }
 
 func (uoq *userOpQueue) popAndMerge() operation {
@@ -142,56 +135,4 @@ func (uoq *userOpQueue) closeQueue() {
 
 func (user *User) pushOp(op operation) error {
 	return user.opQueue.pushOp(user, op)
-}
-
-func (uoq *userOpQueue) addMailboxTempID(tmpID string, realID string) {
-	uoq.tempMailboxIDTable[tmpID] = realID
-}
-
-func (uoq *userOpQueue) addMessageTempID(tmpID string, realID string) {
-	uoq.tempMessageIDTable[tmpID] = realID
-}
-
-func (uoq *userOpQueue) remMessageTempID(tmpID string) {
-	delete(uoq.tempMessageIDTable, tmpID)
-}
-
-func (uoq *userOpQueue) remMailboxTempID(tmpID string) {
-	delete(uoq.tempMailboxIDTable, tmpID)
-}
-
-func (uoq *userOpQueue) translateMailboxIDs(ids ...string) []string {
-	if len(uoq.tempMailboxIDTable) == 0 {
-		return ids
-	}
-
-	return xslices.Map(ids, func(id string) string {
-		if v, ok := uoq.tempMailboxIDTable[id]; ok {
-			return v
-		}
-
-		return id
-	})
-}
-
-func (uoq *userOpQueue) translateMessageIDs(ids ...string) []string {
-	if len(uoq.tempMessageIDTable) == 0 {
-		return ids
-	}
-
-	return xslices.Map(ids, func(id string) string {
-		if v, ok := uoq.tempMessageIDTable[id]; ok {
-			return v
-		}
-
-		return id
-	})
-}
-
-func (uoq *userOpQueue) translateMailboxID(id string) string {
-	return uoq.translateMailboxIDs(id)[0]
-}
-
-func (uoq *userOpQueue) translateMessageID(id string) string {
-	return uoq.translateMessageIDs(id)[0]
 }

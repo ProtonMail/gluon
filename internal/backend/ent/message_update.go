@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent/message"
 	"github.com/ProtonMail/gluon/internal/backend/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/backend/ent/predicate"
@@ -30,15 +31,23 @@ func (mu *MessageUpdate) Where(ps ...predicate.Message) *MessageUpdate {
 	return mu
 }
 
-// SetMessageID sets the "MessageID" field.
-func (mu *MessageUpdate) SetMessageID(s string) *MessageUpdate {
-	mu.mutation.SetMessageID(s)
+// SetRemoteID sets the "RemoteID" field.
+func (mu *MessageUpdate) SetRemoteID(ii imap.MessageID) *MessageUpdate {
+	mu.mutation.SetRemoteID(ii)
 	return mu
 }
 
-// SetInternalID sets the "InternalID" field.
-func (mu *MessageUpdate) SetInternalID(s string) *MessageUpdate {
-	mu.mutation.SetInternalID(s)
+// SetNillableRemoteID sets the "RemoteID" field if the given value is not nil.
+func (mu *MessageUpdate) SetNillableRemoteID(ii *imap.MessageID) *MessageUpdate {
+	if ii != nil {
+		mu.SetRemoteID(*ii)
+	}
+	return mu
+}
+
+// ClearRemoteID clears the value of the "RemoteID" field.
+func (mu *MessageUpdate) ClearRemoteID() *MessageUpdate {
+	mu.mutation.ClearRemoteID()
 	return mu
 }
 
@@ -242,18 +251,17 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := mu.mutation.MessageID(); ok {
+	if value, ok := mu.mutation.RemoteID(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: message.FieldMessageID,
+			Column: message.FieldRemoteID,
 		})
 	}
-	if value, ok := mu.mutation.InternalID(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+	if mu.mutation.RemoteIDCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
-			Value:  value,
-			Column: message.FieldInternalID,
+			Column: message.FieldRemoteID,
 		})
 	}
 	if value, ok := mu.mutation.Date(); ok {
@@ -432,15 +440,23 @@ type MessageUpdateOne struct {
 	mutation *MessageMutation
 }
 
-// SetMessageID sets the "MessageID" field.
-func (muo *MessageUpdateOne) SetMessageID(s string) *MessageUpdateOne {
-	muo.mutation.SetMessageID(s)
+// SetRemoteID sets the "RemoteID" field.
+func (muo *MessageUpdateOne) SetRemoteID(ii imap.MessageID) *MessageUpdateOne {
+	muo.mutation.SetRemoteID(ii)
 	return muo
 }
 
-// SetInternalID sets the "InternalID" field.
-func (muo *MessageUpdateOne) SetInternalID(s string) *MessageUpdateOne {
-	muo.mutation.SetInternalID(s)
+// SetNillableRemoteID sets the "RemoteID" field if the given value is not nil.
+func (muo *MessageUpdateOne) SetNillableRemoteID(ii *imap.MessageID) *MessageUpdateOne {
+	if ii != nil {
+		muo.SetRemoteID(*ii)
+	}
+	return muo
+}
+
+// ClearRemoteID clears the value of the "RemoteID" field.
+func (muo *MessageUpdateOne) ClearRemoteID() *MessageUpdateOne {
+	muo.mutation.ClearRemoteID()
 	return muo
 }
 
@@ -674,18 +690,17 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 			}
 		}
 	}
-	if value, ok := muo.mutation.MessageID(); ok {
+	if value, ok := muo.mutation.RemoteID(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: message.FieldMessageID,
+			Column: message.FieldRemoteID,
 		})
 	}
-	if value, ok := muo.mutation.InternalID(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+	if muo.mutation.RemoteIDCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
-			Value:  value,
-			Column: message.FieldInternalID,
+			Column: message.FieldRemoteID,
 		})
 	}
 	if value, ok := muo.mutation.Date(); ok {

@@ -172,7 +172,7 @@ func (m *Mailbox) matchSearchKeyAnswered(ctx context.Context, candidates []*snap
 
 func (m *Mailbox) matchSearchKeyBcc(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey, decoder *encoding.Decoder) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -198,7 +198,7 @@ func (m *Mailbox) matchSearchKeyBefore(ctx context.Context, candidates []*snapMs
 	}
 
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID)
+		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -209,7 +209,7 @@ func (m *Mailbox) matchSearchKeyBefore(ctx context.Context, candidates []*snapMs
 
 func (m *Mailbox) matchSearchKeyBody(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey, decoder *encoding.Decoder) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -230,7 +230,7 @@ func (m *Mailbox) matchSearchKeyBody(ctx context.Context, candidates []*snapMsg,
 
 func (m *Mailbox) matchSearchKeyCc(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey, decoder *encoding.Decoder) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -269,7 +269,7 @@ func (m *Mailbox) matchSearchKeyFlagged(ctx context.Context, candidates []*snapM
 
 func (m *Mailbox) matchSearchKeyFrom(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey, decoder *encoding.Decoder) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -290,7 +290,7 @@ func (m *Mailbox) matchSearchKeyFrom(ctx context.Context, candidates []*snapMsg,
 
 func (m *Mailbox) matchSearchKeyHeader(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey, decoder *encoding.Decoder) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -317,7 +317,7 @@ func (m *Mailbox) matchSearchKeyKeyword(ctx context.Context, candidates []*snapM
 
 func (m *Mailbox) matchSearchKeyLarger(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID)
+		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -356,7 +356,7 @@ func (m *Mailbox) matchSearchKeyOn(ctx context.Context, candidates []*snapMsg, k
 	}
 
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID)
+		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -403,7 +403,7 @@ func (m *Mailbox) matchSearchKeySentBefore(ctx context.Context, candidates []*sn
 	}
 
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -431,7 +431,7 @@ func (m *Mailbox) matchSearchKeySentOn(ctx context.Context, candidates []*snapMs
 	}
 
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -460,7 +460,7 @@ func (m *Mailbox) matchSearchKeySentSince(ctx context.Context, candidates []*sna
 	}
 
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -488,7 +488,7 @@ func (m *Mailbox) matchSearchKeySince(ctx context.Context, candidates []*snapMsg
 	}
 
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID)
+		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -501,7 +501,7 @@ func (m *Mailbox) matchSearchKeySince(ctx context.Context, candidates []*snapMsg
 
 func (m *Mailbox) matchSearchKeySmaller(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID)
+		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -512,7 +512,7 @@ func (m *Mailbox) matchSearchKeySmaller(ctx context.Context, candidates []*snapM
 
 func (m *Mailbox) matchSearchKeySubject(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey, decoder *encoding.Decoder) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -533,7 +533,7 @@ func (m *Mailbox) matchSearchKeySubject(ctx context.Context, candidates []*snapM
 
 func (m *Mailbox) matchSearchKeyText(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey, decoder *encoding.Decoder) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}
@@ -549,7 +549,7 @@ func (m *Mailbox) matchSearchKeyText(ctx context.Context, candidates []*snapMsg,
 
 func (m *Mailbox) matchSearchKeyTo(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey, decoder *encoding.Decoder) ([]*snapMsg, error) {
 	return filter(candidates, func(message *snapMsg) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID)
+		literal, err := m.state.getLiteral(message.ID.InternalID)
 		if err != nil {
 			return false, err
 		}

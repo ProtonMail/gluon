@@ -106,18 +106,6 @@ func (user *User) CloseAndFlushOperationQueue(ctx context.Context) error {
 	return nil
 }
 
-func (user *User) FinishMailboxIDUpdate(tempID string) error {
-	return user.pushOp(&OpRemMailboxTempID{
-		tempID: tempID,
-	})
-}
-
-func (user *User) FinishMessageIDUpdate(tempID string) error {
-	return user.pushOp(&OpRemMessageTempID{
-		tempID: tempID,
-	})
-}
-
 // CloseAndSerializeOperationQueue closes the remote user.
 func (user *User) CloseAndSerializeOperationQueue(ctx context.Context) error {
 	if err := user.conn.Close(ctx); err != nil {

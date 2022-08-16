@@ -10,12 +10,12 @@ import (
 func TestMessages(t *testing.T) {
 	msg := newMsgList()
 
-	msg.insert("msgID1", 10, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert("msgID2", 20, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert("msgID3", 30, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert("msgID4", 40, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert("msgID5", 50, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert("msgID6", 60, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(NewMessageIDPairWithoutRemote("msgID1"), 10, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(NewMessageIDPairWithoutRemote("msgID2"), 20, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(NewMessageIDPairWithoutRemote("msgID3"), 30, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(NewMessageIDPairWithoutRemote("msgID4"), 40, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(NewMessageIDPairWithoutRemote("msgID5"), 50, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(NewMessageIDPairWithoutRemote("msgID6"), 60, imap.NewFlagSet(imap.FlagSeen))
 
 	msg.remove("msgID2")
 	msg.remove("msgID4")

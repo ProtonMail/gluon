@@ -1,6 +1,7 @@
 package tests
 
 import (
+	imap2 "github.com/ProtonMail/gluon/imap"
 	"testing"
 	"time"
 
@@ -98,7 +99,7 @@ func TestRenameBadHierarchy(t *testing.T) {
 }
 
 func TestRenameInbox(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap2.LabelID) {
 		// Put all the 100 messages into the inbox.
 		c.C("tag move 1:* inbox").OK("tag")
 		c.C("tag status inbox (messages)").Sxe("MESSAGES 100").OK("tag")

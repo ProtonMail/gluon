@@ -28,14 +28,14 @@ type Connector interface {
 	SetLabelPrefix(string)
 
 	MailboxCreated(imap.Mailbox) error
-	MailboxDeleted(string) error
+	MailboxDeleted(imap.LabelID) error
 
-	MessageCreated(imap.Message, []byte, []string) error
-	MessageAdded(string, string) error
-	MessageRemoved(string, string) error
-	MessageSeen(string, bool) error
-	MessageFlagged(string, bool) error
-	MessageDeleted(string) error
+	MessageCreated(imap.Message, []byte, []imap.LabelID) error
+	MessageAdded(imap.MessageID, imap.LabelID) error
+	MessageRemoved(imap.MessageID, imap.LabelID) error
+	MessageSeen(imap.MessageID, bool) error
+	MessageFlagged(imap.MessageID, bool) error
+	MessageDeleted(imap.MessageID) error
 
 	Sync(context.Context) error
 	Flush()
@@ -112,8 +112,8 @@ func (s *testSession) setLabelPrefix(user, prefix string) {
 	s.conns[s.userIDs[user]].SetLabelPrefix(prefix)
 }
 
-func (s *testSession) mailboxCreated(user string, name []string, withData ...string) string {
-	mboxID := utils.NewRandomLabelID()
+func (s *testSession) mailboxCreated(user string, name []string, withData ...string) imap.LabelID {
+	mboxID := imap.LabelID(utils.NewRandomLabelID())
 
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxCreated(imap.Mailbox{
 		ID:             mboxID,
@@ -132,11 +132,11 @@ func (s *testSession) mailboxCreated(user string, name []string, withData ...str
 	return mboxID
 }
 
-func (s *testSession) batchMailboxCreated(user string, count int, mailboxNameGen func(number int) string) []string {
-	var mboxIDs []string
+func (s *testSession) batchMailboxCreated(user string, count int, mailboxNameGen func(number int) string) []imap.LabelID {
+	var mboxIDs []imap.LabelID
 
 	for i := 0; i < count; i++ {
-		mboxID := utils.NewRandomLabelID()
+		mboxID := imap.LabelID(utils.NewRandomLabelID())
 
 		require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxCreated(imap.Mailbox{
 			ID:             mboxID,
@@ -154,8 +154,8 @@ func (s *testSession) batchMailboxCreated(user string, count int, mailboxNameGen
 	return mboxIDs
 }
 
-func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, permFlags, attrs imap.FlagSet) string {
-	mboxID := utils.NewRandomLabelID()
+func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, permFlags, attrs imap.FlagSet) imap.LabelID {
+	mboxID := imap.LabelID(utils.NewRandomLabelID())
 
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxCreated(imap.Mailbox{
 		ID:             mboxID,
@@ -170,8 +170,8 @@ func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, pe
 	return mboxID
 }
 
-func (s *testSession) messageCreated(user, mailboxID string, literal []byte, flags ...string) string {
-	messageID := utils.NewRandomMessageID()
+func (s *testSession) messageCreated(user string, mailboxID imap.LabelID, literal []byte, flags ...string) imap.MessageID {
+	messageID := imap.MessageID(utils.NewRandomMessageID())
 
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageCreated(
 		imap.Message{
@@ -180,7 +180,7 @@ func (s *testSession) messageCreated(user, mailboxID string, literal []byte, fla
 			Date:  time.Now(),
 		},
 		literal,
-		[]string{mailboxID},
+		[]imap.LabelID{mailboxID},
 	))
 
 	s.conns[s.userIDs[user]].Flush()
@@ -188,11 +188,11 @@ func (s *testSession) messageCreated(user, mailboxID string, literal []byte, fla
 	return messageID
 }
 
-func (s *testSession) batchMessageCreated(user string, mailboxID string, count int, createMessage func(int) ([]byte, []string)) []string {
-	var messageIDs []string
+func (s *testSession) batchMessageCreated(user string, mailboxID imap.LabelID, count int, createMessage func(int) ([]byte, []string)) []imap.MessageID {
+	var messageIDs []imap.MessageID
 
 	for i := 0; i < count; i++ {
-		messageID := utils.NewRandomMessageID()
+		messageID := imap.MessageID(utils.NewRandomMessageID())
 
 		literal, flags := createMessage(i)
 
@@ -203,7 +203,7 @@ func (s *testSession) batchMessageCreated(user string, mailboxID string, count i
 				Date:  time.Now(),
 			},
 			literal,
-			[]string{mailboxID},
+			[]imap.LabelID{mailboxID},
 		))
 
 		messageIDs = append(messageIDs, messageID)
@@ -213,14 +213,14 @@ func (s *testSession) batchMessageCreated(user string, mailboxID string, count i
 	return messageIDs
 }
 
-func (s *testSession) messageCreatedFromFile(user, mailboxID, path string, flags ...string) string {
+func (s *testSession) messageCreatedFromFile(user string, mailboxID imap.LabelID, path string, flags ...string) imap.MessageID {
 	literal, err := os.ReadFile(path)
 	require.NoError(s.tb, err)
 
 	return s.messageCreated(user, mailboxID, literal, flags...)
 }
 
-func (s *testSession) messagesCreatedFromMBox(user, mailboxID, path string, flags ...string) {
+func (s *testSession) messagesCreatedFromMBox(user string, mailboxID imap.LabelID, path string, flags ...string) {
 	f, err := os.Open(path)
 	require.NoError(s.tb, err)
 
@@ -231,31 +231,31 @@ func (s *testSession) messagesCreatedFromMBox(user, mailboxID, path string, flag
 	require.NoError(s.tb, f.Close())
 }
 
-func (s *testSession) messageAdded(user, messageID, mailboxID string) {
+func (s *testSession) messageAdded(user string, messageID imap.MessageID, mailboxID imap.LabelID) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageAdded(messageID, mailboxID))
 
 	s.conns[s.userIDs[user]].Flush()
 }
 
-func (s *testSession) messageRemoved(user, messageID, mailboxID string) {
+func (s *testSession) messageRemoved(user string, messageID imap.MessageID, mailboxID imap.LabelID) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageRemoved(messageID, mailboxID))
 
 	s.conns[s.userIDs[user]].Flush()
 }
 
-func (s *testSession) messageDeleted(user, messageID string) {
+func (s *testSession) messageDeleted(user string, messageID imap.MessageID) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageDeleted(messageID))
 
 	s.conns[s.userIDs[user]].Flush()
 }
 
-func (s *testSession) messageSeen(user, messageID string, seen bool) {
+func (s *testSession) messageSeen(user string, messageID imap.MessageID, seen bool) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageSeen(messageID, seen))
 
 	s.conns[s.userIDs[user]].Flush()
 }
 
-func (s *testSession) messageFlagged(user, messageID string, flagged bool) {
+func (s *testSession) messageFlagged(user string, messageID imap.MessageID, flagged bool) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageFlagged(messageID, flagged))
 
 	s.conns[s.userIDs[user]].Flush()

@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent/message"
 	"github.com/ProtonMail/gluon/internal/backend/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/backend/ent/uid"
@@ -23,14 +24,22 @@ type MessageCreate struct {
 }
 
 // SetMessageID sets the "MessageID" field.
-func (mc *MessageCreate) SetMessageID(s string) *MessageCreate {
-	mc.mutation.SetMessageID(s)
+func (mc *MessageCreate) SetMessageID(imi imap.InternalMessageID) *MessageCreate {
+	mc.mutation.SetMessageID(imi)
 	return mc
 }
 
-// SetInternalID sets the "InternalID" field.
-func (mc *MessageCreate) SetInternalID(s string) *MessageCreate {
-	mc.mutation.SetInternalID(s)
+// SetRemoteID sets the "RemoteID" field.
+func (mc *MessageCreate) SetRemoteID(ii imap.MessageID) *MessageCreate {
+	mc.mutation.SetRemoteID(ii)
+	return mc
+}
+
+// SetNillableRemoteID sets the "RemoteID" field if the given value is not nil.
+func (mc *MessageCreate) SetNillableRemoteID(ii *imap.MessageID) *MessageCreate {
+	if ii != nil {
+		mc.SetRemoteID(*ii)
+	}
 	return mc
 }
 
@@ -196,9 +205,6 @@ func (mc *MessageCreate) check() error {
 	if _, ok := mc.mutation.MessageID(); !ok {
 		return &ValidationError{Name: "MessageID", err: errors.New(`ent: missing required field "Message.MessageID"`)}
 	}
-	if _, ok := mc.mutation.InternalID(); !ok {
-		return &ValidationError{Name: "InternalID", err: errors.New(`ent: missing required field "Message.InternalID"`)}
-	}
 	if _, ok := mc.mutation.Date(); !ok {
 		return &ValidationError{Name: "Date", err: errors.New(`ent: missing required field "Message.Date"`)}
 	}
@@ -252,13 +258,13 @@ func (mc *MessageCreate) createSpec() (*Message, *sqlgraph.CreateSpec) {
 		})
 		_node.MessageID = value
 	}
-	if value, ok := mc.mutation.InternalID(); ok {
+	if value, ok := mc.mutation.RemoteID(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: message.FieldInternalID,
+			Column: message.FieldRemoteID,
 		})
-		_node.InternalID = value
+		_node.RemoteID = value
 	}
 	if value, ok := mc.mutation.Date(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{

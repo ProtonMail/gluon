@@ -273,7 +273,25 @@ func RemoteIDIn(vs ...imap.MessageID) predicate.Message {
 		v[i] = string(vs[i])
 	}
 	return predicate.Message(func(s *sql.Selector) {
+<<<<<<< HEAD
+		s.Where(sql.In(s.C(FieldInternalID), v...))
+||||||| parent of 47ab52d (WIP)
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldInternalID), v...))
+=======
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
 		s.Where(sql.In(s.C(FieldRemoteID), v...))
+>>>>>>> 47ab52d (WIP)
 	})
 }
 
@@ -284,7 +302,25 @@ func RemoteIDNotIn(vs ...imap.MessageID) predicate.Message {
 		v[i] = string(vs[i])
 	}
 	return predicate.Message(func(s *sql.Selector) {
+<<<<<<< HEAD
+		s.Where(sql.NotIn(s.C(FieldInternalID), v...))
+||||||| parent of 47ab52d (WIP)
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldInternalID), v...))
+=======
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
 		s.Where(sql.NotIn(s.C(FieldRemoteID), v...))
+>>>>>>> 47ab52d (WIP)
 	})
 }
 

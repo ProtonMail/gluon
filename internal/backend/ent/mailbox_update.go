@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailboxattr"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailboxflag"
@@ -31,9 +32,23 @@ func (mu *MailboxUpdate) Where(ps ...predicate.Mailbox) *MailboxUpdate {
 	return mu
 }
 
-// SetMailboxID sets the "MailboxID" field.
-func (mu *MailboxUpdate) SetMailboxID(s string) *MailboxUpdate {
-	mu.mutation.SetMailboxID(s)
+// SetRemoteID sets the "RemoteID" field.
+func (mu *MailboxUpdate) SetRemoteID(ii imap.LabelID) *MailboxUpdate {
+	mu.mutation.SetRemoteID(ii)
+	return mu
+}
+
+// SetNillableRemoteID sets the "RemoteID" field if the given value is not nil.
+func (mu *MailboxUpdate) SetNillableRemoteID(ii *imap.LabelID) *MailboxUpdate {
+	if ii != nil {
+		mu.SetRemoteID(*ii)
+	}
+	return mu
+}
+
+// ClearRemoteID clears the value of the "RemoteID" field.
+func (mu *MailboxUpdate) ClearRemoteID() *MailboxUpdate {
+	mu.mutation.ClearRemoteID()
 	return mu
 }
 
@@ -320,11 +335,17 @@ func (mu *MailboxUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := mu.mutation.MailboxID(); ok {
+	if value, ok := mu.mutation.RemoteID(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: mailbox.FieldMailboxID,
+			Column: mailbox.FieldRemoteID,
+		})
+	}
+	if mu.mutation.RemoteIDCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: mailbox.FieldRemoteID,
 		})
 	}
 	if value, ok := mu.mutation.Name(); ok {
@@ -604,9 +625,23 @@ type MailboxUpdateOne struct {
 	mutation *MailboxMutation
 }
 
-// SetMailboxID sets the "MailboxID" field.
-func (muo *MailboxUpdateOne) SetMailboxID(s string) *MailboxUpdateOne {
-	muo.mutation.SetMailboxID(s)
+// SetRemoteID sets the "RemoteID" field.
+func (muo *MailboxUpdateOne) SetRemoteID(ii imap.LabelID) *MailboxUpdateOne {
+	muo.mutation.SetRemoteID(ii)
+	return muo
+}
+
+// SetNillableRemoteID sets the "RemoteID" field if the given value is not nil.
+func (muo *MailboxUpdateOne) SetNillableRemoteID(ii *imap.LabelID) *MailboxUpdateOne {
+	if ii != nil {
+		muo.SetRemoteID(*ii)
+	}
+	return muo
+}
+
+// ClearRemoteID clears the value of the "RemoteID" field.
+func (muo *MailboxUpdateOne) ClearRemoteID() *MailboxUpdateOne {
+	muo.mutation.ClearRemoteID()
 	return muo
 }
 
@@ -923,11 +958,17 @@ func (muo *MailboxUpdateOne) sqlSave(ctx context.Context) (_node *Mailbox, err e
 			}
 		}
 	}
-	if value, ok := muo.mutation.MailboxID(); ok {
+	if value, ok := muo.mutation.RemoteID(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: mailbox.FieldMailboxID,
+			Column: mailbox.FieldRemoteID,
+		})
+	}
+	if muo.mutation.RemoteIDCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: mailbox.FieldRemoteID,
 		})
 	}
 	if value, ok := muo.mutation.Name(); ok {

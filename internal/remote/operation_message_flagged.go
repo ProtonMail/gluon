@@ -1,10 +1,13 @@
 package remote
 
-import "encoding/gob"
+import (
+	"encoding/gob"
+	"github.com/ProtonMail/gluon/imap"
+)
 
 type OpMessageFlagged struct {
 	OperationBase
-	MessageIDs []string
+	MessageIDs []imap.MessageID
 	Flagged    bool
 }
 
