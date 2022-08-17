@@ -185,7 +185,7 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, liter
 
 	update := imap.NewMessagesCreated()
 
-	if err := update.Add(message, literal, []imap.LabelID{mboxID}); err != nil {
+	if err := update.Add(message, literal, mboxID); err != nil {
 		return imap.Message{}, err
 	}
 
@@ -262,7 +262,7 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 	update := imap.NewMessagesCreated()
 
 	for _, message := range conn.state.getMessages() {
-		if err := update.Add(message, conn.state.getLiteral(message.ID), conn.state.getLabelIDs(message.ID)); err != nil {
+		if err := update.Add(message, conn.state.getLiteral(message.ID), conn.state.getLabelIDs(message.ID)...); err != nil {
 			return err
 		}
 	}
