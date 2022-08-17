@@ -2,13 +2,12 @@
 package tests
 
 import (
-	"github.com/ProtonMail/gluon/imap"
 	"testing"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/emersion/go-imap/client"
-	"github.com/stretchr/testify/require"
-
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/stretchr/testify/require"
 )
 
 // runOneToOneTest runs a test with one account and one connection.

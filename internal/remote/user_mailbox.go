@@ -2,6 +2,7 @@ package remote
 
 import (
 	"context"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/google/uuid"
 )

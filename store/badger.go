@@ -40,7 +40,7 @@ func NewTestBadgerStore(path string, userID string, encryptionPassphrase []byte)
 		WithIndexCacheSize(128 * 1024 * 1024),
 	)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	store := &BadgerStore{db: db, gcExitCh: make(chan struct{})}

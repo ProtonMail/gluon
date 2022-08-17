@@ -2,6 +2,7 @@ package remote
 
 import (
 	"encoding/gob"
+
 	"github.com/ProtonMail/gluon/imap"
 )
 

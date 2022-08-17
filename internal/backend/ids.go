@@ -2,6 +2,7 @@ package backend
 
 import (
 	"fmt"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 )

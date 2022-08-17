@@ -1,9 +1,9 @@
 package tests
 
 import (
-	"github.com/ProtonMail/gluon/imap"
 	"testing"
 
+	"github.com/ProtonMail/gluon/imap"
 	goimap "github.com/emersion/go-imap"
 	uidplus "github.com/emersion/go-imap-uidplus"
 	"github.com/emersion/go-imap/client"

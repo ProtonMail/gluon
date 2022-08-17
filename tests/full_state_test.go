@@ -3,11 +3,11 @@ package tests
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/imap"
 	"runtime/pprof"
 	"testing"
 	"time"
 
+	"github.com/ProtonMail/gluon/imap"
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"

@@ -1,10 +1,10 @@
 package tests
 
 import (
-	"github.com/ProtonMail/gluon/imap"
 	"math/rand"
 	"testing"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/bradenaw/juniper/xslices"
 )
 

@@ -1,10 +1,10 @@
 package tests
 
 import (
-	imap2 "github.com/ProtonMail/gluon/imap"
 	"testing"
 	"time"
 
+	imap2 "github.com/ProtonMail/gluon/imap"
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/sirupsen/logrus"

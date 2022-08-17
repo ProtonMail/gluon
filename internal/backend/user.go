@@ -3,14 +3,14 @@ package backend
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/imap"
-	"github.com/bradenaw/juniper/xslices"
 	"runtime/pprof"
 	"sync"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/remote"
 	"github.com/ProtonMail/gluon/store"
+	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
 )
 

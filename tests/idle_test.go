@@ -1,8 +1,9 @@
 package tests
 
 import (
-	"github.com/ProtonMail/gluon/imap"
 	"testing"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 func TestIDLEExistsUpdates(t *testing.T) {
