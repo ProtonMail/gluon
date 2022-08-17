@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"context"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -8,58 +9,73 @@ import (
 )
 
 // CreateMessage appends a message literal to the mailbox with the given ID.
-func (user *User) CreateMessage(metadataID ConnMetadataID, mboxID imap.LabelID, literal []byte, flags imap.FlagSet, date time.Time) (imap.InternalMessageID, imap.Message, error) {
-	internalID := imap.InternalMessageID(uuid.NewString())
+func (user *User) CreateMessage(ctx context.Context,
+	metadataID ConnMetadataID,
+	mboxID imap.LabelID,
+	literal []byte,
+	flags imap.FlagSet,
+	date time.Time,
+) (imap.InternalMessageID, imap.Message, error) {
+	ctx = user.newContextWithIMAPID(ctx, metadataID)
 
-	if err := user.pushOp(&OpMessageCreate{
-		OperationBase: OperationBase{MetadataID: metadataID},
-		InternalID:    internalID,
-		MBoxID:        mboxID,
-		Literal:       literal,
-		Flags:         flags,
-		Date:          date,
-	}); err != nil {
+	msg, err := user.conn.CreateMessage(ctx, mboxID, literal, flags, date)
+	if err != nil {
 		return "", imap.Message{}, err
 	}
 
-	return internalID, imap.Message{
-		Flags: flags,
-		Date:  date,
-	}, nil
+	internalID := imap.InternalMessageID(uuid.NewString())
+
+	return internalID, msg, nil
 }
 
-// AddMessageToMailbox adds the message with the given ID to the mailbox with the given ID.
-func (user *User) AddMessagesToMailbox(metadataID ConnMetadataID, messageIDs []imap.MessageID, mboxID imap.LabelID) error {
-	return user.pushOp(&OpMessageAdd{
-		OperationBase: OperationBase{MetadataID: metadataID},
-		MessageIDs:    messageIDs,
-		MBoxID:        mboxID,
-	})
+// AddMessagesToMailbox adds the message with the given ID to the mailbox with the given ID.
+func (user *User) AddMessagesToMailbox(ctx context.Context,
+	metadataID ConnMetadataID,
+	messageIDs []imap.MessageID,
+	mboxID imap.LabelID,
+) error {
+	ctx = user.newContextWithIMAPID(ctx, metadataID)
+
+	if err := user.conn.LabelMessages(ctx, messageIDs, mboxID); err != nil {
+		return user.refresh(ctx, messageIDs, mboxID)
+	}
+
+	return nil
 }
 
-// RemoveMessageFromMailbox removes the message with the given ID from the mailbox with the given ID.
-func (user *User) RemoveMessagesFromMailbox(metadataID ConnMetadataID, messageIDs []imap.MessageID, mboxID imap.LabelID) error {
-	return user.pushOp(&OpMessageRemove{
-		OperationBase: OperationBase{MetadataID: metadataID},
-		MessageIDs:    messageIDs,
-		MBoxID:        mboxID,
-	})
+// RemoveMessagesFromMailbox removes the message with the given ID from the mailbox with the given ID.
+func (user *User) RemoveMessagesFromMailbox(ctx context.Context,
+	metadataID ConnMetadataID,
+	messageIDs []imap.MessageID,
+	mboxID imap.LabelID,
+) error {
+	ctx = user.newContextWithIMAPID(ctx, metadataID)
+
+	if err := user.conn.UnlabelMessages(ctx, messageIDs, mboxID); err != nil {
+		return user.refresh(ctx, messageIDs, mboxID)
+	}
+
+	return nil
 }
 
-// SetMessageSeen marks the message with the given ID as seen or unseen.
-func (user *User) SetMessagesSeen(metadataID ConnMetadataID, messageIDs []imap.MessageID, seen bool) error {
-	return user.pushOp(&OpMessageSeen{
-		OperationBase: OperationBase{MetadataID: metadataID},
-		MessageIDs:    messageIDs,
-		Seen:          seen,
-	})
+// SetMessagesSeen marks the message with the given ID as seen or unseen.
+func (user *User) SetMessagesSeen(ctx context.Context, metadataID ConnMetadataID, messageIDs []imap.MessageID, seen bool) error {
+	ctx = user.newContextWithIMAPID(ctx, metadataID)
+
+	if err := user.conn.MarkMessagesSeen(ctx, messageIDs, seen); err != nil {
+		return user.refresh(ctx, messageIDs)
+	}
+
+	return nil
 }
 
-// SetMessageFlagged marks the message with the given ID as seen or unseen.
-func (user *User) SetMessagesFlagged(metadataID ConnMetadataID, messageIDs []imap.MessageID, flagged bool) error {
-	return user.pushOp(&OpMessageFlagged{
-		OperationBase: OperationBase{MetadataID: metadataID},
-		MessageIDs:    messageIDs,
-		Flagged:       flagged,
-	})
+// SetMessagesFlagged marks the message with the given ID as seen or unseen.
+func (user *User) SetMessagesFlagged(ctx context.Context, metadataID ConnMetadataID, messageIDs []imap.MessageID, flagged bool) error {
+	ctx = user.newContextWithIMAPID(ctx, metadataID)
+
+	if err := user.conn.MarkMessagesFlagged(ctx, messageIDs, flagged); err != nil {
+		return user.refresh(ctx, messageIDs)
+	}
+
+	return nil
 }

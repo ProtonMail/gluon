@@ -1,25 +1,32 @@
 package remote
 
+import "fmt"
+
 func (user *User) CreateConnMetadataStore(metadataID ConnMetadataID) error {
-	if err := user.pushOp(&OpConnMetadataStoreCreate{
-		OperationBase: OperationBase{MetadataID: metadataID},
-	}); err != nil {
-		return err
-	}
+	user.connMetadataStoreLock.Lock()
+	defer user.connMetadataStoreLock.Unlock()
+
+	user.connMetadataStore.CreateStore(metadataID)
 
 	return nil
 }
 
 func (user *User) DeleteConnMetadataStore(metadataID ConnMetadataID) error {
-	return user.pushOp(&OpConnMetadataStoreDelete{
-		OperationBase: OperationBase{MetadataID: metadataID},
-	})
+	user.connMetadataStoreLock.Lock()
+	defer user.connMetadataStoreLock.Unlock()
+
+	user.connMetadataStore.DeleteStore(metadataID)
+
+	return nil
 }
 
 func (user *User) SetConnMetadataValue(metadataID ConnMetadataID, key string, value any) error {
-	return user.pushOp(&OpConnMetadataStoreSetValue{
-		OperationBase: OperationBase{MetadataID: metadataID},
-		Key:           key,
-		Value:         value,
-	})
+	user.connMetadataStoreLock.Lock()
+	defer user.connMetadataStoreLock.Unlock()
+
+	if ok := user.connMetadataStore.SetValue(metadataID, key, value); !ok {
+		return fmt.Errorf("failed to set value for ConnMetadata with ID=%v", metadataID)
+	}
+
+	return nil
 }

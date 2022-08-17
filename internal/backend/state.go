@@ -2,7 +2,6 @@ package backend
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -482,9 +481,7 @@ func (state *State) updateMessageRemoteID(internalID imap.InternalMessageID, rem
 // User will clean up existing metadata entries by itself when closed.
 func (state *State) deleteConnMetadata() error {
 	if err := state.remote.DeleteConnMetadataStore(state.metadataID); err != nil {
-		if !errors.Is(err, remote.ErrQueueClosed) {
-			return fmt.Errorf("failed to delete conn metadata store: %w", err)
-		}
+		return fmt.Errorf("failed to delete conn metadata store: %w", err)
 	}
 
 	return nil

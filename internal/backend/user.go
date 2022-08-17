@@ -80,7 +80,7 @@ func (user *user) tx(ctx context.Context, fn func(tx *ent.Tx) error) error {
 func (user *user) close(ctx context.Context) error {
 	user.closeStates()
 
-	if err := user.remote.CloseAndSerializeOperationQueue(ctx); err != nil {
+	if err := user.remote.Close(ctx); err != nil {
 		return fmt.Errorf("failed to close user remote: %w", err)
 	}
 

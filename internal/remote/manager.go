@@ -67,7 +67,7 @@ func (m *Manager) RemoveUser(ctx context.Context, userID string) error {
 		return ErrNoSuchUser
 	}
 
-	if err := user.CloseAndFlushOperationQueue(ctx); err != nil {
+	if err := user.Close(ctx); err != nil {
 		return err
 	}
 
