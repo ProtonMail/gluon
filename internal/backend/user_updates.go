@@ -194,7 +194,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, tx *ent.Tx, update *
 
 		if err := user.forStateInMailbox(internalMailboxID, func(state *State) error {
 			return state.pushResponder(ctx, tx, xslices.Map(messageIDs, func(messageID MessageIDPair) responder {
-				return newExists(messageID, messageUIDs[messageID.InternalID])
+				return newExists(messageID.InternalID, messageUIDs[messageID.InternalID])
 			})...)
 		}); err != nil {
 			return err
@@ -278,11 +278,7 @@ func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, m
 
 	if err := user.forStateInMailbox(mboxID, func(other *State) error {
 		for _, messageID := range messageIDs {
-			remoteID, err := DBGetRemoteMessageID(ctx, tx.Client(), messageID)
-			if err != nil {
-				return err
-			}
-			if err := other.pushResponder(ctx, tx, newExists(MessageIDPair{InternalID: messageID, RemoteID: remoteID}, messageUIDs[messageID])); err != nil {
+			if err := other.pushResponder(ctx, tx, newExists(messageID, messageUIDs[messageID])); err != nil {
 				return err
 			}
 		}

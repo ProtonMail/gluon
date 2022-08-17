@@ -17,20 +17,25 @@ type responder interface {
 }
 
 type exists struct {
-	messageID  MessageIDPair
+	messageID  imap.InternalMessageID
 	messageUID int
 }
 
-func newExists(messageID MessageIDPair, messageUID int) *exists {
+func newExists(messageID imap.InternalMessageID, messageUID int) *exists {
 	return &exists{messageID: messageID, messageUID: messageUID}
 }
 
 func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]response.Response, error) {
-	if err := snap.appendMessage(ctx, tx, u.messageID); err != nil {
+	remoteID, err := DBGetRemoteMessageID(ctx, tx.Client(), u.messageID)
+	if err != nil {
 		return nil, err
 	}
 
-	seq, err := snap.getMessageSeq(u.messageID.InternalID)
+	if err := snap.appendMessage(ctx, tx, MessageIDPair{InternalID: u.messageID, RemoteID: remoteID}); err != nil {
+		return nil, err
+	}
+
+	seq, err := snap.getMessageSeq(u.messageID)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +43,7 @@ func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]resp
 	res := []response.Response{response.Exists().WithCount(seq)}
 
 	if recent := len(snap.getMessagesWithFlag(imap.FlagRecent)); recent > 0 {
-		if err := DBClearRecentFlag(ctx, tx, snap.mboxID.InternalID, u.messageID.InternalID); err != nil {
+		if err := DBClearRecentFlag(ctx, tx, snap.mboxID.InternalID, u.messageID); err != nil {
 			return nil, err
 		}
 
@@ -49,7 +54,7 @@ func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]resp
 }
 
 func (u *exists) getMessageID() imap.InternalMessageID {
-	return u.messageID.InternalID
+	return u.messageID
 }
 
 type expunge struct {

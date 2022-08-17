@@ -126,7 +126,7 @@ func (state *State) actionCreateMessage(ctx context.Context, tx *ent.Tx, mboxID 
 	}
 
 	if err := state.forStateInMailbox(mboxID.InternalID, func(state *State) error {
-		return state.pushResponder(ctx, tx, newExists(MessageIDPair{InternalID: internalID, RemoteID: res.ID}, messageUIDs[internalID]))
+		return state.pushResponder(ctx, tx, newExists(internalID, messageUIDs[internalID]))
 	}); err != nil {
 		return 0, err
 	}
