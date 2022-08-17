@@ -103,30 +103,6 @@ func (b *BadgerStore) Set(messageID string, literal []byte) error {
 	})
 }
 
-func (b *BadgerStore) Update(oldID, newID string) error {
-	return b.db.Update(func(txn *badger.Txn) error {
-		oldIDBytes := []byte(oldID)
-		newIDBytes := []byte(newID)
-
-		item, err := txn.Get(oldIDBytes)
-		if err != nil {
-			return err
-		}
-
-		buffer := make([]byte, item.ValueSize())
-		buffer, err = item.ValueCopy(buffer)
-		if err != nil {
-			return err
-		}
-
-		if err := txn.Set(newIDBytes, buffer); err != nil {
-			return err
-		}
-
-		return txn.Delete(oldIDBytes)
-	})
-}
-
 func (b *BadgerStore) Delete(messageID ...string) error {
 	return b.db.Update(func(txn *badger.Txn) error {
 		for _, v := range messageID {

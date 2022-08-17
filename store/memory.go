@@ -37,22 +37,6 @@ func (c *inMemoryStore) Set(messageID string, literal []byte) error {
 	return nil
 }
 
-func (c *inMemoryStore) Update(oldID, newID string) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	message, ok := c.data[oldID]
-	if !ok {
-		panic("no such message")
-	}
-
-	c.data[newID] = message
-
-	delete(c.data, oldID)
-
-	return nil
-}
-
 func (c *inMemoryStore) Delete(ids ...string) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()

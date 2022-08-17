@@ -98,18 +98,6 @@ func (c *onDiskStore) Set(messageID string, b []byte) error {
 	)
 }
 
-func (c *onDiskStore) Update(oldID, newID string) error {
-	if c.sem != nil {
-		c.sem.Lock()
-		defer c.sem.Unlock()
-	}
-
-	return os.Rename(
-		filepath.Join(c.path, hashString(oldID)),
-		filepath.Join(c.path, hashString(newID)),
-	)
-}
-
 func (c *onDiskStore) Delete(ids ...string) error {
 	if c.sem != nil {
 		c.sem.Lock()
