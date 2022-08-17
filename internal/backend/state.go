@@ -368,7 +368,7 @@ func (state *State) endIdle() {
 }
 
 func (state *State) getLiteral(messageID imap.InternalMessageID) ([]byte, error) {
-	return state.store.Get(string(messageID))
+	return state.store.Get(messageID)
 }
 
 func (state *State) flushResponses(ctx context.Context, tx *ent.Tx, permitExpunge bool) ([]response.Response, error) {

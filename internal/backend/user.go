@@ -6,11 +6,9 @@ import (
 	"runtime/pprof"
 	"sync"
 
-	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/remote"
 	"github.com/ProtonMail/gluon/store"
-	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
 )
 
@@ -109,8 +107,6 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 			return err
 		}
 
-		return user.store.Delete(xslices.Map(ids, func(i imap.InternalMessageID) string {
-			return string(i)
-		})...)
+		return user.store.Delete(ids...)
 	})
 }

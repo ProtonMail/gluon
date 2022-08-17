@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"fmt"
+	"github.com/ProtonMail/gluon/imap"
 	"runtime"
 	"sync"
 	"testing"
@@ -52,7 +53,7 @@ func testStore(t *testing.T, store store.Store) {
 			defer wg.Done()
 
 			for j := 0; j < 1<<5; j++ {
-				message := fmt.Sprintf("message(%v)(%v)", i, j)
+				message := imap.InternalMessageID(fmt.Sprintf("message(%v)(%v)", i, j))
 				literal := fmt.Sprintf("literal(%v)(%v)", i, j)
 
 				require.NoError(t, store.Set(message, []byte(literal)))

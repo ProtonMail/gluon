@@ -2,6 +2,7 @@ package store_benchmarks
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap"
 	"math/rand"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
@@ -12,7 +13,7 @@ import (
 )
 
 type Get struct {
-	uuids []string
+	uuids []imap.InternalMessageID
 }
 
 func (*Get) Name() string {

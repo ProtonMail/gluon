@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"github.com/ProtonMail/gluon/imap"
 	"os"
 	"path/filepath"
 )
@@ -42,13 +43,13 @@ func NewOnDiskStore(path string, pass []byte, opt ...Option) (Store, error) {
 	return store, nil
 }
 
-func (c *onDiskStore) Get(messageID string) ([]byte, error) {
+func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 	if c.sem != nil {
 		c.sem.Lock()
 		defer c.sem.Unlock()
 	}
 
-	enc, err := os.ReadFile(filepath.Join(c.path, hashString(messageID)))
+	enc, err := os.ReadFile(filepath.Join(c.path, hashString(string(messageID))))
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +71,7 @@ func (c *onDiskStore) Get(messageID string) ([]byte, error) {
 	return b, nil
 }
 
-func (c *onDiskStore) Set(messageID string, b []byte) error {
+func (c *onDiskStore) Set(messageID imap.InternalMessageID, b []byte) error {
 	if c.sem != nil {
 		c.sem.Lock()
 		defer c.sem.Unlock()
@@ -92,20 +93,20 @@ func (c *onDiskStore) Set(messageID string, b []byte) error {
 	}
 
 	return os.WriteFile(
-		filepath.Join(c.path, hashString(messageID)),
+		filepath.Join(c.path, hashString(string(messageID))),
 		c.gcm.Seal(nonce, nonce, b, nil),
 		0o600,
 	)
 }
 
-func (c *onDiskStore) Delete(ids ...string) error {
+func (c *onDiskStore) Delete(ids ...imap.InternalMessageID) error {
 	if c.sem != nil {
 		c.sem.Lock()
 		defer c.sem.Unlock()
 	}
 
 	for _, id := range ids {
-		if err := os.RemoveAll(filepath.Join(c.path, hashString(id))); err != nil {
+		if err := os.RemoveAll(filepath.Join(c.path, hashString(string(id)))); err != nil {
 			return err
 		}
 	}

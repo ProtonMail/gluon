@@ -2,6 +2,7 @@ package store_benchmarks
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap"
 	"sync"
 	"time"
 
@@ -12,12 +13,12 @@ import (
 	"github.com/google/uuid"
 )
 
-func CreateRandomState(store store.Store, count uint) ([]string, error) {
-	uuids := make([]string, 0, count)
+func CreateRandomState(store store.Store, count uint) ([]imap.InternalMessageID, error) {
+	uuids := make([]imap.InternalMessageID, 0, count)
 	data := make([]byte, *flags.StoreItemSize)
 
 	for i := uint(0); i < count; i++ {
-		uuid := uuid.NewString()
+		uuid := imap.InternalMessageID(uuid.NewString())
 
 		if err := store.Set(uuid, data); err != nil {
 			return nil, err

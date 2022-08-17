@@ -100,7 +100,7 @@ func (state *State) actionCreateMessage(ctx context.Context, tx *ent.Tx, mboxID 
 			return 0, fmt.Errorf("failed to set internal ID: %w", err)
 		}
 
-		if err := state.store.Set(string(internalID), literal); err != nil {
+		if err := state.store.Set(internalID, literal); err != nil {
 			return 0, fmt.Errorf("failed to store message literal: %w", err)
 		}
 

@@ -57,9 +57,7 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 			return err
 		}
 
-		if err := user.store.Delete(xslices.Map(messageIDs, func(i imap.InternalMessageID) string {
-			return string(i)
-		})...); err != nil {
+		if err := user.store.Delete(messageIDs...); err != nil {
 			return err
 		}
 

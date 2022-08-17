@@ -2,6 +2,7 @@ package store_benchmarks
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
@@ -11,7 +12,7 @@ import (
 )
 
 type Delete struct {
-	uuids []string
+	uuids []imap.InternalMessageID
 }
 
 func (*Delete) Name() string {

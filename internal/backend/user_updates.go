@@ -141,7 +141,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, tx *ent.Tx, update *
 			return fmt.Errorf("failed to set internal ID: %w", err)
 		}
 
-		if err := user.store.Set(internalID, literal); err != nil {
+		if err := user.store.Set(imap.InternalMessageID(internalID), literal); err != nil {
 			return fmt.Errorf("failed to store message literal: %w", err)
 		}
 

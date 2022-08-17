@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/ProtonMail/gluon/imap"
 	"path/filepath"
 	"sync"
 	"time"
@@ -75,7 +76,7 @@ func (b *BadgerStore) startGCCollector() {
 	}()
 }
 
-func (b *BadgerStore) Get(messageID string) ([]byte, error) {
+func (b *BadgerStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 	var data []byte
 
 	if err := b.db.View(func(txn *badger.Txn) error {
@@ -97,13 +98,13 @@ func (b *BadgerStore) Get(messageID string) ([]byte, error) {
 	return data, nil
 }
 
-func (b *BadgerStore) Set(messageID string, literal []byte) error {
+func (b *BadgerStore) Set(messageID imap.InternalMessageID, literal []byte) error {
 	return b.db.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(messageID), literal)
 	})
 }
 
-func (b *BadgerStore) Delete(messageID ...string) error {
+func (b *BadgerStore) Delete(messageID ...imap.InternalMessageID) error {
 	return b.db.Update(func(txn *badger.Txn) error {
 		for _, v := range messageID {
 			if err := txn.Delete([]byte(v)); err != nil {
