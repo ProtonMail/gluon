@@ -324,11 +324,7 @@ func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mail
 
 	mboxIDPair := NewMailboxIDPair(mbox)
 
-	if _, err := state.actionAddMessagesToMailbox(ctx, tx, messageIDs, mboxIDPair); err != nil {
-		return err
-	}
-
-	if err := state.actionRemoveMessagesFromMailbox(ctx, tx, messageIDs, NewMailboxIDPair(inbox)); err != nil {
+	if _, err := state.actionMoveMessages(ctx, tx, messageIDs, NewMailboxIDPair(inbox), mboxIDPair); err != nil {
 		return err
 	}
 
