@@ -133,7 +133,7 @@ func (conn *Dummy) ValidateDelete(name []string) error {
 	return nil
 }
 
-func (conn *Dummy) GetLabel(ctx context.Context, labelID string) (imap.Mailbox, error) {
+func (conn *Dummy) GetLabel(ctx context.Context, labelID imap.LabelID) (imap.Mailbox, error) {
 	return conn.state.getLabel(labelID), nil
 }
 
@@ -150,7 +150,7 @@ func (conn *Dummy) CreateLabel(ctx context.Context, name []string) (imap.Mailbox
 	return mbox, nil
 }
 
-func (conn *Dummy) UpdateLabel(ctx context.Context, labelID string, name []string) error {
+func (conn *Dummy) UpdateLabel(ctx context.Context, labelID imap.LabelID, name []string) error {
 	conn.state.updateLabel(labelID, name)
 
 	conn.pushUpdate(imap.NewMailboxUpdated(labelID, name))
@@ -158,7 +158,7 @@ func (conn *Dummy) UpdateLabel(ctx context.Context, labelID string, name []strin
 	return nil
 }
 
-func (conn *Dummy) DeleteLabel(ctx context.Context, labelID string) error {
+func (conn *Dummy) DeleteLabel(ctx context.Context, labelID imap.LabelID) error {
 	conn.state.deleteLabel(labelID)
 
 	conn.pushUpdate(imap.NewMailboxDeleted(labelID))
@@ -166,11 +166,11 @@ func (conn *Dummy) DeleteLabel(ctx context.Context, labelID string) error {
 	return nil
 }
 
-func (conn *Dummy) GetMessage(ctx context.Context, messageID string) (imap.Message, []string, error) {
+func (conn *Dummy) GetMessage(ctx context.Context, messageID imap.MessageID) (imap.Message, []imap.LabelID, error) {
 	return conn.state.getMessage(messageID), conn.state.getLabelIDs(messageID), nil
 }
 
-func (conn *Dummy) CreateMessage(ctx context.Context, mboxID string, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, error) {
+func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, error) {
 	// NOTE: We are only recording this here since it was the easiest command to verify the data has been record properly
 	// in the context, as APPEND will always require a communication with the remote connector.
 	conn.state.recordIMAPID(ctx)
@@ -185,7 +185,7 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID string, literal []b
 
 	update := imap.NewMessagesCreated()
 
-	if err := update.Add(message, literal, []string{mboxID}); err != nil {
+	if err := update.Add(message, literal, mboxID); err != nil {
 		return imap.Message{}, err
 	}
 
@@ -194,11 +194,11 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID string, literal []b
 	return message, nil
 }
 
-func (conn *Dummy) LabelMessages(ctx context.Context, messageIDs []string, mboxID string) error {
+func (conn *Dummy) LabelMessages(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.LabelID) error {
 	for _, messageID := range messageIDs {
 		conn.state.labelMessage(messageID, mboxID)
 
-		conn.pushUpdate(imap.NewMessageUpdated(
+		conn.pushUpdate(imap.NewMessageLabelsUpdated(
 			messageID,
 			conn.state.getLabelIDs(messageID),
 			conn.state.isSeen(messageID),
@@ -209,11 +209,11 @@ func (conn *Dummy) LabelMessages(ctx context.Context, messageIDs []string, mboxI
 	return nil
 }
 
-func (conn *Dummy) UnlabelMessages(ctx context.Context, messageIDs []string, mboxID string) error {
+func (conn *Dummy) UnlabelMessages(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.LabelID) error {
 	for _, messageID := range messageIDs {
 		conn.state.unlabelMessage(messageID, mboxID)
 
-		conn.pushUpdate(imap.NewMessageUpdated(
+		conn.pushUpdate(imap.NewMessageLabelsUpdated(
 			messageID,
 			conn.state.getLabelIDs(messageID),
 			conn.state.isSeen(messageID),
@@ -224,13 +224,28 @@ func (conn *Dummy) UnlabelMessages(ctx context.Context, messageIDs []string, mbo
 	return nil
 }
 
-func (conn *Dummy) MarkMessagesSeen(ctx context.Context, messageIDs []string, seen bool) error {
+func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID, labelFromID, labelToID imap.LabelID) error {
+	for _, messageID := range messageIDs {
+		conn.state.unlabelMessage(messageID, labelFromID)
+		conn.state.labelMessage(messageID, labelToID)
+
+		conn.pushUpdate(imap.NewMessageLabelsUpdated(
+			messageID,
+			conn.state.getLabelIDs(messageID),
+			conn.state.isSeen(messageID),
+			conn.state.isFlagged(messageID),
+		))
+	}
+
+	return nil
+}
+
+func (conn *Dummy) MarkMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error {
 	for _, messageID := range messageIDs {
 		conn.state.setSeen(messageID, seen)
 
-		conn.pushUpdate(imap.NewMessageUpdated(
+		conn.pushUpdate(imap.NewMessageFlagsUpdated(
 			messageID,
-			conn.state.getLabelIDs(messageID),
 			conn.state.isSeen(messageID),
 			conn.state.isFlagged(messageID),
 		))
@@ -239,13 +254,12 @@ func (conn *Dummy) MarkMessagesSeen(ctx context.Context, messageIDs []string, se
 	return nil
 }
 
-func (conn *Dummy) MarkMessagesFlagged(ctx context.Context, messageIDs []string, flagged bool) error {
+func (conn *Dummy) MarkMessagesFlagged(ctx context.Context, messageIDs []imap.MessageID, flagged bool) error {
 	for _, messageID := range messageIDs {
 		conn.state.setFlagged(messageID, flagged)
 
-		conn.pushUpdate(imap.NewMessageUpdated(
+		conn.pushUpdate(imap.NewMessageFlagsUpdated(
 			messageID,
-			conn.state.getLabelIDs(messageID),
 			conn.state.isSeen(messageID),
 			conn.state.isFlagged(messageID),
 		))
@@ -262,7 +276,7 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 	update := imap.NewMessagesCreated()
 
 	for _, message := range conn.state.getMessages() {
-		if err := update.Add(message, conn.state.getLiteral(message.ID), conn.state.getLabelIDs(message.ID)); err != nil {
+		if err := update.Add(message, conn.state.getLiteral(message.ID), conn.state.getLabelIDs(message.ID)...); err != nil {
 			return err
 		}
 	}
@@ -328,8 +342,10 @@ func (conn *Dummy) pushUpdate(update imap.Update) {
 	// We mimic the behaviour of the Proton sever. if several update to a message or mailbox happen in between
 	// two event polls, we only get one refresh update with the latest state.
 	switch update := update.(type) {
-	case *imap.MessageUpdated:
-		conn.queue = removeMessageUpdatedFromSlice(conn.queue, update.MessageID)
+	case *imap.MessageLabelsUpdated:
+		conn.queue = removeMessageLabelsUpdatedFromSlice(conn.queue, update.MessageID)
+	case *imap.MessageFlagsUpdated:
+		conn.queue = removeMessageFlagsUpdatedFromSlice(conn.queue, update.MessageID)
 
 	case *imap.MailboxUpdated:
 		conn.queue = removeMailboxUpdatedFromSlice(conn.queue, update.MailboxID)
@@ -349,15 +365,23 @@ func (conn *Dummy) popUpdates() []imap.Update {
 	return updates
 }
 
-func removeMessageUpdatedFromSlice(updates []imap.Update, messageID string) []imap.Update {
+func removeMessageLabelsUpdatedFromSlice(updates []imap.Update, messageID imap.MessageID) []imap.Update {
 	return xslices.Filter(updates, func(update imap.Update) bool {
-		u, ok := update.(*imap.MessageUpdated)
+		u, ok := update.(*imap.MessageLabelsUpdated)
 
 		return (!ok) || (u.MessageID != messageID)
 	})
 }
 
-func removeMailboxUpdatedFromSlice(updates []imap.Update, mailboxID string) []imap.Update {
+func removeMessageFlagsUpdatedFromSlice(updates []imap.Update, messageID imap.MessageID) []imap.Update {
+	return xslices.Filter(updates, func(update imap.Update) bool {
+		u, ok := update.(*imap.MessageFlagsUpdated)
+
+		return (!ok) || (u.MessageID != messageID)
+	})
+}
+
+func removeMailboxUpdatedFromSlice(updates []imap.Update, mailboxID imap.LabelID) []imap.Update {
 	return xslices.Filter(updates, func(update imap.Update) bool {
 		u, ok := update.(*imap.MailboxUpdated)
 

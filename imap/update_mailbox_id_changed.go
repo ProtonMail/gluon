@@ -2,27 +2,25 @@ package imap
 
 import (
 	"fmt"
-
-	"github.com/ProtonMail/gluon/internal/utils"
 )
 
 type MailboxIDChanged struct {
 	*updateWaiter
 
-	OldID string
-	NewID string
+	InternalID InternalMailboxID
+	RemoteID   LabelID
 }
 
-func NewMailboxIDChanged(oldID, newID string) *MailboxIDChanged {
+func NewMailboxIDChanged(internalID InternalMailboxID, remoteID LabelID) *MailboxIDChanged {
 	return &MailboxIDChanged{
 		updateWaiter: newUpdateWaiter(),
-		OldID:        oldID,
-		NewID:        newID,
+		InternalID:   internalID,
+		RemoteID:     remoteID,
 	}
 }
 
 func (u *MailboxIDChanged) String() string {
-	return fmt.Sprintf("MailboxIDChanged: OldID = %v, NewID = %v", utils.ShortID(u.OldID), utils.ShortID(u.NewID))
+	return fmt.Sprintf("MailboxIDChanged: InternalID = %v, RemoteID = %v", u.InternalID.ShortID(), u.RemoteID.ShortID())
 }
 
 func (*MailboxIDChanged) _isUpdate() {}

@@ -1,10 +1,11 @@
 package store
 
+import "github.com/ProtonMail/gluon/imap"
+
 type Store interface {
-	Get(messageID string) ([]byte, error)
-	Set(messageID string, literal []byte) error
-	Update(oldID, newID string) error
-	Delete(messageID ...string) error
+	Get(messageID imap.InternalMessageID) ([]byte, error)
+	Set(messageID imap.InternalMessageID, literal []byte) error
+	Delete(messageID ...imap.InternalMessageID) error
 	Close() error
 }
 

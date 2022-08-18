@@ -2,17 +2,15 @@ package imap
 
 import (
 	"fmt"
-
-	"github.com/ProtonMail/gluon/internal/utils"
 )
 
 type MessageDeleted struct {
 	*updateWaiter
 
-	MessageID string
+	MessageID MessageID
 }
 
-func NewMessagesDeleted(messageID string) *MessageDeleted {
+func NewMessagesDeleted(messageID MessageID) *MessageDeleted {
 	return &MessageDeleted{
 		updateWaiter: newUpdateWaiter(),
 		MessageID:    messageID,
@@ -20,7 +18,7 @@ func NewMessagesDeleted(messageID string) *MessageDeleted {
 }
 
 func (u *MessageDeleted) String() string {
-	return fmt.Sprintf("MessageDeleted ID=%v", utils.ShortID(u.MessageID))
+	return fmt.Sprintf("MessageDeleted ID=%v", u.MessageID.ShortID())
 }
 
 func (u *MessageDeleted) _isUpdate() {}

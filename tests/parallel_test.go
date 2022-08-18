@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/bradenaw/juniper/xslices"
 )
 
@@ -13,7 +14,7 @@ func TestSelectWhileSyncing(t *testing.T) {
 		mailboxNames := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"}
 
 		// Collect the mailbox IDs as they're created.
-		mailboxIDs := xslices.Map(mailboxNames, func(name string) string {
+		mailboxIDs := xslices.Map(mailboxNames, func(name string) imap.LabelID {
 			return s.mailboxCreated("user", []string{name})
 		})
 

@@ -9,7 +9,7 @@ import (
 )
 
 // applyMessageFlagsAdded adds the flags to the given messages.
-func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, messageIDs []string, addFlags imap.FlagSet) error {
+func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, addFlags imap.FlagSet) error {
 	if addFlags.Contains(imap.FlagRecent) {
 		panic("the recent flag is read-only")
 	}
@@ -21,13 +21,13 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 		return err
 	}
 
-	delFlags, err := DBGetMessageDeleted(ctx, client, state.snap.mboxID, messageIDs)
+	delFlags, err := DBGetMessageDeleted(ctx, client, state.snap.mboxID.InternalID, messageIDs)
 	if err != nil {
 		return err
 	}
 
 	if addFlags.Contains(imap.FlagDeleted) {
-		if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return !delFlags[messageID]
 		}), true); err != nil {
 			return err
@@ -35,7 +35,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 	}
 
 	for _, flag := range addFlags.Remove(imap.FlagDeleted).ToSlice() {
-		if err := DBAddMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := DBAddMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return !curFlags[messageID].Contains(flag)
 		}), flag); err != nil {
 			return err
@@ -70,7 +70,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 }
 
 // applyMessageFlagsRemoved removes the flags from the given messages.
-func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, messageIDs []string, remFlags imap.FlagSet) error {
+func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, remFlags imap.FlagSet) error {
 	if remFlags.Contains(imap.FlagRecent) {
 		panic("the recent flag is read-only")
 	}
@@ -82,13 +82,13 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 		return err
 	}
 
-	delFlags, err := DBGetMessageDeleted(ctx, client, state.snap.mboxID, messageIDs)
+	delFlags, err := DBGetMessageDeleted(ctx, client, state.snap.mboxID.InternalID, messageIDs)
 	if err != nil {
 		return err
 	}
 
 	if remFlags.Contains(imap.FlagDeleted) {
-		if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return delFlags[messageID]
 		}), false); err != nil {
 			return err
@@ -96,7 +96,7 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 	}
 
 	for _, flag := range remFlags.Remove(imap.FlagDeleted).ToSlice() {
-		if err := DBRemoveMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID string) bool {
+		if err := DBRemoveMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return curFlags[messageID].Contains(flag)
 		}), flag); err != nil {
 			return err
@@ -127,7 +127,7 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 		}
 	}
 
-	res := make(map[string]imap.FlagSet)
+	res := make(map[imap.InternalMessageID]imap.FlagSet)
 
 	for _, messageID := range messageIDs {
 		res[messageID] = curFlags[messageID].RemoveFlagSet(remFlags)
@@ -137,12 +137,12 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 }
 
 // applyMessageFlagsSet sets the flags of the given messages.
-func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messageIDs []string, setFlags imap.FlagSet) error {
+func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, setFlags imap.FlagSet) error {
 	if setFlags.Contains(imap.FlagRecent) {
 		panic("the recent flag is read-only")
 	}
 
-	if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {
+	if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {
 		return err
 	}
 

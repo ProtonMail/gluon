@@ -2,21 +2,22 @@ package store
 
 import (
 	"errors"
+	"github.com/ProtonMail/gluon/imap"
 	"sync"
 )
 
 type inMemoryStore struct {
-	data map[string][]byte
+	data map[imap.InternalMessageID][]byte
 	lock sync.RWMutex
 }
 
 func NewInMemoryStore() Store {
 	return &inMemoryStore{
-		data: make(map[string][]byte),
+		data: make(map[imap.InternalMessageID][]byte),
 	}
 }
 
-func (c *inMemoryStore) Get(messageID string) ([]byte, error) {
+func (c *inMemoryStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -28,7 +29,7 @@ func (c *inMemoryStore) Get(messageID string) ([]byte, error) {
 	return literal, nil
 }
 
-func (c *inMemoryStore) Set(messageID string, literal []byte) error {
+func (c *inMemoryStore) Set(messageID imap.InternalMessageID, literal []byte) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -37,23 +38,7 @@ func (c *inMemoryStore) Set(messageID string, literal []byte) error {
 	return nil
 }
 
-func (c *inMemoryStore) Update(oldID, newID string) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	message, ok := c.data[oldID]
-	if !ok {
-		panic("no such message")
-	}
-
-	c.data[newID] = message
-
-	delete(c.data, oldID)
-
-	return nil
-}
-
-func (c *inMemoryStore) Delete(ids ...string) error {
+func (c *inMemoryStore) Delete(ids ...imap.InternalMessageID) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -68,7 +53,7 @@ func (c *inMemoryStore) Close() error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.data = make(map[string][]byte)
+	c.data = make(map[imap.InternalMessageID][]byte)
 
 	return nil
 }

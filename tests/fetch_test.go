@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ProtonMail/gluon/imap"
+
 	"github.com/ProtonMail/gluon/internal/backend"
 
 	goimap "github.com/emersion/go-imap"
@@ -317,7 +319,7 @@ func TestFetchUID(t *testing.T) {
 }
 
 func TestFetchFromDataSequences(t *testing.T) {
-	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, _ *testSession, _ string, _ string) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, _ *testSession, _ string, _ imap.LabelID) {
 		const sectionStr = "BODY[HEADER.FIELDS (To Subject)]"
 		fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetch("1:4,30:31,81")
 		fetchResult.forSeqNum(1, func(builder *validatorBuilder) {
@@ -388,7 +390,7 @@ func TestFetchFromDataSequences(t *testing.T) {
 }
 
 func TestFetchFromDataUids(t *testing.T) {
-	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, _ *testSession, _ string, _ string) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, _ *testSession, _ string, _ imap.LabelID) {
 		// Remove a couple of messages
 		require.NoError(t, client.Store(createSeqSet("20:29,50:60,90"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
 		require.NoError(t, client.Expunge(nil))

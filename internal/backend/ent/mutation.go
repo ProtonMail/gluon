@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailboxattr"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailboxflag"
@@ -45,7 +46,8 @@ type MailboxMutation struct {
 	op                     Op
 	typ                    string
 	id                     *int
-	_MailboxID             *string
+	_MailboxID             *imap.InternalMailboxID
+	_RemoteID              *imap.LabelID
 	_Name                  *string
 	_UIDNext               *int
 	add_UIDNext            *int
@@ -169,12 +171,12 @@ func (m *MailboxMutation) IDs(ctx context.Context) ([]int, error) {
 }
 
 // SetMailboxID sets the "MailboxID" field.
-func (m *MailboxMutation) SetMailboxID(s string) {
-	m._MailboxID = &s
+func (m *MailboxMutation) SetMailboxID(imi imap.InternalMailboxID) {
+	m._MailboxID = &imi
 }
 
 // MailboxID returns the value of the "MailboxID" field in the mutation.
-func (m *MailboxMutation) MailboxID() (r string, exists bool) {
+func (m *MailboxMutation) MailboxID() (r imap.InternalMailboxID, exists bool) {
 	v := m._MailboxID
 	if v == nil {
 		return
@@ -185,7 +187,7 @@ func (m *MailboxMutation) MailboxID() (r string, exists bool) {
 // OldMailboxID returns the old "MailboxID" field's value of the Mailbox entity.
 // If the Mailbox object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MailboxMutation) OldMailboxID(ctx context.Context) (v string, err error) {
+func (m *MailboxMutation) OldMailboxID(ctx context.Context) (v imap.InternalMailboxID, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldMailboxID is only allowed on UpdateOne operations")
 	}
@@ -202,6 +204,55 @@ func (m *MailboxMutation) OldMailboxID(ctx context.Context) (v string, err error
 // ResetMailboxID resets all changes to the "MailboxID" field.
 func (m *MailboxMutation) ResetMailboxID() {
 	m._MailboxID = nil
+}
+
+// SetRemoteID sets the "RemoteID" field.
+func (m *MailboxMutation) SetRemoteID(ii imap.LabelID) {
+	m._RemoteID = &ii
+}
+
+// RemoteID returns the value of the "RemoteID" field in the mutation.
+func (m *MailboxMutation) RemoteID() (r imap.LabelID, exists bool) {
+	v := m._RemoteID
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRemoteID returns the old "RemoteID" field's value of the Mailbox entity.
+// If the Mailbox object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MailboxMutation) OldRemoteID(ctx context.Context) (v imap.LabelID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRemoteID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRemoteID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRemoteID: %w", err)
+	}
+	return oldValue.RemoteID, nil
+}
+
+// ClearRemoteID clears the value of the "RemoteID" field.
+func (m *MailboxMutation) ClearRemoteID() {
+	m._RemoteID = nil
+	m.clearedFields[mailbox.FieldRemoteID] = struct{}{}
+}
+
+// RemoteIDCleared returns if the "RemoteID" field was cleared in this mutation.
+func (m *MailboxMutation) RemoteIDCleared() bool {
+	_, ok := m.clearedFields[mailbox.FieldRemoteID]
+	return ok
+}
+
+// ResetRemoteID resets all changes to the "RemoteID" field.
+func (m *MailboxMutation) ResetRemoteID() {
+	m._RemoteID = nil
+	delete(m.clearedFields, mailbox.FieldRemoteID)
 }
 
 // SetName sets the "Name" field.
@@ -623,9 +674,12 @@ func (m *MailboxMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MailboxMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 6)
 	if m._MailboxID != nil {
 		fields = append(fields, mailbox.FieldMailboxID)
+	}
+	if m._RemoteID != nil {
+		fields = append(fields, mailbox.FieldRemoteID)
 	}
 	if m._Name != nil {
 		fields = append(fields, mailbox.FieldName)
@@ -649,6 +703,8 @@ func (m *MailboxMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case mailbox.FieldMailboxID:
 		return m.MailboxID()
+	case mailbox.FieldRemoteID:
+		return m.RemoteID()
 	case mailbox.FieldName:
 		return m.Name()
 	case mailbox.FieldUIDNext:
@@ -668,6 +724,8 @@ func (m *MailboxMutation) OldField(ctx context.Context, name string) (ent.Value,
 	switch name {
 	case mailbox.FieldMailboxID:
 		return m.OldMailboxID(ctx)
+	case mailbox.FieldRemoteID:
+		return m.OldRemoteID(ctx)
 	case mailbox.FieldName:
 		return m.OldName(ctx)
 	case mailbox.FieldUIDNext:
@@ -686,11 +744,18 @@ func (m *MailboxMutation) OldField(ctx context.Context, name string) (ent.Value,
 func (m *MailboxMutation) SetField(name string, value ent.Value) error {
 	switch name {
 	case mailbox.FieldMailboxID:
-		v, ok := value.(string)
+		v, ok := value.(imap.InternalMailboxID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetMailboxID(v)
+		return nil
+	case mailbox.FieldRemoteID:
+		v, ok := value.(imap.LabelID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRemoteID(v)
 		return nil
 	case mailbox.FieldName:
 		v, ok := value.(string)
@@ -776,7 +841,11 @@ func (m *MailboxMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *MailboxMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(mailbox.FieldRemoteID) {
+		fields = append(fields, mailbox.FieldRemoteID)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -789,6 +858,11 @@ func (m *MailboxMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *MailboxMutation) ClearField(name string) error {
+	switch name {
+	case mailbox.FieldRemoteID:
+		m.ClearRemoteID()
+		return nil
+	}
 	return fmt.Errorf("unknown Mailbox nullable field %s", name)
 }
 
@@ -798,6 +872,9 @@ func (m *MailboxMutation) ResetField(name string) error {
 	switch name {
 	case mailbox.FieldMailboxID:
 		m.ResetMailboxID()
+		return nil
+	case mailbox.FieldRemoteID:
+		m.ResetRemoteID()
 		return nil
 	case mailbox.FieldName:
 		m.ResetName()
@@ -1916,8 +1993,8 @@ type MessageMutation struct {
 	op             Op
 	typ            string
 	id             *int
-	_MessageID     *string
-	_InternalID    *string
+	_MessageID     *imap.InternalMessageID
+	_RemoteID      *imap.MessageID
 	_Date          *time.Time
 	_Size          *int
 	add_Size       *int
@@ -2036,12 +2113,12 @@ func (m *MessageMutation) IDs(ctx context.Context) ([]int, error) {
 }
 
 // SetMessageID sets the "MessageID" field.
-func (m *MessageMutation) SetMessageID(s string) {
-	m._MessageID = &s
+func (m *MessageMutation) SetMessageID(imi imap.InternalMessageID) {
+	m._MessageID = &imi
 }
 
 // MessageID returns the value of the "MessageID" field in the mutation.
-func (m *MessageMutation) MessageID() (r string, exists bool) {
+func (m *MessageMutation) MessageID() (r imap.InternalMessageID, exists bool) {
 	v := m._MessageID
 	if v == nil {
 		return
@@ -2052,7 +2129,7 @@ func (m *MessageMutation) MessageID() (r string, exists bool) {
 // OldMessageID returns the old "MessageID" field's value of the Message entity.
 // If the Message object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MessageMutation) OldMessageID(ctx context.Context) (v string, err error) {
+func (m *MessageMutation) OldMessageID(ctx context.Context) (v imap.InternalMessageID, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldMessageID is only allowed on UpdateOne operations")
 	}
@@ -2071,40 +2148,53 @@ func (m *MessageMutation) ResetMessageID() {
 	m._MessageID = nil
 }
 
-// SetInternalID sets the "InternalID" field.
-func (m *MessageMutation) SetInternalID(s string) {
-	m._InternalID = &s
+// SetRemoteID sets the "RemoteID" field.
+func (m *MessageMutation) SetRemoteID(ii imap.MessageID) {
+	m._RemoteID = &ii
 }
 
-// InternalID returns the value of the "InternalID" field in the mutation.
-func (m *MessageMutation) InternalID() (r string, exists bool) {
-	v := m._InternalID
+// RemoteID returns the value of the "RemoteID" field in the mutation.
+func (m *MessageMutation) RemoteID() (r imap.MessageID, exists bool) {
+	v := m._RemoteID
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldInternalID returns the old "InternalID" field's value of the Message entity.
+// OldRemoteID returns the old "RemoteID" field's value of the Message entity.
 // If the Message object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MessageMutation) OldInternalID(ctx context.Context) (v string, err error) {
+func (m *MessageMutation) OldRemoteID(ctx context.Context) (v imap.MessageID, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldInternalID is only allowed on UpdateOne operations")
+		return v, errors.New("OldRemoteID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldInternalID requires an ID field in the mutation")
+		return v, errors.New("OldRemoteID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldInternalID: %w", err)
+		return v, fmt.Errorf("querying old value for OldRemoteID: %w", err)
 	}
-	return oldValue.InternalID, nil
+	return oldValue.RemoteID, nil
 }
 
-// ResetInternalID resets all changes to the "InternalID" field.
-func (m *MessageMutation) ResetInternalID() {
-	m._InternalID = nil
+// ClearRemoteID clears the value of the "RemoteID" field.
+func (m *MessageMutation) ClearRemoteID() {
+	m._RemoteID = nil
+	m.clearedFields[message.FieldRemoteID] = struct{}{}
+}
+
+// RemoteIDCleared returns if the "RemoteID" field was cleared in this mutation.
+func (m *MessageMutation) RemoteIDCleared() bool {
+	_, ok := m.clearedFields[message.FieldRemoteID]
+	return ok
+}
+
+// ResetRemoteID resets all changes to the "RemoteID" field.
+func (m *MessageMutation) ResetRemoteID() {
+	m._RemoteID = nil
+	delete(m.clearedFields, message.FieldRemoteID)
 }
 
 // SetDate sets the "Date" field.
@@ -2474,8 +2564,8 @@ func (m *MessageMutation) Fields() []string {
 	if m._MessageID != nil {
 		fields = append(fields, message.FieldMessageID)
 	}
-	if m._InternalID != nil {
-		fields = append(fields, message.FieldInternalID)
+	if m._RemoteID != nil {
+		fields = append(fields, message.FieldRemoteID)
 	}
 	if m._Date != nil {
 		fields = append(fields, message.FieldDate)
@@ -2505,8 +2595,8 @@ func (m *MessageMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case message.FieldMessageID:
 		return m.MessageID()
-	case message.FieldInternalID:
-		return m.InternalID()
+	case message.FieldRemoteID:
+		return m.RemoteID()
 	case message.FieldDate:
 		return m.Date()
 	case message.FieldSize:
@@ -2530,8 +2620,8 @@ func (m *MessageMutation) OldField(ctx context.Context, name string) (ent.Value,
 	switch name {
 	case message.FieldMessageID:
 		return m.OldMessageID(ctx)
-	case message.FieldInternalID:
-		return m.OldInternalID(ctx)
+	case message.FieldRemoteID:
+		return m.OldRemoteID(ctx)
 	case message.FieldDate:
 		return m.OldDate(ctx)
 	case message.FieldSize:
@@ -2554,18 +2644,18 @@ func (m *MessageMutation) OldField(ctx context.Context, name string) (ent.Value,
 func (m *MessageMutation) SetField(name string, value ent.Value) error {
 	switch name {
 	case message.FieldMessageID:
-		v, ok := value.(string)
+		v, ok := value.(imap.InternalMessageID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetMessageID(v)
 		return nil
-	case message.FieldInternalID:
-		v, ok := value.(string)
+	case message.FieldRemoteID:
+		v, ok := value.(imap.MessageID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetInternalID(v)
+		m.SetRemoteID(v)
 		return nil
 	case message.FieldDate:
 		v, ok := value.(time.Time)
@@ -2653,7 +2743,11 @@ func (m *MessageMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *MessageMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(message.FieldRemoteID) {
+		fields = append(fields, message.FieldRemoteID)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -2666,6 +2760,11 @@ func (m *MessageMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *MessageMutation) ClearField(name string) error {
+	switch name {
+	case message.FieldRemoteID:
+		m.ClearRemoteID()
+		return nil
+	}
 	return fmt.Errorf("unknown Message nullable field %s", name)
 }
 
@@ -2676,8 +2775,8 @@ func (m *MessageMutation) ResetField(name string) error {
 	case message.FieldMessageID:
 		m.ResetMessageID()
 		return nil
-	case message.FieldInternalID:
-		m.ResetInternalID()
+	case message.FieldRemoteID:
+		m.ResetRemoteID()
 		return nil
 	case message.FieldDate:
 		m.ResetDate()

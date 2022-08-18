@@ -15,7 +15,7 @@ type MessagesCreated struct {
 type MessageCreated struct {
 	Message    Message
 	Literal    []byte
-	MailboxIDs []string
+	MailboxIDs []LabelID
 
 	Body      string
 	Structure string
@@ -28,7 +28,7 @@ func NewMessagesCreated() *MessagesCreated {
 	}
 }
 
-func (u *MessagesCreated) Add(message Message, literal []byte, mailboxIDs []string) error {
+func (u *MessagesCreated) Add(message Message, literal []byte, mailboxIDs ...LabelID) error {
 	root, err := rfc822.Parse(literal)
 	if err != nil {
 		return fmt.Errorf("failed to parse message literal: %w", err)

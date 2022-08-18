@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ProtonMail/gluon/imap"
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"
@@ -177,7 +178,7 @@ func TestReceptionOnIdle(t *testing.T) {
  * Either delete it, Archive it or put it as unseen.
  */
 func TestMorningFiltering(t *testing.T) {
-	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, s *testSession, mbox, mboxID string) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, s *testSession, mbox string, mboxID imap.LabelID) {
 		require.NoError(t, client.Create("ReadLater"))
 		require.NoError(t, client.Create("Archive"))
 

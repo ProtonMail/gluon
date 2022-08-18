@@ -1,10 +1,14 @@
 package remote
 
-import "encoding/gob"
+import (
+	"encoding/gob"
+
+	"github.com/ProtonMail/gluon/imap"
+)
 
 type OpMailboxUpdate struct {
 	OperationBase
-	MBoxID string
+	MBoxID imap.LabelID
 	Name   []string
 }
 

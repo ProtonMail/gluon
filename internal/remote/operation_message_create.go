@@ -9,11 +9,11 @@ import (
 
 type OpMessageCreate struct {
 	OperationBase
-	TempID  string
-	MBoxID  string
-	Literal []byte
-	Flags   imap.FlagSet
-	Date    time.Time
+	InternalID imap.InternalMessageID
+	MBoxID     imap.LabelID
+	Literal    []byte
+	Flags      imap.FlagSet
+	Date       time.Time
 }
 
 func init() {

@@ -2,6 +2,8 @@ package tests
 
 import (
 	"testing"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 func TestIDLEExistsUpdates(t *testing.T) {
@@ -32,7 +34,7 @@ func TestIDLEExistsUpdates(t *testing.T) {
 }
 
 func TestIDLEPendingUpdates(t *testing.T) {
-	runManyToOneTestWithData(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession, _, _ string) {
+	runManyToOneTestWithData(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession, _ string, _ imap.LabelID) {
 		c[1].C("A001 select INBOX").OK("A001")
 
 		// Generate some pending updates.

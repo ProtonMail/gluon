@@ -9,6 +9,8 @@ const (
 	FieldID = "id"
 	// FieldMailboxID holds the string denoting the mailboxid field in the database.
 	FieldMailboxID = "mailbox_id"
+	// FieldRemoteID holds the string denoting the remoteid field in the database.
+	FieldRemoteID = "remote_id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldUIDNext holds the string denoting the uidnext field in the database.
@@ -61,6 +63,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldMailboxID,
+	FieldRemoteID,
 	FieldName,
 	FieldUIDNext,
 	FieldUIDValidity,

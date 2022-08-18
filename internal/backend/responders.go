@@ -13,23 +13,25 @@ type responder interface {
 	handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]response.Response, error)
 
 	// getMessageID returns the message ID that this responder targets.
-	getMessageID() string
-
-	// setMessageID sets the message ID that the responder targets.
-	setMessageID(string)
+	getMessageID() imap.InternalMessageID
 }
 
 type exists struct {
-	messageID  string
+	messageID  imap.InternalMessageID
 	messageUID int
 }
 
-func newExists(messageID string, messageUID int) *exists {
+func newExists(messageID imap.InternalMessageID, messageUID int) *exists {
 	return &exists{messageID: messageID, messageUID: messageUID}
 }
 
 func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]response.Response, error) {
-	if err := snap.appendMessage(ctx, tx, u.messageID); err != nil {
+	remoteID, err := DBGetRemoteMessageID(ctx, tx.Client(), u.messageID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := snap.appendMessage(ctx, tx, MessageIDPair{InternalID: u.messageID, RemoteID: remoteID}); err != nil {
 		return nil, err
 	}
 
@@ -41,7 +43,7 @@ func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]resp
 	res := []response.Response{response.Exists().WithCount(seq)}
 
 	if recent := len(snap.getMessagesWithFlag(imap.FlagRecent)); recent > 0 {
-		if err := DBClearRecentFlag(ctx, tx, snap.mboxID, u.messageID); err != nil {
+		if err := DBClearRecentFlag(ctx, tx, snap.mboxID.InternalID, u.messageID); err != nil {
 			return nil, err
 		}
 
@@ -51,20 +53,16 @@ func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]resp
 	return res, nil
 }
 
-func (u *exists) getMessageID() string {
+func (u *exists) getMessageID() imap.InternalMessageID {
 	return u.messageID
 }
 
-func (u *exists) setMessageID(newID string) {
-	u.messageID = newID
-}
-
 type expunge struct {
-	messageID string
+	messageID imap.InternalMessageID
 	asClose   bool
 }
 
-func newExpunge(messageID string, asClose bool) *expunge {
+func newExpunge(messageID imap.InternalMessageID, asClose bool) *expunge {
 	return &expunge{
 		messageID: messageID,
 		asClose:   asClose,
@@ -93,23 +91,19 @@ func (u *expunge) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]res
 	return []response.Response{response.Expunge(seq)}, nil
 }
 
-func (u *expunge) getMessageID() string {
+func (u *expunge) getMessageID() imap.InternalMessageID {
 	return u.messageID
 }
 
-func (u *expunge) setMessageID(newID string) {
-	u.messageID = newID
-}
-
 type fetch struct {
-	messageID string
+	messageID imap.InternalMessageID
 	flags     imap.FlagSet
 
 	asUID    bool
 	asSilent bool
 }
 
-func newFetch(messageID string, flags imap.FlagSet, asUID, asSilent bool) *fetch {
+func newFetch(messageID imap.InternalMessageID, flags imap.FlagSet, asUID, asSilent bool) *fetch {
 	return &fetch{
 		messageID: messageID,
 		flags:     flags,
@@ -170,10 +164,6 @@ func (u *fetch) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]respo
 	return []response.Response{response.Fetch(seq).WithItems(items...)}, nil
 }
 
-func (u *fetch) getMessageID() string {
+func (u *fetch) getMessageID() imap.InternalMessageID {
 	return u.messageID
-}
-
-func (u *fetch) setMessageID(newID string) {
-	u.messageID = newID
 }

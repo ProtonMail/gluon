@@ -23,7 +23,7 @@ func NewMailboxCreated(mailbox Mailbox) *MailboxCreated {
 func (u *MailboxCreated) String() string {
 	return fmt.Sprintf(
 		"MailboxCreated: Mailbox.ID = %v, Mailbox.Name = %v",
-		utils.ShortID(u.Mailbox.ID),
+		u.Mailbox.ID.ShortID(),
 		utils.ShortID(strings.Join(u.Mailbox.Name, "/")),
 	)
 }

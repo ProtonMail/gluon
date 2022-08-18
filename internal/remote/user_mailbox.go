@@ -1,58 +1,40 @@
 package remote
 
 import (
+	"context"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/google/uuid"
 )
 
 // CreateMailbox creates a new mailbox with the given name.
-func (user *User) CreateMailbox(metadataID ConnMetadataID, name []string) (imap.Mailbox, error) {
-	flags, permFlags, attrs, err := user.conn.ValidateCreate(name)
+func (user *User) CreateMailbox(ctx context.Context, metadataID ConnMetadataID, name []string) (imap.InternalMailboxID, imap.Mailbox, error) {
+	ctx = user.newContextWithIMAPID(ctx, metadataID)
+
+	internalID := imap.InternalMailboxID(uuid.NewString())
+
+	mbox, err := user.conn.CreateLabel(ctx, name)
 	if err != nil {
-		return imap.Mailbox{}, err
+		return "", imap.Mailbox{}, err
 	}
 
-	tempID := uuid.NewString()
-
-	if err := user.pushOp(&OpMailboxCreate{
-		OperationBase: OperationBase{MetadataID: metadataID},
-		TempID:        tempID,
-		Name:          name,
-	}); err != nil {
-		return imap.Mailbox{}, err
-	}
-
-	return imap.Mailbox{
-		ID:   tempID,
-		Name: name,
-
-		Flags:          flags,
-		PermanentFlags: permFlags,
-		Attributes:     attrs,
-	}, nil
+	return internalID, mbox, nil
 }
 
 // UpdateMailbox sets the name of the mailbox with the given ID to the given new name.
-func (user *User) UpdateMailbox(metadataID ConnMetadataID, mboxID string, oldName, newName []string) error {
+func (user *User) UpdateMailbox(ctx context.Context, metadataID ConnMetadataID, mboxID imap.LabelID, oldName, newName []string) error {
+	ctx = user.newContextWithIMAPID(ctx, metadataID)
+
 	if err := user.conn.ValidateUpdate(oldName, newName); err != nil {
 		return err
 	}
 
-	return user.pushOp(&OpMailboxUpdate{
-		OperationBase: OperationBase{MetadataID: metadataID},
-		MBoxID:        mboxID,
-		Name:          newName,
-	})
+	return user.conn.UpdateLabel(ctx, mboxID, newName)
 }
 
 // DeleteMailbox deletes the mailbox with the given ID and name.
-func (user *User) DeleteMailbox(metadataID ConnMetadataID, mboxID string, name []string) error {
-	if err := user.conn.ValidateDelete(name); err != nil {
-		return err
-	}
+func (user *User) DeleteMailbox(ctx context.Context, metadataID ConnMetadataID, mboxID imap.LabelID) error {
+	ctx = user.newContextWithIMAPID(ctx, metadataID)
 
-	return user.pushOp(&OpMailboxDelete{
-		OperationBase: OperationBase{MetadataID: metadataID},
-		MBoxID:        mboxID,
-	})
+	return user.conn.DeleteLabel(ctx, mboxID)
 }

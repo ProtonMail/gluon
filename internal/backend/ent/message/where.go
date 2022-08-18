@@ -7,6 +7,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent/predicate"
 )
 
@@ -82,16 +83,18 @@ func IDLTE(id int) predicate.Message {
 }
 
 // MessageID applies equality check predicate on the "MessageID" field. It's identical to MessageIDEQ.
-func MessageID(v string) predicate.Message {
+func MessageID(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldMessageID), v))
+		s.Where(sql.EQ(s.C(FieldMessageID), vc))
 	})
 }
 
-// InternalID applies equality check predicate on the "InternalID" field. It's identical to InternalIDEQ.
-func InternalID(v string) predicate.Message {
+// RemoteID applies equality check predicate on the "RemoteID" field. It's identical to RemoteIDEQ.
+func RemoteID(v imap.MessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldInternalID), v))
+		s.Where(sql.EQ(s.C(FieldRemoteID), vc))
 	})
 }
 
@@ -138,24 +141,26 @@ func Deleted(v bool) predicate.Message {
 }
 
 // MessageIDEQ applies the EQ predicate on the "MessageID" field.
-func MessageIDEQ(v string) predicate.Message {
+func MessageIDEQ(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldMessageID), v))
+		s.Where(sql.EQ(s.C(FieldMessageID), vc))
 	})
 }
 
 // MessageIDNEQ applies the NEQ predicate on the "MessageID" field.
-func MessageIDNEQ(v string) predicate.Message {
+func MessageIDNEQ(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldMessageID), v))
+		s.Where(sql.NEQ(s.C(FieldMessageID), vc))
 	})
 }
 
 // MessageIDIn applies the In predicate on the "MessageID" field.
-func MessageIDIn(vs ...string) predicate.Message {
+func MessageIDIn(vs ...imap.InternalMessageID) predicate.Message {
 	v := make([]interface{}, len(vs))
 	for i := range v {
-		v[i] = vs[i]
+		v[i] = string(vs[i])
 	}
 	return predicate.Message(func(s *sql.Selector) {
 		s.Where(sql.In(s.C(FieldMessageID), v...))
@@ -163,10 +168,10 @@ func MessageIDIn(vs ...string) predicate.Message {
 }
 
 // MessageIDNotIn applies the NotIn predicate on the "MessageID" field.
-func MessageIDNotIn(vs ...string) predicate.Message {
+func MessageIDNotIn(vs ...imap.InternalMessageID) predicate.Message {
 	v := make([]interface{}, len(vs))
 	for i := range v {
-		v[i] = vs[i]
+		v[i] = string(vs[i])
 	}
 	return predicate.Message(func(s *sql.Selector) {
 		s.Where(sql.NotIn(s.C(FieldMessageID), v...))
@@ -174,164 +179,198 @@ func MessageIDNotIn(vs ...string) predicate.Message {
 }
 
 // MessageIDGT applies the GT predicate on the "MessageID" field.
-func MessageIDGT(v string) predicate.Message {
+func MessageIDGT(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldMessageID), v))
+		s.Where(sql.GT(s.C(FieldMessageID), vc))
 	})
 }
 
 // MessageIDGTE applies the GTE predicate on the "MessageID" field.
-func MessageIDGTE(v string) predicate.Message {
+func MessageIDGTE(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldMessageID), v))
+		s.Where(sql.GTE(s.C(FieldMessageID), vc))
 	})
 }
 
 // MessageIDLT applies the LT predicate on the "MessageID" field.
-func MessageIDLT(v string) predicate.Message {
+func MessageIDLT(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldMessageID), v))
+		s.Where(sql.LT(s.C(FieldMessageID), vc))
 	})
 }
 
 // MessageIDLTE applies the LTE predicate on the "MessageID" field.
-func MessageIDLTE(v string) predicate.Message {
+func MessageIDLTE(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldMessageID), v))
+		s.Where(sql.LTE(s.C(FieldMessageID), vc))
 	})
 }
 
 // MessageIDContains applies the Contains predicate on the "MessageID" field.
-func MessageIDContains(v string) predicate.Message {
+func MessageIDContains(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldMessageID), v))
+		s.Where(sql.Contains(s.C(FieldMessageID), vc))
 	})
 }
 
 // MessageIDHasPrefix applies the HasPrefix predicate on the "MessageID" field.
-func MessageIDHasPrefix(v string) predicate.Message {
+func MessageIDHasPrefix(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldMessageID), v))
+		s.Where(sql.HasPrefix(s.C(FieldMessageID), vc))
 	})
 }
 
 // MessageIDHasSuffix applies the HasSuffix predicate on the "MessageID" field.
-func MessageIDHasSuffix(v string) predicate.Message {
+func MessageIDHasSuffix(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldMessageID), v))
+		s.Where(sql.HasSuffix(s.C(FieldMessageID), vc))
 	})
 }
 
 // MessageIDEqualFold applies the EqualFold predicate on the "MessageID" field.
-func MessageIDEqualFold(v string) predicate.Message {
+func MessageIDEqualFold(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldMessageID), v))
+		s.Where(sql.EqualFold(s.C(FieldMessageID), vc))
 	})
 }
 
 // MessageIDContainsFold applies the ContainsFold predicate on the "MessageID" field.
-func MessageIDContainsFold(v string) predicate.Message {
+func MessageIDContainsFold(v imap.InternalMessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldMessageID), v))
+		s.Where(sql.ContainsFold(s.C(FieldMessageID), vc))
 	})
 }
 
-// InternalIDEQ applies the EQ predicate on the "InternalID" field.
-func InternalIDEQ(v string) predicate.Message {
+// RemoteIDEQ applies the EQ predicate on the "RemoteID" field.
+func RemoteIDEQ(v imap.MessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldInternalID), v))
+		s.Where(sql.EQ(s.C(FieldRemoteID), vc))
 	})
 }
 
-// InternalIDNEQ applies the NEQ predicate on the "InternalID" field.
-func InternalIDNEQ(v string) predicate.Message {
+// RemoteIDNEQ applies the NEQ predicate on the "RemoteID" field.
+func RemoteIDNEQ(v imap.MessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldInternalID), v))
+		s.Where(sql.NEQ(s.C(FieldRemoteID), vc))
 	})
 }
 
-// InternalIDIn applies the In predicate on the "InternalID" field.
-func InternalIDIn(vs ...string) predicate.Message {
+// RemoteIDIn applies the In predicate on the "RemoteID" field.
+func RemoteIDIn(vs ...imap.MessageID) predicate.Message {
 	v := make([]interface{}, len(vs))
 	for i := range v {
-		v[i] = vs[i]
+		v[i] = string(vs[i])
 	}
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldInternalID), v...))
+		s.Where(sql.In(s.C(FieldRemoteID), v...))
 	})
 }
 
-// InternalIDNotIn applies the NotIn predicate on the "InternalID" field.
-func InternalIDNotIn(vs ...string) predicate.Message {
+// RemoteIDNotIn applies the NotIn predicate on the "RemoteID" field.
+func RemoteIDNotIn(vs ...imap.MessageID) predicate.Message {
 	v := make([]interface{}, len(vs))
 	for i := range v {
-		v[i] = vs[i]
+		v[i] = string(vs[i])
 	}
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldInternalID), v...))
+		s.Where(sql.NotIn(s.C(FieldRemoteID), v...))
 	})
 }
 
-// InternalIDGT applies the GT predicate on the "InternalID" field.
-func InternalIDGT(v string) predicate.Message {
+// RemoteIDGT applies the GT predicate on the "RemoteID" field.
+func RemoteIDGT(v imap.MessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldInternalID), v))
+		s.Where(sql.GT(s.C(FieldRemoteID), vc))
 	})
 }
 
-// InternalIDGTE applies the GTE predicate on the "InternalID" field.
-func InternalIDGTE(v string) predicate.Message {
+// RemoteIDGTE applies the GTE predicate on the "RemoteID" field.
+func RemoteIDGTE(v imap.MessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldInternalID), v))
+		s.Where(sql.GTE(s.C(FieldRemoteID), vc))
 	})
 }
 
-// InternalIDLT applies the LT predicate on the "InternalID" field.
-func InternalIDLT(v string) predicate.Message {
+// RemoteIDLT applies the LT predicate on the "RemoteID" field.
+func RemoteIDLT(v imap.MessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldInternalID), v))
+		s.Where(sql.LT(s.C(FieldRemoteID), vc))
 	})
 }
 
-// InternalIDLTE applies the LTE predicate on the "InternalID" field.
-func InternalIDLTE(v string) predicate.Message {
+// RemoteIDLTE applies the LTE predicate on the "RemoteID" field.
+func RemoteIDLTE(v imap.MessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldInternalID), v))
+		s.Where(sql.LTE(s.C(FieldRemoteID), vc))
 	})
 }
 
-// InternalIDContains applies the Contains predicate on the "InternalID" field.
-func InternalIDContains(v string) predicate.Message {
+// RemoteIDContains applies the Contains predicate on the "RemoteID" field.
+func RemoteIDContains(v imap.MessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldInternalID), v))
+		s.Where(sql.Contains(s.C(FieldRemoteID), vc))
 	})
 }
 
-// InternalIDHasPrefix applies the HasPrefix predicate on the "InternalID" field.
-func InternalIDHasPrefix(v string) predicate.Message {
+// RemoteIDHasPrefix applies the HasPrefix predicate on the "RemoteID" field.
+func RemoteIDHasPrefix(v imap.MessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldInternalID), v))
+		s.Where(sql.HasPrefix(s.C(FieldRemoteID), vc))
 	})
 }
 
-// InternalIDHasSuffix applies the HasSuffix predicate on the "InternalID" field.
-func InternalIDHasSuffix(v string) predicate.Message {
+// RemoteIDHasSuffix applies the HasSuffix predicate on the "RemoteID" field.
+func RemoteIDHasSuffix(v imap.MessageID) predicate.Message {
+	vc := string(v)
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldInternalID), v))
+		s.Where(sql.HasSuffix(s.C(FieldRemoteID), vc))
 	})
 }
 
-// InternalIDEqualFold applies the EqualFold predicate on the "InternalID" field.
-func InternalIDEqualFold(v string) predicate.Message {
+// RemoteIDIsNil applies the IsNil predicate on the "RemoteID" field.
+func RemoteIDIsNil() predicate.Message {
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldInternalID), v))
+		s.Where(sql.IsNull(s.C(FieldRemoteID)))
 	})
 }
 
-// InternalIDContainsFold applies the ContainsFold predicate on the "InternalID" field.
-func InternalIDContainsFold(v string) predicate.Message {
+// RemoteIDNotNil applies the NotNil predicate on the "RemoteID" field.
+func RemoteIDNotNil() predicate.Message {
 	return predicate.Message(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldInternalID), v))
+		s.Where(sql.NotNull(s.C(FieldRemoteID)))
+	})
+}
+
+// RemoteIDEqualFold applies the EqualFold predicate on the "RemoteID" field.
+func RemoteIDEqualFold(v imap.MessageID) predicate.Message {
+	vc := string(v)
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldRemoteID), vc))
+	})
+}
+
+// RemoteIDContainsFold applies the ContainsFold predicate on the "RemoteID" field.
+func RemoteIDContainsFold(v imap.MessageID) predicate.Message {
+	vc := string(v)
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldRemoteID), vc))
 	})
 }
 

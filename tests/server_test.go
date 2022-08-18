@@ -121,7 +121,7 @@ type testBadgerStoreBuilder struct{}
 
 func (*testBadgerStoreBuilder) New(directory, userID string, encryptionPassphrase []byte) (store.Store, error) {
 	encryptionBytes := sha256.Sum256(encryptionPassphrase)
-	return store.NewBadgerStore(directory, userID, encryptionBytes[:])
+	return store.NewTestBadgerStore(directory, userID, encryptionBytes[:])
 }
 
 // runServerWithPaths initializes and starts the mailserver using a pathGenerator.
@@ -242,7 +242,7 @@ func withClients(tb testing.TB, s *testSession, connIDs []int, tests func(map[in
 	}
 }
 
-func withData(s *testSession, username string, tests func(string, string)) {
+func withData(s *testSession, username string, tests func(string, imap.LabelID)) {
 	mbox := uuid.NewString()
 
 	mboxID := s.mailboxCreated(username, []string{mbox}, "testdata/dovecot-crlf")

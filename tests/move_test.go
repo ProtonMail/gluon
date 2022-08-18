@@ -8,7 +8,7 @@ import (
 )
 
 func TestMove(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
 		// There are 100 messages in the origin and no messages in the destination.
 		c.Cf(`A001 status %v (messages)`, mbox).Sxe(`MESSAGES 100`).OK(`A001`)
 		c.C(`A002 status inbox (messages)`).Sxe(`MESSAGES 0`).OK(`A002`)
@@ -36,7 +36,7 @@ func TestMove(t *testing.T) {
 }
 
 func TestMoveTryCreate(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
 		// There are 100 messages in the origin.
 		c.Cf(`A001 status %v (messages)`, mbox).Sxe(`MESSAGES 100`).OK(`A001`)
 
@@ -51,7 +51,7 @@ func TestMoveTryCreate(t *testing.T) {
 }
 
 func TestMoveNonExistent(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
 		// MOVE some of the messages out of the mailbox.
 		c.C(`A001 move 1:24,76:100 inbox`).OK(`A001`)
 
@@ -82,7 +82,7 @@ func _TestMoveBackAndForthRepeated(t *testing.T) {
 }
 
 func TestMoveBackAndForth(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox, mboxID string) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
 		// There are 100 messages in the origin and no messages in the destination.
 		c.Cf(`A001 status %v (messages)`, mbox).Sxe(`MESSAGES 100`).OK(`A001`)
 		c.C(`A002 status inbox (messages)`).Sxe(`MESSAGES 0`).OK(`A002`)
@@ -206,5 +206,16 @@ func TestMoveDuplicate(t *testing.T) {
 
 		// Finish idle.
 		c[2].C(`DONE`).OK(`B002`)
+	})
+}
+
+func TestConcurrency(t *testing.T) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+		c.C(`tag create archive`).OK(`tag`)
+
+		for i := 0; i < 100; i++ {
+			c.Cf(`tag status %v (messages)`, mbox).Sx(fmt.Sprintf(`MESSAGES %v`, 100-i)).OK(`tag`)
+			c.Cf(`tag uid move %v archive`, 1+i).Sxe(`1 EXPUNGE`).OK(`tag`)
+		}
 	})
 }

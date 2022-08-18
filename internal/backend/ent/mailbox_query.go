@@ -398,7 +398,7 @@ func (mq *MailboxQuery) WithAttributes(opts ...func(*MailboxAttrQuery)) *Mailbox
 // Example:
 //
 //	var v []struct {
-//		MailboxID string `json:"MailboxID,omitempty"`
+//		MailboxID imap.InternalMailboxID `json:"MailboxID,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -406,6 +406,7 @@ func (mq *MailboxQuery) WithAttributes(opts ...func(*MailboxAttrQuery)) *Mailbox
 //		GroupBy(mailbox.FieldMailboxID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
+//
 func (mq *MailboxQuery) GroupBy(field string, fields ...string) *MailboxGroupBy {
 	grbuild := &MailboxGroupBy{config: mq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -426,12 +427,13 @@ func (mq *MailboxQuery) GroupBy(field string, fields ...string) *MailboxGroupBy 
 // Example:
 //
 //	var v []struct {
-//		MailboxID string `json:"MailboxID,omitempty"`
+//		MailboxID imap.InternalMailboxID `json:"MailboxID,omitempty"`
 //	}
 //
 //	client.Mailbox.Query().
 //		Select(mailbox.FieldMailboxID).
 //		Scan(ctx, &v)
+//
 func (mq *MailboxQuery) Select(fields ...string) *MailboxSelect {
 	mq.fields = append(mq.fields, fields...)
 	selbuild := &MailboxSelect{MailboxQuery: mq}

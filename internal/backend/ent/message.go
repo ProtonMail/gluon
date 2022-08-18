@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent/message"
 )
 
@@ -17,9 +18,9 @@ type Message struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// MessageID holds the value of the "MessageID" field.
-	MessageID string `json:"MessageID,omitempty"`
-	// InternalID holds the value of the "InternalID" field.
-	InternalID string `json:"InternalID,omitempty"`
+	MessageID imap.InternalMessageID `json:"MessageID,omitempty"`
+	// RemoteID holds the value of the "RemoteID" field.
+	RemoteID imap.MessageID `json:"RemoteID,omitempty"`
 	// Date holds the value of the "Date" field.
 	Date time.Time `json:"Date,omitempty"`
 	// Size holds the value of the "Size" field.
@@ -75,7 +76,7 @@ func (*Message) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullBool)
 		case message.FieldID, message.FieldSize:
 			values[i] = new(sql.NullInt64)
-		case message.FieldMessageID, message.FieldInternalID, message.FieldBody, message.FieldBodyStructure, message.FieldEnvelope:
+		case message.FieldMessageID, message.FieldRemoteID, message.FieldBody, message.FieldBodyStructure, message.FieldEnvelope:
 			values[i] = new(sql.NullString)
 		case message.FieldDate:
 			values[i] = new(sql.NullTime)
@@ -104,13 +105,13 @@ func (m *Message) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field MessageID", values[i])
 			} else if value.Valid {
-				m.MessageID = value.String
+				m.MessageID = imap.InternalMessageID(value.String)
 			}
-		case message.FieldInternalID:
+		case message.FieldRemoteID:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field InternalID", values[i])
+				return fmt.Errorf("unexpected type %T for field RemoteID", values[i])
 			} else if value.Valid {
-				m.InternalID = value.String
+				m.RemoteID = imap.MessageID(value.String)
 			}
 		case message.FieldDate:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -187,10 +188,10 @@ func (m *Message) String() string {
 	builder.WriteString("Message(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
 	builder.WriteString("MessageID=")
-	builder.WriteString(m.MessageID)
+	builder.WriteString(fmt.Sprintf("%v", m.MessageID))
 	builder.WriteString(", ")
-	builder.WriteString("InternalID=")
-	builder.WriteString(m.InternalID)
+	builder.WriteString("RemoteID=")
+	builder.WriteString(fmt.Sprintf("%v", m.RemoteID))
 	builder.WriteString(", ")
 	builder.WriteString("Date=")
 	builder.WriteString(m.Date.Format(time.ANSIC))

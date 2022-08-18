@@ -9,7 +9,7 @@ import (
 
 // snapMsg is a single message inside a snapshot.
 type snapMsg struct {
-	ID    string
+	ID    MessageIDPair
 	UID   int
 	Seq   int
 	flags imap.FlagSet
@@ -18,17 +18,17 @@ type snapMsg struct {
 // snapMsgList is an ordered list of messages inside a snapshot.
 type snapMsgList struct {
 	msg  []*snapMsg
-	idx  map[string]int
+	idx  map[imap.InternalMessageID]int
 	lock sync.RWMutex
 }
 
 func newMsgList() *snapMsgList {
 	return &snapMsgList{
-		idx: make(map[string]int),
+		idx: make(map[imap.InternalMessageID]int),
 	}
 }
 
-func (list *snapMsgList) insert(msgID string, msgUID int, flags imap.FlagSet) {
+func (list *snapMsgList) insert(msgID MessageIDPair, msgUID int, flags imap.FlagSet) {
 	list.lock.Lock()
 	defer list.lock.Unlock()
 
@@ -43,10 +43,10 @@ func (list *snapMsgList) insert(msgID string, msgUID int, flags imap.FlagSet) {
 		flags: flags,
 	})
 
-	list.idx[msgID] = len(list.idx)
+	list.idx[msgID.InternalID] = len(list.idx)
 }
 
-func (list *snapMsgList) remove(msgID string) bool {
+func (list *snapMsgList) remove(msgID imap.InternalMessageID) bool {
 	list.lock.Lock()
 	defer list.lock.Unlock()
 
@@ -68,7 +68,7 @@ func (list *snapMsgList) remove(msgID string) bool {
 				panic("sequence number must be positive")
 			}
 
-			if list.idx[message.ID] -= 1; list.idx[message.ID] < 0 {
+			if list.idx[message.ID.InternalID] -= 1; list.idx[message.ID.InternalID] < 0 {
 				panic("index must be non-negative")
 			}
 		}
@@ -77,20 +77,16 @@ func (list *snapMsgList) remove(msgID string) bool {
 	return true
 }
 
-func (list *snapMsgList) update(oldID, newID string) bool {
+func (list *snapMsgList) update(internalID imap.InternalMessageID, remoteID imap.MessageID) bool {
 	list.lock.Lock()
 	defer list.lock.Unlock()
 
-	idx, ok := list.idx[oldID]
+	idx, ok := list.idx[internalID]
 	if !ok {
 		return false
 	}
 
-	list.msg[idx].ID = newID
-
-	list.idx[newID] = idx
-
-	delete(list.idx, oldID)
+	list.msg[idx].ID.RemoteID = remoteID
 
 	return true
 }
@@ -116,7 +112,7 @@ func (list *snapMsgList) where(fn func(*snapMsg) bool) []*snapMsg {
 	return xslices.Filter(list.msg, fn)
 }
 
-func (list *snapMsgList) has(msgID string) bool {
+func (list *snapMsgList) has(msgID imap.InternalMessageID) bool {
 	list.lock.RLock()
 	defer list.lock.RUnlock()
 
@@ -125,7 +121,7 @@ func (list *snapMsgList) has(msgID string) bool {
 	return ok
 }
 
-func (list *snapMsgList) get(msgID string) (*snapMsg, bool) {
+func (list *snapMsgList) get(msgID imap.InternalMessageID) (*snapMsg, bool) {
 	list.lock.RLock()
 	defer list.lock.RUnlock()
 

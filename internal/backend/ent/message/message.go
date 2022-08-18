@@ -9,8 +9,8 @@ const (
 	FieldID = "id"
 	// FieldMessageID holds the string denoting the messageid field in the database.
 	FieldMessageID = "message_id"
-	// FieldInternalID holds the string denoting the internalid field in the database.
-	FieldInternalID = "internal_id"
+	// FieldRemoteID holds the string denoting the remoteid field in the database.
+	FieldRemoteID = "remote_id"
 	// FieldDate holds the string denoting the date field in the database.
 	FieldDate = "date"
 	// FieldSize holds the string denoting the size field in the database.
@@ -49,7 +49,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldMessageID,
-	FieldInternalID,
+	FieldRemoteID,
 	FieldDate,
 	FieldSize,
 	FieldBody,

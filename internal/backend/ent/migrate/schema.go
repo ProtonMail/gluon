@@ -11,7 +11,8 @@ var (
 	// MailboxesColumns holds the columns for the "mailboxes" table.
 	MailboxesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "mailbox_id", Type: field.TypeString},
+		{Name: "mailbox_id", Type: field.TypeString, Unique: true},
+		{Name: "remote_id", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "name", Type: field.TypeString, Unique: true},
 		{Name: "uid_next", Type: field.TypeInt, Default: 1},
 		{Name: "uid_validity", Type: field.TypeInt, Default: 1},
@@ -87,7 +88,7 @@ var (
 	MessagesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "message_id", Type: field.TypeString, Unique: true},
-		{Name: "internal_id", Type: field.TypeString, Unique: true},
+		{Name: "remote_id", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "date", Type: field.TypeTime},
 		{Name: "size", Type: field.TypeInt},
 		{Name: "body", Type: field.TypeString},

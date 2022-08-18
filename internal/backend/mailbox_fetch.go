@@ -9,7 +9,6 @@ import (
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
-	"github.com/ProtonMail/gluon/internal/backend/ent/message"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -44,7 +43,7 @@ func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*pr
 		setSeen bool
 	)
 
-	message, err := m.tx.Message.Query().Where(message.MessageID(msg.ID)).Only(ctx)
+	message, err := DBGetMessage(ctx, m.tx.Client(), msg.ID.InternalID)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -68,7 +67,7 @@ func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*pr
 			items = append(items, item)
 
 		case *proto.FetchAttribute_Body:
-			literal, err := m.state.getLiteral(msg.ID)
+			literal, err := m.state.getLiteral(msg.ID.InternalID)
 			if err != nil {
 				return 0, nil, err
 			}
@@ -91,13 +90,13 @@ func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*pr
 	}
 
 	if setSeen {
-		newFlags, err := m.state.actionAddMessageFlags(ctx, m.tx, []string{msg.ID}, imap.NewFlagSet(imap.FlagSeen))
+		newFlags, err := m.state.actionAddMessageFlags(ctx, m.tx, []MessageIDPair{msg.ID}, imap.NewFlagSet(imap.FlagSeen))
 		if err != nil {
 			return 0, nil, err
 		}
 
-		if !msg.flags.Equals(newFlags[msg.ID]) {
-			items = append(items, response.ItemFlags(newFlags[msg.ID]))
+		if !msg.flags.Equals(newFlags[msg.ID.InternalID]) {
+			items = append(items, response.ItemFlags(newFlags[msg.ID.InternalID]))
 		}
 	}
 
@@ -116,16 +115,16 @@ func (m *Mailbox) fetchKeyword(msg *snapMsg, message *ent.Message, keyword proto
 		return response.ItemInternalDate(message.Date), nil
 
 	case proto.FetchKeyword_FetchKWRFC822:
-		return m.fetchRFC822(msg.ID)
+		return m.fetchRFC822(msg.ID.InternalID)
 
 	case proto.FetchKeyword_FetchKWRFC822Header:
-		return m.fetchRFC822Header(msg.ID)
+		return m.fetchRFC822Header(msg.ID.InternalID)
 
 	case proto.FetchKeyword_FetchKWRFC822Size:
 		return response.ItemRFC822Size(message.Size), nil
 
 	case proto.FetchKeyword_FetchKWRFC822Text:
-		return m.fetchRFC822Text(msg.ID)
+		return m.fetchRFC822Text(msg.ID.InternalID)
 
 	case proto.FetchKeyword_FetchKWBody:
 		return response.ItemBody(message.Body), nil
@@ -141,7 +140,7 @@ func (m *Mailbox) fetchKeyword(msg *snapMsg, message *ent.Message, keyword proto
 	}
 }
 
-func (m *Mailbox) fetchRFC822(messageID string) (response.Item, error) {
+func (m *Mailbox) fetchRFC822(messageID imap.InternalMessageID) (response.Item, error) {
 	literal, err := m.state.getLiteral(messageID)
 	if err != nil {
 		return nil, err
@@ -150,7 +149,7 @@ func (m *Mailbox) fetchRFC822(messageID string) (response.Item, error) {
 	return response.ItemRFC822Literal(literal), nil
 }
 
-func (m *Mailbox) fetchRFC822Header(messageID string) (response.Item, error) {
+func (m *Mailbox) fetchRFC822Header(messageID imap.InternalMessageID) (response.Item, error) {
 	literal, err := m.state.getLiteral(messageID)
 	if err != nil {
 		return nil, err
@@ -164,7 +163,7 @@ func (m *Mailbox) fetchRFC822Header(messageID string) (response.Item, error) {
 	return response.ItemRFC822Header(section.Header()), nil
 }
 
-func (m *Mailbox) fetchRFC822Text(messageID string) (response.Item, error) {
+func (m *Mailbox) fetchRFC822Text(messageID imap.InternalMessageID) (response.Item, error) {
 	literal, err := m.state.getLiteral(messageID)
 	if err != nil {
 		return nil, err

@@ -27,7 +27,7 @@ var (
 type Sync struct {
 	connector utils.ConnectorImpl
 	server    *gluon.Server
-	mailboxes []string
+	mailboxes []imap.LabelID
 }
 
 func NewSync() benchmark.Benchmark {
@@ -70,7 +70,7 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 		return nil, err
 	}
 
-	mboxIDs := make([]string, 0, *syncMBoxCountFlag)
+	mboxIDs := make([]imap.LabelID, 0, *syncMBoxCountFlag)
 
 	for i := uint(0); i < *syncMBoxCountFlag; i++ {
 		mbox, err := c.Connector().CreateLabel(ctx, []string{uuid.NewString()})
@@ -89,7 +89,7 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 
 	flagSet := imap.NewFlagSet("\\Recent")
 
-	s.mailboxes = make([]string, 0, len(mboxIDs))
+	s.mailboxes = make([]imap.LabelID, 0, len(mboxIDs))
 
 	for _, mboxID := range mboxIDs {
 		for i := uint(0); i < *syncMessageCountFlag; i++ {

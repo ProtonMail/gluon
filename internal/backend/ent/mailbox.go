@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
 )
 
@@ -16,7 +17,9 @@ type Mailbox struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// MailboxID holds the value of the "MailboxID" field.
-	MailboxID string `json:"MailboxID,omitempty"`
+	MailboxID imap.InternalMailboxID `json:"MailboxID,omitempty"`
+	// RemoteID holds the value of the "RemoteID" field.
+	RemoteID imap.LabelID `json:"RemoteID,omitempty"`
 	// Name holds the value of the "Name" field.
 	Name string `json:"Name,omitempty"`
 	// UIDNext holds the value of the "UIDNext" field.
@@ -90,7 +93,7 @@ func (*Mailbox) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullBool)
 		case mailbox.FieldID, mailbox.FieldUIDNext, mailbox.FieldUIDValidity:
 			values[i] = new(sql.NullInt64)
-		case mailbox.FieldMailboxID, mailbox.FieldName:
+		case mailbox.FieldMailboxID, mailbox.FieldRemoteID, mailbox.FieldName:
 			values[i] = new(sql.NullString)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Mailbox", columns[i])
@@ -117,7 +120,13 @@ func (m *Mailbox) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field MailboxID", values[i])
 			} else if value.Valid {
-				m.MailboxID = value.String
+				m.MailboxID = imap.InternalMailboxID(value.String)
+			}
+		case mailbox.FieldRemoteID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field RemoteID", values[i])
+			} else if value.Valid {
+				m.RemoteID = imap.LabelID(value.String)
 			}
 		case mailbox.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -192,7 +201,10 @@ func (m *Mailbox) String() string {
 	builder.WriteString("Mailbox(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
 	builder.WriteString("MailboxID=")
-	builder.WriteString(m.MailboxID)
+	builder.WriteString(fmt.Sprintf("%v", m.MailboxID))
+	builder.WriteString(", ")
+	builder.WriteString("RemoteID=")
+	builder.WriteString(fmt.Sprintf("%v", m.RemoteID))
 	builder.WriteString(", ")
 	builder.WriteString("Name=")
 	builder.WriteString(m.Name)

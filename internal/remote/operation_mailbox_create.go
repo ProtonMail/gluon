@@ -2,12 +2,14 @@ package remote
 
 import (
 	"encoding/gob"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 type OpMailboxCreate struct {
 	OperationBase
-	TempID string
-	Name   []string
+	InternalID imap.InternalMailboxID
+	Name       []string
 }
 
 func init() {

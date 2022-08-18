@@ -16,15 +16,15 @@ func init() {
 	mailboxFields := schema.Mailbox{}.Fields()
 	_ = mailboxFields
 	// mailboxDescUIDNext is the schema descriptor for UIDNext field.
-	mailboxDescUIDNext := mailboxFields[2].Descriptor()
+	mailboxDescUIDNext := mailboxFields[3].Descriptor()
 	// mailbox.DefaultUIDNext holds the default value on creation for the UIDNext field.
 	mailbox.DefaultUIDNext = mailboxDescUIDNext.Default.(int)
 	// mailboxDescUIDValidity is the schema descriptor for UIDValidity field.
-	mailboxDescUIDValidity := mailboxFields[3].Descriptor()
+	mailboxDescUIDValidity := mailboxFields[4].Descriptor()
 	// mailbox.DefaultUIDValidity holds the default value on creation for the UIDValidity field.
 	mailbox.DefaultUIDValidity = mailboxDescUIDValidity.Default.(int)
 	// mailboxDescSubscribed is the schema descriptor for Subscribed field.
-	mailboxDescSubscribed := mailboxFields[4].Descriptor()
+	mailboxDescSubscribed := mailboxFields[5].Descriptor()
 	// mailbox.DefaultSubscribed holds the default value on creation for the Subscribed field.
 	mailbox.DefaultSubscribed = mailboxDescSubscribed.Default.(bool)
 	messageFields := schema.Message{}.Fields()

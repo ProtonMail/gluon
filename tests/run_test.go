@@ -4,10 +4,10 @@ package tests
 import (
 	"testing"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/emersion/go-imap/client"
-	"github.com/stretchr/testify/require"
-
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/stretchr/testify/require"
 )
 
 // runOneToOneTest runs a test with one account and one connection.
@@ -30,9 +30,9 @@ func runOneToOneTestWithAuth(tb testing.TB, options *serverOptions, tests func(*
 
 // runOneToOneTestWithData runs a test with one account and one connection. A mailbox is created with test data.
 func runOneToOneTestWithData(tb testing.TB, options *serverOptions,
-	tests func(*testConnection, *testSession, string, string)) {
+	tests func(*testConnection, *testSession, string, imap.LabelID)) {
 	runOneToOneTestWithAuth(tb, options, func(c *testConnection, s *testSession) {
-		withData(s, options.defaultUsername(), func(mbox, mboxID string) {
+		withData(s, options.defaultUsername(), func(mbox string, mboxID imap.LabelID) {
 			withTag(func(tag string) { c.Cf("%v select %v", tag, mbox).OK(tag) })
 
 			tests(c, s, mbox, mboxID)
@@ -63,9 +63,9 @@ func runManyToOneTestWithAuth(tb testing.TB, options *serverOptions,
 
 // runManyToOneTestWithData runs a test with one account and multiple connections. A mailbox is created with test data.
 func runManyToOneTestWithData(tb testing.TB, options *serverOptions,
-	connIDs []int, tests func(map[int]*testConnection, *testSession, string, string)) {
+	connIDs []int, tests func(map[int]*testConnection, *testSession, string, imap.LabelID)) {
 	runManyToOneTestWithAuth(tb, options, connIDs, func(c map[int]*testConnection, s *testSession) {
-		withData(s, options.defaultUsername(), func(mbox, mboxID string) {
+		withData(s, options.defaultUsername(), func(mbox string, mboxID imap.LabelID) {
 			for _, c := range c {
 				withTag(func(tag string) { c.Cf("%v select %v", tag, mbox).OK(tag) })
 			}
@@ -111,9 +111,9 @@ func runOneToOneTestClientWithAuth(tb testing.TB, options *serverOptions, test f
 }
 
 // runOneToOneTestClientWithData runs a test with one account and one connection using an imap client. A mailbox is created with test data.
-func runOneToOneTestClientWithData(tb testing.TB, options *serverOptions, test func(*client.Client, *testSession, string, string)) {
+func runOneToOneTestClientWithData(tb testing.TB, options *serverOptions, test func(*client.Client, *testSession, string, imap.LabelID)) {
 	runOneToOneTestClientWithAuth(tb, options, func(client *client.Client, s *testSession) {
-		withData(s, options.defaultUsername(), func(mbox, mboxID string) {
+		withData(s, options.defaultUsername(), func(mbox string, mboxID imap.LabelID) {
 			_, err := client.Select(mbox, false)
 			require.NoError(s.tb, err)
 			test(client, s, mbox, mboxID)

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/ProtonMail/gluon/imap"
 	"path/filepath"
 	"sync"
 	"time"
@@ -18,6 +19,24 @@ type BadgerStore struct {
 func NewBadgerStore(path string, userID string, encryptionPassphrase []byte) (*BadgerStore, error) {
 	db, err := badger.Open(badger.DefaultOptions(filepath.Join(path, userID)).
 		WithLogger(logrus.StandardLogger()).
+		WithEncryptionKey(encryptionPassphrase).
+		WithIndexCacheSize(128 * 1024 * 1024),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	store := &BadgerStore{db: db, gcExitCh: make(chan struct{})}
+
+	store.startGCCollector()
+
+	return store, nil
+}
+
+func NewTestBadgerStore(path string, userID string, encryptionPassphrase []byte) (*BadgerStore, error) {
+	db, err := badger.Open(badger.DefaultOptions(filepath.Join(path, userID)).
+		WithLogger(logrus.StandardLogger()).
+		WithLoggingLevel(badger.ERROR).
 		WithEncryptionKey(encryptionPassphrase).
 		WithIndexCacheSize(128 * 1024 * 1024),
 	)
@@ -57,7 +76,7 @@ func (b *BadgerStore) startGCCollector() {
 	}()
 }
 
-func (b *BadgerStore) Get(messageID string) ([]byte, error) {
+func (b *BadgerStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 	var data []byte
 
 	if err := b.db.View(func(txn *badger.Txn) error {
@@ -79,37 +98,13 @@ func (b *BadgerStore) Get(messageID string) ([]byte, error) {
 	return data, nil
 }
 
-func (b *BadgerStore) Set(messageID string, literal []byte) error {
+func (b *BadgerStore) Set(messageID imap.InternalMessageID, literal []byte) error {
 	return b.db.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(messageID), literal)
 	})
 }
 
-func (b *BadgerStore) Update(oldID, newID string) error {
-	return b.db.Update(func(txn *badger.Txn) error {
-		oldIDBytes := []byte(oldID)
-		newIDBytes := []byte(newID)
-
-		item, err := txn.Get(oldIDBytes)
-		if err != nil {
-			return err
-		}
-
-		buffer := make([]byte, item.ValueSize())
-		buffer, err = item.ValueCopy(buffer)
-		if err != nil {
-			return err
-		}
-
-		if err := txn.Set(newIDBytes, buffer); err != nil {
-			return err
-		}
-
-		return txn.Delete(oldIDBytes)
-	})
-}
-
-func (b *BadgerStore) Delete(messageID ...string) error {
+func (b *BadgerStore) Delete(messageID ...imap.InternalMessageID) error {
 	return b.db.Update(func(txn *badger.Txn) error {
 		for _, v := range messageID {
 			if err := txn.Delete([]byte(v)); err != nil {

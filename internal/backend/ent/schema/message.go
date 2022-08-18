@@ -5,6 +5,7 @@ import (
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 )
 
 // Message holds the schema definition for the Message entity.
@@ -15,8 +16,8 @@ type Message struct {
 // Fields of the Message.
 func (Message) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("MessageID").Unique(),
-		field.String("InternalID").Unique(),
+		field.String("MessageID").Unique().Immutable().GoType(imap.InternalMessageID("")),
+		field.String("RemoteID").Optional().Unique().GoType(imap.MessageID("")),
 		field.Time("Date"),
 		field.Int("Size"),
 		field.String("Body"),

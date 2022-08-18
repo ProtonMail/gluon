@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/remote"
 	"github.com/bradenaw/juniper/xslices"
@@ -46,7 +47,7 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 			return err
 		}
 
-		messageIDs = xslices.Filter(messageIDs, func(messageID string) bool {
+		messageIDs = xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return xslices.CountFunc(maps.Values(user.states), func(other *State) bool {
 				return state != other && other.snap != nil && other.snap.hasMessage(messageID)
 			}) == 0
@@ -74,12 +75,12 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 	})
 }
 
-func (user *user) hasStateInMailboxWithMessage(mboxID, messageID string) bool {
+func (user *user) hasStateInMailboxWithMessage(mboxID imap.InternalMailboxID, messageID imap.InternalMessageID) bool {
 	user.statesLock.RLock()
 	defer user.statesLock.RUnlock()
 
 	return xslices.CountFunc(maps.Values(user.states), func(state *State) bool {
-		return state.snap != nil && state.snap.mboxID == mboxID && state.snap.hasMessage(messageID)
+		return state.snap != nil && state.snap.mboxID.InternalID == mboxID && state.snap.hasMessage(messageID)
 	}) > 0
 }
 
@@ -98,12 +99,12 @@ func (user *user) forState(fn func(*State) error) error {
 }
 
 // forStateInMailbox iterates through each state that is open in the given mailbox.
-func (user *user) forStateInMailbox(mboxID string, fn func(*State) error) error {
+func (user *user) forStateInMailbox(mboxID imap.InternalMailboxID, fn func(*State) error) error {
 	user.statesLock.RLock()
 	defer user.statesLock.RUnlock()
 
 	for _, state := range user.states {
-		if state.snap != nil && state.snap.mboxID == mboxID {
+		if state.snap != nil && state.snap.mboxID.InternalID == mboxID {
 			if err := fn(state); err != nil {
 				return err
 			}
@@ -114,7 +115,7 @@ func (user *user) forStateInMailbox(mboxID string, fn func(*State) error) error 
 }
 
 // forStateWithMessage iterates through all states that have the given message.
-func (user *user) forStateWithMessage(messageID string, fn func(*State) error) error {
+func (user *user) forStateWithMessage(messageID imap.InternalMessageID, fn func(*State) error) error {
 	user.statesLock.RLock()
 	defer user.statesLock.RUnlock()
 
@@ -131,7 +132,7 @@ func (user *user) forStateWithMessage(messageID string, fn func(*State) error) e
 
 // forStateInMailboxWithMessage iterates through each state that is open in the given mailbox which contains the given message.
 // A state might still contain the given message if the message had been expunged but this state was not notified yet.
-func (user *user) forStateInMailboxWithMessage(mboxID, messageID string, fn func(*State) error) error {
+func (user *user) forStateInMailboxWithMessage(mboxID imap.InternalMailboxID, messageID imap.InternalMessageID, fn func(*State) error) error {
 	return user.forStateInMailbox(mboxID, func(state *State) error {
 		if state.snap.hasMessage(messageID) {
 			return fn(state)
