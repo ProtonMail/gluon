@@ -58,6 +58,22 @@ func (user *User) RemoveMessagesFromMailbox(ctx context.Context,
 	return nil
 }
 
+// MoveMessagesFromMailbox removes the message with the given ID from the mailbox with the given ID.
+func (user *User) MoveMessagesFromMailbox(ctx context.Context,
+	metadataID ConnMetadataID,
+	messageIDs []imap.MessageID,
+	mboxFromID imap.LabelID,
+	mboxToID imap.LabelID,
+) error {
+	ctx = user.newContextWithIMAPID(ctx, metadataID)
+
+	if err := user.conn.MoveMessages(ctx, messageIDs, mboxFromID, mboxToID); err != nil {
+		return user.refresh(ctx, messageIDs, mboxFromID)
+	}
+
+	return nil
+}
+
 // SetMessagesSeen marks the message with the given ID as seen or unseen.
 func (user *User) SetMessagesSeen(ctx context.Context, metadataID ConnMetadataID, messageIDs []imap.MessageID, seen bool) error {
 	ctx = user.newContextWithIMAPID(ctx, metadataID)

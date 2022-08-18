@@ -46,6 +46,8 @@ type Connector interface {
 	// UnlabelMessages unlabels the given messages with the given label ID.
 	UnlabelMessages(ctx context.Context, messageIDs []imap.MessageID, labelID imap.LabelID) error
 
+	MoveMessages(ctx context.Context, messageIDs []imap.MessageID, labelFromID, labelToID imap.LabelID) error
+
 	// MarkMessagesSeen sets the seen value of the given messages.
 	MarkMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error
 

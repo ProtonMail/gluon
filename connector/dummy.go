@@ -224,6 +224,22 @@ func (conn *Dummy) UnlabelMessages(ctx context.Context, messageIDs []imap.Messag
 	return nil
 }
 
+func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID, labelFromID, labelToID imap.LabelID) error {
+	for _, messageID := range messageIDs {
+		conn.state.unlabelMessage(messageID, labelFromID)
+		conn.state.labelMessage(messageID, labelToID)
+
+		conn.pushUpdate(imap.NewMessageUpdated(
+			messageID,
+			conn.state.getLabelIDs(messageID),
+			conn.state.isSeen(messageID),
+			conn.state.isFlagged(messageID),
+		))
+	}
+
+	return nil
+}
+
 func (conn *Dummy) MarkMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error {
 	for _, messageID := range messageIDs {
 		conn.state.setSeen(messageID, seen)

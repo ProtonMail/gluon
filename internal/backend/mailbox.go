@@ -205,15 +205,9 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 		return msg.UID
 	})
 
-	destUIDs, err := m.state.actionAddMessagesToMailbox(ctx, m.tx, msgIDs, NewMailboxIDPair(mbox))
+	destUIDs, err := m.state.actionMoveMessages(ctx, m.tx, msgIDs, m.snap.mboxID, NewMailboxIDPair(mbox))
 	if err != nil {
 		return nil, err
-	}
-
-	if mbox.MailboxID != m.snap.mboxID.InternalID {
-		if err := m.state.actionRemoveMessagesFromMailbox(ctx, m.tx, msgIDs, m.snap.mboxID); err != nil {
-			return nil, err
-		}
 	}
 
 	var res response.Item

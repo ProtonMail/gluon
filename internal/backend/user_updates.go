@@ -310,6 +310,46 @@ func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.T
 	return nil
 }
 
+func (user *user) applyMessagesMovedFromMailbox(
+	ctx context.Context,
+	tx *ent.Tx,
+	mboxFromID, mboxToID imap.InternalMailboxID,
+	messageIDs []imap.InternalMessageID,
+) (map[imap.InternalMessageID]int, error) {
+	if mboxFromID != mboxToID {
+		if err := DBRemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxFromID); err != nil {
+			return nil, err
+		}
+	}
+
+	if _, err := DBAddMessagesToMailbox(ctx, tx, messageIDs, mboxToID); err != nil {
+		return nil, err
+	}
+
+	messageUIDs, err := DBGetMessageUIDs(ctx, tx.Client(), mboxToID, messageIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := user.forStateInMailbox(mboxToID, func(other *State) error {
+		return other.pushResponder(ctx, tx, xslices.Map(messageIDs, func(id imap.InternalMessageID) responder {
+			return newExists(id, messageUIDs[id])
+		})...)
+	}); err != nil {
+		return nil, err
+	}
+
+	for _, messageID := range messageIDs {
+		if err := user.forStateInMailboxWithMessage(mboxFromID, messageID, func(other *State) error {
+			return other.pushResponder(ctx, tx, newExpunge(messageID, isClose(ctx)))
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	return messageUIDs, nil
+}
+
 func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, seen, flagged bool) error {
 	curFlags, err := DBGetMessageFlags(ctx, tx.Client(), []imap.InternalMessageID{messageID})
 	if err != nil {

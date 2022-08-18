@@ -92,6 +92,39 @@ func DBAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.I
 	return messageUIDs, nil
 }
 
+func DBBumpMailboxUIDsForMessage(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) (map[imap.InternalMessageID]int, error) {
+	messageUIDs := make(map[imap.InternalMessageID]int)
+
+	mbox, err := tx.Mailbox.Query().Where(mailbox.MailboxID(mboxID)).Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var builders []*ent.UIDUpdate
+
+	for idx, messageID := range messageIDs {
+		uidNext := mbox.UIDNext + idx
+		messageUIDs[messageID] = uidNext
+
+		builders = append(builders, tx.UID.Update().
+			SetUID(uidNext).
+			Where(uid.HasMessageWith(message.MessageID(messageID))),
+		)
+	}
+
+	for _, builder := range builders {
+		if _, err := builder.Save(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := DBBumpMailboxUIDNext(ctx, tx, mbox, len(messageIDs)); err != nil {
+		return nil, err
+	}
+
+	return messageUIDs, nil
+}
+
 func DBRemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) error {
 	if _, err := tx.UID.Delete().
 		Where(
