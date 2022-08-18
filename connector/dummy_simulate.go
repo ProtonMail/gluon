@@ -85,7 +85,7 @@ func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs 
 func (conn *Dummy) MessageAdded(messageID imap.MessageID, labelID imap.LabelID) error {
 	conn.state.labelMessage(messageID, labelID)
 
-	conn.pushUpdate(imap.NewMessageUpdated(
+	conn.pushUpdate(imap.NewMessageLabelsUpdated(
 		messageID,
 		conn.state.getLabelIDs(messageID),
 		conn.state.isSeen(messageID),
@@ -98,7 +98,7 @@ func (conn *Dummy) MessageAdded(messageID imap.MessageID, labelID imap.LabelID) 
 func (conn *Dummy) MessageRemoved(messageID imap.MessageID, labelID imap.LabelID) error {
 	conn.state.unlabelMessage(messageID, labelID)
 
-	conn.pushUpdate(imap.NewMessageUpdated(
+	conn.pushUpdate(imap.NewMessageLabelsUpdated(
 		messageID,
 		conn.state.getLabelIDs(messageID),
 		conn.state.isSeen(messageID),
@@ -111,9 +111,8 @@ func (conn *Dummy) MessageRemoved(messageID imap.MessageID, labelID imap.LabelID
 func (conn *Dummy) MessageSeen(messageID imap.MessageID, seen bool) error {
 	conn.state.setSeen(messageID, seen)
 
-	conn.pushUpdate(imap.NewMessageUpdated(
+	conn.pushUpdate(imap.NewMessageFlagsUpdated(
 		messageID,
-		conn.state.getLabelIDs(messageID),
 		conn.state.isSeen(messageID),
 		conn.state.isFlagged(messageID),
 	))
@@ -124,9 +123,8 @@ func (conn *Dummy) MessageSeen(messageID imap.MessageID, seen bool) error {
 func (conn *Dummy) MessageFlagged(messageID imap.MessageID, flagged bool) error {
 	conn.state.setFlagged(messageID, flagged)
 
-	conn.pushUpdate(imap.NewMessageUpdated(
+	conn.pushUpdate(imap.NewMessageFlagsUpdated(
 		messageID,
-		conn.state.getLabelIDs(messageID),
 		conn.state.isSeen(messageID),
 		conn.state.isFlagged(messageID),
 	))

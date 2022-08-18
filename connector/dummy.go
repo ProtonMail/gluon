@@ -198,7 +198,7 @@ func (conn *Dummy) LabelMessages(ctx context.Context, messageIDs []imap.MessageI
 	for _, messageID := range messageIDs {
 		conn.state.labelMessage(messageID, mboxID)
 
-		conn.pushUpdate(imap.NewMessageUpdated(
+		conn.pushUpdate(imap.NewMessageLabelsUpdated(
 			messageID,
 			conn.state.getLabelIDs(messageID),
 			conn.state.isSeen(messageID),
@@ -213,7 +213,7 @@ func (conn *Dummy) UnlabelMessages(ctx context.Context, messageIDs []imap.Messag
 	for _, messageID := range messageIDs {
 		conn.state.unlabelMessage(messageID, mboxID)
 
-		conn.pushUpdate(imap.NewMessageUpdated(
+		conn.pushUpdate(imap.NewMessageLabelsUpdated(
 			messageID,
 			conn.state.getLabelIDs(messageID),
 			conn.state.isSeen(messageID),
@@ -229,7 +229,7 @@ func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID
 		conn.state.unlabelMessage(messageID, labelFromID)
 		conn.state.labelMessage(messageID, labelToID)
 
-		conn.pushUpdate(imap.NewMessageUpdated(
+		conn.pushUpdate(imap.NewMessageLabelsUpdated(
 			messageID,
 			conn.state.getLabelIDs(messageID),
 			conn.state.isSeen(messageID),
@@ -244,9 +244,8 @@ func (conn *Dummy) MarkMessagesSeen(ctx context.Context, messageIDs []imap.Messa
 	for _, messageID := range messageIDs {
 		conn.state.setSeen(messageID, seen)
 
-		conn.pushUpdate(imap.NewMessageUpdated(
+		conn.pushUpdate(imap.NewMessageFlagsUpdated(
 			messageID,
-			conn.state.getLabelIDs(messageID),
 			conn.state.isSeen(messageID),
 			conn.state.isFlagged(messageID),
 		))
@@ -259,9 +258,8 @@ func (conn *Dummy) MarkMessagesFlagged(ctx context.Context, messageIDs []imap.Me
 	for _, messageID := range messageIDs {
 		conn.state.setFlagged(messageID, flagged)
 
-		conn.pushUpdate(imap.NewMessageUpdated(
+		conn.pushUpdate(imap.NewMessageFlagsUpdated(
 			messageID,
-			conn.state.getLabelIDs(messageID),
 			conn.state.isSeen(messageID),
 			conn.state.isFlagged(messageID),
 		))
@@ -344,8 +342,10 @@ func (conn *Dummy) pushUpdate(update imap.Update) {
 	// We mimic the behaviour of the Proton sever. if several update to a message or mailbox happen in between
 	// two event polls, we only get one refresh update with the latest state.
 	switch update := update.(type) {
-	case *imap.MessageUpdated:
-		conn.queue = removeMessageUpdatedFromSlice(conn.queue, update.MessageID)
+	case *imap.MessageLabelsUpdated:
+		conn.queue = removeMessageLabelsUpdatedFromSlice(conn.queue, update.MessageID)
+	case *imap.MessageFlagsUpdated:
+		conn.queue = removeMessageFlagsUpdatedFromSlice(conn.queue, update.MessageID)
 
 	case *imap.MailboxUpdated:
 		conn.queue = removeMailboxUpdatedFromSlice(conn.queue, update.MailboxID)
@@ -365,9 +365,17 @@ func (conn *Dummy) popUpdates() []imap.Update {
 	return updates
 }
 
-func removeMessageUpdatedFromSlice(updates []imap.Update, messageID imap.MessageID) []imap.Update {
+func removeMessageLabelsUpdatedFromSlice(updates []imap.Update, messageID imap.MessageID) []imap.Update {
 	return xslices.Filter(updates, func(update imap.Update) bool {
-		u, ok := update.(*imap.MessageUpdated)
+		u, ok := update.(*imap.MessageLabelsUpdated)
+
+		return (!ok) || (u.MessageID != messageID)
+	})
+}
+
+func removeMessageFlagsUpdatedFromSlice(updates []imap.Update, messageID imap.MessageID) []imap.Update {
+	return xslices.Filter(updates, func(update imap.Update) bool {
+		u, ok := update.(*imap.MessageFlagsUpdated)
 
 		return (!ok) || (u.MessageID != messageID)
 	})

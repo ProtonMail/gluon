@@ -13,7 +13,7 @@ func (user *User) refresh(ctx context.Context, messageIDs []imap.MessageID, mbox
 			return err
 		}
 
-		user.send(imap.NewMessageUpdated(
+		user.send(imap.NewMessageLabelsUpdated(
 			message.ID,
 			mboxIDs,
 			message.Flags.Contains(imap.FlagSeen),

@@ -34,8 +34,11 @@ func (user *user) apply(ctx context.Context, tx *ent.Tx, update imap.Update) err
 	case *imap.MessagesCreated:
 		return user.applyMessagesCreated(ctx, tx, update)
 
-	case *imap.MessageUpdated:
-		return user.applyMessageUpdated(ctx, tx, update)
+	case *imap.MessageLabelsUpdated:
+		return user.applyMessageLabelsUpdated(ctx, tx, update)
+
+	case *imap.MessageFlagsUpdated:
+		return user.applyMessageFlagsUpdated(ctx, tx, update)
 
 	case *imap.MessageIDChanged:
 		return user.applyMessageIDChanged(ctx, tx, update)
@@ -204,8 +207,8 @@ func (user *user) applyMessagesCreated(ctx context.Context, tx *ent.Tx, update *
 	return nil
 }
 
-// applyMessageUpdated applies a MessageUpdated update.
-func (user *user) applyMessageUpdated(ctx context.Context, tx *ent.Tx, update *imap.MessageUpdated) error {
+// applyMessageLabelsUpdated applies a MessageLabelsUpdated update.
+func (user *user) applyMessageLabelsUpdated(ctx context.Context, tx *ent.Tx, update *imap.MessageLabelsUpdated) error {
 	if exists, err := DBMessageExistsWithRemoteID(ctx, tx.Client(), update.MessageID); err != nil {
 		return err
 	} else if !exists {
@@ -223,6 +226,26 @@ func (user *user) applyMessageUpdated(ctx context.Context, tx *ent.Tx, update *i
 	}
 
 	if err := user.setMessageMailboxes(ctx, tx, internalMsgID, internalMBoxIDs); err != nil {
+		return err
+	}
+
+	if err := user.setMessageFlags(ctx, tx, internalMsgID, update.Seen, update.Flagged); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// applyMessageFlagsUpdated applies a MessageFlagsUpdated update.
+func (user *user) applyMessageFlagsUpdated(ctx context.Context, tx *ent.Tx, update *imap.MessageFlagsUpdated) error {
+	if exists, err := DBMessageExistsWithRemoteID(ctx, tx.Client(), update.MessageID); err != nil {
+		return err
+	} else if !exists {
+		return ErrNoSuchMessage
+	}
+
+	internalMsgID, err := DBGetMessageIDFromRemoteID(ctx, tx.Client(), update.MessageID)
+	if err != nil {
 		return err
 	}
 
