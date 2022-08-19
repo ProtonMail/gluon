@@ -177,8 +177,10 @@ func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
 					// Consume all remaining channel response since the connection is no longer available.
 					// Failing to do so can cause a deadlock in the program as `s.handleOther` never finishes
 					// executing and can hold onto a number of locks indefinitely.
-					for _ = range responseCh {
+					for range responseCh {
+						// ...
 					}
+
 					return fmt.Errorf("failed to send response to client: %w", err)
 				}
 			}

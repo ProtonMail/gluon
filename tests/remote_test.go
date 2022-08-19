@@ -2,6 +2,8 @@ package tests
 
 import (
 	"testing"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 func TestRemoteCopy(t *testing.T) {
@@ -81,5 +83,31 @@ func TestRemoteDeletionPool(t *testing.T) {
 		c[2].C(`tag fetch 1:* (uid)`)
 		c[2].Se(`* 1 FETCH (UID 3)`, `* 2 FETCH (UID 4)`)
 		c[2].OK("tag")
+	})
+}
+
+func TestRemoteConcurrency(t *testing.T) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+		for mbox := 1; mbox <= 100; mbox++ {
+			c.Cf(`tag create %v`, mbox).OK(`tag`)
+		}
+
+		s.flush("user")
+
+		for mbox := 1; mbox <= 100; mbox++ {
+			c.Cf(`tag move 1:* %v`, mbox).OK(`tag`)
+			s.flush("user") // TODO: How to not rely on this flush?
+			c.Cf(`tag select %v`, mbox).OK(`tag`)
+		}
+
+		s.flush("user")
+
+		for mbox := 1; mbox <= 100; mbox++ {
+			if mbox < 100 {
+				c.Cf(`tag status %v (messages)`, mbox).Sxe(`MESSAGES 0`).OK(`tag`)
+			} else {
+				c.Cf(`tag status %v (messages)`, mbox).Sxe(`MESSAGES 100`).OK(`tag`)
+			}
+		}
 	})
 }
