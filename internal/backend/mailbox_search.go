@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/gluon/internal/backend/ent"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -197,13 +199,15 @@ func (m *Mailbox) matchSearchKeyBefore(ctx context.Context, candidates []*snapMs
 		return nil, err
 	}
 
-	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
+	return DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
+		return filter(candidates, func(message *snapMsg) (bool, error) {
+			msg, err := DBGetMessage(ctx, client, message.ID.InternalID)
+			if err != nil {
+				return false, err
+			}
 
-		return msg.Date.Before(beforeDate), nil
+			return msg.Date.Before(beforeDate), nil
+		})
 	})
 }
 
@@ -316,13 +320,15 @@ func (m *Mailbox) matchSearchKeyKeyword(ctx context.Context, candidates []*snapM
 }
 
 func (m *Mailbox) matchSearchKeyLarger(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
-	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
+	return DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
+		return filter(candidates, func(message *snapMsg) (bool, error) {
+			msg, err := DBGetMessage(ctx, client, message.ID.InternalID)
+			if err != nil {
+				return false, err
+			}
 
-		return msg.Size > int(key.GetSize()), nil
+			return msg.Size > int(key.GetSize()), nil
+		})
 	})
 }
 
@@ -355,13 +361,15 @@ func (m *Mailbox) matchSearchKeyOn(ctx context.Context, candidates []*snapMsg, k
 		return nil, err
 	}
 
-	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
+	return DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
+		return filter(candidates, func(message *snapMsg) (bool, error) {
+			msg, err := DBGetMessage(ctx, client, message.ID.InternalID)
+			if err != nil {
+				return false, err
+			}
 
-		return onDate.Truncate(24 * time.Hour).Equal(msg.Date.Truncate(24 * time.Hour)), nil
+			return onDate.Truncate(24 * time.Hour).Equal(msg.Date.Truncate(24 * time.Hour)), nil
+		})
 	})
 }
 
@@ -487,26 +495,30 @@ func (m *Mailbox) matchSearchKeySince(ctx context.Context, candidates []*snapMsg
 		return nil, err
 	}
 
-	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
+	return DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
+		return filter(candidates, func(message *snapMsg) (bool, error) {
+			msg, err := DBGetMessage(ctx, client, message.ID.InternalID)
+			if err != nil {
+				return false, err
+			}
 
-		date := convertToDateWithoutTZ(msg.Date)
+			date := convertToDateWithoutTZ(msg.Date)
 
-		return date.Equal(sinceDate) || date.After(sinceDate), nil
+			return date.Equal(sinceDate) || date.After(sinceDate), nil
+		})
 	})
 }
 
 func (m *Mailbox) matchSearchKeySmaller(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
-	return filter(candidates, func(message *snapMsg) (bool, error) {
-		msg, err := DBGetMessage(ctx, m.tx.Client(), message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
+	return DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
+		return filter(candidates, func(message *snapMsg) (bool, error) {
+			msg, err := DBGetMessage(ctx, client, message.ID.InternalID)
+			if err != nil {
+				return false, err
+			}
 
-		return msg.Size < int(key.GetSize()), nil
+			return msg.Size < int(key.GetSize()), nil
+		})
 	})
 }
 

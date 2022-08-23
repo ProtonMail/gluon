@@ -2,13 +2,13 @@ package store_benchmarks
 
 import (
 	"context"
-	"github.com/ProtonMail/gluon/imap"
 	"sync"
 	"time"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/reporter"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/timing"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
 )

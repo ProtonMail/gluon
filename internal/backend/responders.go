@@ -26,12 +26,14 @@ func newExists(messageID imap.InternalMessageID, messageUID int) *exists {
 }
 
 func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]response.Response, error) {
-	remoteID, err := DBGetRemoteMessageID(ctx, tx.Client(), u.messageID)
+	client := tx.Client()
+
+	remoteID, err := DBGetRemoteMessageID(ctx, client, u.messageID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := snap.appendMessage(ctx, tx, MessageIDPair{InternalID: u.messageID, RemoteID: remoteID}); err != nil {
+	if err := snap.appendMessage(ctx, client, MessageIDPair{InternalID: u.messageID, RemoteID: remoteID}); err != nil {
 		return nil, err
 	}
 
@@ -79,7 +81,7 @@ func (u *expunge) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]res
 		return nil, err
 	}
 
-	if err := snap.expungeMessage(ctx, tx, u.messageID); err != nil {
+	if err := snap.expungeMessage(u.messageID); err != nil {
 		return nil, err
 	}
 

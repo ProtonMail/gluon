@@ -15,8 +15,9 @@ import (
 // It is used to process fetched results in parallel from the database.
 // TODO: Is the idx threadsafe?
 type fetcher struct {
-	snap *snapshot
-	mbox *ent.Mailbox
+	client *ent.Client
+	snap   *snapshot
+	mbox   *ent.Mailbox
 
 	seq imap.SeqSet
 	idx int64
@@ -39,7 +40,7 @@ func (fetcher *fetcher) Next(ctx context.Context) (stream.Stream[*ent.UID], erro
 		return nil, err
 	}
 
-	res, err := DBGetUIDInterval(ctx, fetcher.mbox, begin.UID, end.UID)
+	res, err := DBGetUIDInterval(ctx, fetcher.client, fetcher.mbox, begin.UID, end.UID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,11 +54,12 @@ func (fetcher *fetcher) Close() {
 	atomic.StoreInt64(&fetcher.idx, int64(len(fetcher.seq)))
 }
 
-func newUIDStream(snap *snapshot, mbox *ent.Mailbox, msg []*snapMsg) stream.Stream[*ent.UID] {
+func newUIDStream(snap *snapshot, client *ent.Client, mbox *ent.Mailbox, msg []*snapMsg) stream.Stream[*ent.UID] {
 	return stream.Flatten(stream.Stream[stream.Stream[*ent.UID]](&fetcher{
-		snap: snap,
-		mbox: mbox,
-		seq:  imap.NewSeqSet(xslices.Map(msg, func(msg *snapMsg) int { return msg.Seq })),
-		idx:  -1,
+		snap:   snap,
+		mbox:   mbox,
+		client: client,
+		seq:    imap.NewSeqSet(xslices.Map(msg, func(msg *snapMsg) int { return msg.Seq })),
+		idx:    -1,
 	}))
 }

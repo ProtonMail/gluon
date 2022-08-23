@@ -166,7 +166,7 @@ func DBGetMailboxMessageIDPairs(ctx context.Context, client *ent.Client, mailbox
 	}), nil
 }
 
-func DBGetUIDInterval(ctx context.Context, mbox *ent.Mailbox, begin, end int) ([]*ent.UID, error) {
+func DBGetUIDInterval(ctx context.Context, client *ent.Client, mbox *ent.Mailbox, begin, end int) ([]*ent.UID, error) {
 	return mbox.QueryUIDs().
 		Where(uid.UIDGTE(begin), uid.UIDLTE(end)).
 		WithMessage().
@@ -211,15 +211,15 @@ func DBGetMailboxByID(ctx context.Context, client *ent.Client, id imap.InternalM
 	return client.Mailbox.Query().Where(mailbox.MailboxID(id)).Only(ctx)
 }
 
-func DBGetMailboxMessages(ctx context.Context, mbox *ent.Mailbox) ([]*ent.UID, error) {
+func DBGetMailboxMessages(ctx context.Context, client *ent.Client, mbox *ent.Mailbox) ([]*ent.UID, error) {
 	return mbox.QueryUIDs().WithMessage().All(ctx)
 }
 
-func DBGetMailboxRecentCount(ctx context.Context, mbox *ent.Mailbox) (int, error) {
+func DBGetMailboxRecentCount(ctx context.Context, client *ent.Client, mbox *ent.Mailbox) (int, error) {
 	return mbox.QueryUIDs().Where(uid.Recent(true)).Count(ctx)
 }
 
-func DBGetMailboxMessagesForNewSnapshot(ctx context.Context, mbox *ent.Mailbox) ([]*ent.UID, error) {
+func DBGetMailboxMessagesForNewSnapshot(ctx context.Context, client *ent.Client, mbox *ent.Mailbox) ([]*ent.UID, error) {
 	var msgUIDs []*ent.UID
 
 	const QueryLimit = 16000

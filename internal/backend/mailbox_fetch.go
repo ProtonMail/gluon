@@ -43,7 +43,9 @@ func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*pr
 		setSeen bool
 	)
 
-	message, err := DBGetMessage(ctx, m.tx.Client(), msg.ID.InternalID)
+	message, err := DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
+		return DBGetMessage(ctx, client, msg.ID.InternalID)
+	})
 	if err != nil {
 		return 0, nil, err
 	}
@@ -90,7 +92,9 @@ func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*pr
 	}
 
 	if setSeen {
-		newFlags, err := m.state.actionAddMessageFlags(ctx, m.tx, []MessageIDPair{msg.ID}, imap.NewFlagSet(imap.FlagSeen))
+		newFlags, err := DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]imap.FlagSet, error) {
+			return m.state.actionAddMessageFlags(ctx, tx, []MessageIDPair{msg.ID}, imap.NewFlagSet(imap.FlagSeen))
+		})
 		if err != nil {
 			return 0, nil, err
 		}

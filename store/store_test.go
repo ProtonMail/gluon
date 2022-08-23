@@ -2,11 +2,11 @@ package store_test
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap"
 	"runtime"
 	"sync"
 	"testing"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/stretchr/testify/require"
 )

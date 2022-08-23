@@ -19,6 +19,7 @@ type Match struct {
 
 func getMatches(
 	ctx context.Context,
+	client *ent.Client,
 	mailboxes []*ent.Mailbox,
 	ref, pattern, delimiter string,
 	subscribed bool,
@@ -36,7 +37,7 @@ func getMatches(
 					return flag.Value
 				}))
 
-				recent, err := DBGetMailboxRecentCount(ctx, mailbox)
+				recent, err := DBGetMailboxRecentCount(ctx, client, mailbox)
 				if err != nil {
 					return nil, err
 				}

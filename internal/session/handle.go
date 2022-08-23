@@ -216,6 +216,7 @@ func (s *Session) handleSelectedCommand(ctx context.Context, tag string, cmd *pr
 
 	// TODO(REFACTOR): Should we flush both before and after?
 	return s.state.Selected(ctx, func(mailbox *backend.Mailbox) error {
+
 		if err := flush(ctx, mailbox, false, ch); err != nil {
 			return err
 		}

@@ -24,19 +24,41 @@ func (d *DB) Init(ctx context.Context) error {
 }
 
 func (d *DB) Read(ctx context.Context, fn func(context.Context, *ent.Client) error) error {
-	d.lock.RLock()
-	defer d.lock.Unlock()
+	_, err := DBReadResult(ctx, d, func(ctx context.Context, client *ent.Client) (struct{}, error) {
+		return struct{}{}, fn(ctx, client)
+	})
 
-	return fn(ctx, d.db)
+	return err
 }
 
 func (d *DB) Write(ctx context.Context, fn func(context.Context, *ent.Tx) error) error {
-	d.lock.Lock()
-	defer d.lock.Unlock()
+	_, err := DBWriteResult(ctx, d, func(ctx context.Context, tx *ent.Tx) (struct{}, error) {
+		return struct{}{}, fn(ctx, tx)
+	})
 
-	tx, err := d.db.Tx(ctx)
+	return err
+}
+
+func (d *DB) Close() error {
+	return d.db.Close()
+}
+
+func DBReadResult[T any](ctx context.Context, db *DB, fn func(context.Context, *ent.Client) (T, error)) (T, error) {
+	db.lock.RLock()
+	defer db.lock.RUnlock()
+
+	return fn(ctx, db.db)
+}
+
+func DBWriteResult[T any](ctx context.Context, db *DB, fn func(context.Context, *ent.Tx) (T, error)) (T, error) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	var failResult T
+
+	tx, err := db.db.Tx(ctx)
 	if err != nil {
-		return err
+		return failResult, err
 	}
 
 	defer func() {
@@ -49,23 +71,20 @@ func (d *DB) Write(ctx context.Context, fn func(context.Context, *ent.Tx) error)
 		}
 	}()
 
-	if err := fn(ctx, tx); err != nil {
+	result, err := fn(ctx, tx)
+	if err != nil {
 		if rerr := tx.Rollback(); rerr != nil {
-			return fmt.Errorf("rolling back transaction: %w", rerr)
+			return failResult, fmt.Errorf("rolling back transaction: %w", rerr)
 		}
 
-		return err
+		return failResult, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("committing transaction: %w", err)
+		return failResult, fmt.Errorf("committing transaction: %w", err)
 	}
 
-	return nil
-}
-
-func (d *DB) Close() error {
-	return d.db.Close()
+	return result, nil
 }
 
 func (b *Backend) newDB(userID string) (*DB, error) {

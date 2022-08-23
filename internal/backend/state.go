@@ -39,13 +39,13 @@ func (state *State) UserID() string {
 }
 
 func (state *State) List(ctx context.Context, ref, pattern string, subscribed bool, fn func(map[string]Match) error) error {
-	return state.tx(ctx, func(tx *ent.Tx) error {
-		mailboxes, err := DBGetAllMailboxes(ctx, tx.Client())
+	return state.db.Read(ctx, func(ctx context.Context, client *ent.Client) error {
+		mailboxes, err := DBGetAllMailboxes(ctx, client)
 		if err != nil {
 			return err
 		}
 
-		matches, err := getMatches(ctx, mailboxes, ref, pattern, state.delimiter, subscribed)
+		matches, err := getMatches(ctx, client, mailboxes, ref, pattern, state.delimiter, subscribed)
 		if err != nil {
 			return err
 		}
@@ -55,87 +55,103 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 }
 
 func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) error) error {
-	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
-		if err != nil {
-			return ErrNoSuchMailbox
-		}
-
-		if state.snap != nil {
-			if err := state.close(ctx, tx); err != nil {
-				return err
-			}
-		}
-
-		snap, err := newSnapshot(ctx, state, mbox)
-		if err != nil {
-			return err
-		}
-
-		if err := DBClearRecentFlags(ctx, tx, mbox.MailboxID); err != nil {
-			return err
-		}
-
-		state.snap = snap
-		state.ro = false
-
-		return fn(newMailbox(tx, mbox, state, state.snap))
+	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByName(ctx, client, name)
 	})
+	if err != nil {
+		return ErrNoSuchMailbox
+	}
+
+	if state.snap != nil {
+		if err := state.close(); err != nil {
+			return err
+		}
+	}
+
+	snap, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
+		return newSnapshot(ctx, state, client, mbox)
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return DBClearRecentFlags(ctx, tx, mbox.MailboxID)
+	}); err != nil {
+		return err
+	}
+
+	state.snap = snap
+	state.ro = false
+
+	return fn(newMailbox(mbox, state, state.snap))
 }
 
 func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) error) error {
-	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
-		if err != nil {
-			return ErrNoSuchMailbox
-		}
+	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByName(ctx, client, name)
+	})
+	if err != nil {
+		return ErrNoSuchMailbox
+	}
 
-		if state.snap != nil {
-			if err := state.close(ctx, tx); err != nil {
-				return err
-			}
-		}
-
-		snap, err := newSnapshot(ctx, state, mbox)
-		if err != nil {
+	if state.snap != nil {
+		if err := state.close(); err != nil {
 			return err
 		}
+	}
 
-		state.snap = snap
-		state.ro = true
-
-		return fn(newMailbox(tx, mbox, state, state.snap))
+	snap, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
+		return newSnapshot(ctx, state, client, mbox)
 	})
+	if err != nil {
+		return err
+	}
+
+	state.snap = snap
+	state.ro = true
+
+	return fn(newMailbox(mbox, state, state.snap))
 }
 
 func (state *State) Create(ctx context.Context, name string) error {
-	return state.tx(ctx, func(tx *ent.Tx) error {
+	mboxesToCreate, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) ([]string, error) {
+		var mboxesToCreate []string
 		// If the mailbox name is suffixed with the server's hierarchy separator, remove the separator and still create
 		// the mailbox
 		if strings.HasSuffix(name, state.delimiter) {
 			name = strings.TrimRight(name, state.delimiter)
 		}
 
-		if exists, err := DBMailboxExistsWithName(ctx, tx.Client(), name); err != nil {
-			return err
+		if exists, err := DBMailboxExistsWithName(ctx, client, name); err != nil {
+			return nil, err
 		} else if exists {
-			return ErrExistingMailbox
+			return nil, ErrExistingMailbox
 		}
 
 		for _, superior := range listSuperiors(name, state.delimiter) {
-			if exists, err := DBMailboxExistsWithName(ctx, tx.Client(), superior); err != nil {
-				return err
+			if exists, err := DBMailboxExistsWithName(ctx, client, superior); err != nil {
+				return nil, err
 			} else if exists {
 				continue
 			}
 
-			if err := state.actionCreateMailbox(ctx, tx, superior); err != nil {
-				return err
-			}
+			mboxesToCreate = append(mboxesToCreate, superior)
 		}
 
-		if err := state.actionCreateMailbox(ctx, tx, name); err != nil {
-			return err
+		mboxesToCreate = append(mboxesToCreate, name)
+
+		return mboxesToCreate, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		for _, mboxName := range mboxesToCreate {
+			if err := state.actionCreateMailbox(ctx, tx, mboxName); err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -143,50 +159,78 @@ func (state *State) Create(ctx context.Context, name string) error {
 }
 
 func (state *State) Delete(ctx context.Context, name string) error {
-	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
-		if err != nil {
-			return ErrNoSuchMailbox
-		}
+	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByName(ctx, client, name)
+	})
+	if err != nil {
+		return ErrNoSuchMailbox
+	}
 
-		return state.actionDeleteMailbox(ctx, tx, mbox.RemoteID, name)
+	return state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return state.actionDeleteMailbox(ctx, tx, mbox.RemoteID)
 	})
 }
 
 func (state *State) Rename(ctx context.Context, oldName, newName string) error {
-	return state.tx(ctx, func(tx *ent.Tx) error {
-		client := tx.Client()
-		mbox, err := DBGetMailboxByName(ctx, client, oldName)
+	type Result struct {
+		MBox           *ent.Mailbox
+		MBoxesToCreate []string
+	}
+
+	result, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (Result, error) {
+		mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+			return DBGetMailboxByName(ctx, client, oldName)
+		})
 		if err != nil {
-			return ErrNoSuchMailbox
+			return Result{}, ErrNoSuchMailbox
 		}
 
 		if exists, err := DBMailboxExistsWithName(ctx, client, newName); err != nil {
-			return err
+			return Result{}, err
 		} else if exists {
-			return ErrExistingMailbox
+			return Result{}, ErrExistingMailbox
 		}
 
+		var mboxesToCreate []string
 		for _, superior := range listSuperiors(newName, state.delimiter) {
 			if exists, err := DBMailboxExistsWithName(ctx, client, superior); err != nil {
-				return err
+				return Result{}, err
 			} else if exists {
 				if superior == oldName {
-					return ErrExistingMailbox
+					return Result{}, ErrExistingMailbox
 				}
 				continue
 			}
 
-			if err := state.actionCreateMailbox(ctx, tx, superior); err != nil {
+			mboxesToCreate = append(mboxesToCreate, superior)
+		}
+
+		return Result{
+			MBox:           mbox,
+			MBoxesToCreate: mboxesToCreate,
+		}, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		for _, m := range result.MBoxesToCreate {
+			internalID, res, err := state.remote.CreateMailbox(ctx, state.metadataID, strings.Split(m, state.delimiter))
+			if err != nil {
+				return err
+			}
+
+			if err := DBCreateMailboxIfNotExists(ctx, tx, internalID, res, state.delimiter); err != nil {
 				return err
 			}
 		}
 
 		if oldName == imap.Inbox {
-			return state.renameInbox(ctx, tx, mbox, newName)
+			return state.renameInbox(ctx, tx, result.MBox, newName)
 		}
 
-		mailboxes, err := DBGetAllMailboxes(ctx, client)
+		mailboxes, err := DBGetAllMailboxes(ctx, tx.Client())
 		if err != nil {
 			return err
 		}
@@ -196,7 +240,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		}))
 
 		for _, inferior := range inferiors {
-			mbox, err := DBGetMailboxByName(ctx, client, inferior)
+			mbox, err := DBGetMailboxByName(ctx, tx.Client(), inferior)
 			if err != nil {
 				return ErrNoSuchMailbox
 			}
@@ -208,32 +252,36 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			}
 		}
 
-		return state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, oldName, newName)
+		return state.actionUpdateMailbox(ctx, tx, result.MBox.RemoteID, oldName, newName)
 	})
 }
 
 func (state *State) Subscribe(ctx context.Context, name string) error {
-	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
-		if err != nil {
-			return ErrNoSuchMailbox
-		} else if mbox.Subscribed {
-			return ErrAlreadySubscribed
-		}
+	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByName(ctx, client, name)
+	})
+	if err != nil {
+		return ErrNoSuchMailbox
+	} else if mbox.Subscribed {
+		return ErrAlreadySubscribed
+	}
 
+	return state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return mbox.Update().SetSubscribed(true).Exec(ctx)
 	})
 }
 
 func (state *State) Unsubscribe(ctx context.Context, name string) error {
-	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
-		if err != nil {
-			return ErrNoSuchMailbox
-		} else if !mbox.Subscribed {
-			return ErrAlreadyUnsubscribed
-		}
+	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByName(ctx, client, name)
+	})
+	if err != nil {
+		return ErrNoSuchMailbox
+	} else if !mbox.Subscribed {
+		return ErrAlreadyUnsubscribed
+	}
 
+	return state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return mbox.Update().SetSubscribed(false).Exec(ctx)
 	})
 }
@@ -250,23 +298,25 @@ func (state *State) Idle(ctx context.Context, fn func([]response.Response, chan 
 }
 
 func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) error) error {
-	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
-		if err != nil {
-			return ErrNoSuchMailbox
-		}
-
-		if state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID {
-			return fn(newMailbox(tx, mbox, state, state.snap))
-		}
-
-		snap, err := newSnapshot(ctx, state, mbox)
-		if err != nil {
-			return err
-		}
-
-		return fn(newMailbox(tx, mbox, state, snap))
+	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByName(ctx, client, name)
 	})
+	if err != nil {
+		return ErrNoSuchMailbox
+	}
+
+	if state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID {
+		return fn(newMailbox(mbox, state, state.snap))
+	}
+
+	snap, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
+		return newSnapshot(ctx, state, client, mbox)
+	})
+	if err != nil {
+		return err
+	}
+
+	return fn(newMailbox(mbox, state, snap))
 }
 
 func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error {
@@ -274,14 +324,15 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 		return ErrSessionNotSelected
 	}
 
-	return state.tx(ctx, func(tx *ent.Tx) error {
-		mbox, err := DBGetMailboxByID(ctx, tx.Client(), state.snap.mboxID.InternalID)
-		if err != nil {
-			return err
-		}
-
-		return fn(newMailbox(tx, mbox, state, state.snap))
+	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByID(ctx, client, state.snap.mboxID.InternalID)
 	})
+
+	if err != nil {
+		return ErrNoSuchMailbox
+	}
+
+	return fn(newMailbox(mbox, state, state.snap))
 }
 
 func (state *State) IsSelected() bool {
@@ -313,7 +364,7 @@ func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mail
 		return err
 	}
 
-	messages, err := DBGetMailboxMessages(ctx, inbox)
+	messages, err := DBGetMailboxMessages(ctx, tx.Client(), inbox)
 	if err != nil {
 		return err
 	}
@@ -334,22 +385,18 @@ func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mail
 func (state *State) beginIdle(ctx context.Context) ([]response.Response, error) {
 	var res []response.Response
 
-	if err := state.tx(ctx, func(tx *ent.Tx) error {
-		state.idleLock.Lock()
-		defer state.idleLock.Unlock()
+	state.idleLock.Lock()
+	defer state.idleLock.Unlock()
 
-		var err error
+	var err error
 
-		if res, err = state.flushResponses(ctx, tx, true); err != nil {
-			return err
-		}
-
-		state.idleCh = make(chan response.Response)
-
-		return nil
+	if res, err = DBWriteResult(ctx, state.db, func(ctx context.Context, tx *ent.Tx) ([]response.Response, error) {
+		return state.flushResponses(ctx, tx, true)
 	}); err != nil {
 		return nil, err
 	}
+
+	state.idleCh = make(chan response.Response)
 
 	return res, nil
 }
@@ -387,7 +434,7 @@ func (state *State) pushResponder(ctx context.Context, tx *ent.Tx, responder ...
 	defer state.idleLock.RUnlock()
 
 	if state.idleCh == nil {
-		return state.queueResponder(ctx, tx, responder...)
+		return state.queueResponder(responder...)
 	}
 
 	for _, responder := range responder {
@@ -404,7 +451,7 @@ func (state *State) pushResponder(ctx context.Context, tx *ent.Tx, responder ...
 	return nil
 }
 
-func (state *State) queueResponder(ctx context.Context, tx *ent.Tx, responder ...responder) error {
+func (state *State) queueResponder(responder ...responder) error {
 	state.resLock.Lock()
 	defer state.resLock.Unlock()
 
@@ -483,7 +530,7 @@ func (state *State) deleteConnMetadata() error {
 	return nil
 }
 
-func (state *State) close(ctx context.Context, tx *ent.Tx) error {
+func (state *State) close() error {
 	state.snap = nil
 
 	state.res = nil
