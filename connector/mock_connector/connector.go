@@ -209,6 +209,18 @@ func (mr *MockConnectorMockRecorder) MoveMessages(arg0, arg1, arg2, arg3 interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MoveMessages", reflect.TypeOf((*MockConnector)(nil).MoveMessages), arg0, arg1, arg2, arg3)
 }
 
+// Poll mocks base method.
+func (m *MockConnector) Poll() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Poll")
+}
+
+// Poll indicates an expected call of Poll.
+func (mr *MockConnectorMockRecorder) Poll() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Poll", reflect.TypeOf((*MockConnector)(nil).Poll))
+}
+
 // UnlabelMessages mocks base method.
 func (m *MockConnector) UnlabelMessages(arg0 context.Context, arg1 []imap.MessageID, arg2 imap.LabelID) error {
 	m.ctrl.T.Helper()

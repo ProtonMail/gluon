@@ -57,6 +57,8 @@ type Connector interface {
 	// GetUpdates returns a stream of updates that the gluon server should apply.
 	GetUpdates() <-chan imap.Update
 
+	Poll()
+
 	// Close the connector will no longer be used and all resources should be closed/released.
 	Close(ctx context.Context) error
 }

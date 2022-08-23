@@ -96,7 +96,6 @@ func TestRemoteConcurrency(t *testing.T) {
 
 		for mbox := 1; mbox <= 100; mbox++ {
 			c.Cf(`tag move 1:* %v`, mbox).OK(`tag`)
-			s.flush("user") // TODO: How to not rely on this flush?
 			c.Cf(`tag select %v`, mbox).OK(`tag`)
 		}
 

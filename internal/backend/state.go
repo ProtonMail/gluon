@@ -55,6 +55,8 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 }
 
 func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) error) error {
+	state.remote.Poll()
+
 	return state.tx(ctx, func(tx *ent.Tx) error {
 		mbox, err := DBGetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
