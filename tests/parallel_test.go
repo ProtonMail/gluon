@@ -6,10 +6,12 @@ import (
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/bradenaw/juniper/xslices"
+	"github.com/emersion/go-imap/client"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSelectWhileSyncing(t *testing.T) {
-	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, s *testSession) {
 		// Define some mailbox names.
 		mailboxNames := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"}
 
@@ -38,11 +40,12 @@ func TestSelectWhileSyncing(t *testing.T) {
 
 		// Select a bunch of mailboxes.
 		for i := 0; i < 100; i++ {
-			c[2].C("A006 select " + mailboxNames[rand.Int()%len(mailboxNames)]) //nolint:gosec
-			c[2].Se("A006 OK [READ-WRITE] SELECT")
+			mboxName := mailboxNames[rand.Int()%len(mailboxNames)] //nolint:gosec
+			_, err := client.Select(mboxName, false)
+			require.NoError(t, err)
 
-			c[2].C("A006 select INBOX")
-			c[2].Se("A006 OK [READ-WRITE] SELECT")
+			_, err = client.Select("INBOX", false)
+			require.NoError(t, err)
 		}
 
 		// Stop appending.

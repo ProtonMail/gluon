@@ -53,25 +53,14 @@ func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, st
 		labels := pprof.Labels("go", "Connector Updates", "UserID", user.userID)
 		pprof.Do(ctx, labels, func(_ context.Context) {
 			for update := range remote.GetUpdates() {
-				update := update
-				if err := user.tx(context.Background(), func(tx *ent.Tx) error {
-					defer update.Done()
-					return user.apply(context.Background(), tx, update)
-				}); err != nil {
-					logrus.WithError(err).Errorf("Failed to apply update: %v", update)
+				if err := user.apply(context.Background(), update); err != nil {
+					logrus.WithError(err).Errorf("Failed to apply update: %v", err)
 				}
 			}
 		})
 	}()
 
 	return user, nil
-}
-
-// tx is a helper function that runs a sequence of ent client calls in a transaction.
-func (user *user) tx(ctx context.Context, fn func(tx *ent.Tx) error) error {
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return fn(tx)
-	})
 }
 
 // close closes the backend user.
@@ -97,8 +86,8 @@ func (user *user) close(ctx context.Context) error {
 }
 
 func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
-	return user.tx(ctx, func(tx *ent.Tx) error {
-		ids, err := DBGetMessageIDsMarkedDeleted(ctx, tx)
+	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		ids, err := DBGetMessageIDsMarkedDeleted(ctx, tx.Client())
 		if err != nil {
 			return err
 		}

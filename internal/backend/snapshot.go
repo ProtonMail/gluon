@@ -18,8 +18,8 @@ type snapshot struct {
 	messages *snapMsgList
 }
 
-func newSnapshot(ctx context.Context, state *State, mbox *ent.Mailbox) (*snapshot, error) {
-	msgUIDs, err := DBGetMailboxMessagesForNewSnapshot(ctx, mbox)
+func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *ent.Mailbox) (*snapshot, error) {
+	msgUIDs, err := DBGetMailboxMessagesForNewSnapshot(ctx, client, mbox)
 	if err != nil {
 		return nil, err
 	}
@@ -218,8 +218,8 @@ func (snap *snapshot) getMessagesWithoutFlag(flag string) []*snapMsg {
 	})
 }
 
-func (snap *snapshot) appendMessage(ctx context.Context, tx *ent.Tx, messageID MessageIDPair) error {
-	msgUID, err := DBGetMailboxMessage(ctx, tx.Client(), snap.mboxID.InternalID, messageID.InternalID)
+func (snap *snapshot) appendMessage(ctx context.Context, client *ent.Client, messageID MessageIDPair) error {
+	msgUID, err := DBGetMailboxMessage(ctx, client, snap.mboxID.InternalID, messageID.InternalID)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func (snap *snapshot) appendMessage(ctx context.Context, tx *ent.Tx, messageID M
 	return nil
 }
 
-func (snap *snapshot) expungeMessage(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID) error {
+func (snap *snapshot) expungeMessage(messageID imap.InternalMessageID) error {
 	if ok := snap.messages.remove(messageID); !ok {
 		return ErrNoSuchMessage
 	}

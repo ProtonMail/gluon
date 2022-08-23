@@ -33,7 +33,17 @@ func (user *user) newState(metadataID remote.ConnMetadataID) (*State, error) {
 }
 
 func (user *user) removeState(ctx context.Context, stateID int) error {
-	return user.tx(ctx, func(tx *ent.Tx) error {
+	messageIDs, err := DBReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) ([]imap.InternalMessageID, error) {
+		return DBGetMessageIDsMarkedDeleted(ctx, client)
+	})
+	if err != nil {
+		return err
+	}
+
+	// We need to reduce the scope of this lock as it can deadlock when there's an IMAP update running
+	// at the same time as we remove a state. When the IMAP update propagates the info the order of the locks
+	// is inverse to the order we have here.
+	fn := func() (*State, error) {
 		user.statesLock.Lock()
 		defer user.statesLock.Unlock()
 
@@ -42,37 +52,41 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 			panic("no such state")
 		}
 
-		messageIDs, err := DBGetMessageIDsMarkedDeleted(ctx, tx)
-		if err != nil {
-			return err
-		}
-
 		messageIDs = xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return xslices.CountFunc(maps.Values(user.states), func(other *State) bool {
 				return state != other && other.snap != nil && other.snap.hasMessage(messageID)
 			}) == 0
 		})
 
-		if err := DBDeleteMessages(ctx, tx, messageIDs...); err != nil {
-			return err
-		}
-
-		if err := user.store.Delete(messageIDs...); err != nil {
-			return err
-		}
-
-		if err := state.deleteConnMetadata(); err != nil {
-			return fmt.Errorf("failed to remove conn metadata: %w", err)
-		}
-
-		if err := state.close(ctx, tx); err != nil {
-			return fmt.Errorf("failed to close state: %w", err)
-		}
-
 		delete(user.states, stateID)
 
-		return nil
-	})
+		return state, nil
+	}
+
+	state, err := fn()
+	if err != nil {
+		return err
+	}
+
+	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return DBDeleteMessages(ctx, tx, messageIDs...)
+	}); err != nil {
+		return err
+	}
+
+	if err := user.store.Delete(messageIDs...); err != nil {
+		return err
+	}
+
+	if err := state.deleteConnMetadata(); err != nil {
+		return fmt.Errorf("failed to remove conn metadata: %w", err)
+	}
+
+	if err := state.close(); err != nil {
+		return fmt.Errorf("failed to close state: %w", err)
+	}
+
+	return nil
 }
 
 func (user *user) hasStateInMailboxWithMessage(mboxID imap.InternalMailboxID, messageID imap.InternalMessageID) bool {

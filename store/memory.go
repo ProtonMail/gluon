@@ -2,8 +2,9 @@ package store
 
 import (
 	"errors"
-	"github.com/ProtonMail/gluon/imap"
 	"sync"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 type inMemoryStore struct {

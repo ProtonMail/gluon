@@ -440,8 +440,8 @@ func DBDeleteMessages(ctx context.Context, tx *ent.Tx, messageIDs ...imap.Intern
 	return nil
 }
 
-func DBGetMessageIDsMarkedDeleted(ctx context.Context, tx *ent.Tx) ([]imap.InternalMessageID, error) {
-	messages, err := tx.Message.Query().Where(message.Deleted(true)).Select(message.FieldMessageID).All(ctx)
+func DBGetMessageIDsMarkedDeleted(ctx context.Context, client *ent.Client) ([]imap.InternalMessageID, error) {
+	messages, err := client.Message.Query().Where(message.Deleted(true)).Select(message.FieldMessageID).All(ctx)
 	if err != nil {
 		return nil, err
 	}

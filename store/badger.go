@@ -1,11 +1,11 @@
 package store
 
 import (
-	"github.com/ProtonMail/gluon/imap"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/sirupsen/logrus"
 )

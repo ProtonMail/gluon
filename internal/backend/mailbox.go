@@ -6,7 +6,6 @@ import (
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
-	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -16,7 +15,6 @@ import (
 )
 
 type Mailbox struct {
-	tx   *ent.Tx
 	mbox *ent.Mailbox
 
 	state *State
@@ -26,9 +24,8 @@ type Mailbox struct {
 	readOnly bool
 }
 
-func newMailbox(tx *ent.Tx, mbox *ent.Mailbox, state *State, snap *snapshot) *Mailbox {
+func newMailbox(mbox *ent.Mailbox, state *State, snap *snapshot) *Mailbox {
 	return &Mailbox{
-		tx:   tx,
 		mbox: mbox,
 
 		state: state,
@@ -133,23 +130,32 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 
 	if len(internalID) > 0 {
 		msgID := imap.InternalMessageID(internalID)
-		if exists, err := DBHasMessageWithID(ctx, m.tx.Client(), msgID); err != nil || !exists {
+
+		if exists, err := DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) (bool, error) {
+			return DBHasMessageWithID(ctx, client, msgID)
+		}); err != nil || !exists {
 			logrus.WithError(err).Warn("The message has an unknown internal ID")
-		} else if res, err := m.state.actionAddMessagesToMailbox(ctx, m.tx, []MessageIDPair{NewMessageIDPairWithoutRemote(msgID)}, NewMailboxIDPair(m.mbox)); err != nil {
+		} else if res, err := DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]int, error) {
+			return m.state.actionAddMessagesToMailbox(ctx, tx, []MessageIDPair{NewMessageIDPairWithoutRemote(msgID)}, NewMailboxIDPair(m.mbox))
+		}); err != nil {
 			return 0, err
 		} else {
 			return res[msgID], nil
 		}
 	}
 
-	return m.state.actionCreateMessage(ctx, m.tx, m.snap.mboxID, literal, flags, date)
+	return DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (int, error) {
+		return m.state.actionCreateMessage(ctx, tx, m.snap.mboxID, literal, flags, date)
+	})
 }
 
 // Copy copies the messages represented by the given sequence set into the mailbox with the given name.
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are copied the response object will be nil.
 func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
-	mbox, err := m.tx.Mailbox.Query().Where(mailbox.Name(name)).Only(ctx)
+	mbox, err := DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByName(ctx, client, name)
+	})
 	if err != nil {
 		return nil, ErrNoSuchMailbox
 	}
@@ -167,7 +173,9 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 		return msg.UID
 	})
 
-	destUIDs, err := m.state.actionAddMessagesToMailbox(ctx, m.tx, msgIDs, NewMailboxIDPair(mbox))
+	destUIDs, err := DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]int, error) {
+		return m.state.actionAddMessagesToMailbox(ctx, tx, msgIDs, NewMailboxIDPair(mbox))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +195,9 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are moved the response object will be nil.
 func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
-	mbox, err := m.tx.Mailbox.Query().Where(mailbox.Name(name)).Only(ctx)
+	mbox, err := DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByName(ctx, client, name)
+	})
 	if err != nil {
 		return nil, ErrNoSuchMailbox
 	}
@@ -205,7 +215,9 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 		return msg.UID
 	})
 
-	destUIDs, err := m.state.actionMoveMessages(ctx, m.tx, msgIDs, m.snap.mboxID, NewMailboxIDPair(mbox))
+	destUIDs, err := DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]int, error) {
+		return m.state.actionMoveMessages(ctx, tx, msgIDs, m.snap.mboxID, NewMailboxIDPair(mbox))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -231,24 +243,26 @@ func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation p
 		return msg.ID
 	})
 
-	switch operation {
-	case proto.Operation_Add:
-		if _, err := m.state.actionAddMessageFlags(ctx, m.tx, msgIDs, flags); err != nil {
-			return err
+	return m.state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		switch operation {
+		case proto.Operation_Add:
+			if _, err := m.state.actionAddMessageFlags(ctx, tx, msgIDs, flags); err != nil {
+				return err
+			}
+
+		case proto.Operation_Remove:
+			if _, err := m.state.actionRemoveMessageFlags(ctx, tx, msgIDs, flags); err != nil {
+				return err
+			}
+
+		case proto.Operation_Replace:
+			if err := m.state.actionSetMessageFlags(ctx, tx, msgIDs, flags); err != nil {
+				return err
+			}
 		}
 
-	case proto.Operation_Remove:
-		if _, err := m.state.actionRemoveMessageFlags(ctx, m.tx, msgIDs, flags); err != nil {
-			return err
-		}
-
-	case proto.Operation_Replace:
-		if err := m.state.actionSetMessageFlags(ctx, m.tx, msgIDs, flags); err != nil {
-			return err
-		}
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func (m *Mailbox) Expunge(ctx context.Context, seq *proto.SequenceSet) error {
@@ -276,11 +290,15 @@ func (m *Mailbox) expunge(ctx context.Context, messages []*snapMsg) error {
 		return msg.ID
 	})
 
-	return m.state.actionRemoveMessagesFromMailbox(ctx, m.tx, msgIDs, m.snap.mboxID)
+	return m.state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return m.state.actionRemoveMessagesFromMailbox(ctx, tx, msgIDs, m.snap.mboxID)
+	})
 }
 
 func (m *Mailbox) Flush(ctx context.Context, permitExpunge bool) ([]response.Response, error) {
-	return m.state.flushResponses(ctx, m.tx, permitExpunge)
+	return DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) ([]response.Response, error) {
+		return m.state.flushResponses(ctx, tx, permitExpunge)
+	})
 }
 
 func (m *Mailbox) Close(ctx context.Context) error {
@@ -288,5 +306,5 @@ func (m *Mailbox) Close(ctx context.Context) error {
 		return err
 	}
 
-	return m.state.close(ctx, m.tx)
+	return m.state.close()
 }

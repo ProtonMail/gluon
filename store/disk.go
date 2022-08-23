@@ -4,9 +4,10 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"github.com/ProtonMail/gluon/imap"
 	"os"
 	"path/filepath"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 type onDiskStore struct {
