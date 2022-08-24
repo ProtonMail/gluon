@@ -68,9 +68,7 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 		}
 	}
 
-	snap, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
-		return newSnapshot(ctx, state, client, mbox)
-	})
+	snap, err := state.newSnapshot(ctx, mbox)
 	if err != nil {
 		return err
 	}
@@ -101,9 +99,7 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 		}
 	}
 
-	snap, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
-		return newSnapshot(ctx, state, client, mbox)
-	})
+	snap, err := state.newSnapshot(ctx, mbox)
 	if err != nil {
 		return err
 	}
@@ -309,9 +305,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 		return fn(newMailbox(mbox, state, state.snap))
 	}
 
-	snap, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
-		return newSnapshot(ctx, state, client, mbox)
-	})
+	snap, err := state.newSnapshot(ctx, mbox)
 	if err != nil {
 		return err
 	}
@@ -354,6 +348,14 @@ func (state *State) Close(ctx context.Context) error {
 	defer close(state.stopCh)
 
 	return state.removeState(ctx, state.stateID)
+}
+
+func (state *State) newSnapshot(ctx context.Context, mbox *ent.Mailbox) (*snapshot, error) {
+	state.remote.Poll()
+
+	return DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
+		return newSnapshot(ctx, state, client, mbox)
+	})
 }
 
 // renameInbox creates a new mailbox and moves everything there.

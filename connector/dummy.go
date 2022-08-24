@@ -84,12 +84,8 @@ func (conn *Dummy) GetUpdates() <-chan imap.Update {
 	return conn.updateCh
 }
 
-func (conn *Dummy) Pause() {
-	conn.ticker.Pause()
-}
-
-func (conn *Dummy) Resume() {
-	conn.ticker.Resume()
+func (conn *Dummy) Poll() {
+	conn.ticker.Poll()
 }
 
 func (conn *Dummy) ValidateCreate(name []string) (imap.FlagSet, imap.FlagSet, imap.FlagSet, error) {

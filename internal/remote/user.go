@@ -56,6 +56,11 @@ func (user *User) GetUpdates() <-chan imap.Update {
 	return user.updatesCh
 }
 
+// Poll polls the remote for the next update.
+func (user *User) Poll() {
+	user.conn.Poll()
+}
+
 func (user *User) Close(ctx context.Context) error {
 	if err := user.conn.Close(ctx); err != nil {
 		return err

@@ -58,11 +58,8 @@ type Connector interface {
 	// It is recommended that the returned channel is buffered with at least constants.ChannelBufferCount.
 	GetUpdates() <-chan imap.Update
 
-	// Pause pauses the stream of updates.
-	Pause()
-
-	// Resume resumes the stream of updates.
-	Resume()
+	// Poll blocks until the next update has been fetched and applied.
+	Poll()
 
 	// Close the connector will no longer be used and all resources should be closed/released.
 	Close(ctx context.Context) error
