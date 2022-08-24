@@ -12,7 +12,7 @@ import (
 )
 
 func (s *Session) handleOther(ctx context.Context, tag string, cmd *proto.Command, profiler profiling.CmdProfiler) chan response.Response {
-	ch := make(chan response.Response)
+	ch := make(chan response.Response, 100)
 
 	go func() {
 		labels := pprof.Labels("go", "handleOther()", "SessionID", strconv.Itoa(s.sessionID))
