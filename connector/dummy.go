@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ProtonMail/gluon/constants"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ticker"
 	"github.com/bradenaw/juniper/xslices"
@@ -53,7 +54,7 @@ func NewDummy(usernames []string, password string, period time.Duration, flags, 
 		flags:     flags,
 		permFlags: permFlags,
 		attrs:     attrs,
-		updateCh:  make(chan imap.Update),
+		updateCh:  make(chan imap.Update, constants.ChannelBufferCount),
 		ticker:    ticker.New(period),
 	}
 
