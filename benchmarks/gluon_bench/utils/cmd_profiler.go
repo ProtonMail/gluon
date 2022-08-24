@@ -19,7 +19,7 @@ func (c *DurationCmdProfiler) Start(cmdType int) {
 }
 
 func (c *DurationCmdProfiler) Stop(cmdType int) {
-	elapsed := time.Now().Sub(c.start[cmdType])
+	elapsed := time.Since(c.start[cmdType])
 	c.durations[cmdType] = append(c.durations[cmdType], elapsed)
 }
 

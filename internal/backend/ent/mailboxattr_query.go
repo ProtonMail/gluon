@@ -262,7 +262,6 @@ func (maq *MailboxAttrQuery) Clone() *MailboxAttrQuery {
 //		GroupBy(mailboxattr.FieldValue).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-//
 func (maq *MailboxAttrQuery) GroupBy(field string, fields ...string) *MailboxAttrGroupBy {
 	grbuild := &MailboxAttrGroupBy{config: maq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -289,7 +288,6 @@ func (maq *MailboxAttrQuery) GroupBy(field string, fields ...string) *MailboxAtt
 //	client.MailboxAttr.Query().
 //		Select(mailboxattr.FieldValue).
 //		Scan(ctx, &v)
-//
 func (maq *MailboxAttrQuery) Select(fields ...string) *MailboxAttrSelect {
 	maq.fields = append(maq.fields, fields...)
 	selbuild := &MailboxAttrSelect{MailboxAttrQuery: maq}

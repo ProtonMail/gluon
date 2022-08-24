@@ -6,10 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ProtonMail/gluon/rfc822"
-
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
+	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
@@ -36,7 +35,6 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 			res.PermanentFlags,
 			res.Attributes,
 		)
-
 		if err != nil {
 			return nil, err
 		}
@@ -119,8 +117,8 @@ func (state *State) actionCreateMessage(ctx context.Context, tx *ent.Tx, mboxID 
 	}
 
 	msgIDs := []imap.InternalMessageID{internalID}
-	messageUIDs, err := DBAddMessagesToMailbox(ctx, tx, msgIDs, mboxID.InternalID)
 
+	messageUIDs, err := DBAddMessagesToMailbox(ctx, tx, msgIDs, mboxID.InternalID)
 	if err != nil {
 		return 0, err
 	}

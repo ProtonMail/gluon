@@ -14,7 +14,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-//apply an incoming update originating from the connector.
+// apply an incoming update originating from the connector.
 func (user *user) apply(ctx context.Context, update imap.Update) error {
 	defer update.Done()
 

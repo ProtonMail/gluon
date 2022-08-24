@@ -74,13 +74,6 @@ func TestMoveNonExistent(t *testing.T) {
 	})
 }
 
-func _TestMoveBackAndForthRepeated(t *testing.T) {
-	for i := 1; i <= 1000; i++ {
-		fmt.Printf("Iteration %d\n", i)
-		TestMoveBackAndForth(t)
-	}
-}
-
 func TestMoveBackAndForth(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
 		// There are 100 messages in the origin and no messages in the destination.

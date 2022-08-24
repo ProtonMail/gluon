@@ -89,15 +89,6 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 	return nil
 }
 
-func (user *user) hasStateInMailboxWithMessage(mboxID imap.InternalMailboxID, messageID imap.InternalMessageID) bool {
-	user.statesLock.RLock()
-	defer user.statesLock.RUnlock()
-
-	return xslices.CountFunc(maps.Values(user.states), func(state *State) bool {
-		return state.snap != nil && state.snap.mboxID.InternalID == mboxID && state.snap.hasMessage(messageID)
-	}) > 0
-}
-
 // forState iterates through all states.
 func (user *user) forState(fn func(*State) error) error {
 	user.statesLock.RLock()

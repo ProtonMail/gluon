@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/ProtonMail/gluon/imap"
-
 	"github.com/stretchr/testify/assert"
 )
 

@@ -104,9 +104,7 @@ func SequenceListFromFile(path string) ([]*imap.SeqSet, error) {
 	fileScanner.Split(bufio.ScanLines)
 
 	for fileScanner.Scan() {
-		line := fileScanner.Text()
-		seqSet, err := imap.ParseSeqSet(line)
-
+		seqSet, err := imap.ParseSeqSet(fileScanner.Text())
 		if err != nil {
 			return nil, err
 		}

@@ -36,14 +36,12 @@ type credentials struct {
 	password  string
 }
 
-var (
-	TestServerVersionInfo = internal.VersionInfo{
-		Name:       "gluon-test-server",
-		Version:    internal.Version{Major: 1, Minor: 1, Patch: 1},
-		Vendor:     "Proton",
-		SupportURL: "",
-	}
-)
+var TestServerVersionInfo = internal.VersionInfo{
+	Name:       "gluon-test-server",
+	Version:    internal.Version{Major: 1, Minor: 1, Patch: 1},
+	Vendor:     "Proton",
+	SupportURL: "",
+}
 
 type serverOptions struct {
 	credentials []credentials
@@ -248,8 +246,4 @@ func withData(s *testSession, username string, tests func(string, imap.LabelID))
 	mboxID := s.mailboxCreated(username, []string{mbox}, "testdata/dovecot-crlf")
 
 	tests(mbox, mboxID)
-}
-
-func getEntPath(dir string) string {
-	return fmt.Sprintf("file:%v?cache=shared&_fk=1", filepath.Join(dir, fmt.Sprintf("%v.db", uuid.NewString())))
 }

@@ -12,8 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ProtonMail/gluon/profiling"
-
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal"
@@ -21,6 +19,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/liner"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
@@ -177,8 +176,10 @@ func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
 					// Consume all remaining channel response since the connection is no longer available.
 					// Failing to do so can cause a deadlock in the program as `s.handleOther` never finishes
 					// executing and can hold onto a number of locks indefinitely.
-					for _ = range responseCh {
+					for range responseCh {
+						// ...
 					}
+
 					return fmt.Errorf("failed to send response to client: %w", err)
 				}
 			}

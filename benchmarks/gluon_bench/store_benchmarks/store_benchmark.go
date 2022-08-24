@@ -52,7 +52,6 @@ func (s *StoreBenchmarkRunner) Setup(ctx context.Context, benchmarkDir string) e
 
 func (s *StoreBenchmarkRunner) Run(ctx context.Context) (*reporter.BenchmarkRun, error) {
 	benchRuns, err := s.benchmark.Run(ctx, s.store)
-
 	if err != nil {
 		return nil, err
 	}

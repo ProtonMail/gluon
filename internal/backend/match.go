@@ -98,7 +98,7 @@ func match(ref, pattern, del, mailboxName string) (string, bool) {
 // in the reference. The value returned as the root MAY be the empty
 // string if the reference is non-rooted or is an empty string.
 func matchRoot(ref, del string) (string, bool) {
-	if strings.Index(ref, del) < 0 {
+	if !strings.Contains(ref, del) {
 		return "", true
 	}
 

@@ -3,12 +3,11 @@ package backend
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/internal/backend/ent/messageflag"
-
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/backend/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/backend/ent/message"
+	"github.com/ProtonMail/gluon/internal/backend/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/backend/ent/uid"
 	"github.com/bradenaw/juniper/xslices"
 )

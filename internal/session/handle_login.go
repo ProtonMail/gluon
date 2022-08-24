@@ -3,9 +3,8 @@ package session
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/imap"
-
 	"github.com/ProtonMail/gluon/events"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 )

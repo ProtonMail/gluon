@@ -30,7 +30,8 @@ func runOneToOneTestWithAuth(tb testing.TB, options *serverOptions, tests func(*
 
 // runOneToOneTestWithData runs a test with one account and one connection. A mailbox is created with test data.
 func runOneToOneTestWithData(tb testing.TB, options *serverOptions,
-	tests func(*testConnection, *testSession, string, imap.LabelID)) {
+	tests func(*testConnection, *testSession, string, imap.LabelID),
+) {
 	runOneToOneTestWithAuth(tb, options, func(c *testConnection, s *testSession) {
 		withData(s, options.defaultUsername(), func(mbox string, mboxID imap.LabelID) {
 			withTag(func(tag string) { c.Cf("%v select %v", tag, mbox).OK(tag) })
@@ -49,7 +50,8 @@ func runManyToOneTest(tb testing.TB, options *serverOptions, connIDs []int, test
 
 // runManyToOneTestWithAuth runs a test with one account and multiple connections. Each connection is logged in.
 func runManyToOneTestWithAuth(tb testing.TB, options *serverOptions,
-	connIDs []int, tests func(map[int]*testConnection, *testSession)) {
+	connIDs []int, tests func(map[int]*testConnection, *testSession),
+) {
 	runManyToOneTest(tb, options, connIDs, func(c map[int]*testConnection, s *testSession) {
 		for _, c := range c {
 			withTag(func(tag string) {
@@ -63,7 +65,8 @@ func runManyToOneTestWithAuth(tb testing.TB, options *serverOptions,
 
 // runManyToOneTestWithData runs a test with one account and multiple connections. A mailbox is created with test data.
 func runManyToOneTestWithData(tb testing.TB, options *serverOptions,
-	connIDs []int, tests func(map[int]*testConnection, *testSession, string, imap.LabelID)) {
+	connIDs []int, tests func(map[int]*testConnection, *testSession, string, imap.LabelID),
+) {
 	runManyToOneTestWithAuth(tb, options, connIDs, func(c map[int]*testConnection, s *testSession) {
 		withData(s, options.defaultUsername(), func(mbox string, mboxID imap.LabelID) {
 			for _, c := range c {

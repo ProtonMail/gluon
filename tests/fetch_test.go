@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
-
 	"github.com/ProtonMail/gluon/internal/backend"
-
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"

@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -14,8 +13,6 @@ import (
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
 )
-
-var maxFetchConcurrency = runtime.NumCPU()
 
 func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes []*proto.FetchAttribute, ch chan response.Response) error {
 	msg, err := m.snap.getMessagesInRange(ctx, seq)
@@ -223,7 +220,7 @@ func (m *Mailbox) fetchBodySection(section *proto.BodySection, literal []byte) (
 	}
 
 	if root == nil {
-		return nil, fmt.Errorf("Invalid Section Part")
+		return nil, fmt.Errorf("invalid section part")
 	}
 
 	switch keyword := section.OptionalKeyword.(type) {

@@ -29,7 +29,7 @@ func (c *connMetadataStore) DeleteStore(id ConnMetadataID) {
 func (c *connMetadataStore) GetActiveStoreIDs() []ConnMetadataID {
 	var values []ConnMetadataID
 
-	for k, _ := range c.data {
+	for k := range c.data {
 		values = append(values, k)
 	}
 

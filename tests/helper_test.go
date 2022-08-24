@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/internal/backend"
-
 	"github.com/bradenaw/juniper/iterator"
 	"github.com/bradenaw/juniper/xslices"
 	goimap "github.com/emersion/go-imap"

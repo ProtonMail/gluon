@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ProtonMail/gluon/internal"
-
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 )

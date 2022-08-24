@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
-
 	"github.com/emersion/go-imap/client"
 	"golang.org/x/exp/rand"
 )

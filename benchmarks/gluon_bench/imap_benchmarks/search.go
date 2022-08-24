@@ -17,9 +17,11 @@ import (
 	"github.com/emersion/go-imap/client"
 )
 
-var searchCountFlag = flag.Uint("imap-search-count", 0, "Total number of messages to search during search benchmarks.")
-var searchTextListFlag = flag.String("imap-search-text-list", "", "Use a list of new line separate search queries instead instead of the default list.")
-var searchSinceListFlag = flag.String("imap-search-since-list", "", "Use a list of new line dates instead of random generated.")
+var (
+	searchCountFlag     = flag.Uint("imap-search-count", 0, "Total number of messages to search during search benchmarks.")
+	searchTextListFlag  = flag.String("imap-search-text-list", "", "Use a list of new line separate search queries instead instead of the default list.")
+	searchSinceListFlag = flag.String("imap-search-since-list", "", "Use a list of new line dates instead of random generated.")
+)
 
 type SearchQuery interface {
 	Name() string
@@ -30,8 +32,7 @@ type SearchQuery interface {
 
 type Search struct {
 	*stateTracker
-	queries []string
-	query   SearchQuery
+	query SearchQuery
 }
 
 func NewSearch(query SearchQuery) benchmark.Benchmark {
@@ -44,7 +45,6 @@ func (s *Search) Name() string {
 
 func (s *Search) Setup(ctx context.Context, addr net.Addr) error {
 	return WithClient(addr, func(cl *client.Client) error {
-
 		if _, err := s.createAndFillRandomMBox(cl); err != nil {
 			return err
 		}
