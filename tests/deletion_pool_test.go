@@ -456,8 +456,8 @@ func TestMessageErasedFromDBWithMany(t *testing.T) {
 		dbCheckUserMessageCount(s, "user", 2)
 
 		c[2].C(`A002 LOGOUT`)
-		//c[2].S(`* 2 EXISTS`)
-		//c[2].S(`* 1 RECENT`)
+		// c[2].S(`* 2 EXISTS`)
+		// c[2].S(`* 1 RECENT`)
 		c[2].S(`* BYE`)
 		c[2].Sx(`A002 OK LOGOUT`)
 

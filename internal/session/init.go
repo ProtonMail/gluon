@@ -1,9 +1,10 @@
 package session
 
 import (
-	"github.com/ProtonMail/gluon/constants"
 	"os"
 	"strconv"
+
+	"github.com/ProtonMail/gluon/constants"
 )
 
 const (

@@ -61,7 +61,7 @@ func (user *User) Close(ctx context.Context) error {
 		return err
 	}
 
-	//TODO: GODT-1647 fix double call to Close().
+	// TODO: GODT-1647 fix double call to Close().
 	if user.updatesCh != nil {
 		user.forwardWG.Wait()
 		user.updatesCh = nil

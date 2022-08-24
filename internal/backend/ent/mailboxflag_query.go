@@ -262,7 +262,6 @@ func (mfq *MailboxFlagQuery) Clone() *MailboxFlagQuery {
 //		GroupBy(mailboxflag.FieldValue).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-//
 func (mfq *MailboxFlagQuery) GroupBy(field string, fields ...string) *MailboxFlagGroupBy {
 	grbuild := &MailboxFlagGroupBy{config: mfq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -289,7 +288,6 @@ func (mfq *MailboxFlagQuery) GroupBy(field string, fields ...string) *MailboxFla
 //	client.MailboxFlag.Query().
 //		Select(mailboxflag.FieldValue).
 //		Scan(ctx, &v)
-//
 func (mfq *MailboxFlagQuery) Select(fields ...string) *MailboxFlagSelect {
 	mfq.fields = append(mfq.fields, fields...)
 	selbuild := &MailboxFlagSelect{MailboxFlagQuery: mfq}

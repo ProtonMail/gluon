@@ -45,24 +45,6 @@ func (snap *snapshot) hasMessage(messageID imap.InternalMessageID) bool {
 	return snap.messages.has(messageID)
 }
 
-func (snap *snapshot) getMessage(messageID imap.InternalMessageID) (*snapMsg, error) {
-	msg, ok := snap.messages.get(messageID)
-	if !ok {
-		return nil, ErrNoSuchMessage
-	}
-
-	return msg, nil
-}
-
-func (snap *snapshot) getMessageBySeq(seq int) (*snapMsg, error) {
-	msg, ok := snap.messages.seq(seq)
-	if !ok {
-		return nil, ErrNoSuchMessage
-	}
-
-	return msg, nil
-}
-
 func (snap *snapshot) getMessageSeq(messageID imap.InternalMessageID) (int, error) {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {

@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/ProtonMail/gluon/imap"
-
 	"github.com/emersion/go-imap/utf7"
 )
 

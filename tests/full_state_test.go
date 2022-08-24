@@ -218,18 +218,17 @@ func TestMorningFiltering(t *testing.T) {
 				uidStoreWithRetrievalClient(t, client, createSeqSet(strId), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
 				expungedIds := expungeClient(t, client)
 				require.Equal(t, 1, len(expungedIds))
-				break
+
 			case 1:
 				// or unseen
 				uidStoreWithRetrievalClient(t, client, createSeqSet(strId), goimap.RemoveFlags, []interface{}{goimap.SeenFlag})
 				require.NoError(t, client.UidMove(createSeqSet(strId), "ReadLater"))
 				nbUnseen++
-				break
+
 			case 2:
 				// or Archive
 				require.NoError(t, client.UidMove(createSeqSet(strId), "Archive"))
 				nbArchived++
-				break
 			}
 		}
 		{

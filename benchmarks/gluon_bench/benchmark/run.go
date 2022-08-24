@@ -76,7 +76,7 @@ func RunMain() {
 
 		numRuns := *flags.BenchmarkRuns
 
-		var benchmarkStats = make([]*reporter.BenchmarkStatistics, 0, numRuns)
+		benchmarkStats := make([]*reporter.BenchmarkStatistics, 0, numRuns)
 
 		for r := uint(0); r < numRuns; r++ {
 			if *flags.Verbose {
@@ -111,7 +111,6 @@ func RunMain() {
 
 func measureBenchmark(dirConfig BenchDirConfig, iteration uint, bench Benchmark) *reporter.BenchmarkStatistics {
 	benchPath, err := dirConfig.Get()
-
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get server directory: %v", err))
 	}

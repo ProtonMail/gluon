@@ -87,7 +87,8 @@ func NewIMAPBenchmarkRunner(bench IMAPBenchmark) benchmark.Benchmark {
 		serverBuilder = &server.LocalServerBuilder{}
 	}
 
-	return &IMAPBenchmarkRunner{benchmark: bench,
+	return &IMAPBenchmarkRunner{
+		benchmark:          bench,
 		serverBuilder:      serverBuilder,
 		cmdProfilerBuilder: utils.NewDurationCmdProfilerBuilder(),
 	}

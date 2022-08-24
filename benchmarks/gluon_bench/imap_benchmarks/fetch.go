@@ -49,7 +49,6 @@ func (f *Fetch) Setup(ctx context.Context, addr net.Addr) error {
 			*flags.IMAPRandomSeqSetIntervals,
 			false,
 			*flags.IMAPUIDMode)
-
 		if err != nil {
 			return err
 		}

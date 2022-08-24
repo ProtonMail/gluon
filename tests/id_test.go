@@ -3,9 +3,8 @@ package tests
 import (
 	"testing"
 
-	"github.com/ProtonMail/gluon/internal/response"
-
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/stretchr/testify/require"
 )
 

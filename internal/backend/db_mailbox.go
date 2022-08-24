@@ -233,7 +233,6 @@ func DBGetMailboxMessagesForNewSnapshot(ctx context.Context, client *ent.Client,
 			Select(uid.FieldID, uid.FieldUID, uid.FieldRecent, uid.FieldDeleted).Order(func(selector *sql.Selector) {
 			selector.OrderBy(uid.FieldID)
 		}).Limit(QueryLimit).All(ctx)
-
 		if err != nil {
 			return nil, err
 		}

@@ -21,10 +21,9 @@ var (
 
 type Move struct {
 	*stateTracker
-	seqSets       *ParallelSeqSet
-	messageCounts []uint32
-	srcMailboxes  []string
-	dstMailboxes  []string
+	seqSets      *ParallelSeqSet
+	srcMailboxes []string
+	dstMailboxes []string
 }
 
 func NewMove() benchmark.Benchmark {
@@ -76,7 +75,6 @@ func (m *Move) Setup(ctx context.Context, addr net.Addr) error {
 			*flags.IMAPRandomSeqSetIntervals,
 			true,
 			*flags.IMAPUIDMode)
-
 		if err != nil {
 			return err
 		}

@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ProtonMail/gluon/internal/backend/ent"
-
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
