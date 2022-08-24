@@ -9,7 +9,8 @@ import (
 )
 
 // CreateMessage appends a message literal to the mailbox with the given ID.
-func (user *User) CreateMessage(ctx context.Context,
+func (user *User) CreateMessage(
+	ctx context.Context,
 	metadataID ConnMetadataID,
 	mboxID imap.LabelID,
 	literal []byte,
@@ -29,7 +30,8 @@ func (user *User) CreateMessage(ctx context.Context,
 }
 
 // AddMessagesToMailbox adds the message with the given ID to the mailbox with the given ID.
-func (user *User) AddMessagesToMailbox(ctx context.Context,
+func (user *User) AddMessagesToMailbox(
+	ctx context.Context,
 	metadataID ConnMetadataID,
 	messageIDs []imap.MessageID,
 	mboxID imap.LabelID,
@@ -44,7 +46,8 @@ func (user *User) AddMessagesToMailbox(ctx context.Context,
 }
 
 // RemoveMessagesFromMailbox removes the message with the given ID from the mailbox with the given ID.
-func (user *User) RemoveMessagesFromMailbox(ctx context.Context,
+func (user *User) RemoveMessagesFromMailbox(
+	ctx context.Context,
 	metadataID ConnMetadataID,
 	messageIDs []imap.MessageID,
 	mboxID imap.LabelID,
@@ -59,7 +62,8 @@ func (user *User) RemoveMessagesFromMailbox(ctx context.Context,
 }
 
 // MoveMessagesFromMailbox removes the message with the given ID from the mailbox with the given ID.
-func (user *User) MoveMessagesFromMailbox(ctx context.Context,
+func (user *User) MoveMessagesFromMailbox(
+	ctx context.Context,
 	metadataID ConnMetadataID,
 	messageIDs []imap.MessageID,
 	mboxFromID imap.LabelID,

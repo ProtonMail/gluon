@@ -77,7 +77,14 @@ func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 	return DBRenameMailboxWithRemoteID(ctx, tx, mboxID, newName)
 }
 
-func (state *State) actionCreateMessage(ctx context.Context, tx *ent.Tx, mboxID MailboxIDPair, literal []byte, flags imap.FlagSet, date time.Time) (int, error) {
+func (state *State) actionCreateMessage(
+	ctx context.Context,
+	tx *ent.Tx,
+	mboxID MailboxIDPair,
+	literal []byte,
+	flags imap.FlagSet,
+	date time.Time,
+) (int, error) {
 	internalID, res, err := state.remote.CreateMessage(ctx, state.metadataID, mboxID.RemoteID, literal, flags, date)
 	if err != nil {
 		return 0, err
@@ -132,7 +139,8 @@ func (state *State) actionCreateMessage(ctx context.Context, tx *ent.Tx, mboxID 
 	return messageUIDs[internalID], nil
 }
 
-func (state *State) actionAddMessagesToMailbox(ctx context.Context,
+func (state *State) actionAddMessagesToMailbox(
+	ctx context.Context,
 	tx *ent.Tx,
 	messageIDs []MessageIDPair,
 	mboxID MailboxIDPair,
@@ -166,7 +174,12 @@ func (state *State) actionAddMessagesToMailbox(ctx context.Context,
 	return state.applyMessagesAddedToMailbox(ctx, tx, mboxID.InternalID, internalIDs)
 }
 
-func (state *State) actionRemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []MessageIDPair, mboxID MailboxIDPair) error {
+func (state *State) actionRemoveMessagesFromMailbox(
+	ctx context.Context,
+	tx *ent.Tx,
+	messageIDs []MessageIDPair,
+	mboxID MailboxIDPair,
+) error {
 	haveMessageIDs, err := DBGetMailboxMessageIDPairs(ctx, tx.Client(), mboxID.InternalID)
 	if err != nil {
 		return err
@@ -185,55 +198,64 @@ func (state *State) actionRemoveMessagesFromMailbox(ctx context.Context, tx *ent
 	return state.applyMessagesRemovedFromMailbox(ctx, tx, mboxID.InternalID, internalIDs)
 }
 
-func (state *State) actionMoveMessages(ctx context.Context, tx *ent.Tx, messageIDs []MessageIDPair, mboxFromID, mboxToID MailboxIDPair) (map[imap.InternalMessageID]int, error) {
+func (state *State) actionMoveMessages(
+	ctx context.Context,
+	tx *ent.Tx,
+	messageIDs []MessageIDPair,
+	mboxFromID, mboxToID MailboxIDPair,
+) (map[imap.InternalMessageID]int, error) {
 	if mboxFromID.InternalID == mboxToID.InternalID {
 		internalIDs, _ := SplitMessageIDPairSlice(messageIDs)
 
 		return DBBumpMailboxUIDsForMessage(ctx, tx, internalIDs, mboxToID.InternalID)
-	} else {
-
-		{
-			var messageIDsToAdd []MessageIDPair
-
-			if state.snap != nil && state.snap.mboxID.InternalID == mboxToID.InternalID {
-				messageIDsToAdd = state.snap.getAllMessageIDs()
-			} else {
-				var err error
-
-				if messageIDsToAdd, err = DBGetMailboxMessageIDPairs(ctx, tx.Client(), mboxToID.InternalID); err != nil {
-					return nil, err
-				}
-			}
-
-			if remMessageIDs := xslices.Filter(messageIDs, func(messageID MessageIDPair) bool {
-				return slices.Contains(messageIDsToAdd, messageID)
-			}); len(remMessageIDs) > 0 {
-				if err := state.actionRemoveMessagesFromMailbox(ctx, tx, remMessageIDs, mboxToID); err != nil {
-					return nil, err
-				}
-			}
-		}
-
-		messagesIDsToMove, err := DBGetMailboxMessageIDPairs(ctx, tx.Client(), mboxFromID.InternalID)
-		if err != nil {
-			return nil, err
-		}
-
-		messagesIDsToMove = xslices.Filter(messageIDs, func(messageID MessageIDPair) bool {
-			return slices.Contains(messagesIDsToMove, messageID)
-		})
-
-		internalIDs, remoteIDs := SplitMessageIDPairSlice(messagesIDsToMove)
-
-		if err := state.remote.MoveMessagesFromMailbox(ctx, state.metadataID, remoteIDs, mboxFromID.RemoteID, mboxToID.RemoteID); err != nil {
-			return nil, err
-		}
-
-		return state.applyMessagesMovedFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs)
 	}
+
+	{
+		var messageIDsToAdd []MessageIDPair
+
+		if state.snap != nil && state.snap.mboxID.InternalID == mboxToID.InternalID {
+			messageIDsToAdd = state.snap.getAllMessageIDs()
+		} else {
+			var err error
+
+			if messageIDsToAdd, err = DBGetMailboxMessageIDPairs(ctx, tx.Client(), mboxToID.InternalID); err != nil {
+				return nil, err
+			}
+		}
+
+		if remMessageIDs := xslices.Filter(messageIDs, func(messageID MessageIDPair) bool {
+			return slices.Contains(messageIDsToAdd, messageID)
+		}); len(remMessageIDs) > 0 {
+			if err := state.actionRemoveMessagesFromMailbox(ctx, tx, remMessageIDs, mboxToID); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	messagesIDsToMove, err := DBGetMailboxMessageIDPairs(ctx, tx.Client(), mboxFromID.InternalID)
+	if err != nil {
+		return nil, err
+	}
+
+	messagesIDsToMove = xslices.Filter(messageIDs, func(messageID MessageIDPair) bool {
+		return slices.Contains(messagesIDsToMove, messageID)
+	})
+
+	internalIDs, remoteIDs := SplitMessageIDPairSlice(messagesIDsToMove)
+
+	if err := state.remote.MoveMessagesFromMailbox(ctx, state.metadataID, remoteIDs, mboxFromID.RemoteID, mboxToID.RemoteID); err != nil {
+		return nil, err
+	}
+
+	return state.applyMessagesMovedFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs)
 }
 
-func (state *State) actionAddMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []MessageIDPair, addFlags imap.FlagSet) (map[imap.InternalMessageID]imap.FlagSet, error) {
+func (state *State) actionAddMessageFlags(
+	ctx context.Context,
+	tx *ent.Tx,
+	messageIDs []MessageIDPair,
+	addFlags imap.FlagSet,
+) (map[imap.InternalMessageID]imap.FlagSet, error) {
 	curFlags := make(map[imap.MessageID]imap.FlagSet)
 
 	// Get the current flags that each message has.
@@ -279,7 +301,12 @@ func (state *State) actionAddMessageFlags(ctx context.Context, tx *ent.Tx, messa
 	return res, nil
 }
 
-func (state *State) actionRemoveMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []MessageIDPair, remFlags imap.FlagSet) (map[imap.InternalMessageID]imap.FlagSet, error) {
+func (state *State) actionRemoveMessageFlags(
+	ctx context.Context,
+	tx *ent.Tx,
+	messageIDs []MessageIDPair,
+	remFlags imap.FlagSet,
+) (map[imap.InternalMessageID]imap.FlagSet, error) {
 	curFlags := make(map[imap.MessageID]imap.FlagSet)
 
 	// Get the current flags that each message has.

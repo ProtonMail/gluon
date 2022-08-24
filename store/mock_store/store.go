@@ -7,6 +7,7 @@ package mock_store
 import (
 	reflect "reflect"
 
+	imap "github.com/ProtonMail/gluon/imap"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -48,7 +49,7 @@ func (mr *MockStoreMockRecorder) Close() *gomock.Call {
 }
 
 // Delete mocks base method.
-func (m *MockStore) Delete(arg0 ...string) error {
+func (m *MockStore) Delete(arg0 ...imap.InternalMessageID) error {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
 	for _, a := range arg0 {
@@ -66,7 +67,7 @@ func (mr *MockStoreMockRecorder) Delete(arg0 ...interface{}) *gomock.Call {
 }
 
 // Get mocks base method.
-func (m *MockStore) Get(arg0 string) ([]byte, error) {
+func (m *MockStore) Get(arg0 imap.InternalMessageID) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0)
 	ret0, _ := ret[0].([]byte)
@@ -81,7 +82,7 @@ func (mr *MockStoreMockRecorder) Get(arg0 interface{}) *gomock.Call {
 }
 
 // Set mocks base method.
-func (m *MockStore) Set(arg0 string, arg1 []byte) error {
+func (m *MockStore) Set(arg0 imap.InternalMessageID, arg1 []byte) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Set", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -92,18 +93,4 @@ func (m *MockStore) Set(arg0 string, arg1 []byte) error {
 func (mr *MockStoreMockRecorder) Set(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockStore)(nil).Set), arg0, arg1)
-}
-
-// Update mocks base method.
-func (m *MockStore) Update(arg0, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Update indicates an expected call of Update.
-func (mr *MockStoreMockRecorder) Update(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockStore)(nil).Update), arg0, arg1)
 }

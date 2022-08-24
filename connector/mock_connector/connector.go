@@ -195,28 +195,18 @@ func (mr *MockConnectorMockRecorder) MarkMessagesSeen(arg0, arg1, arg2 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkMessagesSeen", reflect.TypeOf((*MockConnector)(nil).MarkMessagesSeen), arg0, arg1, arg2)
 }
 
-// Pause mocks base method.
-func (m *MockConnector) Pause() {
+// MoveMessages mocks base method.
+func (m *MockConnector) MoveMessages(arg0 context.Context, arg1 []imap.MessageID, arg2, arg3 imap.LabelID) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Pause")
+	ret := m.ctrl.Call(m, "MoveMessages", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// Pause indicates an expected call of Pause.
-func (mr *MockConnectorMockRecorder) Pause() *gomock.Call {
+// MoveMessages indicates an expected call of MoveMessages.
+func (mr *MockConnectorMockRecorder) MoveMessages(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pause", reflect.TypeOf((*MockConnector)(nil).Pause))
-}
-
-// Resume mocks base method.
-func (m *MockConnector) Resume() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Resume")
-}
-
-// Resume indicates an expected call of Resume.
-func (mr *MockConnectorMockRecorder) Resume() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Resume", reflect.TypeOf((*MockConnector)(nil).Resume))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MoveMessages", reflect.TypeOf((*MockConnector)(nil).MoveMessages), arg0, arg1, arg2, arg3)
 }
 
 // UnlabelMessages mocks base method.

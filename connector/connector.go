@@ -46,6 +46,7 @@ type Connector interface {
 	// UnlabelMessages unlabels the given messages with the given label ID.
 	UnlabelMessages(ctx context.Context, messageIDs []imap.MessageID, labelID imap.LabelID) error
 
+	// MoveMessages removes the given messages from one label and adds them to the other label.
 	MoveMessages(ctx context.Context, messageIDs []imap.MessageID, labelFromID, labelToID imap.LabelID) error
 
 	// MarkMessagesSeen sets the seen value of the given messages.
@@ -57,12 +58,6 @@ type Connector interface {
 	// GetUpdates returns a stream of updates that the gluon server should apply.
 	// It is recommended that the returned channel is buffered with at least constants.ChannelBufferCount.
 	GetUpdates() <-chan imap.Update
-
-	// Pause pauses the stream of updates.
-	Pause()
-
-	// Resume resumes the stream of updates.
-	Resume()
 
 	// Close the connector will no longer be used and all resources should be closed/released.
 	Close(ctx context.Context) error
