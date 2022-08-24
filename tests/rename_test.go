@@ -102,23 +102,33 @@ func TestRenameInbox(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap2.LabelID) {
 		// Put all the 100 messages into the inbox.
 		c.C("tag move 1:* inbox").OK("tag")
+
+		// Check there are 100 messages in inbox.
+		s.flush("user")
 		c.C("tag status inbox (messages)").Sxe("MESSAGES 100").OK("tag")
 
 		// Renaming the inbox will create a new mailbox and put all the messages in there.
 		c.C("tag rename inbox some/other/mailbox").OK("tag")
 
 		// There are now 0 messages in the inbox; they've all been moved to this new mailbox.
+		s.flush("user")
 		c.C("tag status inbox (messages)").Sxe("MESSAGES 0").OK("tag")
 		c.C("tag status some/other/mailbox (messages)").Sxe("MESSAGES 100").OK("tag")
 
 		// Put all the 100 messages back into the inbox.
 		c.C("tag select some/other/mailbox").OK("tag")
 		c.C("tag move 1:* inbox").OK("tag")
+
+		// Check there are 100 messages in inbox and none in the other mailbox.
+		s.flush("user")
 		c.C("tag status inbox (messages)").Sxe("MESSAGES 100").OK("tag")
 		c.C("tag status some/other/mailbox (messages)").Sxe("MESSAGES 0").OK("tag")
 
 		// Renaming the inbox again will do the same as before.
 		c.C("tag rename inbox yet/another/mailbox").OK("tag")
+
+		// Check there are no messages in inbox and 100 in the other mailbox.
+		s.flush("user")
 		c.C("tag status inbox (messages)").Sxe("MESSAGES 0").OK("tag")
 		c.C("tag status some/other/mailbox (messages)").Sxe("MESSAGES 0").OK("tag")
 		c.C("tag status yet/another/mailbox (messages)").Sxe("MESSAGES 100").OK("tag")
