@@ -137,7 +137,7 @@ func (m *Mailbox) fetchKeyword(msg *snapMsg, message *ent.Message, keyword proto
 		return response.ItemUID(msg.UID), nil
 
 	default:
-		panic("bad keyword")
+		return nil, fmt.Errorf("bad fetch keyword")
 	}
 }
 
@@ -202,7 +202,12 @@ func (m *Mailbox) fetchBodyLiteral(body *proto.FetchBody, literal []byte) ([]byt
 			return nil, "", err
 		}
 
-		return b, renderSection(section.Section), nil
+		renderedSection, err := renderSection(section.Section)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return b, renderedSection, nil
 
 	default:
 		return literal, "", nil
@@ -256,7 +261,7 @@ func (m *Mailbox) fetchBodySection(section *proto.BodySection, literal []byte) (
 			return root.Header(), nil
 
 		default:
-			panic("bad keyword")
+			return nil, fmt.Errorf("bad section keyword")
 		}
 
 	default:
@@ -264,7 +269,7 @@ func (m *Mailbox) fetchBodySection(section *proto.BodySection, literal []byte) (
 	}
 }
 
-func renderSection(section *proto.BodySection) string {
+func renderSection(section *proto.BodySection) (string, error) {
 	var res []string
 
 	if len(section.Parts) > 0 {
@@ -290,11 +295,11 @@ func renderSection(section *proto.BodySection) string {
 			res = append(res, "MIME")
 
 		default:
-			panic("bad keyword")
+			return "", fmt.Errorf("bad body section keyword")
 		}
 	}
 
-	return strings.ToUpper(strings.Join(res, "."))
+	return strings.ToUpper(strings.Join(res, ".")), nil
 }
 
 func renderParts(sectionParts []int) string {

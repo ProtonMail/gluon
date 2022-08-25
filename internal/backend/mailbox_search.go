@@ -3,6 +3,7 @@ package backend
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/mail"
 	"strings"
 	"time"
@@ -157,7 +158,7 @@ func (m *Mailbox) matchSearchKey(ctx context.Context, candidates []*snapMsg, key
 		return m.matchSearchKeyList(ctx, candidates, key, decoder)
 
 	default:
-		panic("bad keyword")
+		return nil, fmt.Errorf("bad search keyword")
 	}
 }
 

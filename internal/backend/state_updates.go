@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
@@ -11,7 +12,7 @@ import (
 // applyMessageFlagsAdded adds the flags to the given messages.
 func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, addFlags imap.FlagSet) error {
 	if addFlags.Contains(imap.FlagRecent) {
-		panic("the recent flag is read-only")
+		return fmt.Errorf("the recent flag is read-only")
 	}
 
 	client := tx.Client()
@@ -72,7 +73,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 // applyMessageFlagsRemoved removes the flags from the given messages.
 func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, remFlags imap.FlagSet) error {
 	if remFlags.Contains(imap.FlagRecent) {
-		panic("the recent flag is read-only")
+		return fmt.Errorf("the recent flag is read-only")
 	}
 
 	client := tx.Client()
@@ -139,7 +140,7 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 // applyMessageFlagsSet sets the flags of the given messages.
 func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, setFlags imap.FlagSet) error {
 	if setFlags.Contains(imap.FlagRecent) {
-		panic("the recent flag is read-only")
+		return fmt.Errorf("the recent flag is read-only")
 	}
 
 	if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {

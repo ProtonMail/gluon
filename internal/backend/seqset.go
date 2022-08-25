@@ -1,8 +1,11 @@
 package backend
 
-import "github.com/ProtonMail/gluon/internal/parser/proto"
+import (
+	"fmt"
+	"github.com/ProtonMail/gluon/internal/parser/proto"
+)
 
-func toSeqSet(set *proto.SequenceSet) [][]string {
+func toSeqSet(set *proto.SequenceSet) ([][]string, error) {
 	var seqRanges [][]string
 
 	for _, item := range set.GetItems() {
@@ -16,11 +19,11 @@ func toSeqSet(set *proto.SequenceSet) [][]string {
 			seqRange = append(seqRange, item.Range.GetBegin(), item.Range.GetEnd())
 
 		default:
-			panic("bad sequence range")
+			return nil, fmt.Errorf("bad sequence range")
 		}
 
 		seqRanges = append(seqRanges, seqRange)
 	}
 
-	return seqRanges
+	return seqRanges, nil
 }

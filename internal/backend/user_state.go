@@ -49,7 +49,7 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 
 		state, ok := user.states[stateID]
 		if !ok {
-			panic("no such state")
+			return nil, fmt.Errorf("no such state")
 		}
 
 		messageIDs = xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
