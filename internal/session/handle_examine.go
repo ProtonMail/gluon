@@ -38,8 +38,6 @@ func (s *Session) handleExamine(ctx context.Context, tag string, cmd *proto.Exam
 			ch <- response.Ok().WithItems(response.ItemUnseen(unseen[0]))
 		}
 
-		s.name = mailbox.Name()
-
 		return nil
 	}); err != nil {
 		return err

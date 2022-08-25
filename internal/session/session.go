@@ -37,9 +37,6 @@ type Session struct {
 	// state manages state of the authorized backend for this session.
 	state *backend.State
 
-	// name holds the name of the currently selected mailbox, if any.
-	name string
-
 	// userLock protects the session's user object.
 	userLock sync.Mutex
 
@@ -202,15 +199,7 @@ func (s *Session) logIncoming(line string) {
 		return
 	}
 
-	var name string
-
-	if s.name != "" {
-		name = s.name
-	} else {
-		name = "--"
-	}
-
-	writeLog(s.inLogger, "C", strconv.Itoa(s.sessionID), name, line)
+	writeLog(s.inLogger, "C", strconv.Itoa(s.sessionID), line)
 }
 
 func (s *Session) logOutgoing(line string) {
@@ -218,15 +207,7 @@ func (s *Session) logOutgoing(line string) {
 		return
 	}
 
-	var name string
-
-	if s.name != "" {
-		name = s.name
-	} else {
-		name = "--"
-	}
-
-	writeLog(s.outLogger, "S", strconv.Itoa(s.sessionID), name, line)
+	writeLog(s.outLogger, "S", strconv.Itoa(s.sessionID), line)
 }
 
 func (s *Session) done(ctx context.Context) {
