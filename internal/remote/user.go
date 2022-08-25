@@ -24,7 +24,8 @@ type User struct {
 	connMetadataStoreLock sync.RWMutex
 
 	// forwardWG is used to ensure we wait until the forward() goroutine has finished executing.
-	forwardWG sync.WaitGroup
+	forwardWG     sync.WaitGroup
+	forwardQuitCh chan struct{}
 }
 
 // newUser constructs a new user with the given (IMAP) credentials.
@@ -36,6 +37,7 @@ func newUser(ctx context.Context, userID string, conn connector.Connector) (*Use
 		conn:              conn,
 		updatesCh:         make(chan imap.Update),
 		connMetadataStore: newConnMetadataStore(),
+		forwardQuitCh:     make(chan struct{}),
 	}
 
 	// send connector updates along to the mailserver.
@@ -57,14 +59,11 @@ func (user *User) GetUpdates() <-chan imap.Update {
 }
 
 func (user *User) Close(ctx context.Context) error {
+	close(user.forwardQuitCh)
+	user.forwardWG.Wait()
+
 	if err := user.conn.Close(ctx); err != nil {
 		return err
-	}
-
-	// TODO: GODT-1647 fix double call to Close().
-	if user.updatesCh != nil {
-		user.forwardWG.Wait()
-		user.updatesCh = nil
 	}
 
 	return nil
@@ -77,14 +76,25 @@ func (user *User) forward(updateCh <-chan imap.Update) {
 		user.forwardWG.Done()
 	}()
 
-	for update := range updateCh {
-		user.send(update)
+	for {
+		select {
+		case update := <-updateCh:
+			user.send(update)
+
+		case <-user.forwardQuitCh:
+			return
+		}
 	}
 }
 
 // send sends the update on the user's updates channel, optionally blocking until it has been processed.
 func (user *User) send(update imap.Update, withBlock ...bool) {
-	user.updatesCh <- update
+	select {
+	case user.updatesCh <- update:
+
+	case <-user.forwardQuitCh:
+		return
+	}
 
 	if len(withBlock) > 0 && withBlock[0] {
 		update.Wait()
