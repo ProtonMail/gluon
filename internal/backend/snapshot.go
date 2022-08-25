@@ -110,7 +110,12 @@ func (snap *snapshot) getMessagesInRange(ctx context.Context, seq *proto.Sequenc
 func (snap *snapshot) getMessagesInSeqRange(seq *proto.SequenceSet) ([]*snapMsg, error) {
 	var res []*snapMsg
 
-	for _, seqRange := range toSeqSet(seq) {
+	seqSet, err := toSeqSet(seq)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, seqRange := range seqSet {
 		switch len(seqRange) {
 		case 1:
 			seq, err := snap.resolveSeq(seqRange[0])
@@ -138,7 +143,7 @@ func (snap *snapshot) getMessagesInSeqRange(seq *proto.SequenceSet) ([]*snapMsg,
 			res = append(res, snap.seqRange(begin, end)...)
 
 		default:
-			panic("bad sequence range")
+			return nil, fmt.Errorf("bad sequence range")
 		}
 	}
 
@@ -153,7 +158,12 @@ func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]*snapMsg,
 		return nil, nil
 	}
 
-	for _, uidRange := range toSeqSet(seq) {
+	seqSet, err := toSeqSet(seq)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, uidRange := range seqSet {
 		switch len(uidRange) {
 		case 1:
 			uid, err := snap.resolveUID(uidRange[0])
@@ -181,7 +191,7 @@ func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]*snapMsg,
 			res = append(res, snap.uidRange(begin, end)...)
 
 		default:
-			panic("bad sequence range")
+			return nil, fmt.Errorf("bad sequence range")
 		}
 	}
 

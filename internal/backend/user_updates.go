@@ -49,7 +49,7 @@ func (user *user) apply(ctx context.Context, update imap.Update) error {
 		return user.applyMessageDeleted(ctx, update)
 
 	default:
-		panic("bad update")
+		return fmt.Errorf("bad update")
 	}
 }
 

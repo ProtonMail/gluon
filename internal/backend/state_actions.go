@@ -354,7 +354,7 @@ func (state *State) actionRemoveMessageFlags(
 
 func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []MessageIDPair, setFlags imap.FlagSet) error {
 	if setFlags.Contains(imap.FlagRecent) {
-		panic("recent flag is read-only")
+		return fmt.Errorf("recent flag is read-only")
 	}
 
 	curFlags := make(map[imap.MessageID]imap.FlagSet)
