@@ -13,8 +13,6 @@ func (s *Session) handleUnselect(ctx context.Context, tag string, cmd *proto.Uns
 		return err
 	}
 
-	s.name = ""
-
 	ch <- response.Ok(tag).WithMessage("UNSELECT")
 
 	return nil

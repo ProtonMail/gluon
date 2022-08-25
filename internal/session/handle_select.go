@@ -39,8 +39,6 @@ func (s *Session) handleSelect(ctx context.Context, tag string, cmd *proto.Selec
 			ch <- response.Ok().WithItems(response.ItemUnseen(unseen[0])).WithMessage("Unseen messages")
 		}
 
-		s.name = mailbox.Name()
-
 		return nil
 	}); err != nil {
 		return err

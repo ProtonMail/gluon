@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime/pprof"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -99,11 +100,11 @@ func TestReceptionOnIdle(t *testing.T) {
 		require.Equal(t, uint32(0), status.Messages, "Expected message count does not match")
 
 		// prepare to stop idling.
-		stopped := false
+		stopped := int32(0)
 		stop := make(chan struct{})
 		done := make(chan error, 1)
 		// Create a channel to receive mailbox updates.
-		updates := make(chan client.Update)
+		updates := make(chan client.Update, 100)
 		c.Updates = updates
 
 		// idling.
@@ -111,7 +112,7 @@ func TestReceptionOnIdle(t *testing.T) {
 			labels := pprof.Labels("test", "client", "idling", "idle")
 			pprof.Do(context.Background(), labels, func(_ context.Context) {
 				defer func() {
-					stopped = true
+					atomic.StoreInt32(&stopped, 1)
 				}()
 				done <- c.Idle(stop, nil)
 			})
@@ -137,7 +138,7 @@ func TestReceptionOnIdle(t *testing.T) {
 		var existsUpdate uint32 = 0
 		var recentUpdate uint32 = 0
 
-		for !stopped {
+		for atomic.LoadInt32(&stopped) == 0 {
 			select {
 			case update := <-updates:
 				boxUpdate, ok := update.(*client.MailboxUpdate)
