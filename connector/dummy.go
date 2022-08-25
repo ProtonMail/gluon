@@ -36,7 +36,8 @@ type Dummy struct {
 	pfxFolder, pfxLabel string
 
 	// updateCh delivers simulated updates to the mailserver.
-	updateCh chan imap.Update
+	updateCh     chan imap.Update
+	updateQuitCh chan struct{}
 
 	// ticker controls the delivery of simulated events to the mailserver.
 	ticker *ticker.Ticker
@@ -48,21 +49,27 @@ type Dummy struct {
 
 func NewDummy(usernames []string, password string, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
 	conn := &Dummy{
-		state:     newDummyState(flags, permFlags, attrs),
-		usernames: usernames,
-		password:  password,
-		flags:     flags,
-		permFlags: permFlags,
-		attrs:     attrs,
-		updateCh:  make(chan imap.Update, constants.ChannelBufferCount),
-		ticker:    ticker.New(period),
+		state:        newDummyState(flags, permFlags, attrs),
+		usernames:    usernames,
+		password:     password,
+		flags:        flags,
+		permFlags:    permFlags,
+		attrs:        attrs,
+		updateCh:     make(chan imap.Update, constants.ChannelBufferCount),
+		updateQuitCh: make(chan struct{}),
+		ticker:       ticker.New(period),
 	}
 
 	go func() {
 		conn.ticker.Tick(func(time.Time) {
 			for _, update := range conn.popUpdates() {
 				defer update.Wait()
-				conn.updateCh <- update
+				select {
+				case conn.updateCh <- update:
+					continue
+				case <-conn.updateQuitCh:
+					return
+				}
 			}
 		})
 	}()
@@ -280,12 +287,9 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 }
 
 func (conn *Dummy) Close(ctx context.Context) error {
-	// TODO: GODT-1647 fix double call to Close().
-	if conn.updateCh != nil {
-		close(conn.updateCh)
-		conn.updateCh = nil
-		conn.ticker.Stop()
-	}
+	close(conn.updateQuitCh)
+	close(conn.updateCh)
+	conn.ticker.Stop()
 
 	return nil
 }

@@ -140,6 +140,10 @@ func (b *Backend) Close(ctx context.Context) error {
 			return fmt.Errorf("failed to close backend user (%v): %w", userID, err)
 		}
 
+		if err := b.remote.RemoveUser(ctx, userID); err != nil {
+			return err
+		}
+
 		delete(b.users, userID)
 	}
 

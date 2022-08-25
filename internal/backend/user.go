@@ -25,7 +25,8 @@ type user struct {
 	statesLock  sync.RWMutex
 	nextStateID int
 
-	updateWG sync.WaitGroup
+	updateWG     sync.WaitGroup
+	updateQuitCh chan struct{}
 }
 
 func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, store store.Store, delimiter string) (*user, error) {
@@ -34,12 +35,13 @@ func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, st
 	}
 
 	user := &user{
-		userID:    userID,
-		remote:    remote,
-		store:     store,
-		delimiter: delimiter,
-		db:        db,
-		states:    make(map[int]*State),
+		userID:       userID,
+		remote:       remote,
+		store:        store,
+		delimiter:    delimiter,
+		db:           db,
+		states:       make(map[int]*State),
+		updateQuitCh: make(chan struct{}),
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
@@ -52,9 +54,15 @@ func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, st
 		defer user.updateWG.Done()
 		labels := pprof.Labels("go", "Connector Updates", "UserID", user.userID)
 		pprof.Do(ctx, labels, func(_ context.Context) {
-			for update := range remote.GetUpdates() {
-				if err := user.apply(context.Background(), update); err != nil {
-					logrus.WithError(err).Errorf("Failed to apply update: %v", err)
+			updateCh := remote.GetUpdates()
+			for {
+				select {
+				case update := <-updateCh:
+					if err := user.apply(context.Background(), update); err != nil {
+						logrus.WithError(err).Errorf("Failed to apply update: %v", err)
+					}
+				case <-user.updateQuitCh:
+					return
 				}
 			}
 		})
@@ -67,9 +75,7 @@ func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, st
 func (user *user) close(ctx context.Context) error {
 	user.closeStates()
 
-	if err := user.remote.Close(ctx); err != nil {
-		return fmt.Errorf("failed to close user remote: %w", err)
-	}
+	close(user.updateQuitCh)
 
 	// Wait until the connector update go routine has finished.
 	user.updateWG.Wait()
