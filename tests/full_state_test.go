@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime/pprof"
-	"sync/atomic"
+	"sync"
 	"testing"
 	"time"
 
@@ -100,26 +100,27 @@ func TestReceptionOnIdle(t *testing.T) {
 		require.Equal(t, uint32(0), status.Messages, "Expected message count does not match")
 
 		// prepare to stop idling.
-		stopped := int32(0)
 		stop := make(chan struct{})
 		done := make(chan error, 1)
 		// Create a channel to receive mailbox updates.
 		updates := make(chan client.Update, 100)
 		c.Updates = updates
 
+		wg := sync.WaitGroup{}
+		wg.Add(2)
+
 		// idling.
 		go func() {
+			defer wg.Done()
 			labels := pprof.Labels("test", "client", "idling", "idle")
 			pprof.Do(context.Background(), labels, func(_ context.Context) {
-				defer func() {
-					atomic.StoreInt32(&stopped, 1)
-				}()
 				done <- c.Idle(stop, nil)
 			})
 		}()
 
 		// receiving messages from another client.
 		go func() {
+			defer wg.Done()
 			labels := pprof.Labels("test", "client", "sending", "idle")
 			pprof.Do(context.Background(), labels, func(_ context.Context) {
 				cli := sess.newClient()
@@ -138,22 +139,23 @@ func TestReceptionOnIdle(t *testing.T) {
 		var existsUpdate uint32 = 0
 		var recentUpdate uint32 = 0
 
-		for atomic.LoadInt32(&stopped) == 0 {
-			select {
-			case update := <-updates:
-				boxUpdate, ok := update.(*client.MailboxUpdate)
-				if ok {
-					recentUpdate = boxUpdate.Mailbox.Recent
-					existsUpdate = boxUpdate.Mailbox.Messages
-				}
-			case err := <-done:
-				require.NoError(t, err)
-			}
-		}
-
+		wg.Wait()
 		c.Updates = nil
 		close(updates)
 		close(done)
+
+		for update := range updates {
+			boxUpdate, ok := update.(*client.MailboxUpdate)
+			if ok {
+				recentUpdate = boxUpdate.Mailbox.Recent
+				existsUpdate = boxUpdate.Mailbox.Messages
+			}
+		}
+
+		select {
+		case err := <-done:
+			require.NoError(t, err)
+		}
 
 		require.Equal(t, existsUpdate, uint32(3), "Not received the good amount of exists update")
 		require.Equal(t, recentUpdate, uint32(3), "Not received the good amount of recent update")
