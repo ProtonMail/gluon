@@ -17,7 +17,11 @@ import (
 )
 
 func (m *Mailbox) Search(ctx context.Context, keys []*proto.SearchKey, decoder *encoding.Decoder) ([]int, error) {
-	messages, err := doSearch(ctx, m, m.snap.getAllMessages(), keys, decoder)
+	snapMessages := snapshotRead(m.snap, func(s *snapshot) []*snapMsg {
+		return s.getAllMessages()
+	})
+
+	messages, err := doSearch(ctx, m, snapMessages, keys, decoder)
 	if err != nil {
 		return nil, err
 	}
@@ -581,7 +585,9 @@ func (m *Mailbox) matchSearchKeyTo(ctx context.Context, candidates []*snapMsg, k
 }
 
 func (m *Mailbox) matchSearchKeyUID(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
-	left, err := m.snap.getMessagesInUIDRange(key.GetSequenceSet())
+	left, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
+		return s.getMessagesInUIDRange(key.GetSequenceSet())
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -628,7 +634,9 @@ func (m *Mailbox) matchSearchKeyUnseen(ctx context.Context, candidates []*snapMs
 }
 
 func (m *Mailbox) matchSearchKeySeqSet(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
-	left, err := m.snap.getMessagesInSeqRange(key.GetSequenceSet())
+	left, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
+		return s.getMessagesInSeqRange(key.GetSequenceSet())
+	})
 	if err != nil {
 		return nil, err
 	}

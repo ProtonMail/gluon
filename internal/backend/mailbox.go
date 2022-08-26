@@ -18,21 +18,25 @@ type Mailbox struct {
 	mbox *ent.Mailbox
 
 	state *State
-	snap  *snapshot
+	snap  *snapshotWrapper
 
 	selected bool
 	readOnly bool
 }
 
-func newMailbox(mbox *ent.Mailbox, state *State, snap *snapshot) *Mailbox {
+func newMailbox(mbox *ent.Mailbox, state *State, wrapper *snapshotWrapper) *Mailbox {
+	selected := snapshotRead(wrapper, func(s *snapshot) bool {
+		return s != nil
+	})
+
 	return &Mailbox{
 		mbox: mbox,
 
 		state: state,
-		snap:  snap,
 
-		selected: state.snap != nil,
+		selected: selected,
 		readOnly: state.ro,
+		snap:     wrapper,
 	}
 }
 
@@ -62,7 +66,9 @@ func (m *Mailbox) ExpungeIssued() bool {
 }
 
 func (m *Mailbox) Count() int {
-	return len(m.snap.getAllMessages())
+	return snapshotRead(m.snap, func(s *snapshot) int {
+		return len(s.getAllMessages())
+	})
 }
 
 func (m *Mailbox) Flags(ctx context.Context) (imap.FlagSet, error) {
@@ -111,14 +117,18 @@ func (m *Mailbox) Subscribed() bool {
 }
 
 func (m *Mailbox) GetMessagesWithFlag(flag string) []int {
-	return xslices.Map(m.snap.getMessagesWithFlag(flag), func(msg *snapMsg) int {
-		return msg.Seq
+	return snapshotRead(m.snap, func(s *snapshot) []int {
+		return xslices.Map(s.getMessagesWithFlag(flag), func(msg *snapMsg) int {
+			return msg.Seq
+		})
 	})
 }
 
 func (m *Mailbox) GetMessagesWithoutFlag(flag string) []int {
-	return xslices.Map(m.snap.getMessagesWithoutFlag(flag), func(msg *snapMsg) int {
-		return msg.Seq
+	return snapshotRead(m.snap, func(s *snapshot) []int {
+		return xslices.Map(s.getMessagesWithoutFlag(flag), func(msg *snapMsg) int {
+			return msg.Seq
+		})
 	})
 }
 
@@ -144,8 +154,12 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 		}
 	}
 
+	snapMBoxID := snapshotRead(m.snap, func(s *snapshot) MailboxIDPair {
+		return s.mboxID
+	})
+
 	return DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (int, error) {
-		return m.state.actionCreateMessage(ctx, tx, m.snap.mboxID, literal, flags, date)
+		return m.state.actionCreateMessage(ctx, tx, snapMBoxID, literal, flags, date)
 	})
 }
 
@@ -160,7 +174,9 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 		return nil, ErrNoSuchMailbox
 	}
 
-	messages, err := m.snap.getMessagesInRange(ctx, seq)
+	messages, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
+		return s.getMessagesInRange(ctx, seq)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -198,11 +214,17 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 	mbox, err := DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return DBGetMailboxByName(ctx, client, name)
 	})
+
 	if err != nil {
 		return nil, ErrNoSuchMailbox
 	}
 
-	messages, err := m.snap.getMessagesInRange(ctx, seq)
+	var snapMBoxID MailboxIDPair
+
+	messages, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
+		snapMBoxID = s.mboxID
+		return s.getMessagesInRange(ctx, seq)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +238,7 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 	})
 
 	destUIDs, err := DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]int, error) {
-		return m.state.actionMoveMessages(ctx, tx, msgIDs, m.snap.mboxID, NewMailboxIDPair(mbox))
+		return m.state.actionMoveMessages(ctx, tx, msgIDs, snapMBoxID, NewMailboxIDPair(mbox))
 	})
 	if err != nil {
 		return nil, err
@@ -234,7 +256,9 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 }
 
 func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation proto.Operation, flags imap.FlagSet) error {
-	messages, err := m.snap.getMessagesInRange(ctx, seq)
+	messages, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
+		return s.getMessagesInRange(ctx, seq)
+	})
 	if err != nil {
 		return err
 	}
@@ -269,13 +293,18 @@ func (m *Mailbox) Expunge(ctx context.Context, seq *proto.SequenceSet) error {
 	var msg []*snapMsg
 
 	if seq != nil {
-		var err error
-
-		if msg, err = m.snap.getMessagesInRange(ctx, seq); err != nil {
+		snapMsgs, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
+			return s.getMessagesInRange(ctx, seq)
+		})
+		if err != nil {
 			return err
 		}
+
+		msg = snapMsgs
 	} else {
-		msg = m.snap.getAllMessages()
+		msg = snapshotRead(m.snap, func(s *snapshot) []*snapMsg {
+			return s.getAllMessages()
+		})
 	}
 
 	return m.expunge(ctx, msg)
@@ -290,8 +319,12 @@ func (m *Mailbox) expunge(ctx context.Context, messages []*snapMsg) error {
 		return msg.ID
 	})
 
+	mboxID := snapshotRead(m.snap, func(s *snapshot) MailboxIDPair {
+		return s.mboxID
+	})
+
 	return m.state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return m.state.actionRemoveMessagesFromMailbox(ctx, tx, msgIDs, m.snap.mboxID)
+		return m.state.actionRemoveMessagesFromMailbox(ctx, tx, msgIDs, mboxID)
 	})
 }
 

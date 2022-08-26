@@ -27,6 +27,7 @@ func (user *user) newState(metadataID remote.ConnMetadataID) (*State, error) {
 		metadataID: metadataID,
 		doneCh:     make(chan struct{}),
 		stopCh:     make(chan struct{}),
+		snap:       newSnapshotWrapper(nil),
 	}
 
 	return user.states[user.nextStateID], nil
@@ -54,7 +55,9 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 
 		messageIDs = xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return xslices.CountFunc(maps.Values(user.states), func(other *State) bool {
-				return state != other && other.snap != nil && other.snap.hasMessage(messageID)
+				return state != other && snapshotRead(other.snap, func(s *snapshot) bool {
+					return s != nil && s.hasMessage(messageID)
+				})
 			}) == 0
 		})
 
@@ -109,7 +112,7 @@ func (user *user) forStateInMailbox(mboxID imap.InternalMailboxID, fn func(*Stat
 	defer user.statesLock.RUnlock()
 
 	for _, state := range user.states {
-		if state.snap != nil && state.snap.mboxID.InternalID == mboxID {
+		if snapshotRead(state.snap, func(s *snapshot) bool { return s != nil && s.mboxID.InternalID == mboxID }) {
 			if err := fn(state); err != nil {
 				return err
 			}
@@ -125,7 +128,7 @@ func (user *user) forStateWithMessage(messageID imap.InternalMessageID, fn func(
 	defer user.statesLock.RUnlock()
 
 	for _, state := range user.states {
-		if state.snap != nil && state.snap.hasMessage(messageID) {
+		if snapshotRead(state.snap, func(s *snapshot) bool { return s != nil && s.hasMessage(messageID) }) {
 			if err := fn(state); err != nil {
 				return err
 			}
@@ -139,7 +142,7 @@ func (user *user) forStateWithMessage(messageID imap.InternalMessageID, fn func(
 // A state might still contain the given message if the message had been expunged but this state was not notified yet.
 func (user *user) forStateInMailboxWithMessage(mboxID imap.InternalMailboxID, messageID imap.InternalMessageID, fn func(*State) error) error {
 	return user.forStateInMailbox(mboxID, func(state *State) error {
-		if state.snap.hasMessage(messageID) {
+		if snapshotRead(state.snap, func(s *snapshot) bool { return s.hasMessage(messageID) }) {
 			return fn(state)
 		}
 

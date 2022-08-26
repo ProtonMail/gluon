@@ -145,16 +145,16 @@ func (state *State) actionAddMessagesToMailbox(
 	messageIDs []MessageIDPair,
 	mboxID MailboxIDPair,
 ) (map[imap.InternalMessageID]int, error) {
-	var haveMessageIDs []MessageIDPair
-
-	if state.snap != nil && state.snap.mboxID.InternalID == mboxID.InternalID {
-		haveMessageIDs = state.snap.getAllMessageIDs()
-	} else {
-		var err error
-
-		if haveMessageIDs, err = DBGetMailboxMessageIDPairs(ctx, tx.Client(), mboxID.InternalID); err != nil {
-			return nil, err
+	haveMessageIDs, err := snapshotReadErr(state.snap, func(s *snapshot) ([]MessageIDPair, error) {
+		if s != nil && s.mboxID.InternalID == mboxID.InternalID {
+			return s.getAllMessageIDs(), nil
+		} else {
+			return DBGetMailboxMessageIDPairs(ctx, tx.Client(), mboxID.InternalID)
 		}
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
 	if remMessageIDs := xslices.Filter(messageIDs, func(messageID MessageIDPair) bool {
@@ -211,16 +211,16 @@ func (state *State) actionMoveMessages(
 	}
 
 	{
-		var messageIDsToAdd []MessageIDPair
-
-		if state.snap != nil && state.snap.mboxID.InternalID == mboxToID.InternalID {
-			messageIDsToAdd = state.snap.getAllMessageIDs()
-		} else {
-			var err error
-
-			if messageIDsToAdd, err = DBGetMailboxMessageIDPairs(ctx, tx.Client(), mboxToID.InternalID); err != nil {
-				return nil, err
+		messageIDsToAdd, err := snapshotReadErr(state.snap, func(s *snapshot) ([]MessageIDPair, error) {
+			if s != nil && s.mboxID.InternalID == mboxToID.InternalID {
+				return s.getAllMessageIDs(), nil
+			} else {
+				return DBGetMailboxMessageIDPairs(ctx, tx.Client(), mboxToID.InternalID)
 			}
+		})
+
+		if err != nil {
+			return nil, err
 		}
 
 		if remMessageIDs := xslices.Filter(messageIDs, func(messageID MessageIDPair) bool {
@@ -260,7 +260,9 @@ func (state *State) actionAddMessageFlags(
 
 	// Get the current flags that each message has.
 	for _, messageID := range messageIDs {
-		flags, err := state.snap.getMessageFlags(messageID.InternalID)
+		flags, err := snapshotReadErr(state.snap, func(s *snapshot) (imap.FlagSet, error) {
+			return s.getMessageFlags(messageID.InternalID)
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -311,7 +313,9 @@ func (state *State) actionRemoveMessageFlags(
 
 	// Get the current flags that each message has.
 	for _, messageID := range messageIDs {
-		flags, err := state.snap.getMessageFlags(messageID.InternalID)
+		flags, err := snapshotReadErr(state.snap, func(s *snapshot) (imap.FlagSet, error) {
+			return s.getMessageFlags(messageID.InternalID)
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -361,7 +365,9 @@ func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messa
 
 	// Get the current flags that each message has.
 	for _, messageID := range messageIDs {
-		flags, err := state.snap.getMessageFlags(messageID.InternalID)
+		flags, err := snapshotReadErr(state.snap, func(s *snapshot) (imap.FlagSet, error) {
+			return s.getMessageFlags(messageID.InternalID)
+		})
 		if err != nil {
 			return err
 		}
