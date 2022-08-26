@@ -15,7 +15,9 @@ import (
 )
 
 func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes []*proto.FetchAttribute, ch chan response.Response) error {
-	msg, err := m.snap.getMessagesInRange(ctx, seq)
+	msg, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
+		return s.getMessagesInRange(ctx, seq)
+	})
 	if err != nil {
 		return err
 	}

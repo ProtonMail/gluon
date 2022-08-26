@@ -468,7 +468,9 @@ func (user *user) addMessageFlags(ctx context.Context, tx *ent.Tx, messageID ima
 	}
 
 	return user.forStateWithMessage(messageID, func(state *State) error {
-		snapFlags, err := state.snap.getMessageFlags(messageID)
+		snapFlags, err := snapshotReadErr(state.snap, func(s *snapshot) (imap.FlagSet, error) {
+			return s.getMessageFlags(messageID)
+		})
 		if err != nil {
 			return err
 		}
@@ -483,7 +485,9 @@ func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID 
 	}
 
 	return user.forStateWithMessage(messageID, func(state *State) error {
-		snapFlags, err := state.snap.getMessageFlags(messageID)
+		snapFlags, err := snapshotReadErr(state.snap, func(s *snapshot) (imap.FlagSet, error) {
+			return s.getMessageFlags(messageID)
+		})
 		if err != nil {
 			return err
 		}
@@ -504,7 +508,10 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 		}
 
 		return user.forStateWithMessage(internalMessageID, func(state *State) error {
-			return state.actionRemoveMessagesFromMailbox(ctx, tx, []MessageIDPair{{InternalID: internalMessageID, RemoteID: update.MessageID}}, state.snap.mboxID)
+			return state.actionRemoveMessagesFromMailbox(ctx, tx, []MessageIDPair{{
+				InternalID: internalMessageID,
+				RemoteID:   update.MessageID,
+			}}, snapshotRead(state.snap, func(s *snapshot) MailboxIDPair { return s.mboxID }))
 		})
 	})
 }

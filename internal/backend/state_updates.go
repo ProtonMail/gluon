@@ -17,18 +17,22 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 
 	client := tx.Client()
 
+	mboxID := snapshotRead(state.snap, func(s *snapshot) MailboxIDPair {
+		return s.mboxID
+	})
+
 	curFlags, err := DBGetMessageFlags(ctx, client, messageIDs)
 	if err != nil {
 		return err
 	}
 
-	delFlags, err := DBGetMessageDeleted(ctx, client, state.snap.mboxID.InternalID, messageIDs)
+	delFlags, err := DBGetMessageDeleted(ctx, client, mboxID.InternalID, messageIDs)
 	if err != nil {
 		return err
 	}
 
 	if addFlags.Contains(imap.FlagDeleted) {
-		if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
+		if err := DBSetDeletedFlag(ctx, tx, mboxID.InternalID, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return !delFlags[messageID]
 		}), true); err != nil {
 			return err
@@ -45,14 +49,18 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 
 	for _, messageID := range messageIDs {
 		if err := state.forStateWithMessage(messageID, func(other *State) error {
-			snapFlags, err := other.snap.getMessageFlags(messageID)
+			var otherMBoxID MailboxIDPair
+			snapFlags, err := snapshotReadErr(other.snap, func(s *snapshot) (imap.FlagSet, error) {
+				otherMBoxID = s.mboxID
+				return s.getMessageFlags(messageID)
+			})
 			if err != nil {
 				return err
 			}
 
 			newFlags := snapFlags.AddFlagSet(addFlags)
 
-			if other.snap.mboxID != state.snap.mboxID {
+			if otherMBoxID != mboxID {
 				newFlags = newFlags.Set(imap.FlagDeleted, snapFlags.Contains(imap.FlagDeleted))
 			}
 
@@ -83,13 +91,17 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 		return err
 	}
 
-	delFlags, err := DBGetMessageDeleted(ctx, client, state.snap.mboxID.InternalID, messageIDs)
+	mboxID := snapshotRead(state.snap, func(s *snapshot) MailboxIDPair {
+		return s.mboxID
+	})
+
+	delFlags, err := DBGetMessageDeleted(ctx, client, mboxID.InternalID, messageIDs)
 	if err != nil {
 		return err
 	}
 
 	if remFlags.Contains(imap.FlagDeleted) {
-		if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
+		if err := DBSetDeletedFlag(ctx, tx, mboxID.InternalID, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return delFlags[messageID]
 		}), false); err != nil {
 			return err
@@ -106,14 +118,18 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 
 	for _, messageID := range messageIDs {
 		if err := state.forStateWithMessage(messageID, func(other *State) error {
-			snapFlags, err := other.snap.getMessageFlags(messageID)
+			var otherMBoxID MailboxIDPair
+			snapFlags, err := snapshotReadErr(other.snap, func(s *snapshot) (imap.FlagSet, error) {
+				otherMBoxID = s.mboxID
+				return s.getMessageFlags(messageID)
+			})
 			if err != nil {
 				return err
 			}
 
 			newFlags := snapFlags.RemoveFlagSet(remFlags)
 
-			if other.snap.mboxID != state.snap.mboxID {
+			if otherMBoxID != mboxID {
 				newFlags = newFlags.Set(imap.FlagDeleted, snapFlags.Contains(imap.FlagDeleted))
 			}
 
@@ -143,7 +159,11 @@ func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messag
 		return fmt.Errorf("the recent flag is read-only")
 	}
 
-	if err := DBSetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {
+	mboxID := snapshotRead(state.snap, func(s *snapshot) MailboxIDPair {
+		return s.mboxID
+	})
+
+	if err := DBSetDeletedFlag(ctx, tx, mboxID.InternalID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {
 		return err
 	}
 
@@ -155,21 +175,23 @@ func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messag
 		if err := state.forStateWithMessage(messageID, func(other *State) error {
 			newFlags := setFlags
 
-			if other.snap.mboxID != state.snap.mboxID {
-				snapFlags, err := other.snap.getMessageFlags(messageID)
-				if err != nil {
-					return err
+			return snapshotRead(other.snap, func(s *snapshot) error {
+				if s.mboxID != mboxID {
+					snapFlags, err := s.getMessageFlags(messageID)
+					if err != nil {
+						return err
+					}
+
+					newFlags = newFlags.Set(imap.FlagDeleted, snapFlags.Contains(imap.FlagDeleted))
 				}
 
-				newFlags = newFlags.Set(imap.FlagDeleted, snapFlags.Contains(imap.FlagDeleted))
-			}
-
-			return other.pushResponder(ctx, tx, newFetch(
-				messageID,
-				newFlags,
-				isUID(ctx),
-				other == state && isSilent(ctx),
-			))
+				return other.pushResponder(ctx, tx, newFetch(
+					messageID,
+					newFlags,
+					isUID(ctx),
+					other == state && isSilent(ctx),
+				))
+			})
 		}); err != nil {
 			return err
 		}

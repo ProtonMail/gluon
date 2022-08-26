@@ -27,7 +27,7 @@ type State struct {
 	res     []responder
 	resLock sync.Mutex
 
-	snap *snapshot
+	snap *snapshotWrapper
 	ro   bool
 
 	doneCh chan struct{}
@@ -62,7 +62,9 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 		return ErrNoSuchMailbox
 	}
 
-	if state.snap != nil {
+	if snapshotRead(state.snap, func(s *snapshot) bool {
+		return s != nil
+	}) {
 		if err := state.close(); err != nil {
 			return err
 		}
@@ -81,7 +83,7 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 		return err
 	}
 
-	state.snap = snap
+	state.snap.Replace(snap)
 	state.ro = false
 
 	return fn(newMailbox(mbox, state, state.snap))
@@ -95,7 +97,9 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 		return ErrNoSuchMailbox
 	}
 
-	if state.snap != nil {
+	if snapshotRead(state.snap, func(s *snapshot) bool {
+		return s != nil
+	}) {
 		if err := state.close(); err != nil {
 			return err
 		}
@@ -108,7 +112,7 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 		return err
 	}
 
-	state.snap = snap
+	state.snap.Replace(snap)
 	state.ro = true
 
 	return fn(newMailbox(mbox, state, state.snap))
@@ -305,7 +309,9 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 		return ErrNoSuchMailbox
 	}
 
-	if state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID {
+	if snapshotRead(state.snap, func(s *snapshot) bool {
+		return s != nil && s.mboxID.InternalID == mbox.MailboxID
+	}) {
 		return fn(newMailbox(mbox, state, state.snap))
 	}
 
@@ -316,7 +322,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 		return err
 	}
 
-	return fn(newMailbox(mbox, state, snap))
+	return fn(newMailbox(mbox, state, newSnapshotWrapper(snap)))
 }
 
 func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error {
@@ -324,9 +330,13 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 		return ErrSessionNotSelected
 	}
 
-	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return DBGetMailboxByID(ctx, client, state.snap.mboxID.InternalID)
+	mboxID := snapshotRead(state.snap, func(s *snapshot) imap.InternalMailboxID {
+		return s.mboxID.InternalID
 	})
+	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByID(ctx, client, mboxID)
+	})
+
 	if err != nil {
 		return ErrNoSuchMailbox
 	}
@@ -335,7 +345,7 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 }
 
 func (state *State) IsSelected() bool {
-	return state.snap != nil
+	return snapshotRead(state.snap, func(s *snapshot) bool { return s != nil })
 }
 
 func (state *State) SetConnMetadataKeyValue(key string, value any) error {
@@ -416,13 +426,19 @@ func (state *State) getLiteral(messageID imap.InternalMessageID) ([]byte, error)
 func (state *State) flushResponses(ctx context.Context, tx *ent.Tx, permitExpunge bool) ([]response.Response, error) {
 	var responses []response.Response
 
-	for _, responder := range state.popResponders(permitExpunge) {
-		res, err := responder.handle(ctx, tx, state.snap)
-		if err != nil {
-			return nil, err
+	if err := snapshotRead(state.snap, func(s *snapshot) error {
+		for _, responder := range state.popResponders(permitExpunge) {
+			res, err := responder.handle(ctx, tx, s)
+			if err != nil {
+				return err
+			}
+
+			responses = append(responses, res...)
 		}
 
-		responses = append(responses, res...)
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return responses, nil
@@ -436,18 +452,21 @@ func (state *State) pushResponder(ctx context.Context, tx *ent.Tx, responder ...
 		return state.queueResponder(responder...)
 	}
 
-	for _, responder := range responder {
-		res, err := responder.handle(ctx, tx, state.snap)
-		if err != nil {
-			return err
+	return snapshotRead(state.snap, func(s *snapshot) error {
+		for _, responder := range responder {
+			res, err := responder.handle(ctx, tx, s)
+			if err != nil {
+				return err
+			}
+
+			for _, res := range res {
+				state.idleCh <- res
+			}
+
 		}
 
-		for _, res := range res {
-			state.idleCh <- res
-		}
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func (state *State) queueResponder(responder ...responder) error {
@@ -500,23 +519,27 @@ func (state *State) popResponders(permitExpunge bool) []responder {
 }
 
 func (state *State) updateMailboxRemoteID(internalID imap.InternalMailboxID, remoteID imap.LabelID) error {
-	if state.snap != nil {
-		if err := state.snap.updateMailboxRemoteID(internalID, remoteID); err != nil {
-			return err
+	return snapshotWrite(state.snap, func(s *snapshot) error {
+		if state.snap != nil {
+			if err := s.updateMailboxRemoteID(internalID, remoteID); err != nil {
+				return err
+			}
 		}
-	}
 
-	return nil
+		return nil
+	})
 }
 
 func (state *State) updateMessageRemoteID(internalID imap.InternalMessageID, remoteID imap.MessageID) error {
-	if state.snap != nil && state.snap.hasMessage(internalID) {
-		if err := state.snap.updateMessageRemoteID(internalID, remoteID); err != nil {
-			return err
+	return snapshotRead(state.snap, func(s *snapshot) error {
+		if state.snap != nil && s.hasMessage(internalID) {
+			if err := s.updateMessageRemoteID(internalID, remoteID); err != nil {
+				return err
+			}
 		}
-	}
 
-	return nil
+		return nil
+	})
 }
 
 // We don't want the queue closed to be reported as an error.
@@ -530,7 +553,7 @@ func (state *State) deleteConnMetadata() error {
 }
 
 func (state *State) close() error {
-	state.snap = nil
+	state.snap.Replace(nil)
 
 	state.res = nil
 
