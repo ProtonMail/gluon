@@ -145,6 +145,13 @@ func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
 		case <-s.state.Done():
 			return nil
 
+		case stateUpdate := <-s.state.GetStateUpdatesCh():
+			if err := s.state.ApplyUpdate(ctx, stateUpdate); err != nil {
+				logrus.WithError(err).Error("Failed to apply state update")
+			}
+
+			continue
+
 		case <-ctx.Done():
 			return ctx.Err()
 		}

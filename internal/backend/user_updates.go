@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -126,19 +127,17 @@ func (user *user) applyMailboxUpdated(ctx context.Context, update *imap.MailboxU
 
 // applyMailboxIDChanged applies a MailboxIDChanged update.
 func (user *user) applyMailboxIDChanged(ctx context.Context, update *imap.MailboxIDChanged) error {
-	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return DBUpdateRemoteMailboxID(ctx, tx, update.InternalID, update.RemoteID)
-	}); err != nil {
-		return err
-	}
+	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		if err := DBUpdateRemoteMailboxID(ctx, tx, update.InternalID, update.RemoteID); err != nil {
+			return err
+		}
 
-	if err := user.forStateInMailbox(update.InternalID, func(state *State) error {
-		return state.updateMailboxRemoteID(update.InternalID, update.RemoteID)
-	}); err != nil {
-		return err
-	}
+		if err := user.queueOrApplyStateUpdate(ctx, tx, newMailboxRemoteIDUpdateStateUpdate(update.InternalID, update.RemoteID)); err != nil {
+			return err
+		}
 
-	return nil
+		return nil
+	})
 }
 
 // applyMessagesCreated applies a MessagesCreated update.
@@ -223,11 +222,11 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 				return err
 			}
 
-			if err := user.forStateInMailbox(internalMailboxID, func(state *State) error {
-				return state.pushResponder(ctx, tx, xslices.Map(messageIDs, func(messageID MessageIDPair) responder {
-					return newExists(messageID.InternalID, messageUIDs[messageID.InternalID])
-				})...)
-			}); err != nil {
+			responders := xslices.Map(messageIDs, func(messageID MessageIDPair) responder {
+				return newExists(messageID.InternalID, messageUIDs[messageID.InternalID])
+			})
+
+			if err := user.queueOrApplyStateUpdate(ctx, tx, newMailboxIDResponderStateUpdate(internalMailboxID, responders...)); err != nil {
 				return err
 			}
 		}
@@ -359,15 +358,11 @@ func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, m
 		return nil, err
 	}
 
-	if err := user.forStateInMailbox(mboxID, func(other *State) error {
-		for _, messageID := range messageIDs {
-			if err := other.pushResponder(ctx, tx, newExists(messageID, messageUIDs[messageID])); err != nil {
-				return err
-			}
-		}
+	responders := xslices.Map(messageIDs, func(id imap.InternalMessageID) responder {
+		return newExists(id, messageUIDs[id])
+	})
 
-		return nil
-	}); err != nil {
+	if err := user.queueOrApplyStateUpdate(ctx, tx, newMailboxIDResponderStateUpdate(mboxID, responders...)); err != nil {
 		return nil, err
 	}
 
@@ -383,9 +378,7 @@ func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.T
 	}
 
 	for _, messageID := range messageIDs {
-		if err := user.forStateInMailboxWithMessage(mboxID, messageID, func(other *State) error {
-			return other.pushResponder(ctx, tx, newExpunge(messageID, isClose(ctx)))
-		}); err != nil {
+		if err := user.queueOrApplyStateUpdate(ctx, tx, newMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxID, newExpunge(messageID, isClose(ctx)))); err != nil {
 			return err
 		}
 	}
@@ -414,18 +407,17 @@ func (user *user) applyMessagesMovedFromMailbox(
 		return nil, err
 	}
 
-	if err := user.forStateInMailbox(mboxToID, func(other *State) error {
-		return other.pushResponder(ctx, tx, xslices.Map(messageIDs, func(id imap.InternalMessageID) responder {
+	{
+		responders := xslices.Map(messageIDs, func(id imap.InternalMessageID) responder {
 			return newExists(id, messageUIDs[id])
-		})...)
-	}); err != nil {
-		return nil, err
+		})
+		if err := user.queueOrApplyStateUpdate(ctx, tx, newMailboxIDResponderStateUpdate(mboxToID, responders...)); err != nil {
+			return nil, err
+		}
 	}
 
 	for _, messageID := range messageIDs {
-		if err := user.forStateInMailboxWithMessage(mboxFromID, messageID, func(other *State) error {
-			return other.pushResponder(ctx, tx, newExpunge(messageID, isClose(ctx)))
-		}); err != nil {
+		if err := user.queueOrApplyStateUpdate(ctx, tx, newMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxFromID, newExpunge(messageID, isClose(ctx)))); err != nil {
 			return nil, err
 		}
 	}
@@ -462,21 +454,58 @@ func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID ima
 	return nil
 }
 
+type remoteAddMessageFlagsStateUpdate struct {
+	messageIDStateFilter
+	flag string
+}
+
+func NewRemoteAddMessageFlagsStateUpdate(messageID imap.InternalMessageID, flag string) stateUpdate {
+	return &remoteAddMessageFlagsStateUpdate{
+		messageIDStateFilter: messageIDStateFilter{messageID: messageID},
+		flag:                 flag,
+	}
+}
+
+func (u *remoteAddMessageFlagsStateUpdate) apply(ctx context.Context, tx *ent.Tx, s *State) error {
+	snapFlags, err := s.snap.getMessageFlags(u.messageID)
+	if err != nil {
+		return err
+	}
+
+	return s.pushResponder(ctx, tx, newFetch(u.messageID, snapFlags.Add(u.flag), isUID(ctx), isSilent(ctx)))
+}
+
 func (user *user) addMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, flag string) error {
 	if err := DBAddMessageFlag(ctx, tx, []imap.InternalMessageID{messageID}, flag); err != nil {
 		return err
 	}
 
-	return user.forStateWithMessage(messageID, func(state *State) error {
-		snapFlags, err := snapshotReadErr(state.snap, func(s *snapshot) (imap.FlagSet, error) {
-			return s.getMessageFlags(messageID)
-		})
-		if err != nil {
-			return err
+	return user.queueOrApplyStateUpdate(ctx, tx, NewRemoteAddMessageFlagsStateUpdate(messageID, flag))
+}
+
+type remoteRemoveMessageFlagsStateUpdate struct {
+	messageIDStateFilter
+	flag string
+}
+
+func NewRemoteRemoveMessageFlagsStateUpdate(messageID imap.InternalMessageID, flag string) stateUpdate {
+	return &remoteRemoveMessageFlagsStateUpdate{
+		messageIDStateFilter: messageIDStateFilter{messageID: messageID},
+		flag:                 flag,
+	}
+}
+
+func (u *remoteRemoveMessageFlagsStateUpdate) apply(ctx context.Context, tx *ent.Tx, s *State) error {
+	snapFlags, err := s.snap.getMessageFlags(u.messageID)
+	if err != nil {
+		if errors.Is(err, ErrNoSuchMessage) {
+			return nil
 		}
 
-		return state.pushResponder(ctx, tx, newFetch(messageID, snapFlags.Add(flag), isUID(ctx), isSilent(ctx)))
-	})
+		return err
+	}
+
+	return s.pushResponder(ctx, tx, newFetch(u.messageID, snapFlags.Remove(u.flag), isUID(ctx), isSilent(ctx)))
 }
 
 func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, flag string) error {
@@ -484,16 +513,26 @@ func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID 
 		return err
 	}
 
-	return user.forStateWithMessage(messageID, func(state *State) error {
-		snapFlags, err := snapshotReadErr(state.snap, func(s *snapshot) (imap.FlagSet, error) {
-			return s.getMessageFlags(messageID)
-		})
-		if err != nil {
-			return err
-		}
+	return user.queueOrApplyStateUpdate(ctx, tx, NewRemoteRemoveMessageFlagsStateUpdate(messageID, flag))
+}
 
-		return state.pushResponder(ctx, tx, newFetch(messageID, snapFlags.Remove(flag), isUID(ctx), isSilent(ctx)))
-	})
+type remoteMessageDeletedStateUpdate struct {
+	messageIDStateFilter
+	remoteID imap.MessageID
+}
+
+func newRemoteMessageDeletedStateUpdate(messageID imap.InternalMessageID, remoteID imap.MessageID) stateUpdate {
+	return &remoteMessageDeletedStateUpdate{
+		messageIDStateFilter: messageIDStateFilter{messageID: messageID},
+		remoteID:             remoteID,
+	}
+}
+
+func (u *remoteMessageDeletedStateUpdate) apply(ctx context.Context, tx *ent.Tx, s *State) error {
+	return s.actionRemoveMessagesFromMailbox(ctx, tx, []MessageIDPair{{
+		InternalID: u.messageID,
+		RemoteID:   u.remoteID,
+	}}, s.snap.mboxID)
 }
 
 func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageDeleted) error {
@@ -507,11 +546,6 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 			return err
 		}
 
-		return user.forStateWithMessage(internalMessageID, func(state *State) error {
-			return state.actionRemoveMessagesFromMailbox(ctx, tx, []MessageIDPair{{
-				InternalID: internalMessageID,
-				RemoteID:   update.MessageID,
-			}}, snapshotRead(state.snap, func(s *snapshot) MailboxIDPair { return s.mboxID }))
-		})
+		return user.queueOrApplyStateUpdate(ctx, tx, newRemoteMessageDeletedStateUpdate(internalMessageID, update.MessageID))
 	})
 }

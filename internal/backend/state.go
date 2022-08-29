@@ -4,42 +4,67 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
+	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/ProtonMail/gluon/internal/remote"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/bradenaw/juniper/sets"
 	"github.com/bradenaw/juniper/xslices"
+	"github.com/sirupsen/logrus"
 )
 
-// TODO(REFACTOR): Decide on the best way to pass around user/state/snap objects! Currently quite gross...
 type State struct {
-	*user
+	user stateUserAccessor
 
 	stateID    int
 	metadataID remote.ConnMetadataID
 
-	idleCh   chan response.Response
-	idleLock sync.RWMutex
+	idleCh chan response.Response
 
-	res     []responder
-	resLock sync.Mutex
+	res []responder
 
-	snap *snapshotWrapper
+	snap *snapshot
 	ro   bool
 
 	doneCh chan struct{}
 	stopCh chan struct{}
+
+	updatesQueue *queue.QueuedChannel[stateUpdate]
+
+	delimiter string
+}
+
+type stateUpdate interface {
+	// filter returns true when the state can be passed into apply.
+	filter(s *State) bool
+	// apply the update to a given state.
+	apply(cxt context.Context, tx *ent.Tx, s *State) error
+}
+
+func NewState(stateID int, metadataID remote.ConnMetadataID, user stateUserAccessor, delimiter string) *State {
+	return &State{
+		user:         user,
+		stateID:      stateID,
+		metadataID:   metadataID,
+		doneCh:       make(chan struct{}),
+		snap:         nil,
+		delimiter:    delimiter,
+		updatesQueue: queue.NewQueuedChannel[stateUpdate](32, 128),
+	}
 }
 
 func (state *State) UserID() string {
-	return state.userID
+	return state.user.getUserID()
+}
+
+func (state *State) db() *DB {
+	return state.user.getDB()
 }
 
 func (state *State) List(ctx context.Context, ref, pattern string, subscribed bool, fn func(map[string]Match) error) error {
-	return state.db.Read(ctx, func(ctx context.Context, client *ent.Client) error {
+	return state.db().Read(ctx, func(ctx context.Context, client *ent.Client) error {
 		mailboxes, err := DBGetAllMailboxes(ctx, client)
 		if err != nil {
 			return err
@@ -55,71 +80,67 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 }
 
 func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) error) error {
-	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+	mbox, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return DBGetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
 		return ErrNoSuchMailbox
 	}
 
-	if snapshotRead(state.snap, func(s *snapshot) bool {
-		return s != nil
-	}) {
+	if state.snap != nil {
 		if err := state.close(); err != nil {
 			return err
 		}
 	}
 
-	snap, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
+	snap, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*snapshot, error) {
 		return newSnapshot(ctx, state, client, mbox)
 	})
 	if err != nil {
 		return err
 	}
 
-	if err := state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	if err := state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return DBClearRecentFlags(ctx, tx, mbox.MailboxID)
 	}); err != nil {
 		return err
 	}
 
-	state.snap.Replace(snap)
+	state.snap = snap
 	state.ro = false
 
 	return fn(newMailbox(mbox, state, state.snap))
 }
 
 func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) error) error {
-	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+	mbox, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return DBGetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
 		return ErrNoSuchMailbox
 	}
 
-	if snapshotRead(state.snap, func(s *snapshot) bool {
-		return s != nil
-	}) {
+	if state.snap != nil {
 		if err := state.close(); err != nil {
 			return err
 		}
 	}
 
-	snap, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
+	snap, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*snapshot, error) {
 		return newSnapshot(ctx, state, client, mbox)
 	})
 	if err != nil {
 		return err
 	}
 
-	state.snap.Replace(snap)
+	state.snap = snap
 	state.ro = true
 
 	return fn(newMailbox(mbox, state, state.snap))
 }
 
 func (state *State) Create(ctx context.Context, name string) error {
-	mboxesToCreate, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) ([]string, error) {
+	mboxesToCreate, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) ([]string, error) {
 		var mboxesToCreate []string
 		// If the mailbox name is suffixed with the server's hierarchy separator, remove the separator and still create
 		// the mailbox
@@ -151,7 +172,7 @@ func (state *State) Create(ctx context.Context, name string) error {
 		return err
 	}
 
-	return state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, mboxName := range mboxesToCreate {
 			if err := state.actionCreateMailbox(ctx, tx, mboxName); err != nil {
 				return err
@@ -163,14 +184,14 @@ func (state *State) Create(ctx context.Context, name string) error {
 }
 
 func (state *State) Delete(ctx context.Context, name string) error {
-	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+	mbox, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return DBGetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
 		return ErrNoSuchMailbox
 	}
 
-	return state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return state.actionDeleteMailbox(ctx, tx, mbox.RemoteID)
 	})
 }
@@ -181,10 +202,8 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		MBoxesToCreate []string
 	}
 
-	result, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (Result, error) {
-		mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-			return DBGetMailboxByName(ctx, client, oldName)
-		})
+	result, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (Result, error) {
+		mbox, err := DBGetMailboxByName(ctx, client, oldName)
 		if err != nil {
 			return Result{}, ErrNoSuchMailbox
 		}
@@ -218,9 +237,9 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		return err
 	}
 
-	return state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, m := range result.MBoxesToCreate {
-			internalID, res, err := state.remote.CreateMailbox(ctx, state.metadataID, strings.Split(m, state.delimiter))
+			internalID, res, err := state.user.getRemote().CreateMailbox(ctx, state.metadataID, strings.Split(m, state.delimiter))
 			if err != nil {
 				return err
 			}
@@ -261,7 +280,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 }
 
 func (state *State) Subscribe(ctx context.Context, name string) error {
-	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+	mbox, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return DBGetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
@@ -270,13 +289,13 @@ func (state *State) Subscribe(ctx context.Context, name string) error {
 		return ErrAlreadySubscribed
 	}
 
-	return state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return mbox.Update().SetSubscribed(true).Exec(ctx)
 	})
 }
 
 func (state *State) Unsubscribe(ctx context.Context, name string) error {
-	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+	mbox, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return DBGetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
@@ -285,7 +304,7 @@ func (state *State) Unsubscribe(ctx context.Context, name string) error {
 		return ErrAlreadyUnsubscribed
 	}
 
-	return state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return mbox.Update().SetSubscribed(false).Exec(ctx)
 	})
 }
@@ -302,27 +321,25 @@ func (state *State) Idle(ctx context.Context, fn func([]response.Response, chan 
 }
 
 func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) error) error {
-	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+	mbox, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return DBGetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
 		return ErrNoSuchMailbox
 	}
 
-	if snapshotRead(state.snap, func(s *snapshot) bool {
-		return s != nil && s.mboxID.InternalID == mbox.MailboxID
-	}) {
+	if state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID {
 		return fn(newMailbox(mbox, state, state.snap))
 	}
 
-	snap, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
+	snap, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*snapshot, error) {
 		return newSnapshot(ctx, state, client, mbox)
 	})
 	if err != nil {
 		return err
 	}
 
-	return fn(newMailbox(mbox, state, newSnapshotWrapper(snap)))
+	return fn(newMailbox(mbox, state, snap))
 }
 
 func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error {
@@ -330,11 +347,8 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 		return ErrSessionNotSelected
 	}
 
-	mboxID := snapshotRead(state.snap, func(s *snapshot) imap.InternalMailboxID {
-		return s.mboxID.InternalID
-	})
-	mbox, err := DBReadResult(ctx, state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return DBGetMailboxByID(ctx, client, mboxID)
+	mbox, err := DBReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return DBGetMailboxByID(ctx, client, state.snap.mboxID.InternalID)
 	})
 
 	if err != nil {
@@ -345,11 +359,11 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 }
 
 func (state *State) IsSelected() bool {
-	return snapshotRead(state.snap, func(s *snapshot) bool { return s != nil })
+	return state.snap != nil
 }
 
 func (state *State) SetConnMetadataKeyValue(key string, value any) error {
-	return state.remote.SetConnMetadataValue(state.metadataID, key, value)
+	return state.user.getRemote().SetConnMetadataValue(state.metadataID, key, value)
 }
 
 func (state *State) Done() <-chan struct{} {
@@ -363,7 +377,31 @@ func (state *State) Done() <-chan struct{} {
 func (state *State) Close(ctx context.Context) error {
 	defer close(state.stopCh)
 
-	return state.removeState(ctx, state.stateID)
+	return state.user.removeState(ctx, state.stateID)
+}
+
+func (state *State) GetStateUpdatesCh() <-chan stateUpdate {
+	if state == nil {
+		return nil
+	}
+
+	return state.updatesQueue.GetChannel()
+}
+
+func (state *State) queueUpdates(updates ...stateUpdate) bool {
+	return state.updatesQueue.Queue(updates...)
+}
+
+func (state *State) ApplyUpdate(ctx context.Context, update stateUpdate) error {
+	logrus.WithField("StateUpdate", update).Tracef("Applying state update on state %v", state.stateID)
+
+	if !update.filter(state) {
+		return nil
+	}
+
+	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return update.apply(ctx, tx, state)
+	})
 }
 
 // renameInbox creates a new mailbox and moves everything there.
@@ -394,12 +432,9 @@ func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mail
 func (state *State) beginIdle(ctx context.Context) ([]response.Response, error) {
 	var res []response.Response
 
-	state.idleLock.Lock()
-	defer state.idleLock.Unlock()
-
 	var err error
 
-	if res, err = DBWriteResult(ctx, state.db, func(ctx context.Context, tx *ent.Tx) ([]response.Response, error) {
+	if res, err = DBWriteResult(ctx, state.db(), func(ctx context.Context, tx *ent.Tx) ([]response.Response, error) {
 		return state.flushResponses(ctx, tx, true)
 	}); err != nil {
 		return nil, err
@@ -411,68 +446,50 @@ func (state *State) beginIdle(ctx context.Context) ([]response.Response, error) 
 }
 
 func (state *State) endIdle() {
-	state.idleLock.Lock()
-	defer state.idleLock.Unlock()
-
 	close(state.idleCh)
 
 	state.idleCh = nil
 }
 
 func (state *State) getLiteral(messageID imap.InternalMessageID) ([]byte, error) {
-	return state.store.Get(messageID)
+	return state.user.getStore().Get(messageID)
 }
 
 func (state *State) flushResponses(ctx context.Context, tx *ent.Tx, permitExpunge bool) ([]response.Response, error) {
 	var responses []response.Response
 
-	if err := snapshotRead(state.snap, func(s *snapshot) error {
-		for _, responder := range state.popResponders(permitExpunge) {
-			res, err := responder.handle(ctx, tx, s)
-			if err != nil {
-				return err
-			}
-
-			responses = append(responses, res...)
+	for _, responder := range state.popResponders(permitExpunge) {
+		res, err := responder.handle(ctx, tx, state.snap)
+		if err != nil {
+			return nil, err
 		}
 
-		return nil
-	}); err != nil {
-		return nil, err
+		responses = append(responses, res...)
 	}
 
 	return responses, nil
 }
 
 func (state *State) pushResponder(ctx context.Context, tx *ent.Tx, responder ...responder) error {
-	state.idleLock.RLock()
-	defer state.idleLock.RUnlock()
-
 	if state.idleCh == nil {
 		return state.queueResponder(responder...)
 	}
 
-	return snapshotRead(state.snap, func(s *snapshot) error {
-		for _, responder := range responder {
-			res, err := responder.handle(ctx, tx, s)
-			if err != nil {
-				return err
-			}
-
-			for _, res := range res {
-				state.idleCh <- res
-			}
-
+	for _, responder := range responder {
+		res, err := responder.handle(ctx, tx, state.snap)
+		if err != nil {
+			return err
 		}
 
-		return nil
-	})
+		for _, res := range res {
+			state.idleCh <- res
+		}
+	}
+
+	return nil
 }
 
 func (state *State) queueResponder(responder ...responder) error {
-	state.resLock.Lock()
-	defer state.resLock.Unlock()
-
 	state.res = append(state.res, responder...)
 
 	return nil
@@ -484,9 +501,6 @@ func (state *State) queueResponder(responder ...responder) error {
 // then puts it back (generating an EXISTS). If we didn't stop at the first expunge,
 // we would send the EXISTS to the client, followed by an expunge afterwards (wrong).
 func (state *State) popResponders(permitExpunge bool) []responder {
-	state.resLock.Lock()
-	defer state.resLock.Unlock()
-
 	if len(state.res) == 0 {
 		return nil
 	}
@@ -519,41 +533,41 @@ func (state *State) popResponders(permitExpunge bool) []responder {
 }
 
 func (state *State) updateMailboxRemoteID(internalID imap.InternalMailboxID, remoteID imap.LabelID) error {
-	return snapshotWrite(state.snap, func(s *snapshot) error {
-		if state.snap != nil {
-			if err := s.updateMailboxRemoteID(internalID, remoteID); err != nil {
-				return err
-			}
+	if state.snap != nil {
+		if err := state.snap.updateMailboxRemoteID(internalID, remoteID); err != nil {
+			return err
 		}
+	}
 
-		return nil
-	})
+	return nil
 }
 
 func (state *State) updateMessageRemoteID(internalID imap.InternalMessageID, remoteID imap.MessageID) error {
-	return snapshotRead(state.snap, func(s *snapshot) error {
-		if state.snap != nil && s.hasMessage(internalID) {
-			if err := s.updateMessageRemoteID(internalID, remoteID); err != nil {
-				return err
-			}
+	if state.snap != nil && state.snap.hasMessage(internalID) {
+		if err := state.snap.updateMessageRemoteID(internalID, remoteID); err != nil {
+			return err
 		}
+	}
 
-		return nil
-	})
+	return nil
 }
 
 // We don't want the queue closed to be reported as an error.
 // User will clean up existing metadata entries by itself when closed.
 func (state *State) deleteConnMetadata() error {
-	if err := state.remote.DeleteConnMetadataStore(state.metadataID); err != nil {
+	if err := state.user.getRemote().DeleteConnMetadataStore(state.metadataID); err != nil {
 		return fmt.Errorf("failed to delete conn metadata store: %w", err)
 	}
 
 	return nil
 }
 
+func (state *State) closeUpdateQueue() {
+	state.updatesQueue.Close()
+}
+
 func (state *State) close() error {
-	state.snap.Replace(nil)
+	state.snap = nil
 
 	state.res = nil
 

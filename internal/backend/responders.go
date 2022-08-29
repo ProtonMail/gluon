@@ -2,11 +2,31 @@ package backend
 
 import (
 	"context"
-
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/response"
 )
+
+type responderStateUpdate struct {
+	stateFilter
+	responders []responder
+}
+
+func (r responderStateUpdate) apply(ctx context.Context, tx *ent.Tx, s *State) error {
+	return s.pushResponder(ctx, tx, r.responders...)
+}
+
+func newMailboxIDResponderStateUpdate(id imap.InternalMailboxID, responders ...responder) stateUpdate {
+	return &responderStateUpdate{stateFilter: newMBoxIDStateFilter(id), responders: responders}
+}
+
+func newMessageIDResponderStateUpdate(id imap.InternalMessageID, responders ...responder) stateUpdate {
+	return &responderStateUpdate{stateFilter: newMessageIDStateFilter(id), responders: responders}
+}
+
+func newMessageIDAndMailboxIDResponderStateUpdate(messageID imap.InternalMessageID, mboxID imap.InternalMailboxID, responders ...responder) stateUpdate {
+	return &responderStateUpdate{stateFilter: newMessageAndMBoxIDStateFilter(messageID, mboxID), responders: responders}
+}
 
 type responder interface {
 	// handle generates responses in the context of the given snapshot.
@@ -26,6 +46,10 @@ func newExists(messageID imap.InternalMessageID, messageUID int) *exists {
 }
 
 func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]response.Response, error) {
+	if snap.hasMessage(u.messageID) {
+		return nil, nil
+	}
+
 	client := tx.Client()
 
 	remoteID, err := DBGetRemoteMessageID(ctx, client, u.messageID)

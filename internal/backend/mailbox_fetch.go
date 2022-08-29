@@ -15,9 +15,7 @@ import (
 )
 
 func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes []*proto.FetchAttribute, ch chan response.Response) error {
-	msg, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
-		return s.getMessagesInRange(ctx, seq)
-	})
+	msg, err := m.snap.getMessagesInRange(ctx, seq)
 	if err != nil {
 		return err
 	}
@@ -42,7 +40,7 @@ func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*pr
 		setSeen bool
 	)
 
-	message, err := DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
+	message, err := DBReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
 		return DBGetMessage(ctx, client, msg.ID.InternalID)
 	})
 	if err != nil {
@@ -91,7 +89,7 @@ func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*pr
 	}
 
 	if setSeen {
-		newFlags, err := DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]imap.FlagSet, error) {
+		newFlags, err := DBWriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]imap.FlagSet, error) {
 			return m.state.actionAddMessageFlags(ctx, tx, []MessageIDPair{msg.ID}, imap.NewFlagSet(imap.FlagSeen))
 		})
 		if err != nil {

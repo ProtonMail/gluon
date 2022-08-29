@@ -53,6 +53,12 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, c
 			case <-s.state.Done():
 				return nil
 
+			case stateUpdate := <-s.state.GetStateUpdatesCh():
+				if err := s.state.ApplyUpdate(ctx, stateUpdate); err != nil {
+					logrus.WithError(err).Error("Failed to apply state update during idle")
+				}
+				continue
+
 			case <-ctx.Done():
 				return ctx.Err()
 			}

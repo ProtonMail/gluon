@@ -45,3 +45,38 @@ func AsSilent(parent context.Context) context.Context {
 func isSilent(ctx context.Context) bool {
 	return ctx.Value(handleSilentKey) != nil
 }
+
+type handleRemoteUpdateCtxType struct{}
+
+var handleRemoteUpdateCtxKey handleRemoteUpdateCtxType
+
+func isRemoteUpdateCtx(ctx context.Context) bool {
+	return ctx.Value(handleRemoteUpdateCtxKey) != nil
+}
+
+func NewRemoteUpdateCtx(ctx context.Context) context.Context {
+	return context.WithValue(ctx, handleRemoteUpdateCtxKey, struct{}{})
+}
+
+type stateContextType struct{}
+
+var stateContextKey stateContextType
+
+func NewStateContext(ctx context.Context, s *State) context.Context {
+	if s == nil {
+		return ctx
+	}
+
+	return context.WithValue(ctx, stateContextKey, s.stateID)
+}
+
+func getStateIDFromContext(ctx context.Context) (int, bool) {
+	v := ctx.Value(stateContextKey)
+	if v == nil {
+		return 0, false
+	}
+
+	stateID, ok := v.(int)
+
+	return stateID, ok
+}

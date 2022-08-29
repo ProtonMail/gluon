@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
@@ -17,52 +16,6 @@ type snapshot struct {
 
 	state    *State
 	messages *snapMsgList
-}
-
-type snapshotWrapper struct {
-	lock sync.RWMutex
-	snap *snapshot
-}
-
-func newSnapshotWrapper(snapshot *snapshot) *snapshotWrapper {
-	return &snapshotWrapper{
-		snap: snapshot,
-	}
-}
-
-func (s *snapshotWrapper) Replace(snap *snapshot) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	s.snap = snap
-}
-
-func snapshotWrite[T any](wrapper *snapshotWrapper, fn func(*snapshot) T) T {
-	wrapper.lock.Lock()
-	defer wrapper.lock.Unlock()
-
-	return fn(wrapper.snap)
-}
-
-func snapshotRead[T any](wrapper *snapshotWrapper, fn func(*snapshot) T) T {
-	wrapper.lock.RLock()
-	defer wrapper.lock.RUnlock()
-
-	return fn(wrapper.snap)
-}
-
-func snapshotWriteErr[T any](wrapper *snapshotWrapper, fn func(*snapshot) (T, error)) (T, error) {
-	wrapper.lock.Lock()
-	defer wrapper.lock.Unlock()
-
-	return fn(wrapper.snap)
-}
-
-func snapshotReadErr[T any](wrapper *snapshotWrapper, fn func(*snapshot) (T, error)) (T, error) {
-	wrapper.lock.RLock()
-	defer wrapper.lock.RUnlock()
-
-	return fn(wrapper.snap)
 }
 
 func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *ent.Mailbox) (*snapshot, error) {
