@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"runtime/pprof"
 	"testing"
 	"time"
 
@@ -122,8 +123,8 @@ func (*testBadgerStoreBuilder) New(directory, userID string, encryptionPassphras
 	return store.NewTestBadgerStore(directory, userID, encryptionBytes[:])
 }
 
-// runServerWithPaths initializes and starts the mailserver using a pathGenerator.
-func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) {
+// runServer initializes and starts the mailserver.
+func runServer(tb testing.TB, options *serverOptions, tests func(session *testSession)) {
 	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 
@@ -197,7 +198,10 @@ func runServer(tb testing.TB, options *serverOptions, tests func(*testSession)) 
 	errCh := server.Serve(ctx, listener)
 
 	// Run the test against the server.
-	tests(newTestSession(tb, listener, server, userIDs, conns, dbPaths, options))
+	labels := pprof.Labels("GLUON", "UNITTEST")
+	pprof.Do(ctx, labels, func(ctx context.Context) {
+		tests(newTestSession(tb, listener, server, userIDs, conns, dbPaths, options))
+	})
 
 	// Flush and remove user before shutdown.
 	for userID, conn := range conns {
