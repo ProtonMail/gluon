@@ -24,6 +24,8 @@ func (s *Session) handleOther(
 		pprof.Do(ctx, labels, func(_ context.Context) {
 			defer close(ch)
 
+			ctx := backend.NewStateContext(ctx, s.state)
+
 			if err := s.handleCommand(ctx, tag, cmd, ch, profiler); err != nil {
 				if res, ok := response.FromError(err); ok {
 					ch <- res

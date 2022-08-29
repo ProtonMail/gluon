@@ -17,9 +17,7 @@ import (
 )
 
 func (m *Mailbox) Search(ctx context.Context, keys []*proto.SearchKey, decoder *encoding.Decoder) ([]int, error) {
-	snapMessages := snapshotRead(m.snap, func(s *snapshot) []*snapMsg {
-		return s.getAllMessages()
-	})
+	snapMessages := m.snap.getAllMessages()
 
 	messages, err := doSearch(ctx, m, snapMessages, keys, decoder)
 	if err != nil {
@@ -203,7 +201,7 @@ func (m *Mailbox) matchSearchKeyBefore(ctx context.Context, candidates []*snapMs
 		return nil, err
 	}
 
-	return DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
+	return DBReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
 		return filter(candidates, func(message *snapMsg) (bool, error) {
 			msg, err := DBGetMessage(ctx, client, message.ID.InternalID)
 			if err != nil {
@@ -324,7 +322,7 @@ func (m *Mailbox) matchSearchKeyKeyword(ctx context.Context, candidates []*snapM
 }
 
 func (m *Mailbox) matchSearchKeyLarger(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
-	return DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
+	return DBReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
 		return filter(candidates, func(message *snapMsg) (bool, error) {
 			msg, err := DBGetMessage(ctx, client, message.ID.InternalID)
 			if err != nil {
@@ -365,7 +363,7 @@ func (m *Mailbox) matchSearchKeyOn(ctx context.Context, candidates []*snapMsg, k
 		return nil, err
 	}
 
-	return DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
+	return DBReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
 		return filter(candidates, func(message *snapMsg) (bool, error) {
 			msg, err := DBGetMessage(ctx, client, message.ID.InternalID)
 			if err != nil {
@@ -499,7 +497,7 @@ func (m *Mailbox) matchSearchKeySince(ctx context.Context, candidates []*snapMsg
 		return nil, err
 	}
 
-	return DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
+	return DBReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
 		return filter(candidates, func(message *snapMsg) (bool, error) {
 			msg, err := DBGetMessage(ctx, client, message.ID.InternalID)
 			if err != nil {
@@ -514,7 +512,7 @@ func (m *Mailbox) matchSearchKeySince(ctx context.Context, candidates []*snapMsg
 }
 
 func (m *Mailbox) matchSearchKeySmaller(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
-	return DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
+	return DBReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) ([]*snapMsg, error) {
 		return filter(candidates, func(message *snapMsg) (bool, error) {
 			msg, err := DBGetMessage(ctx, client, message.ID.InternalID)
 			if err != nil {
@@ -585,9 +583,7 @@ func (m *Mailbox) matchSearchKeyTo(ctx context.Context, candidates []*snapMsg, k
 }
 
 func (m *Mailbox) matchSearchKeyUID(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
-	left, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
-		return s.getMessagesInUIDRange(key.GetSequenceSet())
-	})
+	left, err := m.snap.getMessagesInUIDRange(key.GetSequenceSet())
 	if err != nil {
 		return nil, err
 	}
@@ -634,9 +630,7 @@ func (m *Mailbox) matchSearchKeyUnseen(ctx context.Context, candidates []*snapMs
 }
 
 func (m *Mailbox) matchSearchKeySeqSet(ctx context.Context, candidates []*snapMsg, key *proto.SearchKey) ([]*snapMsg, error) {
-	left, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
-		return s.getMessagesInSeqRange(key.GetSequenceSet())
-	})
+	left, err := m.snap.getMessagesInSeqRange(key.GetSequenceSet())
 	if err != nil {
 		return nil, err
 	}

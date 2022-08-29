@@ -1,8 +1,6 @@
 package backend
 
 import (
-	"sync"
-
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/bradenaw/juniper/xslices"
 )
@@ -17,9 +15,9 @@ type snapMsg struct {
 
 // snapMsgList is an ordered list of messages inside a snapshot.
 type snapMsgList struct {
-	msg  []*snapMsg
-	idx  map[imap.InternalMessageID]int
-	lock sync.RWMutex
+	msg []*snapMsg
+	idx map[imap.InternalMessageID]int
+	//lock sync.RWMutex
 }
 
 func newMsgList() *snapMsgList {
@@ -29,9 +27,6 @@ func newMsgList() *snapMsgList {
 }
 
 func (list *snapMsgList) insert(msgID MessageIDPair, msgUID int, flags imap.FlagSet) {
-	list.lock.Lock()
-	defer list.lock.Unlock()
-
 	if len(list.msg) > 0 && list.msg[len(list.msg)-1].UID >= msgUID {
 		panic("UIDs must be strictly ascending")
 	}
@@ -47,9 +42,6 @@ func (list *snapMsgList) insert(msgID MessageIDPair, msgUID int, flags imap.Flag
 }
 
 func (list *snapMsgList) remove(msgID imap.InternalMessageID) bool {
-	list.lock.Lock()
-	defer list.lock.Unlock()
-
 	idx, ok := list.idx[msgID]
 	if !ok {
 		return false
@@ -78,9 +70,6 @@ func (list *snapMsgList) remove(msgID imap.InternalMessageID) bool {
 }
 
 func (list *snapMsgList) update(internalID imap.InternalMessageID, remoteID imap.MessageID) bool {
-	list.lock.Lock()
-	defer list.lock.Unlock()
-
 	idx, ok := list.idx[internalID]
 	if !ok {
 		return false
@@ -92,39 +81,24 @@ func (list *snapMsgList) update(internalID imap.InternalMessageID, remoteID imap
 }
 
 func (list *snapMsgList) all() []*snapMsg {
-	list.lock.RLock()
-	defer list.lock.RUnlock()
-
 	return list.msg
 }
 
 func (list *snapMsgList) len() int {
-	list.lock.RLock()
-	defer list.lock.RUnlock()
-
 	return len(list.msg)
 }
 
 func (list *snapMsgList) where(fn func(*snapMsg) bool) []*snapMsg {
-	list.lock.RLock()
-	defer list.lock.RUnlock()
-
 	return xslices.Filter(list.msg, fn)
 }
 
 func (list *snapMsgList) has(msgID imap.InternalMessageID) bool {
-	list.lock.RLock()
-	defer list.lock.RUnlock()
-
 	_, ok := list.idx[msgID]
 
 	return ok
 }
 
 func (list *snapMsgList) get(msgID imap.InternalMessageID) (*snapMsg, bool) {
-	list.lock.RLock()
-	defer list.lock.RUnlock()
-
 	idx, ok := list.idx[msgID]
 	if !ok {
 		return nil, false
@@ -134,9 +108,6 @@ func (list *snapMsgList) get(msgID imap.InternalMessageID) (*snapMsg, bool) {
 }
 
 func (list *snapMsgList) seq(seq int) (*snapMsg, bool) {
-	list.lock.RLock()
-	defer list.lock.RUnlock()
-
 	if len(list.msg) < seq {
 		return nil, false
 	}
@@ -145,8 +116,5 @@ func (list *snapMsgList) seq(seq int) (*snapMsg, bool) {
 }
 
 func (list *snapMsgList) last() *snapMsg {
-	list.lock.RLock()
-	defer list.lock.RUnlock()
-
 	return list.msg[len(list.msg)-1]
 }

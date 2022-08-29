@@ -6,6 +6,7 @@ import (
 	"runtime/pprof"
 	"sync"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend/ent"
 	"github.com/ProtonMail/gluon/internal/remote"
 	"github.com/ProtonMail/gluon/store"
@@ -54,11 +55,12 @@ func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, st
 		defer user.updateWG.Done()
 		labels := pprof.Labels("go", "Connector Updates", "UserID", user.userID)
 		pprof.Do(ctx, labels, func(_ context.Context) {
+			ctx := NewRemoteUpdateCtx(context.Background())
 			updateCh := remote.GetUpdates()
 			for {
 				select {
 				case update := <-updateCh:
-					if err := user.apply(context.Background(), update); err != nil {
+					if err := user.apply(ctx, update); err != nil {
 						logrus.WithError(err).Errorf("Failed to apply update: %v", err)
 					}
 				case <-user.updateQuitCh:
@@ -104,4 +106,95 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 
 		return user.store.Delete(ids...)
 	})
+}
+
+func (user *user) queueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update stateUpdate) error {
+	// If we detect a state id in the context, it means this function call is a result of a User interaction.
+	// When that happens the update needs to be applied to the state matching the state ID immediately. If no such
+	// stateID exists or the context information is not present, all updates are queued for later execution.
+	stateID, ok := getStateIDFromContext(ctx)
+	if !ok {
+		return user.forState(func(state *State) error {
+			state.queueUpdates(update)
+			return nil
+		})
+	} else {
+		return user.forState(func(state *State) error {
+			if state.stateID != stateID {
+				state.queueUpdates(update)
+
+				return nil
+			} else {
+				if !update.filter(state) {
+					return nil
+				}
+
+				return update.apply(ctx, tx, state)
+			}
+		})
+	}
+}
+
+// stateUserAccessor should be used to interface with the user type from a State type. This is meant to control
+// the API boundary layer.
+type stateUserAccessor struct {
+	u *user
+}
+
+func newStateUserAccessor(u *user) stateUserAccessor {
+	return stateUserAccessor{u: u}
+}
+
+func (s *stateUserAccessor) getUserID() string {
+	return s.u.userID
+}
+
+func (s *stateUserAccessor) getDelimiter() string {
+	return s.u.delimiter
+}
+
+func (s *stateUserAccessor) getDB() *DB {
+	return s.u.db
+}
+
+func (s *stateUserAccessor) removeState(ctx context.Context, stateID int) error {
+	return s.u.removeState(ctx, stateID)
+}
+
+func (s *stateUserAccessor) getRemote() *remote.User {
+	return s.u.remote
+}
+
+func (s *stateUserAccessor) getStore() store.Store {
+	return s.u.store
+}
+
+func (s *stateUserAccessor) applyMessagesAddedToMailbox(
+	ctx context.Context,
+	tx *ent.Tx,
+	mboxID imap.InternalMailboxID,
+	messageIDs []imap.InternalMessageID,
+) (map[imap.InternalMessageID]int, error) {
+	return s.u.applyMessagesAddedToMailbox(ctx, tx, mboxID, messageIDs)
+}
+
+func (s *stateUserAccessor) applyMessagesRemovedFromMailbox(ctx context.Context,
+	tx *ent.Tx,
+	mboxID imap.InternalMailboxID,
+	messageIDs []imap.InternalMessageID,
+) error {
+	return s.u.applyMessagesRemovedFromMailbox(ctx, tx, mboxID, messageIDs)
+}
+
+func (s *stateUserAccessor) applyMessagesMovedFromMailbox(
+	ctx context.Context,
+	tx *ent.Tx,
+	mboxFromID, mboxToID imap.InternalMailboxID,
+	messageIDs []imap.InternalMessageID,
+) (map[imap.InternalMessageID]int, error) {
+	return s.u.applyMessagesMovedFromMailbox(ctx, tx, mboxFromID, mboxToID, messageIDs)
+}
+
+func (s *stateUserAccessor) queueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update stateUpdate) error {
+	return s.u.queueOrApplyStateUpdate(ctx, tx, update)
 }

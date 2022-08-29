@@ -21,16 +21,11 @@ func (user *user) newState(metadataID remote.ConnMetadataID) (*State, error) {
 
 	user.nextStateID++
 
-	user.states[user.nextStateID] = &State{
-		user:       user,
-		stateID:    user.nextStateID,
-		metadataID: metadataID,
-		doneCh:     make(chan struct{}),
-		stopCh:     make(chan struct{}),
-		snap:       newSnapshotWrapper(nil),
-	}
+	newState := NewState(user.nextStateID, metadataID, newStateUserAccessor(user), user.delimiter)
 
-	return user.states[user.nextStateID], nil
+	user.states[user.nextStateID] = newState
+
+	return newState, nil
 }
 
 func (user *user) removeState(ctx context.Context, stateID int) error {
@@ -55,9 +50,7 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 
 		messageIDs = xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return xslices.CountFunc(maps.Values(user.states), func(other *State) bool {
-				return state != other && snapshotRead(other.snap, func(s *snapshot) bool {
-					return s != nil && s.hasMessage(messageID)
-				})
+				return state != other && other.snap != nil && other.snap.hasMessage(messageID)
 			}) == 0
 		})
 
@@ -85,6 +78,8 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 		return fmt.Errorf("failed to remove conn metadata: %w", err)
 	}
 
+	state.closeUpdateQueue()
+
 	if err := state.close(); err != nil {
 		return fmt.Errorf("failed to close state: %w", err)
 	}
@@ -104,50 +99,6 @@ func (user *user) forState(fn func(*State) error) error {
 	}
 
 	return nil
-}
-
-// forStateInMailbox iterates through each state that is open in the given mailbox.
-func (user *user) forStateInMailbox(mboxID imap.InternalMailboxID, fn func(*State) error) error {
-	user.statesLock.RLock()
-	defer user.statesLock.RUnlock()
-
-	for _, state := range user.states {
-		if snapshotRead(state.snap, func(s *snapshot) bool { return s != nil && s.mboxID.InternalID == mboxID }) {
-			if err := fn(state); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-// forStateWithMessage iterates through all states that have the given message.
-func (user *user) forStateWithMessage(messageID imap.InternalMessageID, fn func(*State) error) error {
-	user.statesLock.RLock()
-	defer user.statesLock.RUnlock()
-
-	for _, state := range user.states {
-		if snapshotRead(state.snap, func(s *snapshot) bool { return s != nil && s.hasMessage(messageID) }) {
-			if err := fn(state); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-// forStateInMailboxWithMessage iterates through each state that is open in the given mailbox which contains the given message.
-// A state might still contain the given message if the message had been expunged but this state was not notified yet.
-func (user *user) forStateInMailboxWithMessage(mboxID imap.InternalMailboxID, messageID imap.InternalMessageID, fn func(*State) error) error {
-	return user.forStateInMailbox(mboxID, func(state *State) error {
-		if snapshotRead(state.snap, func(s *snapshot) bool { return s.hasMessage(messageID) }) {
-			return fn(state)
-		}
-
-		return nil
-	})
 }
 
 func (user *user) getStates() []*State {

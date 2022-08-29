@@ -18,25 +18,21 @@ type Mailbox struct {
 	mbox *ent.Mailbox
 
 	state *State
-	snap  *snapshotWrapper
+	snap  *snapshot
 
 	selected bool
 	readOnly bool
 }
 
-func newMailbox(mbox *ent.Mailbox, state *State, wrapper *snapshotWrapper) *Mailbox {
-	selected := snapshotRead(wrapper, func(s *snapshot) bool {
-		return s != nil
-	})
-
+func newMailbox(mbox *ent.Mailbox, state *State, snap *snapshot) *Mailbox {
 	return &Mailbox{
 		mbox: mbox,
 
 		state: state,
 
-		selected: selected,
+		selected: snap != nil,
 		readOnly: state.ro,
-		snap:     wrapper,
+		snap:     snap,
 	}
 }
 
@@ -66,9 +62,7 @@ func (m *Mailbox) ExpungeIssued() bool {
 }
 
 func (m *Mailbox) Count() int {
-	return snapshotRead(m.snap, func(s *snapshot) int {
-		return len(s.getAllMessages())
-	})
+	return len(m.snap.getAllMessages())
 }
 
 func (m *Mailbox) Flags(ctx context.Context) (imap.FlagSet, error) {
@@ -117,18 +111,14 @@ func (m *Mailbox) Subscribed() bool {
 }
 
 func (m *Mailbox) GetMessagesWithFlag(flag string) []int {
-	return snapshotRead(m.snap, func(s *snapshot) []int {
-		return xslices.Map(s.getMessagesWithFlag(flag), func(msg *snapMsg) int {
-			return msg.Seq
-		})
+	return xslices.Map(m.snap.getMessagesWithFlag(flag), func(msg *snapMsg) int {
+		return msg.Seq
 	})
 }
 
 func (m *Mailbox) GetMessagesWithoutFlag(flag string) []int {
-	return snapshotRead(m.snap, func(s *snapshot) []int {
-		return xslices.Map(s.getMessagesWithoutFlag(flag), func(msg *snapMsg) int {
-			return msg.Seq
-		})
+	return xslices.Map(m.snap.getMessagesWithoutFlag(flag), func(msg *snapMsg) int {
+		return msg.Seq
 	})
 }
 
@@ -141,11 +131,11 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 	if len(internalID) > 0 {
 		msgID := imap.InternalMessageID(internalID)
 
-		if exists, err := DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) (bool, error) {
+		if exists, err := DBReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (bool, error) {
 			return DBHasMessageWithID(ctx, client, msgID)
 		}); err != nil || !exists {
 			logrus.WithError(err).Warn("The message has an unknown internal ID")
-		} else if res, err := DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]int, error) {
+		} else if res, err := DBWriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]int, error) {
 			return m.state.actionAddMessagesToMailbox(ctx, tx, []MessageIDPair{NewMessageIDPairWithoutRemote(msgID)}, NewMailboxIDPair(m.mbox))
 		}); err != nil {
 			return 0, err
@@ -154,12 +144,8 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 		}
 	}
 
-	snapMBoxID := snapshotRead(m.snap, func(s *snapshot) MailboxIDPair {
-		return s.mboxID
-	})
-
-	return DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (int, error) {
-		return m.state.actionCreateMessage(ctx, tx, snapMBoxID, literal, flags, date)
+	return DBWriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (int, error) {
+		return m.state.actionCreateMessage(ctx, tx, m.snap.mboxID, literal, flags, date)
 	})
 }
 
@@ -167,16 +153,14 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are copied the response object will be nil.
 func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
-	mbox, err := DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+	mbox, err := DBReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return DBGetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
 		return nil, ErrNoSuchMailbox
 	}
 
-	messages, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
-		return s.getMessagesInRange(ctx, seq)
-	})
+	messages, err := m.snap.getMessagesInRange(ctx, seq)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +173,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 		return msg.UID
 	})
 
-	destUIDs, err := DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]int, error) {
+	destUIDs, err := DBWriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]int, error) {
 		return m.state.actionAddMessagesToMailbox(ctx, tx, msgIDs, NewMailboxIDPair(mbox))
 	})
 	if err != nil {
@@ -211,7 +195,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are moved the response object will be nil.
 func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
-	mbox, err := DBReadResult(ctx, m.state.db, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+	mbox, err := DBReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return DBGetMailboxByName(ctx, client, name)
 	})
 
@@ -219,12 +203,7 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 		return nil, ErrNoSuchMailbox
 	}
 
-	var snapMBoxID MailboxIDPair
-
-	messages, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
-		snapMBoxID = s.mboxID
-		return s.getMessagesInRange(ctx, seq)
-	})
+	messages, err := m.snap.getMessagesInRange(ctx, seq)
 	if err != nil {
 		return nil, err
 	}
@@ -237,8 +216,8 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 		return msg.UID
 	})
 
-	destUIDs, err := DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]int, error) {
-		return m.state.actionMoveMessages(ctx, tx, msgIDs, snapMBoxID, NewMailboxIDPair(mbox))
+	destUIDs, err := DBWriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]int, error) {
+		return m.state.actionMoveMessages(ctx, tx, msgIDs, m.snap.mboxID, NewMailboxIDPair(mbox))
 	})
 	if err != nil {
 		return nil, err
@@ -256,9 +235,7 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 }
 
 func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation proto.Operation, flags imap.FlagSet) error {
-	messages, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
-		return s.getMessagesInRange(ctx, seq)
-	})
+	messages, err := m.snap.getMessagesInRange(ctx, seq)
 	if err != nil {
 		return err
 	}
@@ -267,7 +244,7 @@ func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation p
 		return msg.ID
 	})
 
-	return m.state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	return m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		switch operation {
 		case proto.Operation_Add:
 			if _, err := m.state.actionAddMessageFlags(ctx, tx, msgIDs, flags); err != nil {
@@ -293,18 +270,14 @@ func (m *Mailbox) Expunge(ctx context.Context, seq *proto.SequenceSet) error {
 	var msg []*snapMsg
 
 	if seq != nil {
-		snapMsgs, err := snapshotReadErr(m.snap, func(s *snapshot) ([]*snapMsg, error) {
-			return s.getMessagesInRange(ctx, seq)
-		})
+		snapMsgs, err := m.snap.getMessagesInRange(ctx, seq)
 		if err != nil {
 			return err
 		}
 
 		msg = snapMsgs
 	} else {
-		msg = snapshotRead(m.snap, func(s *snapshot) []*snapMsg {
-			return s.getAllMessages()
-		})
+		msg = m.snap.getAllMessages()
 	}
 
 	return m.expunge(ctx, msg)
@@ -319,17 +292,13 @@ func (m *Mailbox) expunge(ctx context.Context, messages []*snapMsg) error {
 		return msg.ID
 	})
 
-	mboxID := snapshotRead(m.snap, func(s *snapshot) MailboxIDPair {
-		return s.mboxID
-	})
-
-	return m.state.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return m.state.actionRemoveMessagesFromMailbox(ctx, tx, msgIDs, mboxID)
+	return m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return m.state.actionRemoveMessagesFromMailbox(ctx, tx, msgIDs, m.snap.mboxID)
 	})
 }
 
 func (m *Mailbox) Flush(ctx context.Context, permitExpunge bool) ([]response.Response, error) {
-	return DBWriteResult(ctx, m.state.db, func(ctx context.Context, tx *ent.Tx) ([]response.Response, error) {
+	return DBWriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]response.Response, error) {
 		return m.state.flushResponses(ctx, tx, permitExpunge)
 	})
 }
