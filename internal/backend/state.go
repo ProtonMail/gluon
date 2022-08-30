@@ -29,7 +29,6 @@ type State struct {
 	ro   bool
 
 	doneCh chan struct{}
-	stopCh chan struct{}
 
 	updatesQueue *queue.QueuedChannel[stateUpdate]
 
@@ -375,8 +374,6 @@ func (state *State) Done() <-chan struct{} {
 }
 
 func (state *State) Close(ctx context.Context) error {
-	defer close(state.stopCh)
-
 	return state.user.removeState(ctx, state.stateID)
 }
 

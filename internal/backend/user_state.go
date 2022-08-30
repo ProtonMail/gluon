@@ -25,6 +25,8 @@ func (user *user) newState(metadataID remote.ConnMetadataID) (*State, error) {
 
 	user.states[user.nextStateID] = newState
 
+	user.statesWG.Add(1)
+
 	return newState, nil
 }
 
@@ -63,6 +65,9 @@ func (user *user) removeState(ctx context.Context, stateID int) error {
 	if err != nil {
 		return err
 	}
+
+	// After this point we need to notify the WaitGroup or we risk deadlocks.
+	defer user.statesWG.Done()
 
 	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return DBDeleteMessages(ctx, tx, messageIDs...)
@@ -109,8 +114,10 @@ func (user *user) getStates() []*State {
 }
 
 func (user *user) closeStates() {
-	for _, state := range user.getStates() {
+	user.statesLock.RLock()
+	defer user.statesLock.RUnlock()
+
+	for _, state := range user.states {
 		close(state.doneCh)
-		<-state.stopCh
 	}
 }
