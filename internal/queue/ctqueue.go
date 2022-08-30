@@ -23,6 +23,14 @@ func NewCTQueue[T any]() *CTQueue[T] {
 	}
 }
 
+func NewCTQueueWithCapacity[T any](capacity int) *CTQueue[T] {
+	return &CTQueue[T]{
+		items:  make([]T, 0, capacity),
+		cond:   sync.NewCond(&sync.Mutex{}),
+		closed: 0,
+	}
+}
+
 func (ctq *CTQueue[T]) Push(val T) bool {
 	ctq.cond.L.Lock()
 	defer ctq.cond.L.Unlock()
