@@ -62,6 +62,8 @@ type Server struct {
 
 	// versionInfo holds info about the Gluon version.
 	versionInfo internal.VersionInfo
+
+	connectionWG sync.WaitGroup
 }
 
 // New creates a new server with the given options.
@@ -152,8 +154,7 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) chan error {
 		s.addListener(l)
 		defer s.removeListener(l)
 
-		var wg sync.WaitGroup
-		defer wg.Wait()
+		defer s.connectionWG.Wait()
 
 		for {
 			conn, err := l.Accept()
@@ -161,10 +162,10 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) chan error {
 				return
 			}
 
-			wg.Add(1)
+			s.connectionWG.Add(1)
 
 			go func() {
-				defer wg.Done()
+				defer s.connectionWG.Done()
 				s.handleConn(ctx, conn, errCh)
 			}()
 		}
@@ -179,6 +180,8 @@ func (s *Server) Close(ctx context.Context) error {
 	for l := range s.listeners {
 		s.removeListener(l)
 	}
+
+	s.connectionWG.Wait()
 
 	if err := s.backend.Close(ctx); err != nil {
 		return fmt.Errorf("failed to close backend: %w", err)

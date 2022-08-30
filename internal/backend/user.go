@@ -28,6 +28,9 @@ type user struct {
 
 	updateWG     sync.WaitGroup
 	updateQuitCh chan struct{}
+
+	// statesWG is
+	statesWG sync.WaitGroup
 }
 
 func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, store store.Store, delimiter string) (*user, error) {
@@ -76,6 +79,10 @@ func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, st
 // close closes the backend user.
 func (user *user) close(ctx context.Context) error {
 	user.closeStates()
+
+	// Ensure we wait until all states have been removed/closed by any active sessions otherwise we run  into issues
+	// since we close the database in this function.
+	user.statesWG.Wait()
 
 	close(user.updateQuitCh)
 
