@@ -170,7 +170,16 @@ func (state *State) actionAddMessagesToMailbox(
 		return nil, err
 	}
 
-	return state.user.ApplyMessagesAddedToMailbox(ctx, tx, mboxID.InternalID, internalIDs)
+	messageUIDs, update, err := AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := state.user.QueueOrApplyStateUpdate(ctx, tx, update); err != nil {
+		return nil, err
+	}
+
+	return messageUIDs, nil
 }
 
 func (state *State) actionRemoveMessagesFromMailbox(
@@ -194,7 +203,18 @@ func (state *State) actionRemoveMessagesFromMailbox(
 		return err
 	}
 
-	return state.user.ApplyMessagesRemovedFromMailbox(ctx, tx, mboxID.InternalID, internalIDs)
+	updates, err := RemoveMessagesFromMailbox(ctx, tx, mboxID.InternalID, internalIDs)
+	if err != nil {
+		return err
+	}
+
+	for _, update := range updates {
+		if err := state.user.QueueOrApplyStateUpdate(ctx, tx, update); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (state *State) actionMoveMessages(
@@ -247,7 +267,18 @@ func (state *State) actionMoveMessages(
 		return nil, err
 	}
 
-	return state.user.ApplyMessagesMovedFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs)
+	messageUIDs, updates, err := MoveMessagesFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, update := range updates {
+		if err := state.user.QueueOrApplyStateUpdate(ctx, tx, update); err != nil {
+			return nil, err
+		}
+	}
+
+	return messageUIDs, nil
 }
 
 func (state *State) actionAddMessageFlags(

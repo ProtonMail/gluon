@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	errors2 "github.com/ProtonMail/gluon/internal/errors"
@@ -136,9 +135,7 @@ func (user *user) applyMailboxIDChanged(ctx context.Context, update *imap.Mailbo
 			return err
 		}
 
-		if err := user.queueOrApplyStateUpdate(ctx, tx, state.NewMailboxRemoteIDUpdateStateUpdate(update.InternalID, update.RemoteID)); err != nil {
-			return err
-		}
+		user.queueStateUpdate(state.NewMailboxRemoteIDUpdateStateUpdate(update.InternalID, update.RemoteID))
 
 		return nil
 	})
@@ -230,9 +227,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 				return state.NewExists(messageID.InternalID, messageUIDs[messageID.InternalID])
 			})
 
-			if err := user.queueOrApplyStateUpdate(ctx, tx, state.NewMailboxIDResponderStateUpdate(internalMailboxID, responders...)); err != nil {
-				return err
-			}
+			user.queueStateUpdate(state.NewMailboxIDResponderStateUpdate(internalMailboxID, responders...))
 		}
 
 		return nil
@@ -353,38 +348,25 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx *ent.Tx, messageID
 
 // applyMessagesAddedToMailbox adds the messages to the given mailbox.
 func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]int, error) {
-	if _, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxID); err != nil {
-		return nil, err
-	}
-
-	messageUIDs, err := db.GetMessageUIDs(ctx, tx.Client(), mboxID, messageIDs)
+	messageUIDs, update, err := state.AddMessagesToMailbox(ctx, tx, mboxID, messageIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	responders := xslices.Map(messageIDs, func(id imap.InternalMessageID) state.Responder {
-		return state.NewExists(id, messageUIDs[id])
-	})
-
-	if err := user.queueOrApplyStateUpdate(ctx, tx, state.NewMailboxIDResponderStateUpdate(mboxID, responders...)); err != nil {
-		return nil, err
-	}
+	user.queueStateUpdate(update)
 
 	return messageUIDs, nil
 }
 
 // applyMessagesRemovedFromMailbox removes the messages from the given mailbox.
 func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) error {
-	if len(messageIDs) > 0 {
-		if err := db.RemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxID); err != nil {
-			return err
-		}
+	updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mboxID, messageIDs)
+	if err != nil {
+		return err
 	}
 
-	for _, messageID := range messageIDs {
-		if err := user.queueOrApplyStateUpdate(ctx, tx, state.NewMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxID, state.NewExpunge(messageID, contexts.IsClose(ctx)))); err != nil {
-			return err
-		}
+	for _, update := range updates {
+		user.queueStateUpdate(update)
 	}
 
 	return nil
@@ -396,34 +378,13 @@ func (user *user) applyMessagesMovedFromMailbox(
 	mboxFromID, mboxToID imap.InternalMailboxID,
 	messageIDs []imap.InternalMessageID,
 ) (map[imap.InternalMessageID]int, error) {
-	if mboxFromID != mboxToID {
-		if err := db.RemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxFromID); err != nil {
-			return nil, err
-		}
-	}
-
-	if _, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxToID); err != nil {
-		return nil, err
-	}
-
-	messageUIDs, err := db.GetMessageUIDs(ctx, tx.Client(), mboxToID, messageIDs)
+	messageUIDs, updates, err := state.MoveMessagesFromMailbox(ctx, tx, mboxFromID, mboxToID, messageIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	{
-		responders := xslices.Map(messageIDs, func(id imap.InternalMessageID) state.Responder {
-			return state.NewExists(id, messageUIDs[id])
-		})
-		if err := user.queueOrApplyStateUpdate(ctx, tx, state.NewMailboxIDResponderStateUpdate(mboxToID, responders...)); err != nil {
-			return nil, err
-		}
-	}
-
-	for _, messageID := range messageIDs {
-		if err := user.queueOrApplyStateUpdate(ctx, tx, state.NewMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxFromID, state.NewExpunge(messageID, contexts.IsClose(ctx)))); err != nil {
-			return nil, err
-		}
+	for _, up := range updates {
+		user.queueStateUpdate(up)
 	}
 
 	return messageUIDs, nil
@@ -463,7 +424,9 @@ func (user *user) addMessageFlags(ctx context.Context, tx *ent.Tx, messageID ima
 		return err
 	}
 
-	return user.queueOrApplyStateUpdate(ctx, tx, state.NewRemoteAddMessageFlagsStateUpdate(messageID, flag))
+	user.queueStateUpdate(state.NewRemoteAddMessageFlagsStateUpdate(messageID, flag))
+
+	return nil
 }
 
 func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, flag string) error {
@@ -471,7 +434,9 @@ func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID 
 		return err
 	}
 
-	return user.queueOrApplyStateUpdate(ctx, tx, state.NewRemoteRemoveMessageFlagsStateUpdate(messageID, flag))
+	user.queueStateUpdate(state.NewRemoteRemoveMessageFlagsStateUpdate(messageID, flag))
+
+	return nil
 }
 
 func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageDeleted) error {
@@ -485,6 +450,8 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 			return err
 		}
 
-		return user.queueOrApplyStateUpdate(ctx, tx, state.NewRemoteMessageDeletedStateUpdate(internalMessageID, update.MessageID))
+		user.queueStateUpdate(state.NewRemoteMessageDeletedStateUpdate(internalMessageID, update.MessageID))
+
+		return nil
 	})
 }

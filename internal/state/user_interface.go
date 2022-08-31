@@ -3,7 +3,6 @@ package state
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/store"
@@ -20,26 +19,6 @@ type UserInterface interface {
 	GetRemote() Connector
 
 	GetStore() store.Store
-
-	ApplyMessagesAddedToMailbox(
-		ctx context.Context,
-		tx *ent.Tx,
-		mboxID imap.InternalMailboxID,
-		messageIDs []imap.InternalMessageID,
-	) (map[imap.InternalMessageID]int, error)
-
-	ApplyMessagesRemovedFromMailbox(ctx context.Context,
-		tx *ent.Tx,
-		mboxID imap.InternalMailboxID,
-		messageIDs []imap.InternalMessageID,
-	) error
-
-	ApplyMessagesMovedFromMailbox(
-		ctx context.Context,
-		tx *ent.Tx,
-		mboxFromID, mboxToID imap.InternalMailboxID,
-		messageIDs []imap.InternalMessageID,
-	) (map[imap.InternalMessageID]int, error)
 
 	QueueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update Update) error
 

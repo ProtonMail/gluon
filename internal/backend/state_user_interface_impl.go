@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/state"
@@ -41,34 +40,31 @@ func (s *StateUserInterfaceImpl) GetStore() store.Store {
 	return s.u.store
 }
 
-func (s *StateUserInterfaceImpl) ApplyMessagesAddedToMailbox(
-	ctx context.Context,
-	tx *ent.Tx,
-	mboxID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
-) (map[imap.InternalMessageID]int, error) {
-	return s.u.applyMessagesAddedToMailbox(ctx, tx, mboxID, messageIDs)
-}
-
-func (s *StateUserInterfaceImpl) ApplyMessagesRemovedFromMailbox(ctx context.Context,
-	tx *ent.Tx,
-	mboxID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
-) error {
-	return s.u.applyMessagesRemovedFromMailbox(ctx, tx, mboxID, messageIDs)
-}
-
-func (s *StateUserInterfaceImpl) ApplyMessagesMovedFromMailbox(
-	ctx context.Context,
-	tx *ent.Tx,
-	mboxFromID, mboxToID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
-) (map[imap.InternalMessageID]int, error) {
-	return s.u.applyMessagesMovedFromMailbox(ctx, tx, mboxFromID, mboxToID, messageIDs)
-}
-
 func (s *StateUserInterfaceImpl) QueueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update state.Update) error {
-	return s.u.queueOrApplyStateUpdate(ctx, tx, update)
+	// If we detect a state id in the context, it means this function call is a result of a User interaction.
+	// When that happens the update needs to be applied to the state matching the state ID immediately. If no such
+	// stateID exists or the context information is not present, all updates are queued for later execution.
+	stateID, ok := state.GetStateIDFromContext(ctx)
+	if !ok {
+		return s.u.forState(func(state *state.State) error {
+			state.QueueUpdates(update)
+			return nil
+		})
+	} else {
+		return s.u.forState(func(state *state.State) error {
+			if state.StateID != stateID {
+				state.QueueUpdates(update)
+
+				return nil
+			} else {
+				if !update.Filter(state) {
+					return nil
+				}
+
+				return update.Apply(ctx, tx, state)
+			}
+		})
+	}
 }
 
 func (s *StateUserInterfaceImpl) ReleaseState(ctx context.Context, st *state.State) error {

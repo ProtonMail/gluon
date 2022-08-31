@@ -130,30 +130,12 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 	})
 }
 
-func (user *user) queueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update state.Update) error {
-	// If we detect a state id in the context, it means this function call is a result of a User interaction.
-	// When that happens the update needs to be applied to the state matching the state ID immediately. If no such
-	// stateID exists or the context information is not present, all updates are queued for later execution.
-	stateID, ok := state.GetStateIDFromContext(ctx)
-	if !ok {
-		return user.forState(func(state *state.State) error {
-			state.QueueUpdates(update)
-			return nil
-		})
-	} else {
-		return user.forState(func(state *state.State) error {
-			if state.StateID != stateID {
-				state.QueueUpdates(update)
-
-				return nil
-			} else {
-				if !update.Filter(state) {
-					return nil
-				}
-
-				return update.Apply(ctx, tx, state)
-			}
-		})
+func (user *user) queueStateUpdate(update state.Update) {
+	if err := user.forState(func(state *state.State) error {
+		state.QueueUpdates(update)
+		return nil
+	}); err != nil {
+		panic("Unexpected, should not happen")
 	}
 }
 
