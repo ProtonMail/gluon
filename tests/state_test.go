@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/session"
 )
 
@@ -73,7 +73,7 @@ func TestErrorsWhenNotSelected(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		for i, command := range selectedCommands {
 			c.C(fmt.Sprintf("%d %v", i, command))
-			c.Sx(fmt.Sprintf("%d NO %v", i, backend.ErrSessionNotSelected))
+			c.Sx(fmt.Sprintf("%d NO %v", i, errors.ErrSessionNotSelected))
 		}
 	})
 }

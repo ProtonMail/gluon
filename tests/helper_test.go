@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/iterator"
 	"github.com/bradenaw/juniper/xslices"
 	goimap "github.com/emersion/go-imap"
@@ -490,8 +490,8 @@ func getBodySection(message *goimap.Message, section *goimap.BodySectionName) go
 }
 
 func skipGLUONHeader(message string) string {
-	if keyIndex := strings.Index(message, backend.InternalIDKey); keyIndex != -1 {
-		message = message[0:keyIndex] + message[keyIndex+backend.InternalIDHeaderLengthWithNewLine:]
+	if keyIndex := strings.Index(message, ids.InternalIDKey); keyIndex != -1 {
+		message = message[0:keyIndex] + message[keyIndex+ids.InternalIDHeaderLengthWithNewLine:]
 	}
 
 	return message

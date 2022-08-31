@@ -14,7 +14,7 @@ import (
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/backend/ent"
+	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/emersion/go-imap/client"
 	"github.com/emersion/go-mbox"

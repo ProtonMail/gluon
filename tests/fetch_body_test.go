@@ -669,7 +669,7 @@ v0.95 2002-07-31  Timo Sirainen <tss@iki.fi>
 	+ Code cleanups
 	- Found several bugs from mempool and ioloop code, now we should
 	  be stable? :)
-	- A few corrections for long header field handling
+	- Apply few corrections for long header field handling
 
 `
 
@@ -689,7 +689,7 @@ v0.95 2002-07-31  Timo Sirainen <tss@iki.fi>
 	+ Code cleanups
 	- Found several bugs from mempool and ioloop code, now we should
 	  be stable? :)
-	- A few corrections for long header field handling
+	- Apply few corrections for long header field handling
 
 `
 				builder.ignoreFlags()

@@ -5,9 +5,9 @@ import (
 
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/emersion/go-imap/utf7"
 )
 
@@ -17,7 +17,7 @@ func (s *Session) handleSelect(ctx context.Context, tag string, cmd *proto.Selec
 		return err
 	}
 
-	if err := s.state.Select(ctx, nameUTF8, func(mailbox *backend.Mailbox) error {
+	if err := s.state.Select(ctx, nameUTF8, func(mailbox *state.Mailbox) error {
 		flags, err := mailbox.Flags(ctx)
 		if err != nil {
 			return err

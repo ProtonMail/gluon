@@ -4,14 +4,16 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ProtonMail/gluon/internal/backend"
+	context2 "github.com/ProtonMail/gluon/internal/contexts"
+	errors2 "github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/state"
 )
 
-func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store, mailbox *backend.Mailbox, ch chan response.Response) error {
+func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store, mailbox *state.Mailbox, ch chan response.Response) error {
 	if cmd.GetAction().GetSilent() {
-		ctx = backend.AsSilent(ctx)
+		ctx = context2.AsSilent(ctx)
 	}
 
 	flags, err := validateStoreFlags(cmd.GetFlags())
@@ -19,7 +21,7 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store,
 		return response.Bad(tag).WithError(err)
 	}
 
-	if err := mailbox.Store(ctx, cmd.GetSequenceSet(), cmd.GetAction().GetOperation(), flags); errors.Is(err, backend.ErrNoSuchMessage) {
+	if err := mailbox.Store(ctx, cmd.GetSequenceSet(), cmd.GetAction().GetOperation(), flags); errors.Is(err, errors2.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err)
 	} else if err != nil {
 		return err

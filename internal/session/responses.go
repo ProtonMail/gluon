@@ -3,11 +3,11 @@ package session
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/state"
 )
 
-func flush(ctx context.Context, mailbox *backend.Mailbox, permitExpunge bool, resCh chan response.Response) error {
+func flush(ctx context.Context, mailbox *state.Mailbox, permitExpunge bool, resCh chan response.Response) error {
 	res, err := mailbox.Flush(ctx, permitExpunge)
 	if err != nil {
 		return err

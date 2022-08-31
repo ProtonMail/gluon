@@ -3,14 +3,15 @@ package session
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/internal/backend"
+	context2 "github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/state"
 )
 
 // TODO(REFACTOR): No EXPUNGE responses are sent -- what about to other sessions also selected in this mailbox?
-func (s *Session) handleClose(ctx context.Context, tag string, cmd *proto.Close, mailbox *backend.Mailbox, ch chan response.Response) error {
-	ctx = backend.AsClose(ctx)
+func (s *Session) handleClose(ctx context.Context, tag string, cmd *proto.Close, mailbox *state.Mailbox, ch chan response.Response) error {
+	ctx = context2.AsClose(ctx)
 
 	if !mailbox.ReadOnly() {
 		if err := mailbox.Expunge(ctx, nil); err != nil {

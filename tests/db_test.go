@@ -3,7 +3,7 @@ package tests
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/internal/backend/ent"
+	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/stretchr/testify/require"
 )
 

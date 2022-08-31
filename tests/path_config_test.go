@@ -46,7 +46,7 @@ func TestPathConfig_ProtonPathConfig(t *testing.T) {
 		c.C(`A010 DELETE Folders/NewName`)
 		c.Sx(`A010 OK`)
 
-		c.C(`A011 DELETE Folders/A`)
+		c.C(`A011 DELETE Folders/Apply`)
 		c.Sx(`A011 NO no such mailbox`)
 	})
 }
@@ -95,7 +95,7 @@ func TestPathConfig_DotDelimiter(t *testing.T) {
 		c.C(`A010 DELETE Folders.NewName`)
 		c.Sx(`A010 OK`)
 
-		c.C(`A011 DELETE Folders.A`)
+		c.C(`A011 DELETE Folders.Apply`)
 		c.Sx(`A011 NO no such mailbox`)
 	})
 }

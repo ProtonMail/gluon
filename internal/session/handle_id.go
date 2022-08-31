@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal"
@@ -27,9 +26,7 @@ func (s *Session) handleIDSet(ctx context.Context, tag string, cmd *proto.IDSet,
 
 	// Not logged in or no mailbox selected
 	if s.state != nil {
-		if err := s.state.SetConnMetadataKeyValue(imap.IMAPIDConnMetadataKey, s.imapID); err != nil {
-			return response.Bad(tag, fmt.Sprintf("Failed to store IMAP ID: %v", err))
-		}
+		s.state.SetConnMetadataKeyValue(imap.IMAPIDConnMetadataKey, s.imapID)
 	}
 
 	ch <- prepareServerResponse(s.version)

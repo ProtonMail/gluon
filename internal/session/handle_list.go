@@ -3,9 +3,9 @@ package session
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/emersion/go-imap/utf7"
 )
 
@@ -15,7 +15,7 @@ func (s *Session) handleList(ctx context.Context, tag string, cmd *proto.List, c
 		return err
 	}
 
-	return s.state.List(ctx, cmd.GetReference(), nameUTF8, false, func(matches map[string]backend.Match) error {
+	return s.state.List(ctx, cmd.GetReference(), nameUTF8, false, func(matches map[string]state.Match) error {
 		for _, match := range matches {
 			ch <- response.List().
 				WithName(match.Name).

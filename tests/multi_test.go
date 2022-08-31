@@ -23,7 +23,7 @@ func TestExistsUpdates(t *testing.T) {
 		// Second client appends to INBOX to generate EXISTS update.
 		c[2].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
 
-		// First client receives the EXISTS update. A RECENT update is also received.
+		// First client receives the EXISTS update. Apply RECENT update is also received.
 		c[1].C("b001 noop")
 		c[1].S(`* 1 EXISTS`)
 		c[1].S(`* 1 RECENT`)
