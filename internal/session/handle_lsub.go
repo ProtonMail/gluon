@@ -17,10 +17,15 @@ func (s *Session) handleLsub(ctx context.Context, tag string, cmd *proto.Lsub, c
 
 	return s.state.List(ctx, cmd.GetReference(), nameUTF8, true, func(matches map[string]state.Match) error {
 		for _, match := range matches {
-			ch <- response.Lsub().
+			select {
+			case ch <- response.Lsub().
 				WithName(match.Name).
 				WithDelimiter(match.Delimiter).
-				WithAttributes(match.Atts)
+				WithAttributes(match.Atts):
+
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 
 		ch <- response.Ok(tag).WithMessage("LSUB")

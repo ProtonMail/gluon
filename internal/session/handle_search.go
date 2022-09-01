@@ -31,7 +31,12 @@ func (s *Session) handleSearch(ctx context.Context, tag string, cmd *proto.Searc
 		return err
 	}
 
-	ch <- response.Search(seq...)
+	select {
+	case ch <- response.Search(seq...):
+
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 
 	var items []response.Item
 

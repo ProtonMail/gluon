@@ -2,8 +2,6 @@ package session
 
 import (
 	"context"
-	"errors"
-	"io"
 	"runtime/pprof"
 	"strconv"
 
@@ -14,39 +12,38 @@ import (
 type command struct {
 	tag string
 	cmd *proto.Command
+	err error
 }
 
-func (s *Session) getCommandCh(ctx context.Context, del string) <-chan command {
+func (s *Session) startCommandReader(ctx context.Context, del string) <-chan command {
 	cmdCh := make(chan command)
 
 	go func() {
 		labels := pprof.Labels("go", "CommandReader", "SessionID", strconv.Itoa(s.sessionID))
 		pprof.Do(ctx, labels, func(_ context.Context) {
 			defer close(cmdCh)
+
 			for {
 				tag, cmd, err := s.readCommand(del)
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						return
-					} else if err := response.Bad(tag).WithError(err).Send(s); err != nil {
-						return
-					}
 
-					continue
-				}
-
-				switch {
-				case cmd.GetStartTLS() != nil:
-					if err := s.handleStartTLS(tag, cmd.GetStartTLS()); err != nil {
-						if err := response.Bad(tag).WithError(err).Send(s); err != nil {
-							return
-						}
-
+				if err == nil && cmd.GetStartTLS() != nil {
+					// TLS needs to be handled here in order to ensure that next command read is over the
+					// tls connection.
+					if e := s.handleStartTLS(tag, cmd.GetStartTLS()); e != nil {
+						cmd = nil
+						err = e
+					} else {
 						continue
 					}
 
-				default:
-					cmdCh <- command{tag: tag, cmd: cmd}
+				}
+
+				select {
+				case cmdCh <- command{tag: tag, cmd: cmd, err: err}:
+
+				case <-ctx.Done():
+					return
+
 				}
 			}
 		})

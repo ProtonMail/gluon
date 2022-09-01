@@ -473,6 +473,13 @@ func (state *State) getLiteral(messageID imap.InternalMessageID) ([]byte, error)
 func (state *State) flushResponses(ctx context.Context, tx *ent.Tx, permitExpunge bool) ([]response.Response, error) {
 	var responses []response.Response
 
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+
+	default: // fallthrough
+	}
+
 	for _, responder := range state.popResponders(permitExpunge) {
 		res, err := responder.handle(ctx, tx, state.snap)
 		if err != nil {

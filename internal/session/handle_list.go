@@ -17,10 +17,15 @@ func (s *Session) handleList(ctx context.Context, tag string, cmd *proto.List, c
 
 	return s.state.List(ctx, cmd.GetReference(), nameUTF8, false, func(matches map[string]state.Match) error {
 		for _, match := range matches {
-			ch <- response.List().
+			select {
+			case ch <- response.List().
 				WithName(match.Name).
 				WithDelimiter(match.Delimiter).
-				WithAttributes(match.Atts)
+				WithAttributes(match.Atts):
+
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 
 		ch <- response.Ok(tag).WithMessage("LIST")
