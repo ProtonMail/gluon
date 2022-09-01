@@ -17,6 +17,8 @@ type Update interface {
 	Filter(s *State) bool
 	// Apply the update to a given state.
 	Apply(cxt context.Context, tx *ent.Tx, s *State) error
+
+	String() string
 }
 
 type messageFlagsAddedStateUpdate struct {
@@ -59,6 +61,15 @@ func (u *messageFlagsAddedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s 
 	}
 
 	return nil
+}
+
+func (u *messageFlagsAddedStateUpdate) String() string {
+	return fmt.Sprintf("MessagFlagsAddedStateUpdate: mbox = %v messages = %v flags = %v",
+		u.mboxID.InternalID.ShortID(),
+		xslices.Map(u.MessageIDs, func(id imap.InternalMessageID) string {
+			return id.ShortID()
+		}),
+		u.flags)
 }
 
 // applyMessageFlagsAdded adds the flags to the given messages.
@@ -142,6 +153,15 @@ func (u *messageFlagsRemovedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, 
 	}
 
 	return nil
+}
+
+func (u *messageFlagsRemovedStateUpdate) String() string {
+	return fmt.Sprintf("MessagFlagsRemovedStateUpdate: mbox = %v messages = %v flags = %v",
+		u.mboxID.InternalID,
+		xslices.Map(u.MessageIDs, func(id imap.InternalMessageID) string {
+			return id.ShortID()
+		}),
+		u.flags)
 }
 
 // applyMessageFlagsRemoved removes the flags from the given messages.
@@ -233,6 +253,10 @@ func (u *messageFlagsSetStateUpdate) Apply(ctx context.Context, tx *ent.Tx, stat
 	return nil
 }
 
+func (u *messageFlagsSetStateUpdate) String() string {
+	return fmt.Sprintf("MessagFlagsSetStateUpdate: mbox = %v messages = %v flags=%v", u.mboxID.InternalID.ShortID(), u.MessageIDs, u.flags)
+}
+
 // applyMessageFlagsSet sets the flags of the given messages.
 func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, setFlags imap.FlagSet) error {
 	if setFlags.Contains(imap.FlagRecent) {
@@ -274,4 +298,8 @@ func (u *mailboxRemoteIDUpdateStateUpdate) Apply(ctx context.Context, tx *ent.Tx
 	s.snap.mboxID.RemoteID = u.remoteID
 
 	return nil
+}
+
+func (u *mailboxRemoteIDUpdateStateUpdate) String() string {
+	return fmt.Sprintf("MailboxRemoteIDUpdateStateUpdate: %v remote = %v", u.SnapFilter, u.remoteID.ShortID())
 }

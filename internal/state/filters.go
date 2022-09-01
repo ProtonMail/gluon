@@ -1,15 +1,24 @@
 package state
 
-import "github.com/ProtonMail/gluon/imap"
+import (
+	"fmt"
+
+	"github.com/ProtonMail/gluon/imap"
+)
 
 type SnapFilter interface {
 	Filter(s *State) bool
+	String() string
 }
 
 type AllStateFilter struct{}
 
 func (*AllStateFilter) Filter(s *State) bool {
 	return s.snap != nil
+}
+
+func (*AllStateFilter) String() string {
+	return "AllStates"
 }
 
 func NewAllStateFilter() SnapFilter {
@@ -22,6 +31,10 @@ type MBoxIDStateFilter struct {
 
 func NewMBoxIDStateFilter(mboxID imap.InternalMailboxID) SnapFilter {
 	return &MBoxIDStateFilter{MboxID: mboxID}
+}
+
+func (f *MBoxIDStateFilter) String() string {
+	return fmt.Sprintf("mbox = %v", f.MboxID.ShortID())
 }
 
 func (f *MBoxIDStateFilter) Filter(s *State) bool {
@@ -40,6 +53,10 @@ func (f *MessageIDStateFilter) Filter(s *State) bool {
 	return s.snap != nil && s.snap.hasMessage(f.MessageID)
 }
 
+func (f *MessageIDStateFilter) String() string {
+	return fmt.Sprintf("message = %v", f.MessageID.ShortID())
+}
+
 type MessageAndMBoxIDStateFilter struct {
 	MessageID imap.InternalMessageID
 	MBoxID    imap.InternalMailboxID
@@ -51,6 +68,10 @@ func NewMessageAndMBoxIDStateFilter(msgID imap.InternalMessageID, mboxID imap.In
 
 func (f *MessageAndMBoxIDStateFilter) Filter(s *State) bool {
 	return s.snap != nil && s.snap.mboxID.InternalID == f.MBoxID && s.snap.hasMessage(f.MessageID)
+}
+
+func (f *MessageAndMBoxIDStateFilter) String() string {
+	return fmt.Sprintf("mbox = %v message = %v", f.MBoxID.ShortID(), f.MessageID.ShortID())
 }
 
 type AnyMessageIDStateFilter struct {
