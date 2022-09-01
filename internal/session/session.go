@@ -5,6 +5,7 @@ package session
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -114,7 +115,7 @@ func (s *Session) Serve(ctx context.Context) error {
 		return err
 	}
 
-	if err := s.serve(ctx, s.getCommandCh(ctx, s.backend.GetDelimiter())); err != nil {
+	if err := s.serve(ctx); err != nil {
 		logrus.WithError(err).Errorf("Failed to serve session %v", s.sessionID)
 		return err
 	}
@@ -122,7 +123,7 @@ func (s *Session) Serve(ctx context.Context) error {
 	return nil
 }
 
-func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
+func (s *Session) serve(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -134,14 +135,30 @@ func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
 		cmd *proto.Command
 	)
 
+	cmdCh := s.startCommandReader(ctx, s.backend.GetDelimiter())
+
 	for {
 		select {
 		case res, ok := <-cmdCh:
 			if !ok {
+				logrus.Debugf("Failed to read from command channel")
 				return nil
 			}
 
 			tag, cmd = res.tag, res.cmd
+
+			if res.err != nil {
+				logrus.WithError(res.err).Debugf("Error during command parsing")
+
+				if errors.Is(res.err, io.EOF) {
+					logrus.Debugf("Connection to client lost")
+					return nil
+				} else if err := response.Bad(tag).WithError(res.err).Send(s); err != nil {
+					return err
+				}
+
+				continue
+			}
 
 		case <-s.state.Done():
 			return nil
@@ -178,12 +195,15 @@ func (s *Session) serve(ctx context.Context, cmdCh <-chan command) error {
 			responseCh := s.handleOther(withStartTime(ctx, time.Now()), tag, cmd, profiler)
 			for res := range responseCh {
 				if err := res.Send(s); err != nil {
-					// Consume all remaining channel response since the connection is no longer available.
-					// Failing to do so can cause a deadlock in the program as `s.handleOther` never finishes
-					// executing and can hold onto a number of locks indefinitely.
-					for range responseCh {
-						// ...
-					}
+					go func() {
+						// Consume all remaining channel response since the connection is no longer available.
+						// Failing to do so can cause a deadlock in the program as `s.handleOther` never finishes
+						// executing and can hold onto a number of locks indefinitely.
+						// Consumed on a separate go routine to not block the return.
+						for range responseCh {
+							// ...
+						}
+					}()
 
 					return fmt.Errorf("failed to send response to client: %w", err)
 				}

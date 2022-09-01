@@ -29,7 +29,12 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 			return err
 		}
 
-		ch <- response.Fetch(seq).WithItems(items...)
+		select {
+		case ch <- response.Fetch(seq).WithItems(items...):
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 
 	return nil

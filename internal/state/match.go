@@ -32,6 +32,13 @@ func getMatches(
 			continue
 		}
 
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+
+		default: //fallthrough
+		}
+
 		if name, ok := match(ref, pattern, delimiter, mailbox.Name); ok {
 			if mailbox.Name == name {
 				atts := imap.NewFlagSetFromSlice(xslices.Map(mailbox.Edges.Attributes, func(flag *ent.MailboxAttr) string {
