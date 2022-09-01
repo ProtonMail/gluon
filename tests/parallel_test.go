@@ -13,7 +13,7 @@ import (
 func TestSelectWhileSyncing(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, s *testSession) {
 		// Define some mailbox names.
-		mailboxNames := []string{"Apply", "B", "C", "D", "E", "F", "G", "H", "I", "J"}
+		mailboxNames := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"}
 
 		// Collect the mailbox IDs as they're created.
 		mailboxIDs := xslices.Map(mailboxNames, func(name string) imap.LabelID {

@@ -17,8 +17,8 @@ func BenchmarkFetchDatabase(b *testing.B) {
 					s.messageCreatedFromFile("user", benchID, `testdata/multipart-mixed.eml`)
 				}
 
-				c.C(`Apply SELECT BENCH`)
-				c.Se(`Apply OK [READ-WRITE] (^_^)`)
+				c.C(`A SELECT BENCH`)
+				c.Se(`A OK [READ-WRITE] (^_^)`)
 
 				c.doBench(b, `FETCH * (ENVELOPE)`)
 				c.doBench(b, `FETCH 1:* (ENVELOPE)`)

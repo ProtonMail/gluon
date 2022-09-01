@@ -7,6 +7,12 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 )
 
+// Connector interface for State differs slightly from the connector.Connector interface as it needs the ability
+// to generate internal IDs for each request as well as track local metadata associated with each state. The local
+// metadata (e.g.: IMAP ID extension info) should be injected into the context before each call to ensure the
+// connector.Connector can receive this information.
+// Sadly, due to Go's cyclic dependencies, this needs to be an interface. The implementation of this interface
+// is available in the backend package.
 type Connector interface {
 	// SetConnMetadataValue sets a metadata value associated with the current connector.
 	SetConnMetadataValue(key string, value any)

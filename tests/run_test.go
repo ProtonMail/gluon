@@ -28,7 +28,7 @@ func runOneToOneTestWithAuth(tb testing.TB, options *serverOptions, tests func(*
 	})
 }
 
-// runOneToOneTestWithData runs a test with one account and one connection. Apply mailbox is created with test data.
+// runOneToOneTestWithData runs a test with one account and one connection. A mailbox is created with test data.
 func runOneToOneTestWithData(tb testing.TB, options *serverOptions,
 	tests func(*testConnection, *testSession, string, imap.LabelID),
 ) {

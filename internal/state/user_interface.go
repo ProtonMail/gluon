@@ -9,6 +9,8 @@ import (
 )
 
 // UserInterface represents the expected behaviour for interacting with a remote user.
+// Sadly, due to Go's cyclic dependencies, this needs to be an interface. The implementation of this interface
+// is available in the backend package.
 type UserInterface interface {
 	GetUserID() string
 

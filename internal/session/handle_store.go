@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	context2 "github.com/ProtonMail/gluon/internal/contexts"
-	errors2 "github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
@@ -21,7 +20,7 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store,
 		return response.Bad(tag).WithError(err)
 	}
 
-	if err := mailbox.Store(ctx, cmd.GetSequenceSet(), cmd.GetAction().GetOperation(), flags); errors.Is(err, errors2.ErrNoSuchMessage) {
+	if err := mailbox.Store(ctx, cmd.GetSequenceSet(), cmd.GetAction().GetOperation(), flags); errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err)
 	} else if err != nil {
 		return err

@@ -9,7 +9,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/bradenaw/juniper/xslices"
@@ -52,7 +51,7 @@ func (snap *snapshot) hasMessage(messageID imap.InternalMessageID) bool {
 func (snap *snapshot) getMessageSeq(messageID imap.InternalMessageID) (int, error) {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
-		return 0, errors.ErrNoSuchMessage
+		return 0, ErrNoSuchMessage
 	}
 
 	return msg.Seq, nil
@@ -61,7 +60,7 @@ func (snap *snapshot) getMessageSeq(messageID imap.InternalMessageID) (int, erro
 func (snap *snapshot) getMessageUID(messageID imap.InternalMessageID) (int, error) {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
-		return 0, errors.ErrNoSuchMessage
+		return 0, ErrNoSuchMessage
 	}
 
 	return msg.UID, nil
@@ -70,7 +69,7 @@ func (snap *snapshot) getMessageUID(messageID imap.InternalMessageID) (int, erro
 func (snap *snapshot) getMessageFlags(messageID imap.InternalMessageID) (imap.FlagSet, error) {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
-		return nil, errors.ErrNoSuchMessage
+		return nil, ErrNoSuchMessage
 	}
 
 	return msg.flags, nil
@@ -79,7 +78,7 @@ func (snap *snapshot) getMessageFlags(messageID imap.InternalMessageID) (imap.Fl
 func (snap *snapshot) setMessageFlags(messageID imap.InternalMessageID, flags imap.FlagSet) error {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
-		return errors.ErrNoSuchMessage
+		return ErrNoSuchMessage
 	}
 
 	if recent := msg.flags.Contains(imap.FlagRecent); recent {
@@ -231,7 +230,7 @@ func (snap *snapshot) appendMessage(ctx context.Context, client *ent.Client, mes
 
 func (snap *snapshot) expungeMessage(messageID imap.InternalMessageID) error {
 	if ok := snap.messages.remove(messageID); !ok {
-		return errors.ErrNoSuchMessage
+		return ErrNoSuchMessage
 	}
 
 	return nil
@@ -239,7 +238,7 @@ func (snap *snapshot) expungeMessage(messageID imap.InternalMessageID) error {
 
 func (snap *snapshot) updateMailboxRemoteID(internalID imap.InternalMailboxID, remoteID imap.LabelID) error {
 	if snap.mboxID.InternalID != internalID {
-		return errors.ErrNoSuchMailbox
+		return ErrNoSuchMailbox
 	}
 
 	snap.mboxID.RemoteID = remoteID
@@ -249,7 +248,7 @@ func (snap *snapshot) updateMailboxRemoteID(internalID imap.InternalMailboxID, r
 
 func (snap *snapshot) updateMessageRemoteID(internalID imap.InternalMessageID, remoteID imap.MessageID) error {
 	if ok := snap.messages.update(internalID, remoteID); !ok {
-		return errors.ErrNoSuchMessage
+		return ErrNoSuchMessage
 	}
 
 	return nil
@@ -276,7 +275,7 @@ func (snap *snapshot) uidRange(uidLo, uidHi int) []*snapMsg {
 // - when used in a range, the order of the indexes in irrelevant.
 func (snap *snapshot) resolveSeq(number string) (int, error) {
 	if snap.messages.len() == 0 {
-		return 0, errors.ErrNoSuchMessage
+		return 0, ErrNoSuchMessage
 	}
 
 	if number == "*" {
@@ -290,7 +289,7 @@ func (snap *snapshot) resolveSeq(number string) (int, error) {
 
 	msg, ok := snap.messages.seq(seq)
 	if !ok {
-		return 0, errors.ErrNoSuchMessage
+		return 0, ErrNoSuchMessage
 	}
 
 	return msg.Seq, nil
@@ -299,7 +298,7 @@ func (snap *snapshot) resolveSeq(number string) (int, error) {
 // resolveUID converts a textual message UID into an integer.
 func (snap *snapshot) resolveUID(number string) (int, error) {
 	if snap.messages.len() == 0 {
-		return 0, errors.ErrNoSuchMessage
+		return 0, ErrNoSuchMessage
 	}
 
 	if number == "*" {

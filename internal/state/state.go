@@ -8,7 +8,6 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -17,6 +16,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// State represents the active session's state after a user has been authenticated. This code is expected to run on
+// one single goroutine/thread and should some interaction be required with other states from other session, they shall
+// happen through updates (state.Update) which are queued via the UserInterface.
+// Similarly, the state also accepts incoming updates via the ApplyUpdate method.
 type State struct {
 	user UserInterface
 
@@ -76,7 +79,7 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
-		return errors.ErrNoSuchMailbox
+		return ErrNoSuchMailbox
 	}
 
 	if state.snap != nil {
@@ -109,7 +112,7 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
-		return errors.ErrNoSuchMailbox
+		return ErrNoSuchMailbox
 	}
 
 	if state.snap != nil {
@@ -143,7 +146,7 @@ func (state *State) Create(ctx context.Context, name string) error {
 		if exists, err := db.MailboxExistsWithName(ctx, client, name); err != nil {
 			return nil, err
 		} else if exists {
-			return nil, errors.ErrExistingMailbox
+			return nil, ErrExistingMailbox
 		}
 
 		for _, superior := range listSuperiors(name, state.delimiter) {
@@ -180,7 +183,7 @@ func (state *State) Delete(ctx context.Context, name string) error {
 		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
-		return errors.ErrNoSuchMailbox
+		return ErrNoSuchMailbox
 	}
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
@@ -197,13 +200,13 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 	result, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (Result, error) {
 		mbox, err := db.GetMailboxByName(ctx, client, oldName)
 		if err != nil {
-			return Result{}, errors.ErrNoSuchMailbox
+			return Result{}, ErrNoSuchMailbox
 		}
 
 		if exists, err := db.MailboxExistsWithName(ctx, client, newName); err != nil {
 			return Result{}, err
 		} else if exists {
-			return Result{}, errors.ErrExistingMailbox
+			return Result{}, ErrExistingMailbox
 		}
 
 		var mboxesToCreate []string
@@ -212,7 +215,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 				return Result{}, err
 			} else if exists {
 				if superior == oldName {
-					return Result{}, errors.ErrExistingMailbox
+					return Result{}, ErrExistingMailbox
 				}
 				continue
 			}
@@ -257,7 +260,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		for _, inferior := range inferiors {
 			mbox, err := db.GetMailboxByName(ctx, tx.Client(), inferior)
 			if err != nil {
-				return errors.ErrNoSuchMailbox
+				return ErrNoSuchMailbox
 			}
 
 			newInferior := newName + strings.TrimPrefix(inferior, oldName)
@@ -276,9 +279,9 @@ func (state *State) Subscribe(ctx context.Context, name string) error {
 		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
-		return errors.ErrNoSuchMailbox
+		return ErrNoSuchMailbox
 	} else if mbox.Subscribed {
-		return errors.ErrAlreadySubscribed
+		return ErrAlreadySubscribed
 	}
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
@@ -291,9 +294,9 @@ func (state *State) Unsubscribe(ctx context.Context, name string) error {
 		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
-		return errors.ErrNoSuchMailbox
+		return ErrNoSuchMailbox
 	} else if !mbox.Subscribed {
-		return errors.ErrAlreadyUnsubscribed
+		return ErrAlreadyUnsubscribed
 	}
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
@@ -317,7 +320,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
-		return errors.ErrNoSuchMailbox
+		return ErrNoSuchMailbox
 	}
 
 	if state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID {
@@ -336,7 +339,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 
 func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error {
 	if !state.IsSelected() {
-		return errors.ErrSessionNotSelected
+		return ErrSessionNotSelected
 	}
 
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
@@ -344,7 +347,7 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 	})
 
 	if err != nil {
-		return errors.ErrNoSuchMailbox
+		return ErrNoSuchMailbox
 	}
 
 	return fn(newMailbox(mbox, state, state.snap))

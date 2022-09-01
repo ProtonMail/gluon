@@ -132,10 +132,12 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 
 func (user *user) queueStateUpdate(update state.Update) {
 	if err := user.forState(func(state *state.State) error {
-		state.QueueUpdates(update)
+		if !state.QueueUpdates(update) {
+			logrus.Errorf("Failed to push update to state %v", state.StateID)
+		}
 		return nil
 	}); err != nil {
-		panic("Unexpected, should not happen")
+		panic("unexpected, should not happen")
 	}
 }
 
@@ -222,13 +224,6 @@ func (user *user) forState(fn func(*state.State) error) error {
 	}
 
 	return nil
-}
-
-func (user *user) getStates() []*state.State {
-	user.statesLock.RLock()
-	defer user.statesLock.RUnlock()
-
-	return maps.Values(user.states)
 }
 
 func (user *user) closeStates() {

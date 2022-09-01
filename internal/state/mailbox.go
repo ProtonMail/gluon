@@ -7,7 +7,6 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -160,7 +159,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
-		return nil, errors.ErrNoSuchMailbox
+		return nil, ErrNoSuchMailbox
 	}
 
 	messages, err := m.snap.getMessagesInRange(ctx, seq)
@@ -203,7 +202,7 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 	})
 
 	if err != nil {
-		return nil, errors.ErrNoSuchMailbox
+		return nil, ErrNoSuchMailbox
 	}
 
 	messages, err := m.snap.getMessagesInRange(ctx, seq)

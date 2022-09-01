@@ -92,8 +92,6 @@ func getDatabasePath(dir, userID string) string {
 }
 
 func NewDB(dir, userID string) (*DB, error) {
-	dir = filepath.Join(dir, "db")
-
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}

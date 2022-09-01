@@ -9,7 +9,6 @@ import (
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
@@ -61,7 +60,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		return err
 	}
 
-	db, err := db.NewDB(b.dir, userID)
+	db, err := db.NewDB(filepath.Join(b.dir, "db"), userID)
 	if err != nil {
 		if err := store.Close(); err != nil {
 			logrus.WithError(err).Error("Failed to close storage")
@@ -86,7 +85,7 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string) error {
 
 	user, ok := b.users[userID]
 	if !ok {
-		return errors.ErrNoSuchUser
+		return ErrNoSuchUser
 	}
 
 	if err := user.close(ctx); err != nil {
@@ -129,7 +128,7 @@ func (b *Backend) ReleaseState(ctx context.Context, st *state.State) error {
 	user, ok := b.users[userID]
 
 	if !ok {
-		return errors.ErrNoSuchUser
+		return ErrNoSuchUser
 	}
 
 	return user.removeState(ctx, st)
@@ -159,5 +158,5 @@ func (b *Backend) getUserID(username, password string) (string, error) {
 		}
 	}
 
-	return "", errors.ErrNoSuchUser
+	return "", ErrNoSuchUser
 }

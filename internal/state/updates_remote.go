@@ -7,7 +7,6 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db/ent"
-	errors2 "github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/ids"
 )
 
@@ -47,7 +46,7 @@ func NewRemoteRemoveMessageFlagsStateUpdate(messageID imap.InternalMessageID, fl
 func (u *RemoteRemoveMessageFlagsStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
 	snapFlags, err := s.snap.getMessageFlags(u.MessageID)
 	if err != nil {
-		if errors.Is(err, errors2.ErrNoSuchMessage) {
+		if errors.Is(err, ErrNoSuchMessage) {
 			return nil
 		}
 

@@ -8,7 +8,6 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
-	errors2 "github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -241,7 +240,7 @@ func (user *user) applyMessageLabelsUpdated(ctx context.Context, update *imap.Me
 	}); err != nil {
 		return err
 	} else if !exists {
-		return errors2.ErrNoSuchMessage
+		return state.ErrNoSuchMessage
 	}
 
 	type Result struct {
@@ -289,7 +288,7 @@ func (user *user) applyMessageFlagsUpdated(ctx context.Context, update *imap.Mes
 	}); err != nil {
 		return err
 	} else if !exists {
-		return errors2.ErrNoSuchMessage
+		return state.ErrNoSuchMessage
 	}
 
 	internalMsgID, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (imap.InternalMessageID, error) {
@@ -370,24 +369,6 @@ func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.T
 	}
 
 	return nil
-}
-
-func (user *user) applyMessagesMovedFromMailbox(
-	ctx context.Context,
-	tx *ent.Tx,
-	mboxFromID, mboxToID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
-) (map[imap.InternalMessageID]int, error) {
-	messageUIDs, updates, err := state.MoveMessagesFromMailbox(ctx, tx, mboxFromID, mboxToID, messageIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, up := range updates {
-		user.queueStateUpdate(up)
-	}
-
-	return messageUIDs, nil
 }
 
 func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, seen, flagged bool) error {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	errors2 "github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
@@ -18,9 +17,9 @@ func (s *Session) handleCopy(ctx context.Context, tag string, cmd *proto.Copy, m
 	}
 
 	item, err := mailbox.Copy(ctx, cmd.GetSequenceSet(), nameUTF8)
-	if errors.Is(err, errors2.ErrNoSuchMessage) {
+	if errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err)
-	} else if errors.Is(err, errors2.ErrNoSuchMailbox) {
+	} else if errors.Is(err, state.ErrNoSuchMailbox) {
 		return response.No(tag).WithError(err).WithItems(response.ItemTryCreate())
 	} else if err != nil {
 		return err

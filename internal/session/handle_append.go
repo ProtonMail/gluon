@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	errors2 "github.com/ProtonMail/gluon/internal/errors"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
@@ -36,7 +35,7 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Appen
 		ch <- response.Ok(tag).WithItems(response.ItemAppendUID(mailbox.UIDValidity(), messageUID)).WithMessage("APPEND")
 
 		return nil
-	}); errors.Is(err, errors2.ErrNoSuchMailbox) {
+	}); errors.Is(err, state.ErrNoSuchMailbox) {
 		return response.No(tag).WithError(err).WithItems(response.ItemTryCreate())
 	} else if err != nil {
 		return err
