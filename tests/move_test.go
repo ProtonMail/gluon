@@ -82,6 +82,7 @@ func TestMoveBackAndForth(t *testing.T) {
 
 		// Move the messages to the destination.
 		c.C(`A003 move 1:* inbox`).OK(`A003`)
+		s.flush("user")
 
 		// There are now 100 messages in the destination, none in the origin.
 		c.Cf(`A004 status %v (messages)`, mbox).Sxe(`MESSAGES 0`).OK(`A004`)
@@ -90,6 +91,7 @@ func TestMoveBackAndForth(t *testing.T) {
 		// Move the messages back to the origin.
 		c.C(`A006 select inbox`).OK(`A006`)
 		c.Cf(`A007 uid move 1:* %v`, mbox).OK(`A007`)
+		s.flush("user")
 
 		// There are 100 messages in the origin and no messages in the destination.
 		c.Cf(`A008 status %v (messages)`, mbox).Sxe(`MESSAGES 100`).OK(`A008`)
