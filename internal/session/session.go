@@ -19,6 +19,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/liner"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
@@ -35,7 +36,7 @@ type Session struct {
 	backend *backend.Backend
 
 	// state manages state of the authorized backend for this session.
-	state *backend.State
+	state *state.State
 
 	// userLock protects the session's user object.
 	userLock sync.Mutex
@@ -221,7 +222,7 @@ func (s *Session) done(ctx context.Context) {
 	close(s.eventCh)
 
 	if s.state != nil {
-		if err := s.state.Close(ctx); err != nil {
+		if err := s.state.ReleaseState(ctx); err != nil {
 			logrus.WithError(err).Error("Failed to close state")
 		}
 	}

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/emersion/go-imap/utf7"
 )
 
@@ -22,7 +22,7 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Appen
 		return response.Bad(tag).WithError(err)
 	}
 
-	if err := s.state.Mailbox(ctx, nameUTF8, func(mailbox *backend.Mailbox) error {
+	if err := s.state.Mailbox(ctx, nameUTF8, func(mailbox *state.Mailbox) error {
 		messageUID, err := mailbox.Append(ctx, cmd.GetMessage(), flags, toTime(cmd.GetDateTime()))
 		if err != nil {
 			return err
@@ -35,7 +35,7 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Appen
 		ch <- response.Ok(tag).WithItems(response.ItemAppendUID(mailbox.UIDValidity(), messageUID)).WithMessage("APPEND")
 
 		return nil
-	}); errors.Is(err, backend.ErrNoSuchMailbox) {
+	}); errors.Is(err, state.ErrNoSuchMailbox) {
 		return response.No(tag).WithError(err).WithItems(response.ItemTryCreate())
 	} else if err != nil {
 		return err

@@ -38,5 +38,7 @@ func (s *Session) handleLogin(ctx context.Context, tag string, cmd *proto.Login,
 
 	// We set the IMAP id extension value after login, since it's possible that the client may have sent it before. This
 	// ensures that the ID is correctly set for the connection.
-	return state.SetConnMetadataKeyValue(imap.IMAPIDConnMetadataKey, s.imapID)
+	state.SetConnMetadataKeyValue(imap.IMAPIDConnMetadataKey, s.imapID)
+
+	return nil
 }

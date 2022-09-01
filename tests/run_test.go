@@ -63,7 +63,7 @@ func runManyToOneTestWithAuth(tb testing.TB, options *serverOptions,
 	})
 }
 
-// runManyToOneTestWithData runs a test with one account and multiple connections. A mailbox is created with test data.
+// runManyToOneTestWithData runs a test with one account and multiple connections. Apply mailbox is created with test data.
 func runManyToOneTestWithData(tb testing.TB, options *serverOptions,
 	connIDs []int, tests func(map[int]*testConnection, *testSession, string, imap.LabelID),
 ) {
@@ -113,7 +113,7 @@ func runOneToOneTestClientWithAuth(tb testing.TB, options *serverOptions, test f
 	})
 }
 
-// runOneToOneTestClientWithData runs a test with one account and one connection using an imap client. A mailbox is created with test data.
+// runOneToOneTestClientWithData runs a test with one account and one connection using an imap client. Apply mailbox is created with test data.
 func runOneToOneTestClientWithData(tb testing.TB, options *serverOptions, test func(*client.Client, *testSession, string, imap.LabelID)) {
 	runOneToOneTestClientWithAuth(tb, options, func(client *client.Client, s *testSession) {
 		withData(s, options.defaultUsername(), func(mbox string, mboxID imap.LabelID) {

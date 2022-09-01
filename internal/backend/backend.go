@@ -3,11 +3,13 @@ package backend
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/ProtonMail/gluon/connector"
-	"github.com/ProtonMail/gluon/internal/remote"
+	"github.com/ProtonMail/gluon/internal/db"
+	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -16,9 +18,6 @@ import (
 type Backend struct {
 	// dir is the directory in which backend files should be stored.
 	dir string
-
-	// remote manages operations to be performed on the API.
-	remote *remote.Manager
 
 	// delim is the server's path delim.
 	delim string
@@ -32,14 +31,12 @@ type Backend struct {
 }
 
 func New(dir string, storeBuilder store.Builder, delim string) (*Backend, error) {
-	manager, err := remote.New(filepath.Join(dir, "remote"))
-	if err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "remote"), 0o700); err != nil {
 		return nil, err
 	}
 
 	return &Backend{
 		dir:          dir,
-		remote:       manager,
 		storeBuilder: storeBuilder,
 		delim:        delim,
 		users:        make(map[string]*user),
@@ -63,7 +60,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		return err
 	}
 
-	db, err := b.newDB(userID)
+	db, err := db.NewDB(filepath.Join(b.dir, "db"), userID)
 	if err != nil {
 		if err := store.Close(); err != nil {
 			logrus.WithError(err).Error("Failed to close storage")
@@ -72,12 +69,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		return err
 	}
 
-	remote, err := b.remote.AddUser(ctx, userID, conn)
-	if err != nil {
-		return err
-	}
-
-	user, err := newUser(ctx, userID, db, remote, store, b.delim)
+	user, err := newUser(ctx, userID, db, conn, store, b.delim)
 	if err != nil {
 		return err
 	}
@@ -100,25 +92,22 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string) error {
 		return fmt.Errorf("failed to close backend user: %w", err)
 	}
 
-	if err := b.remote.RemoveUser(ctx, userID); err != nil {
-		return fmt.Errorf("failed to remove remote user: %w", err)
-	}
-
 	delete(b.users, userID)
 
 	return nil
 }
 
-func (b *Backend) GetState(username, password string, sessionID int) (*State, error) {
+func (b *Backend) GetState(username, password string, sessionID int) (*state.State, error) {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
-	userID, err := b.remote.GetUserID(username, password)
+	userID, err := b.getUserID(username, password)
 	if err != nil {
 		return nil, err
 	}
 
-	state, err := b.users[userID].newState(remote.ConnMetadataID(sessionID))
+	state, err := b.users[userID].newState()
+
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +120,20 @@ func (b *Backend) GetState(username, password string, sessionID int) (*State, er
 	return state, nil
 }
 
+func (b *Backend) ReleaseState(ctx context.Context, st *state.State) error {
+	b.usersLock.Lock()
+	defer b.usersLock.Unlock()
+
+	userID := st.UserID()
+	user, ok := b.users[userID]
+
+	if !ok {
+		return ErrNoSuchUser
+	}
+
+	return user.removeState(ctx, st)
+}
+
 func (b *Backend) Close(ctx context.Context) error {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
@@ -140,14 +143,20 @@ func (b *Backend) Close(ctx context.Context) error {
 			return fmt.Errorf("failed to close backend user (%v): %w", userID, err)
 		}
 
-		if err := b.remote.RemoveUser(ctx, userID); err != nil {
-			return err
-		}
-
 		delete(b.users, userID)
 	}
 
 	logrus.Debug("Backend was closed")
 
 	return nil
+}
+
+func (b *Backend) getUserID(username, password string) (string, error) {
+	for _, user := range b.users {
+		if user.connector.Authorize(username, password) {
+			return user.userID, nil
+		}
+	}
+
+	return "", ErrNoSuchUser
 }

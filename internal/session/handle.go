@@ -5,9 +5,9 @@ import (
 	"runtime/pprof"
 	"strconv"
 
-	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
 )
 
@@ -24,7 +24,7 @@ func (s *Session) handleOther(
 		pprof.Do(ctx, labels, func(_ context.Context) {
 			defer close(ch)
 
-			ctx := backend.NewStateContext(ctx, s.state)
+			ctx := state.NewStateContext(ctx, s.state)
 
 			if err := s.handleCommand(ctx, tag, cmd, ch, profiler); err != nil {
 				if res, ok := response.FromError(err); ok {
@@ -249,7 +249,7 @@ func (s *Session) handleSelectedCommand(
 	}
 
 	// TODO(REFACTOR): Should we flush both before and after?
-	return s.state.Selected(ctx, func(mailbox *backend.Mailbox) error {
+	return s.state.Selected(ctx, func(mailbox *state.Mailbox) error {
 		if err := flush(ctx, mailbox, false, ch); err != nil {
 			return err
 		}
@@ -266,7 +266,7 @@ func (s *Session) handleWithMailbox(
 	ctx context.Context,
 	tag string,
 	cmd *proto.Command,
-	mailbox *backend.Mailbox,
+	mailbox *state.Mailbox,
 	ch chan response.Response,
 	profiler profiling.CmdProfiler,
 ) error {

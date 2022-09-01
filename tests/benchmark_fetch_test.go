@@ -57,8 +57,8 @@ func BenchmarkFetchSingleCache(b *testing.B) {
 					s.messageCreatedFromFile("user", benchID, `testdata/multipart-mixed.eml`)
 				}
 
-				c.C(`A SELECT BENCH`)
-				c.Se(`A OK [READ-WRITE] (^_^)`)
+				c.C(`Apply SELECT BENCH`)
+				c.Se(`Apply OK [READ-WRITE] (^_^)`)
 
 				c.doBench(b, `FETCH * (RFC822)`)
 				c.doBench(b, `FETCH 1:* (RFC822)`)

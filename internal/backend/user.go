@@ -6,23 +6,29 @@ import (
 	"runtime/pprof"
 	"sync"
 
+	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/backend/ent"
-	"github.com/ProtonMail/gluon/internal/remote"
+	"github.com/ProtonMail/gluon/internal/contexts"
+	"github.com/ProtonMail/gluon/internal/db"
+	"github.com/ProtonMail/gluon/internal/db/ent"
+	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/store"
+	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/maps"
 )
 
 type user struct {
 	userID string
 
-	remote    *remote.User
-	store     store.Store
-	delimiter string
+	updateInjector *updateInjector
+	connector      connector.Connector
+	store          store.Store
+	delimiter      string
 
-	db *DB
+	db *db.DB
 
-	states      map[int]*State
+	states      map[int]*state.State
 	statesLock  sync.RWMutex
 	nextStateID int
 
@@ -33,19 +39,20 @@ type user struct {
 	statesWG sync.WaitGroup
 }
 
-func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, store store.Store, delimiter string) (*user, error) {
+func newUser(ctx context.Context, userID string, db *db.DB, conn connector.Connector, store store.Store, delimiter string) (*user, error) {
 	if err := db.Init(ctx); err != nil {
 		return nil, err
 	}
 
 	user := &user{
-		userID:       userID,
-		remote:       remote,
-		store:        store,
-		delimiter:    delimiter,
-		db:           db,
-		states:       make(map[int]*State),
-		updateQuitCh: make(chan struct{}),
+		userID:         userID,
+		connector:      conn,
+		updateInjector: newUpdateInjector(ctx, conn, userID),
+		store:          store,
+		delimiter:      delimiter,
+		db:             db,
+		states:         make(map[int]*state.State),
+		updateQuitCh:   make(chan struct{}),
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
@@ -58,8 +65,8 @@ func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, st
 		defer user.updateWG.Done()
 		labels := pprof.Labels("go", "Connector Updates", "UserID", user.userID)
 		pprof.Do(ctx, labels, func(_ context.Context) {
-			ctx := NewRemoteUpdateCtx(context.Background())
-			updateCh := remote.GetUpdates()
+			ctx := contexts.NewRemoteUpdateCtx(context.Background())
+			updateCh := user.updateInjector.GetUpdates()
 			for {
 				select {
 				case update := <-updateCh:
@@ -78,16 +85,24 @@ func newUser(ctx context.Context, userID string, db *DB, remote *remote.User, st
 
 // close closes the backend user.
 func (user *user) close(ctx context.Context) error {
+	close(user.updateQuitCh)
+
+	// Wait until the connector update go routine has finished.
+	user.updateWG.Wait()
+
+	if err := user.updateInjector.Close(ctx); err != nil {
+		return err
+	}
+
+	if err := user.connector.Close(ctx); err != nil {
+		return err
+	}
+
 	user.closeStates()
 
 	// Ensure we wait until all states have been removed/closed by any active sessions otherwise we run  into issues
 	// since we close the database in this function.
 	user.statesWG.Wait()
-
-	close(user.updateQuitCh)
-
-	// Wait until the connector update go routine has finished.
-	user.updateWG.Wait()
 
 	if err := user.store.Close(); err != nil {
 		return fmt.Errorf("failed to close user client storage: %w", err)
@@ -102,12 +117,12 @@ func (user *user) close(ctx context.Context) error {
 
 func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		ids, err := DBGetMessageIDsMarkedDeleted(ctx, tx.Client())
+		ids, err := db.GetMessageIDsMarkedDeleted(ctx, tx.Client())
 		if err != nil {
 			return err
 		}
 
-		if err := DBDeleteMessages(ctx, tx, ids...); err != nil {
+		if err := db.DeleteMessages(ctx, tx, ids...); err != nil {
 			return err
 		}
 
@@ -115,93 +130,107 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 	})
 }
 
-func (user *user) queueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update stateUpdate) error {
-	// If we detect a state id in the context, it means this function call is a result of a User interaction.
-	// When that happens the update needs to be applied to the state matching the state ID immediately. If no such
-	// stateID exists or the context information is not present, all updates are queued for later execution.
-	stateID, ok := getStateIDFromContext(ctx)
-	if !ok {
-		return user.forState(func(state *State) error {
-			state.queueUpdates(update)
-			return nil
-		})
-	} else {
-		return user.forState(func(state *State) error {
-			if state.stateID != stateID {
-				state.queueUpdates(update)
-
-				return nil
-			} else {
-				if !update.filter(state) {
-					return nil
-				}
-
-				return update.apply(ctx, tx, state)
-			}
-		})
+func (user *user) queueStateUpdate(update state.Update) {
+	if err := user.forState(func(state *state.State) error {
+		if !state.QueueUpdates(update) {
+			logrus.Errorf("Failed to push update to state %v", state.StateID)
+		}
+		return nil
+	}); err != nil {
+		panic("unexpected, should not happen")
 	}
 }
 
-// stateUserAccessor should be used to interface with the user type from a State type. This is meant to control
-// the API boundary layer.
-type stateUserAccessor struct {
-	u *user
+func (user *user) newState() (*state.State, error) {
+	user.statesLock.Lock()
+	defer user.statesLock.Unlock()
+
+	user.nextStateID++
+
+	newState := state.NewState(
+		user.nextStateID,
+		newStateUserInterfaceImpl(user, newStateConnectorImpl(user)),
+		user.delimiter,
+	)
+
+	user.states[user.nextStateID] = newState
+
+	user.statesWG.Add(1)
+
+	return newState, nil
 }
 
-func newStateUserAccessor(u *user) stateUserAccessor {
-	return stateUserAccessor{u: u}
+func (user *user) removeState(ctx context.Context, st *state.State) error {
+	messageIDs, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) ([]imap.InternalMessageID, error) {
+		return db.GetMessageIDsMarkedDeleted(ctx, client)
+	})
+	if err != nil {
+		return err
+	}
+
+	// We need to reduce the scope of this lock as it can deadlock when there's an IMAP update running
+	// at the same time as we remove a state. When the IMAP update propagates the info the order of the locks
+	// is inverse to the order we have here.
+	fn := func() (*state.State, error) {
+		user.statesLock.Lock()
+		defer user.statesLock.Unlock()
+
+		st, ok := user.states[st.StateID]
+		if !ok {
+			return nil, fmt.Errorf("no such state")
+		}
+
+		messageIDs = xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
+			return xslices.CountFunc(maps.Values(user.states), func(other *state.State) bool {
+				return st != other && other.HasMessage(messageID)
+			}) == 0
+		})
+
+		delete(user.states, st.StateID)
+
+		return st, nil
+	}
+
+	state, err := fn()
+	if err != nil {
+		return err
+	}
+
+	// After this point we need to notify the WaitGroup or we risk deadlocks.
+	defer user.statesWG.Done()
+
+	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return db.DeleteMessages(ctx, tx, messageIDs...)
+	}); err != nil {
+		return err
+	}
+
+	if err := user.store.Delete(messageIDs...); err != nil {
+		return err
+	}
+
+	return state.Close(ctx)
 }
 
-func (s *stateUserAccessor) getUserID() string {
-	return s.u.userID
+// forState iterates through all states.
+func (user *user) forState(fn func(*state.State) error) error {
+	user.statesLock.RLock()
+	defer user.statesLock.RUnlock()
+
+	for _, state := range user.states {
+		if err := fn(state); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (s *stateUserAccessor) getDelimiter() string {
-	return s.u.delimiter
-}
+func (user *user) closeStates() {
+	user.statesLock.RLock()
+	defer user.statesLock.RUnlock()
 
-func (s *stateUserAccessor) getDB() *DB {
-	return s.u.db
-}
-
-func (s *stateUserAccessor) removeState(ctx context.Context, stateID int) error {
-	return s.u.removeState(ctx, stateID)
-}
-
-func (s *stateUserAccessor) getRemote() *remote.User {
-	return s.u.remote
-}
-
-func (s *stateUserAccessor) getStore() store.Store {
-	return s.u.store
-}
-
-func (s *stateUserAccessor) applyMessagesAddedToMailbox(
-	ctx context.Context,
-	tx *ent.Tx,
-	mboxID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
-) (map[imap.InternalMessageID]int, error) {
-	return s.u.applyMessagesAddedToMailbox(ctx, tx, mboxID, messageIDs)
-}
-
-func (s *stateUserAccessor) applyMessagesRemovedFromMailbox(ctx context.Context,
-	tx *ent.Tx,
-	mboxID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
-) error {
-	return s.u.applyMessagesRemovedFromMailbox(ctx, tx, mboxID, messageIDs)
-}
-
-func (s *stateUserAccessor) applyMessagesMovedFromMailbox(
-	ctx context.Context,
-	tx *ent.Tx,
-	mboxFromID, mboxToID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
-) (map[imap.InternalMessageID]int, error) {
-	return s.u.applyMessagesMovedFromMailbox(ctx, tx, mboxFromID, mboxToID, messageIDs)
-}
-
-func (s *stateUserAccessor) queueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update stateUpdate) error {
-	return s.u.queueOrApplyStateUpdate(ctx, tx, update)
+	for _, state := range user.states {
+		state.SignalClose()
+	}
 }

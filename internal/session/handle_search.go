@@ -3,14 +3,14 @@ package session
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/state"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/ianaindex"
 )
 
-func (s *Session) handleSearch(ctx context.Context, tag string, cmd *proto.Search, mailbox *backend.Mailbox, ch chan response.Response) error {
+func (s *Session) handleSearch(ctx context.Context, tag string, cmd *proto.Search, mailbox *state.Mailbox, ch chan response.Response) error {
 	var decoder *encoding.Decoder
 
 	switch charset := cmd.GetOptionalCharset().(type) {
