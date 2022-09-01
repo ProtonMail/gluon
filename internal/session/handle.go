@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"fmt"
 	"runtime/pprof"
 	"strconv"
 
@@ -87,7 +88,7 @@ func (s *Session) handleCommand(
 		return s.handleSelectedCommand(ctx, tag, cmd, ch, profiler)
 
 	default:
-		panic("bad command")
+		return fmt.Errorf("bad command")
 	}
 }
 
@@ -121,7 +122,7 @@ func (s *Session) handleAnyCommand(
 		return s.handleIDGet(ctx, tag, ch)
 
 	default:
-		panic("bad command")
+		return fmt.Errorf("bad command")
 	}
 }
 
@@ -144,7 +145,7 @@ func (s *Session) handleNotAuthenticatedCommand(
 		return s.handleLogin(ctx, tag, cmd.GetLogin(), ch)
 
 	default:
-		panic("bad command")
+		return fmt.Errorf("bad command")
 	}
 }
 
@@ -230,7 +231,7 @@ func (s *Session) handleAuthenticatedCommand(
 		return s.handleAppend(ctx, tag, cmd.GetAppend(), ch)
 
 	default:
-		panic("bad command")
+		return fmt.Errorf("bad command")
 	}
 }
 
@@ -336,6 +337,6 @@ func (s *Session) handleWithMailbox(
 		return s.handleMove(ctx, tag, cmd.GetMove(), mailbox, ch)
 
 	default:
-		panic("bad command")
+		return fmt.Errorf("bad command")
 	}
 }
