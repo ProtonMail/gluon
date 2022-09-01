@@ -2,12 +2,14 @@ package state
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/bradenaw/juniper/xslices"
 )
 
 type responderStateUpdate struct {
@@ -17,6 +19,15 @@ type responderStateUpdate struct {
 
 func (r responderStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
 	return s.PushResponder(ctx, tx, r.responders...)
+}
+
+func (r *responderStateUpdate) String() string {
+	return fmt.Sprintf("ResponderStateUpdate: %v Responders=%v",
+		r.SnapFilter,
+		xslices.Map(r.responders, func(rsp Responder) string {
+			return rsp.String()
+		}),
+	)
 }
 
 func NewMailboxIDResponderStateUpdate(id imap.InternalMailboxID, responders ...Responder) Update {
@@ -37,6 +48,8 @@ type Responder interface {
 
 	// getMessageID returns the message ID that this Responder targets.
 	getMessageID() imap.InternalMessageID
+
+	String() string
 }
 
 type exists struct {
@@ -86,6 +99,10 @@ func (u *exists) getMessageID() imap.InternalMessageID {
 	return u.messageID
 }
 
+func (u *exists) String() string {
+	return fmt.Sprintf("Exists: message=%v", u.messageID.ShortID())
+}
+
 type expunge struct {
 	messageID imap.InternalMessageID
 	asClose   bool
@@ -122,6 +139,13 @@ func (u *expunge) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]res
 
 func (u *expunge) getMessageID() imap.InternalMessageID {
 	return u.messageID
+}
+
+func (u *expunge) String() string {
+	return fmt.Sprintf("Expung: message = %v closed = %v",
+		u.messageID.ShortID(),
+		u.asClose,
+	)
 }
 
 type fetch struct {
@@ -195,4 +219,13 @@ func (u *fetch) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]respo
 
 func (u *fetch) getMessageID() imap.InternalMessageID {
 	return u.messageID
+}
+
+func (u *fetch) String() string {
+	return fmt.Sprintf("Fetch: message = %v flags = %v uid = %v silent = %v",
+		u.messageID.ShortID(),
+		u.flags,
+		u.asUID,
+		u.asSilent,
+	)
 }
