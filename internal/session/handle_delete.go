@@ -7,6 +7,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/emersion/go-imap/utf7"
 )
 
@@ -21,6 +22,11 @@ func (s *Session) handleDelete(ctx context.Context, tag string, cmd *proto.Del, 
 	}
 
 	if err := s.state.Delete(ctx, nameUTF8); err != nil {
+		reporter.MessageWithContext(ctx,
+			"Failed to delete mailbox",
+			reporter.Context{"error": err},
+		)
+
 		return err
 	}
 

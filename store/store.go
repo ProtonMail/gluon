@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+
 	"github.com/ProtonMail/gluon/imap"
 )
 

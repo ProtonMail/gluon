@@ -3,13 +3,14 @@ package db
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/store"
 	"os"
 	"path/filepath"
 	"sync"
 
 	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon/internal/db/ent"
+	"github.com/ProtonMail/gluon/reporter"
+	"github.com/ProtonMail/gluon/store"
 )
 
 type DB struct {
@@ -82,6 +83,11 @@ func WriteResult[T any](ctx context.Context, db *DB, fn func(context.Context, *e
 	}
 
 	if err := tx.Commit(); err != nil {
+		reporter.MessageWithContext(ctx,
+			"Failed to commit database transaction",
+			reporter.Context{"error": err},
+		)
+
 		return failResult, fmt.Errorf("committing transaction: %w", err)
 	}
 
@@ -109,7 +115,16 @@ func NewDB(dir, userID string) (*DB, error) {
 func WriteAndStore(ctx context.Context, db *DB, st store.Store, fn func(context.Context, *ent.Tx, store.Transaction) error) error {
 	return db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return store.Tx(st, func(transaction store.Transaction) error {
-			return fn(ctx, tx, transaction)
+			storeTxErr := fn(ctx, tx, transaction)
+
+			if storeTxErr != nil {
+				reporter.MessageWithContext(ctx,
+					"Failed to commit storage transaction",
+					reporter.Context{"error": storeTxErr},
+				)
+			}
+
+			return storeTxErr
 		})
 	})
 }
@@ -119,8 +134,17 @@ func WriteAndStore(ctx context.Context, db *DB, st store.Store, fn func(context.
 // changes in the storage db, we can always recover from these more easily.
 func WriteAndStoreResult[T any](ctx context.Context, db *DB, st store.Store, fn func(context.Context, *ent.Tx, store.Transaction) (T, error)) (T, error) {
 	return WriteResult(ctx, db, func(ctx context.Context, tx *ent.Tx) (T, error) {
-		return store.TxResult(st, func(transaction store.Transaction) (T, error) {
+		val, storeTxErr := store.TxResult(st, func(transaction store.Transaction) (T, error) {
 			return fn(ctx, tx, transaction)
 		})
+
+		if storeTxErr != nil {
+			reporter.MessageWithContext(ctx,
+				"Failed to commit storage transaction",
+				reporter.Context{"error": storeTxErr},
+			)
+		}
+
+		return val, storeTxErr
 	})
 }

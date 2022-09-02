@@ -8,6 +8,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/emersion/go-imap/utf7"
 )
 
@@ -25,6 +26,11 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Appen
 	if err := s.state.Mailbox(ctx, nameUTF8, func(mailbox *state.Mailbox) error {
 		messageUID, err := mailbox.Append(ctx, cmd.GetMessage(), flags, toTime(cmd.GetDateTime()))
 		if err != nil {
+			reporter.MessageWithContext(ctx,
+				"Failed to append message to mailbox from state",
+				reporter.Context{"error": err},
+			)
+
 			return err
 		}
 

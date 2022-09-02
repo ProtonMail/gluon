@@ -10,6 +10,7 @@ import (
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -89,6 +90,11 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string) error {
 	}
 
 	if err := user.close(ctx); err != nil {
+		reporter.MessageWithContext(ctx,
+			"Failed to close user from Backend.RemoveUser()",
+			reporter.Context{"error": err},
+		)
+
 		return fmt.Errorf("failed to close backend user: %w", err)
 	}
 
@@ -139,6 +145,11 @@ func (b *Backend) Close(ctx context.Context) error {
 
 	for userID, user := range b.users {
 		if err := user.close(ctx); err != nil {
+			reporter.MessageWithContext(ctx,
+				"Failed to close user from Backend.Close()",
+				reporter.Context{"error": err},
+			)
+
 			return fmt.Errorf("failed to close backend user (%v): %w", userID, err)
 		}
 

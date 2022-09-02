@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"github.com/ProtonMail/gluon/store"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -12,6 +11,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/rfc822"
+	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"

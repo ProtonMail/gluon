@@ -7,6 +7,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/emersion/go-imap/utf7"
 )
 
@@ -21,6 +22,11 @@ func (s *Session) handleCreate(ctx context.Context, tag string, cmd *proto.Creat
 	}
 
 	if err := s.state.Create(ctx, nameUTF8); err != nil {
+		reporter.MessageWithContext(ctx,
+			"Failed to create mailbox",
+			reporter.Context{"error": err},
+		)
+
 		return err
 	}
 

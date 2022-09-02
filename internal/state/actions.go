@@ -3,7 +3,6 @@ package state
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/store"
 	"strings"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/rfc822"
+	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
