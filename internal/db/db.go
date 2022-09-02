@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/store"
 	"os"
 	"path/filepath"
 	"sync"
@@ -102,4 +103,24 @@ func NewDB(dir, userID string) (*DB, error) {
 	}
 
 	return &DB{db: client}, nil
+}
+
+// WriteAndStore is the same as WriteStoreAndResult.
+func WriteAndStore(ctx context.Context, db *DB, st store.Store, fn func(context.Context, *ent.Tx, store.Transaction) error) error {
+	return db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return store.Tx(st, func(transaction store.Transaction) error {
+			return fn(ctx, tx, transaction)
+		})
+	})
+}
+
+// WriteAndStoreResult wraps the two transactions from the SQL and storage databases. The store transaction is wrapped by
+// the sql transaction. It is more important to guarantee that the SQL db is consistent, and we accept some unnecessary
+// changes in the storage db, we can always recover from these more easily.
+func WriteAndStoreResult[T any](ctx context.Context, db *DB, st store.Store, fn func(context.Context, *ent.Tx, store.Transaction) (T, error)) (T, error) {
+	return WriteResult(ctx, db, func(ctx context.Context, tx *ent.Tx) (T, error) {
+		return store.TxResult(st, func(transaction store.Transaction) (T, error) {
+			return fn(ctx, tx, transaction)
+		})
+	})
 }

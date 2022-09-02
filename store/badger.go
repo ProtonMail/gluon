@@ -16,6 +16,10 @@ type BadgerStore struct {
 	wg       sync.WaitGroup
 }
 
+type badgerTransaction struct {
+	tx *badger.Txn
+}
+
 func NewBadgerStore(path string, userID string, encryptionPassphrase []byte) (*BadgerStore, error) {
 	db, err := badger.Open(badger.DefaultOptions(filepath.Join(path, userID)).
 		WithLogger(logrus.StandardLogger()).
@@ -98,22 +102,32 @@ func (b *BadgerStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 	return data, nil
 }
 
-func (b *BadgerStore) Set(messageID imap.InternalMessageID, literal []byte) error {
-	return b.db.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(messageID), literal)
-	})
+func (b *BadgerStore) NewTransaction() Transaction {
+	return &badgerTransaction{tx: b.db.NewTransaction(true)}
 }
 
-func (b *BadgerStore) Delete(messageID ...imap.InternalMessageID) error {
-	return b.db.Update(func(txn *badger.Txn) error {
-		for _, v := range messageID {
-			if err := txn.Delete([]byte(v)); err != nil {
-				return err
-			}
-		}
+func (b *badgerTransaction) Set(messageID imap.InternalMessageID, literal []byte) error {
+	return b.tx.Set([]byte(messageID), literal)
+}
 
-		return nil
-	})
+func (b *badgerTransaction) Delete(messageID ...imap.InternalMessageID) error {
+	for _, v := range messageID {
+		if err := b.tx.Delete([]byte(v)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (b *badgerTransaction) Commit() error {
+	return b.tx.Commit()
+}
+
+func (b *badgerTransaction) Rollback() error {
+	b.tx.Discard()
+
+	return nil
 }
 
 func (b *BadgerStore) Close() error {
@@ -125,6 +139,6 @@ func (b *BadgerStore) Close() error {
 
 type BadgerStoreBuilder struct{}
 
-func (*BadgerStoreBuilder) New(directory, userID, encryptionPassphrase string) (Store, error) {
-	return NewBadgerStore(directory, userID, []byte(encryptionPassphrase))
+func (*BadgerStoreBuilder) New(directory, userID string, encryptionPassphrase []byte) (Store, error) {
+	return NewBadgerStore(directory, userID, encryptionPassphrase)
 }

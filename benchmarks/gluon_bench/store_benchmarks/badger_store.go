@@ -16,5 +16,5 @@ func (*BadgerStoreBuilder) New(path string) (store.Store, error) {
 }
 
 func init() {
-	RegisterStoreBuilder("badger", &BadgerStoreBuilder{})
+	RegisterStoreBuilder("default", &BadgerStoreBuilder{})
 }

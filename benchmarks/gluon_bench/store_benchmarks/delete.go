@@ -38,7 +38,9 @@ func (d *Delete) Run(ctx context.Context, st store.Store) (*reporter.BenchmarkRu
 	return RunStoreWorkersSplitRange(ctx, st, uint(len(d.uuids)), func(ctx context.Context, s store.Store, dc *timing.Collector, start, end uint) error {
 		for i := start; i < end; i++ {
 			dc.Start()
-			err := s.Delete(d.uuids[i])
+			err := store.Tx(st, func(transaction store.Transaction) error {
+				return transaction.Delete(d.uuids[i])
+			})
 			dc.Stop()
 
 			if err != nil {

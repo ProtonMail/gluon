@@ -116,7 +116,7 @@ func (user *user) close(ctx context.Context) error {
 }
 
 func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	return db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, stx store.Transaction) error {
 		ids, err := db.GetMessageIDsMarkedDeleted(ctx, tx.Client())
 		if err != nil {
 			return err
@@ -126,7 +126,7 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 			return err
 		}
 
-		return user.store.Delete(ids...)
+		return stx.Delete(ids...)
 	})
 }
 
@@ -199,13 +199,17 @@ func (user *user) removeState(ctx context.Context, st *state.State) error {
 	// After this point we need to notify the WaitGroup or we risk deadlocks.
 	defer user.statesWG.Done()
 
-	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return db.DeleteMessages(ctx, tx, messageIDs...)
-	}); err != nil {
-		return err
-	}
+	if err := db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, stx store.Transaction) error {
+		if err := db.DeleteMessages(ctx, tx, messageIDs...); err != nil {
+			return err
+		}
 
-	if err := user.store.Delete(messageIDs...); err != nil {
+		if err := stx.Delete(messageIDs...); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
 		return err
 	}
 

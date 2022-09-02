@@ -32,7 +32,9 @@ func (*Create) Run(ctx context.Context, st store.Store) (*reporter.BenchmarkRun,
 
 		for i := uint(0); i < *flags.StoreItemCount; i++ {
 			dc.Start()
-			err := s.Set(imap.InternalMessageID(uuid.NewString()), data)
+			err := store.Tx(st, func(transaction store.Transaction) error {
+				return transaction.Set(imap.InternalMessageID(uuid.NewString()), data)
+			})
 			dc.Stop()
 
 			if err != nil {
