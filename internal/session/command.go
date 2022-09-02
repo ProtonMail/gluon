@@ -35,7 +35,6 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 					} else {
 						continue
 					}
-
 				}
 
 				select {

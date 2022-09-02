@@ -36,7 +36,7 @@ func getMatches(
 		case <-ctx.Done():
 			return nil, ctx.Err()
 
-		default: //fallthrough
+		default: // fallthrough
 		}
 
 		if name, ok := match(ref, pattern, delimiter, mailbox.Name); ok {

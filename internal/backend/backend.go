@@ -107,7 +107,6 @@ func (b *Backend) GetState(username, password string, sessionID int) (*state.Sta
 	}
 
 	state, err := b.users[userID].newState()
-
 	if err != nil {
 		return nil, err
 	}

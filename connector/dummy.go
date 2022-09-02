@@ -14,6 +14,9 @@ import (
 )
 
 var (
+	ErrNoSuchLabel   = errors.New("no such label")
+	ErrNoSuchMessage = errors.New("no such message")
+
 	ErrInvalidPrefix   = errors.New("invalid prefix")
 	ErrRenameForbidden = errors.New("rename operation is not allowed")
 	ErrDeleteForbidden = errors.New("delete operation is not allowed")
@@ -91,50 +94,8 @@ func (conn *Dummy) GetUpdates() <-chan imap.Update {
 	return conn.updateCh
 }
 
-func (conn *Dummy) ValidateCreate(name []string) (imap.FlagSet, imap.FlagSet, imap.FlagSet, error) {
-	if _, err := conn.validateName(name); err != nil {
-		return nil, nil, nil, err
-	}
-
-	return conn.flags, conn.permFlags, conn.attrs, nil
-}
-
-func (conn *Dummy) ValidateUpdate(oldName, newName []string) error {
-	oldEx, err := conn.validateName(oldName)
-	if err != nil {
-		return err
-	}
-
-	newEx, err := conn.validateName(newName)
-	if err != nil {
-		return err
-	}
-
-	if oldEx != newEx {
-		return ErrRenameForbidden
-	}
-
-	return nil
-}
-
-func (conn *Dummy) ValidateDelete(name []string) error {
-	if len(name) > 1 {
-		return nil
-	}
-
-	if len(conn.pfxFolder) > 0 && name[0] == conn.pfxFolder {
-		return ErrDeleteForbidden
-	}
-
-	if len(conn.pfxLabel) > 0 && name[0] == conn.pfxLabel {
-		return ErrDeleteForbidden
-	}
-
-	return nil
-}
-
 func (conn *Dummy) GetLabel(ctx context.Context, labelID imap.LabelID) (imap.Mailbox, error) {
-	return conn.state.getLabel(labelID), nil
+	return conn.state.getLabel(labelID)
 }
 
 func (conn *Dummy) CreateLabel(ctx context.Context, name []string) (imap.Mailbox, error) {
@@ -150,10 +111,19 @@ func (conn *Dummy) CreateLabel(ctx context.Context, name []string) (imap.Mailbox
 	return mbox, nil
 }
 
-func (conn *Dummy) UpdateLabel(ctx context.Context, labelID imap.LabelID, name []string) error {
-	conn.state.updateLabel(labelID, name)
+func (conn *Dummy) UpdateLabel(ctx context.Context, labelID imap.LabelID, newName []string) error {
+	label, err := conn.state.getLabel(labelID)
+	if err != nil {
+		return err
+	}
 
-	conn.pushUpdate(imap.NewMailboxUpdated(labelID, name))
+	if err := conn.validateUpdate(label.Name, newName); err != nil {
+		return err
+	}
+
+	conn.state.updateLabel(labelID, newName)
+
+	conn.pushUpdate(imap.NewMailboxUpdated(labelID, newName))
 
 	return nil
 }
@@ -167,7 +137,12 @@ func (conn *Dummy) DeleteLabel(ctx context.Context, labelID imap.LabelID) error 
 }
 
 func (conn *Dummy) GetMessage(ctx context.Context, messageID imap.MessageID) (imap.Message, []imap.LabelID, error) {
-	return conn.state.getMessage(messageID), conn.state.getLabelIDs(messageID), nil
+	message, err := conn.state.getMessage(messageID)
+	if err != nil {
+		return imap.Message{}, nil, err
+	}
+
+	return message, conn.state.getLabelIDs(messageID), nil
 }
 
 func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, error) {
@@ -302,36 +277,6 @@ func (conn *Dummy) ClearUpdates() {
 	conn.popUpdates()
 }
 
-func (conn *Dummy) validateName(name []string) (bool, error) {
-	var exclusive bool
-
-	switch {
-	case len(conn.pfxFolder)+len(conn.pfxLabel) == 0:
-		exclusive = false
-
-	case len(conn.pfxFolder) > 0 && len(conn.pfxLabel) > 0:
-		if name[0] == conn.pfxFolder {
-			exclusive = true
-		} else if name[0] == conn.pfxLabel {
-			exclusive = false
-		} else {
-			return false, ErrInvalidPrefix
-		}
-
-	case len(conn.pfxFolder) > 0:
-		if len(name) > 1 && name[0] == conn.pfxFolder {
-			exclusive = true
-		}
-
-	case len(conn.pfxLabel) > 0:
-		if len(name) > 1 && name[0] == conn.pfxLabel {
-			exclusive = false
-		}
-	}
-
-	return exclusive, nil
-}
-
 func (conn *Dummy) pushUpdate(update imap.Update) {
 	conn.queueLock.Lock()
 	defer conn.queueLock.Unlock()
@@ -362,6 +307,24 @@ func (conn *Dummy) popUpdates() []imap.Update {
 	return updates
 }
 
+func (conn *Dummy) validateUpdate(oldName, newName []string) error {
+	oldEx, err := conn.validateName(oldName)
+	if err != nil {
+		return err
+	}
+
+	newEx, err := conn.validateName(newName)
+	if err != nil {
+		return err
+	}
+
+	if oldEx != newEx {
+		return ErrRenameForbidden
+	}
+
+	return nil
+}
+
 func removeMessageLabelsUpdatedFromSlice(updates []imap.Update, messageID imap.MessageID) []imap.Update {
 	return xslices.Filter(updates, func(update imap.Update) bool {
 		u, ok := update.(*imap.MessageLabelsUpdated)
@@ -384,4 +347,34 @@ func removeMailboxUpdatedFromSlice(updates []imap.Update, mailboxID imap.LabelID
 
 		return (!ok) || (u.MailboxID != mailboxID)
 	})
+}
+
+func (conn *Dummy) validateName(name []string) (bool, error) {
+	var exclusive bool
+
+	switch {
+	case len(conn.pfxFolder)+len(conn.pfxLabel) == 0:
+		exclusive = false
+
+	case len(conn.pfxFolder) > 0 && len(conn.pfxLabel) > 0:
+		if name[0] == conn.pfxFolder {
+			exclusive = true
+		} else if name[0] == conn.pfxLabel {
+			exclusive = false
+		} else {
+			return false, ErrInvalidPrefix
+		}
+
+	case len(conn.pfxFolder) > 0:
+		if len(name) > 1 && name[0] == conn.pfxFolder {
+			exclusive = true
+		}
+
+	case len(conn.pfxLabel) > 0:
+		if len(name) > 1 && name[0] == conn.pfxLabel {
+			exclusive = false
+		}
+	}
+
+	return exclusive, nil
 }

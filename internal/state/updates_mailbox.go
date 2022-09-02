@@ -52,7 +52,6 @@ func MoveMessagesFromMailbox(
 // AddMessagesToMailbox adds the messages to the given mailbox.
 func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]int, Update, error) {
 	messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxID)
-
 	if err != nil {
 		return nil, nil, err
 	}

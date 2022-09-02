@@ -345,7 +345,6 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return db.GetMailboxByID(ctx, client, state.snap.mboxID.InternalID)
 	})
-
 	if err != nil {
 		return ErrNoSuchMailbox
 	}

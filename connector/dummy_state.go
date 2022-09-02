@@ -63,11 +63,15 @@ func (state *dummyState) getLabels() []imap.Mailbox {
 	})
 }
 
-func (state *dummyState) getLabel(labelID imap.LabelID) imap.Mailbox {
+func (state *dummyState) getLabel(labelID imap.LabelID) (imap.Mailbox, error) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	return state.toMailbox(labelID)
+	if _, ok := state.labels[labelID]; !ok {
+		return imap.Mailbox{}, ErrNoSuchLabel
+	}
+
+	return state.toMailbox(labelID), nil
 }
 
 func (state *dummyState) createLabel(name []string, exclusive bool) imap.Mailbox {
@@ -123,11 +127,15 @@ func (state *dummyState) getMessages() []imap.Message {
 	})
 }
 
-func (state *dummyState) getMessage(messageID imap.MessageID) imap.Message {
+func (state *dummyState) getMessage(messageID imap.MessageID) (imap.Message, error) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	return state.toMessage(messageID)
+	if _, ok := state.messages[messageID]; !ok {
+		return imap.Message{}, ErrNoSuchMessage
+	}
+
+	return state.toMessage(messageID), nil
 }
 
 func (state *dummyState) getLabelIDs(messageID imap.MessageID) []imap.LabelID {
