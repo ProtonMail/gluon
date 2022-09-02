@@ -12,6 +12,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 )
 
@@ -24,6 +25,7 @@ type serverBuilder struct {
 	versionInfo        internal.VersionInfo
 	cmdExecProfBuilder profiling.CmdProfilerBuilder
 	storeBuilder       store.Builder
+	reporter           reporter.Reporter
 }
 
 func newBuilder() (*serverBuilder, error) {
@@ -31,6 +33,7 @@ func newBuilder() (*serverBuilder, error) {
 		delim:              "/",
 		cmdExecProfBuilder: &profiling.NullCmdExecProfilerBuilder{},
 		storeBuilder:       &store.BadgerStoreBuilder{},
+		reporter:           &reporter.NullReporter{},
 	}, nil
 }
 
@@ -65,5 +68,6 @@ func (builder *serverBuilder) build() (*Server, error) {
 		storeBuilder:       builder.storeBuilder,
 		cmdExecProfBuilder: builder.cmdExecProfBuilder,
 		versionInfo:        builder.versionInfo,
+		reporter:           builder.reporter,
 	}, nil
 }

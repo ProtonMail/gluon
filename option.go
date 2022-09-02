@@ -6,6 +6,7 @@ import (
 
 	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/profiling"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 )
 
@@ -119,4 +120,16 @@ func (w *withDataDir) config(builder *serverBuilder) {
 
 func WithDataDir(path string) Option {
 	return &withDataDir{path: path}
+}
+
+type withReporter struct {
+	reporter reporter.Reporter
+}
+
+func (w *withReporter) config(builder *serverBuilder) {
+	builder.reporter = w.reporter
+}
+
+func WithReporter(reporter reporter.Reporter) Option {
+	return &withReporter{reporter: reporter}
 }
