@@ -245,10 +245,14 @@ func (conn *Dummy) MarkMessagesFlagged(ctx context.Context, messageIDs []imap.Me
 
 func (conn *Dummy) Sync(ctx context.Context) error {
 	for _, mailbox := range conn.state.getLabels() {
-		conn.updateCh <- imap.NewMailboxCreated(mailbox)
+		update := imap.NewMailboxCreated(mailbox)
+		defer update.Wait()
+
+		conn.updateCh <- update
 	}
 
 	update := imap.NewMessagesCreated()
+	defer update.Wait()
 
 	for _, message := range conn.state.getMessages() {
 		if err := update.Add(message, conn.state.getLiteral(message.ID), conn.state.getLabelIDs(message.ID)...); err != nil {
