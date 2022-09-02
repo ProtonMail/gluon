@@ -11,6 +11,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/bradenaw/juniper/sets"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
@@ -409,9 +410,18 @@ func (state *State) ApplyUpdate(ctx context.Context, update Update) error {
 		return nil
 	}
 
-	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	err := state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return update.Apply(ctx, tx, state)
 	})
+
+	if err != nil {
+		reporter.MessageWithContext(ctx,
+			"Failed to apply state update",
+			reporter.Context{"error": err, "update": update.String()},
+		)
+	}
+
+	return err
 }
 
 func (state *State) HasMessage(id imap.InternalMessageID) bool {

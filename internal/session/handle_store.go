@@ -8,6 +8,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/reporter"
 )
 
 func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store, mailbox *state.Mailbox, ch chan response.Response) error {
@@ -23,6 +24,11 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store,
 	if err := mailbox.Store(ctx, cmd.GetSequenceSet(), cmd.GetAction().GetOperation(), flags); errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err)
 	} else if err != nil {
+		reporter.MessageWithContext(ctx,
+			"Failed to store flags on messages",
+			reporter.Context{"error": err},
+		)
+
 		return err
 	}
 

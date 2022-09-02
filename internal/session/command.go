@@ -7,6 +7,7 @@ import (
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/reporter"
 )
 
 type command struct {
@@ -25,6 +26,13 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 
 			for {
 				tag, cmd, err := s.readCommand(del)
+
+				if err != nil {
+					reporter.MessageWithContext(ctx,
+						"Failed to parse imap command",
+						reporter.Context{"error": err},
+					)
+				}
 
 				if err == nil && cmd.GetStartTLS() != nil {
 					// TLS needs to be handled here in order to ensure that next command read is over the

@@ -12,6 +12,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
@@ -71,6 +72,11 @@ func newUser(ctx context.Context, userID string, db *db.DB, conn connector.Conne
 				select {
 				case update := <-updateCh:
 					if err := user.apply(ctx, update); err != nil {
+						reporter.MessageWithContext(ctx,
+							"Failed to apply connector update",
+							reporter.Context{"error": err, "update": update.String()},
+						)
+
 						logrus.WithError(err).Errorf("Failed to apply update: %v", err)
 					}
 				case <-user.updateQuitCh:

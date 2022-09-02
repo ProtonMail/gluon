@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/store"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -12,6 +11,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/rfc822"
+	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
