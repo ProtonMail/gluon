@@ -18,7 +18,6 @@ type snapMsg struct {
 type snapMsgList struct {
 	msg []*snapMsg
 	idx map[imap.InternalMessageID]int
-	//lock sync.RWMutex
 }
 
 func newMsgList() *snapMsgList {

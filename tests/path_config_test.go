@@ -11,15 +11,25 @@ func TestPathConfig_ProtonPathConfig(t *testing.T) {
 		c.Sx(`A001 OK`)
 
 		c.C(`B001 LIST "" *`)
-		c.Sx(`\* LIST .* "Folders"`, `\* LIST .* "Labels"`, `\* LIST .* "INBOX"`, `\* LIST .* "Folders/TestFolder"`)
+		c.Sx(
+			`\* LIST .* "Folders"`,
+			`\* LIST .* "Labels"`,
+			`\* LIST .* "INBOX"`,
+			`\* LIST .* "Folders/TestFolder"`,
+		)
 		c.Sx(`B001 OK`)
 
 		c.C(`A002 CREATE Labels/TestLabel`)
 		c.Sx(`A002 OK`)
 
 		c.C(`B002 LIST "" *`)
-		c.Sx(`\* LIST .* "Folders"`, `\* LIST .* "Labels"`, `\* LIST .* "INBOX"`, `\* LIST .* "Folders/TestFolder"`,
-			`"Labels/TestLabel"`)
+		c.Sx(
+			`\* LIST .* "Folders"`,
+			`\* LIST .* "Labels"`,
+			`\* LIST .* "INBOX"`,
+			`\* LIST .* "Folders/TestFolder"`,
+			`"Labels/TestLabel"`,
+		)
 		c.Sx(`B002 OK`)
 
 		c.C(`A003 CREATE Invalid/TestFolder`)
@@ -67,8 +77,7 @@ func TestPathConfig_DotDelimiter(t *testing.T) {
 		c.Sx(`A002 OK`)
 
 		c.C(`B002 LIST "" *`)
-		c.Sx(`\* LIST .* "Folders"`, `\* LIST .* "Labels"`, `\* LIST .* "INBOX"`, `\* LIST .* "Folders\.TestFolder"`,
-			`"Labels\.TestLabel"`)
+		c.Sx(`\* LIST .* "Folders"`, `\* LIST .* "Labels"`, `\* LIST .* "INBOX"`, `\* LIST .* "Folders\.TestFolder"`, `"Labels\.TestLabel"`)
 		c.Sx(`B002 OK`)
 
 		c.C(`A003 CREATE Invalid.TestFolder`)

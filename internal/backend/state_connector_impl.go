@@ -52,10 +52,6 @@ func (sc *stateConnectorImpl) CreateMailbox(ctx context.Context, name []string) 
 func (sc *stateConnectorImpl) UpdateMailbox(ctx context.Context, mboxID imap.LabelID, oldName, newName []string) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	if err := sc.connector.ValidateUpdate(oldName, newName); err != nil {
-		return err
-	}
-
 	return sc.connector.UpdateLabel(ctx, mboxID, newName)
 }
 
@@ -97,6 +93,7 @@ func (sc *stateConnectorImpl) AddMessagesToMailbox(
 
 	return nil
 }
+
 func (sc *stateConnectorImpl) RemoveMessagesFromMailbox(
 	ctx context.Context,
 	messageIDs []imap.MessageID,
@@ -135,6 +132,7 @@ func (sc *stateConnectorImpl) SetMessagesSeen(ctx context.Context, messageIDs []
 
 	return nil
 }
+
 func (sc *stateConnectorImpl) SetMessagesFlagged(ctx context.Context, messageIDs []imap.MessageID, flagged bool) error {
 	ctx = sc.newContextWithMetadata(ctx)
 

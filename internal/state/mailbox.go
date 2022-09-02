@@ -200,7 +200,6 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 	mbox, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return db.GetMailboxByName(ctx, client, name)
 	})
-
 	if err != nil {
 		return nil, ErrNoSuchMailbox
 	}

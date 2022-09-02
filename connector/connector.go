@@ -12,16 +12,6 @@ type Connector interface {
 	// Authorize returns whether the given username/password combination are valid for this connector.
 	Authorize(username, password string) bool
 
-	// ValidateCreate checks whether a mailbox with the given name can be created.
-	// If so, the flags, permanent flags and attributes which the mailbox would have are returned.
-	ValidateCreate(name []string) (flags, permFlags, attrs imap.FlagSet, err error)
-
-	// ValidateUpdate checks whether a mailbox's name can be changed from oldName to newName.
-	ValidateUpdate(oldName, newName []string) error
-
-	// ValidateDelete checks whether the mailbox with the given name can be deleted.
-	ValidateDelete(name []string) error
-
 	// GetLabel returns information about the label with the given ID.
 	GetLabel(ctx context.Context, labelID imap.LabelID) (imap.Mailbox, error)
 
