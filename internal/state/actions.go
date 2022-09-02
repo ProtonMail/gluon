@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/store"
 	"strings"
 	"time"
 
@@ -81,6 +82,7 @@ func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 func (state *State) actionCreateMessage(
 	ctx context.Context,
 	tx *ent.Tx,
+	stx store.Transaction,
 	mboxID ids.MailboxIDPair,
 	literal []byte,
 	flags imap.FlagSet,
@@ -106,7 +108,7 @@ func (state *State) actionCreateMessage(
 			return 0, fmt.Errorf("failed to set internal ID: %w", err)
 		}
 
-		if err := state.user.GetStore().Set(internalID, literal); err != nil {
+		if err := stx.Set(internalID, literal); err != nil {
 			return 0, fmt.Errorf("failed to store message literal: %w", err)
 		}
 

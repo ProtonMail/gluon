@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/store"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -162,31 +163,31 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 	remoteToLocalMessageID := make(map[imap.MessageID]imap.InternalMessageID)
 
-	for _, update := range updates {
-		internalID := uuid.NewString()
+	return db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, storeTx store.Transaction) error {
+		for _, update := range updates {
+			internalID := uuid.NewString()
 
-		literal, err := rfc822.SetHeaderValue(update.Literal, ids.InternalIDKey, internalID)
-		if err != nil {
-			return fmt.Errorf("failed to set internal ID: %w", err)
+			literal, err := rfc822.SetHeaderValue(update.Literal, ids.InternalIDKey, internalID)
+			if err != nil {
+				return fmt.Errorf("failed to set internal ID: %w", err)
+			}
+
+			if err := storeTx.Set(imap.InternalMessageID(internalID), literal); err != nil {
+				return fmt.Errorf("failed to store message literal: %w", err)
+			}
+
+			reqs = append(reqs, &db.CreateMessageReq{
+				Message:    update.Message,
+				Literal:    literal,
+				Body:       update.Body,
+				Structure:  update.Structure,
+				Envelope:   update.Envelope,
+				InternalID: imap.InternalMessageID(internalID),
+			})
+
+			remoteToLocalMessageID[update.Message.ID] = imap.InternalMessageID(internalID)
 		}
 
-		if err := user.store.Set(imap.InternalMessageID(internalID), literal); err != nil {
-			return fmt.Errorf("failed to store message literal: %w", err)
-		}
-
-		reqs = append(reqs, &db.CreateMessageReq{
-			Message:    update.Message,
-			Literal:    literal,
-			Body:       update.Body,
-			Structure:  update.Structure,
-			Envelope:   update.Envelope,
-			InternalID: imap.InternalMessageID(internalID),
-		})
-
-		remoteToLocalMessageID[update.Message.ID] = imap.InternalMessageID(internalID)
-	}
-
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		if _, err := db.CreateMessages(ctx, tx, reqs...); err != nil {
 			return fmt.Errorf("failed to create message: %w", err)
 		}

@@ -13,14 +13,16 @@ import (
 	"github.com/google/uuid"
 )
 
-func CreateRandomState(store store.Store, count uint) ([]imap.InternalMessageID, error) {
+func CreateRandomState(st store.Store, count uint) ([]imap.InternalMessageID, error) {
 	uuids := make([]imap.InternalMessageID, 0, count)
 	data := make([]byte, *flags.StoreItemSize)
 
 	for i := uint(0); i < count; i++ {
 		uuid := imap.InternalMessageID(uuid.NewString())
 
-		if err := store.Set(uuid, data); err != nil {
+		if err := store.Tx(st, func(transaction store.Transaction) error {
+			return transaction.Set(uuid, data)
+		}); err != nil {
 			return nil, err
 		}
 

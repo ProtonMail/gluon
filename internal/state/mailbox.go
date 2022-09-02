@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/store"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -146,8 +147,8 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 		}
 	}
 
-	return db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (int, error) {
-		return m.state.actionCreateMessage(ctx, tx, m.snap.mboxID, literal, flags, date)
+	return db.WriteAndStoreResult(ctx, m.state.db(), m.state.user.GetStore(), func(ctx context.Context, tx *ent.Tx, transaction store.Transaction) (int, error) {
+		return m.state.actionCreateMessage(ctx, tx, transaction, m.snap.mboxID, literal, flags, date)
 	})
 }
 
