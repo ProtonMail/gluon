@@ -19,6 +19,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -64,6 +65,8 @@ type Server struct {
 	versionInfo internal.VersionInfo
 
 	connectionWG sync.WaitGroup
+
+	reporter reporter.Reporter
 }
 
 // New creates a new server with the given options.
@@ -95,6 +98,8 @@ func (s *Server) AddUser(ctx context.Context, conn connector.Connector, encrypti
 // LoadUser loads an existing user's data from disk. This function can also be used to assign a custom userID to a mail
 // server user.
 func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, passphrase []byte) error {
+	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
+
 	if err := s.backend.AddUser(ctx, userID, conn, passphrase); err != nil {
 		return err
 	}
@@ -108,6 +113,8 @@ func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID 
 
 // RemoveUser removes a user from the mailserver.
 func (s *Server) RemoveUser(ctx context.Context, userID string) error {
+	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
+
 	if err := s.backend.RemoveUser(ctx, userID); err != nil {
 		return err
 	}
@@ -148,6 +155,8 @@ func (s *Server) RemoveWatcher(ch chan events.Event) {
 func (s *Server) Serve(ctx context.Context, l net.Listener) chan error {
 	errCh := make(chan error)
 
+	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
+
 	go func() {
 		defer close(errCh)
 
@@ -177,6 +186,8 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) chan error {
 // Close closes the server.
 // It firstly closes all TCP listeners then closes the backend.
 func (s *Server) Close(ctx context.Context) error {
+	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
+
 	for l := range s.listeners {
 		s.removeListener(l)
 	}
