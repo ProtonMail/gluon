@@ -26,3 +26,15 @@ func (r *bye) String() string {
 
 	return join(parts)
 }
+
+func (r *bye) WithMailboxDeleted() *bye {
+	r.msg = "Mailbox was deleted, have to disconnect."
+
+	return r
+}
+
+func (r *bye) WithInconsistentState() *bye {
+	r.msg = "IMAP session state is inconsistent, please re-login."
+
+	return r
+}
