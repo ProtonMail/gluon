@@ -153,16 +153,15 @@ func (s *Server) RemoveWatcher(ch chan events.Event) {
 // It returns a channel of all errors which occur while serving.
 // The error channel is closed when either the connection is dropped or the server is closed.
 func (s *Server) Serve(ctx context.Context, l net.Listener) chan error {
+	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
+
 	errCh := make(chan error)
 
-	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
+	s.addListener(l)
 
 	go func() {
 		defer close(errCh)
-
-		s.addListener(l)
 		defer s.removeListener(l)
-
 		defer s.connectionWG.Wait()
 
 		for {
