@@ -1,6 +1,7 @@
 package store
 
 import (
+	"crypto/sha256"
 	"path/filepath"
 	"sync"
 	"time"
@@ -21,9 +22,11 @@ type badgerTransaction struct {
 }
 
 func NewBadgerStore(path string, userID string, encryptionPassphrase []byte) (*BadgerStore, error) {
+	encryptionKey := sha256.Sum256(encryptionPassphrase)
+
 	db, err := badger.Open(badger.DefaultOptions(filepath.Join(path, userID)).
 		WithLogger(logrus.StandardLogger()).
-		WithEncryptionKey(encryptionPassphrase).
+		WithEncryptionKey(encryptionKey[:]).
 		WithIndexCacheSize(128 * 1024 * 1024),
 	)
 	if err != nil {

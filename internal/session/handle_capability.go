@@ -3,15 +3,34 @@ package session
 import (
 	"context"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 )
+
+func (s *Session) getCaps() []imap.Capability {
+	s.userLock.Lock()
+	defer s.userLock.Unlock()
+
+	if s.state != nil {
+		return s.caps
+	}
+
+	caps := []imap.Capability{}
+	for _, c := range s.caps {
+		if imap.IsCapabilityAvailableBeforeAuth(c) {
+			caps = append(caps, c)
+		}
+	}
+
+	return caps
+}
 
 func (s *Session) handleCapability(ctx context.Context, tag string, cmd *proto.Capability, ch chan response.Response) error {
 	s.capsLock.Lock()
 	defer s.capsLock.Unlock()
 
-	ch <- response.Capability().WithCapabilities(s.caps...)
+	ch <- response.Capability().WithCapabilities(s.getCaps()...)
 
 	ch <- response.Ok(tag).WithMessage("CAPABILITY")
 
