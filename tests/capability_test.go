@@ -2,24 +2,19 @@ package tests
 
 import (
 	"testing"
-
-	"github.com/ProtonMail/gluon/imap"
-	"github.com/emersion/go-imap/client"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 )
 
 func TestCapability(t *testing.T) {
-	runOneToOneTestClient(t, defaultServerOptions(t), func(client *client.Client, s *testSession) {
-		capabilities, err := client.Capability()
-		require.NoError(t, err)
-		require.ElementsMatch(t, maps.Keys(capabilities), []string{
-			string(imap.IMAP4rev1),
-			string(imap.StartTLS),
-			string(imap.IDLE),
-			string(imap.UNSELECT),
-			string(imap.UIDPLUS),
-			string(imap.MOVE),
-		})
+	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		c.C("A001 Capability")
+		c.S(`* CAPABILITY IDLE IMAP4rev1 STARTTLS`)
+		c.S("A001 OK")
+
+		c.C(`A002 login "user" "pass"`)
+		c.S(`A002 OK [CAPABILITY IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT]`)
+
+		c.C("A003 Capability")
+		c.S(`* CAPABILITY IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT`)
+		c.S("A003 OK")
 	})
 }
