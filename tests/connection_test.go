@@ -177,6 +177,7 @@ func (s *testConnection) doCreateTempDir() (string, func()) {
 	// Delete it afterwards.
 	return name, func() {
 		withTag(func(tag string) {
+			s.Cf("%v UNSELECT", tag)
 			s.Cf(`%v DELETE %v`, tag, name).OK(tag)
 		})
 	}

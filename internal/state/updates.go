@@ -303,3 +303,21 @@ func (u *mailboxRemoteIDUpdateStateUpdate) Apply(ctx context.Context, tx *ent.Tx
 func (u *mailboxRemoteIDUpdateStateUpdate) String() string {
 	return fmt.Sprintf("MailboxRemoteIDUpdateStateUpdate: %v remote = %v", u.SnapFilter, u.remoteID.ShortID())
 }
+
+type mailboxDeletedStateUpdate struct {
+	MBoxIDStateFilter
+}
+
+func NewMailboxDeletedStateUpdate(mboxID imap.InternalMailboxID) Update {
+	return &mailboxDeletedStateUpdate{MBoxIDStateFilter: MBoxIDStateFilter{MboxID: mboxID}}
+}
+
+func (u *mailboxDeletedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+	s.markInvalid()
+
+	return nil
+}
+
+func (u *mailboxDeletedStateUpdate) String() string {
+	return fmt.Sprintf("MailboxDeletedStateUpdate: %v", u.MBoxIDStateFilter.String())
+}

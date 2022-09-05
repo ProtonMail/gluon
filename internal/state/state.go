@@ -38,6 +38,9 @@ type State struct {
 	updatesQueue *queue.QueuedChannel[Update]
 
 	delimiter string
+
+	// invalid indicates whether this state became invalid and a clients needs to disconnect.
+	invalid bool
 }
 
 func NewState(stateID int, user UserInterface, delimiter string) *State {
@@ -179,17 +182,22 @@ func (state *State) Create(ctx context.Context, name string) error {
 	})
 }
 
-func (state *State) Delete(ctx context.Context, name string) error {
+// Delete returns true if the mailbox that was deleted was the same as the one that was currently selected.
+func (state *State) Delete(ctx context.Context, name string) (bool, error) {
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
-		return ErrNoSuchMailbox
+		return false, ErrNoSuchMailbox
 	}
 
-	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return state.actionDeleteMailbox(ctx, tx, mbox.RemoteID)
-	})
+	if err := state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return state.actionDeleteMailbox(ctx, tx, ids.NewMailboxIDPair(mbox))
+	}); err != nil {
+		return false, err
+	}
+
+	return state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID, nil
 }
 
 func (state *State) Rename(ctx context.Context, oldName, newName string) error {
@@ -426,6 +434,14 @@ func (state *State) ApplyUpdate(ctx context.Context, update Update) error {
 
 func (state *State) HasMessage(id imap.InternalMessageID) bool {
 	return state.snap != nil && state.snap.hasMessage(id)
+}
+
+func (state *State) IsValid() bool {
+	return !state.invalid
+}
+
+func (state *State) markInvalid() {
+	state.invalid = true
 }
 
 // renameInbox creates a new mailbox and moves everything there.

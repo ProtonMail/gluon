@@ -57,13 +57,16 @@ func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name st
 	return db.CreateMailboxIfNotExists(ctx, tx, internalID, res, state.delimiter)
 }
 
-// TODO(REFACTOR): What if another client is selected in the same mailbox -- should we send expunge updates?
-func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.LabelID) error {
-	if err := state.user.GetRemote().DeleteMailbox(ctx, mboxID); err != nil {
+func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID ids.MailboxIDPair) error {
+	if err := state.user.GetRemote().DeleteMailbox(ctx, mboxID.RemoteID); err != nil {
 		return err
 	}
 
-	return db.DeleteMailboxWithRemoteID(ctx, tx, mboxID)
+	if err := db.DeleteMailboxWithRemoteID(ctx, tx, mboxID.RemoteID); err != nil {
+		return err
+	}
+
+	return state.user.QueueOrApplyStateUpdate(ctx, tx, NewMailboxDeletedStateUpdate(mboxID.InternalID))
 }
 
 func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.LabelID, oldName, newName string) error {

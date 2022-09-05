@@ -3,6 +3,7 @@ package tests
 import (
 	"testing"
 
+	"github.com/ProtonMail/gluon/internal/response"
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"
@@ -59,5 +60,36 @@ func TestDeleteCannotDeleteInbox(t *testing.T) {
 func TestDeleteCannotDeleteMissingMailbox(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.Error(t, client.Delete("this doesn't exist"))
+	})
+}
+
+func TestDeleteMailboxCausesDisconnect(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		c.C("b001 CREATE mbox1")
+		c.S("b001 OK CREATE")
+
+		c.C("b002 SELECT mbox1").OK("b002")
+		c.C("b003 DELETE mbox1").OK("b003")
+		c.S(response.Bye().WithMailboxDeleted().String())
+	})
+}
+
+func TestDeleteMailboxCausesDisconnectOnOtherClients(t *testing.T) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+		c[1].C("b001 CREATE mbox1")
+		c[1].S("b001 OK CREATE")
+
+		s.flush("user")
+
+		c[2].C("c001 SELECT mbox1").OK("c001")
+
+		// Delete mailbox
+		c[1].C("b002 SELECT mbox1").OK("b002")
+		c[1].C("b003 DELETE mbox1").OK("b003")
+		c[1].S(response.Bye().WithMailboxDeleted().String())
+
+		// Other client should get kicked out on next command
+		c[2].C("c002 NOOP")
+		c[2].S(response.Bye().WithInconsistentState().String())
 	})
 }

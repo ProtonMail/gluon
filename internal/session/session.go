@@ -174,6 +174,16 @@ func (s *Session) serve(ctx context.Context) error {
 			return ctx.Err()
 		}
 
+		// Before proceeding with command execution, check whether we still have a valid state. State can become
+		// at any time, e.g.: deletion of a selected mailbox by another client.
+		if s.state != nil && !s.state.IsValid() {
+			if err := response.Bye().WithInconsistentState().Send(s); err != nil {
+				logrus.WithError(err).Error("Failed to send untagged message to client")
+			}
+
+			return nil
+		}
+
 		switch {
 		case cmd.GetLogout() != nil:
 			profiler.Start(profiling.CmdTypeLogout)
