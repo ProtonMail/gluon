@@ -30,8 +30,8 @@ func TestDeletionPool(t *testing.T) {
 		// From session 2, we first FETCH, the second message should still be there, flagged as deleted
 		// Then we send a no-op, get a notification for the EXPUNGE and the message  will have been removed
 		c[2].C(`C001 FETCH 1:* (FLAGS UID)`)
+		c[2].S(`* 1 FETCH (FLAGS () UID 1)`, `* 2 FETCH (FLAGS () UID 2)`, `* 3 FETCH (FLAGS () UID 3)`)
 		c[2].S(`* 2 FETCH (FLAGS (\Deleted))`) // Queued snapshot update
-		c[2].S(`* 1 FETCH (FLAGS () UID 1)`, `* 2 FETCH (FLAGS (\Deleted) UID 2)`, `* 3 FETCH (FLAGS () UID 3)`)
 		c[2].Sx(`C001 OK \[EXPUNGEISSUED\][ \..]*`)
 		c[2].C(`C002 NOOP`)
 		c[2].S(`* 2 EXPUNGE`)
@@ -48,7 +48,7 @@ func TestDeletionPool(t *testing.T) {
 		// From session 4, we check that we still have 3 messages. Then we close the mailbox,
 		// get the FETCH and EXPUNGE notification, and reselect the mailbox. The deleted message should not be there anymore
 		c[4].C(`E001 FETCH 1:* (FLAGS UID)`)
-		c[4].S(`* 2 FETCH (FLAGS (\Deleted))`, `* 1 FETCH (FLAGS () UID 1)`, `* 2 FETCH (FLAGS (\Deleted) UID 2)`, `* 3 FETCH (FLAGS () UID 3)`)
+		c[4].S(`* 1 FETCH (FLAGS () UID 1)`, `* 2 FETCH (FLAGS () UID 2)`, `* 3 FETCH (FLAGS () UID 3)`, `* 2 FETCH (FLAGS (\Deleted))`)
 		c[4].Sxe(`E001 OK \[EXPUNGEISSUED\]`)
 		c[4].C(`E002 CLOSE`).OK(`E002`)
 		c[4].C(`E003 SELECT INBOX`)
@@ -86,8 +86,11 @@ func TestExpungeIssued(t *testing.T) {
 
 		// FETCH, STORE and SEARCH from unnotified snapshot 2. we should get EXPUNGEISSUED even for untouched messages
 		c[2].C(`C001 FETCH 1:* (FLAGS UID)`)
-		c[2].S(`* 2 FETCH (FLAGS (\Deleted))`)
-		c[2].S(`* 1 FETCH (FLAGS () UID 1)`, `* 2 FETCH (FLAGS (\Deleted) UID 2)`, `* 3 FETCH (FLAGS () UID 3)`)
+		c[2].S(`* 1 FETCH (FLAGS () UID 1)`,
+			`* 2 FETCH (FLAGS () UID 2)`,
+			`* 3 FETCH (FLAGS () UID 3)`,
+			`* 2 FETCH (FLAGS (\Deleted))`,
+		)
 		c[2].Sx(`C001 OK \[EXPUNGEISSUED\] command completed in`)
 
 		c[2].C(`C002 FETCH 1 (FLAGS UID)`)
@@ -134,13 +137,14 @@ func TestExpungeUpdate(t *testing.T) {
 		// session 2 get notifications for the flags, but not the EXPUNGE.
 		c[2].C(`B001 FETCH 1:* (UID FLAGS)`)
 		c[2].S(
+			`* 1 FETCH (UID 1 FLAGS ())`,
+			`* 2 FETCH (UID 2 FLAGS ())`,
+		)
+		c[2].S(
 			`* 1 FETCH (FLAGS (\Deleted))`,
 			`* 2 FETCH (FLAGS (\Seen))`,
 		)
-		c[2].S(
-			`* 1 FETCH (UID 1 FLAGS (\Deleted))`,
-			`* 2 FETCH (UID 2 FLAGS (\Seen))`,
-		) // fetch results + updated from session 1
+		// fetch results + updated from session 1
 		c[2].Sx(`B001 OK \[EXPUNGEISSUED\] command completed in`)
 
 		// session 2 can still change flags on the deleted message (which still resides in the deletion pool
@@ -156,11 +160,10 @@ func TestExpungeUpdate(t *testing.T) {
 
 		// session 2 sees the new message
 		c[2].C(`B003 FETCH 1:* (UID FLAGS)`)
-		c[2].S(`* 3 EXISTS`)
 		c[2].S(
 			`* 1 FETCH (UID 1 FLAGS (\Deleted \Flagged))`,
 			`* 2 FETCH (UID 2 FLAGS (\Seen))`,
-			`* 3 FETCH (UID 3 FLAGS (\Answered))`,
+			`* 3 EXISTS`,
 		)
 		c[2].Sx(`B003 OK \[EXPUNGEISSUED\] command completed in`)
 

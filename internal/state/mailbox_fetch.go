@@ -104,8 +104,14 @@ func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*pr
 			return 0, nil, err
 		}
 
-		if !msg.flags.Equals(newFlags[msg.ID.InternalID]) {
-			items = append(items, response.ItemFlags(newFlags[msg.ID.InternalID]))
+		newMessageFlags := newFlags[msg.ID.InternalID]
+
+		if !msg.flags.Equals(newMessageFlags) {
+			if err := m.snap.setMessageFlags(msg.ID.InternalID, newMessageFlags); err != nil {
+				return 0, nil, err
+			}
+
+			items = append(items, response.ItemFlags(newMessageFlags))
 		}
 	}
 

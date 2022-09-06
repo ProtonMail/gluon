@@ -31,9 +31,6 @@ func TestFetchBodySetsSeenFlag(t *testing.T) {
 		))
 		c.OK("A005")
 
-		// We receive an untagged FETCH response indicating the flag was set.
-		c.S(`* 1 FETCH (FLAGS (\Recent \Seen))`)
-
 		// The message now has the seen flag.
 		c.C(`A005 FETCH 1 (FLAGS)`)
 		c.S(`* 1 FETCH (FLAGS (\Recent \Seen))`)

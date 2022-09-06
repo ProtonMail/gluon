@@ -253,17 +253,19 @@ func (s *Session) handleSelectedCommand(
 		return ErrNotAuthenticated
 	}
 
-	// TODO(REFACTOR): Should we flush both before and after?
 	return s.state.Selected(ctx, func(mailbox *state.Mailbox) error {
+		okResponse, err := s.handleWithMailbox(ctx, tag, cmd, mailbox, ch, profiler)
+		if err != nil {
+			return err
+		}
+
 		if err := flush(ctx, mailbox, false, ch); err != nil {
 			return err
 		}
 
-		if err := s.handleWithMailbox(ctx, tag, cmd, mailbox, ch, profiler); err != nil {
-			return err
-		}
+		ch <- okResponse
 
-		return flush(ctx, mailbox, false, ch)
+		return nil
 	})
 }
 
@@ -274,7 +276,7 @@ func (s *Session) handleWithMailbox(
 	mailbox *state.Mailbox,
 	ch chan response.Response,
 	profiler profiling.CmdProfiler,
-) error {
+) (response.Response, error) {
 	switch {
 	case cmd.GetCheck() != nil:
 		profiler.Start(profiling.CmdTypeCheck)
@@ -341,6 +343,6 @@ func (s *Session) handleWithMailbox(
 		return s.handleMove(ctx, tag, cmd.GetMove(), mailbox, ch)
 
 	default:
-		return fmt.Errorf("bad command")
+		return nil, fmt.Errorf("bad command")
 	}
 }

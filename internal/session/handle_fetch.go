@@ -10,16 +10,16 @@ import (
 	"github.com/ProtonMail/gluon/reporter"
 )
 
-func (s *Session) handleFetch(ctx context.Context, tag string, cmd *proto.Fetch, mailbox *state.Mailbox, ch chan response.Response) error {
+func (s *Session) handleFetch(ctx context.Context, tag string, cmd *proto.Fetch, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
 	if err := mailbox.Fetch(ctx, cmd.GetSequenceSet(), cmd.GetAttributes(), ch); errors.Is(err, state.ErrNoSuchMessage) {
-		return response.Bad(tag).WithError(err)
+		return response.Bad(tag).WithError(err), nil
 	} else if err != nil {
 		reporter.MessageWithContext(ctx,
 			"Failed to fetch messages",
 			reporter.Context{"error": err},
 		)
 
-		return err
+		return nil, err
 	}
 
 	var items []response.Item
@@ -28,9 +28,7 @@ func (s *Session) handleFetch(ctx context.Context, tag string, cmd *proto.Fetch,
 		items = append(items, response.ItemExpungeIssued())
 	}
 
-	ch <- response.Ok(tag).
+	return response.Ok(tag).
 		WithItems(items...).
-		WithMessage(okMessage(ctx))
-
-	return nil
+		WithMessage(okMessage(ctx)), nil
 }

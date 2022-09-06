@@ -10,14 +10,14 @@ import (
 	"golang.org/x/text/encoding/ianaindex"
 )
 
-func (s *Session) handleSearch(ctx context.Context, tag string, cmd *proto.Search, mailbox *state.Mailbox, ch chan response.Response) error {
+func (s *Session) handleSearch(ctx context.Context, tag string, cmd *proto.Search, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
 	var decoder *encoding.Decoder
 
 	switch charset := cmd.GetOptionalCharset().(type) {
 	case *proto.Search_Charset:
 		encoding, err := ianaindex.IANA.Encoding(charset.Charset)
 		if err != nil {
-			return response.No(tag).WithItems(response.ItemBadCharset())
+			return response.No(tag).WithItems(response.ItemBadCharset()), nil //nolint:nilerr
 		}
 
 		decoder = encoding.NewDecoder()
@@ -28,14 +28,14 @@ func (s *Session) handleSearch(ctx context.Context, tag string, cmd *proto.Searc
 
 	seq, err := mailbox.Search(ctx, cmd.GetKeys(), decoder)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	select {
 	case ch <- response.Search(seq...):
 
 	case <-ctx.Done():
-		return ctx.Err()
+		return nil, ctx.Err()
 	}
 
 	var items []response.Item
@@ -44,9 +44,7 @@ func (s *Session) handleSearch(ctx context.Context, tag string, cmd *proto.Searc
 		items = append(items, response.ItemExpungeIssued())
 	}
 
-	ch <- response.Ok(tag).
+	return response.Ok(tag).
 		WithItems(items...).
-		WithMessage(okMessage(ctx))
-
-	return nil
+		WithMessage(okMessage(ctx)), nil
 }
