@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
@@ -17,7 +18,7 @@ type responderStateUpdate struct {
 	responders []Responder
 }
 
-func (r responderStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (r *responderStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
 	return s.PushResponder(ctx, tx, r.responders...)
 }
 
@@ -44,7 +45,7 @@ func NewMessageIDAndMailboxIDResponderStateUpdate(messageID imap.InternalMessage
 
 type Responder interface {
 	// handle generates responses in the context of the given snapshot.
-	handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]response.Response, error)
+	handle(ctx context.Context, tx *ent.Tx, snap *snapshot, stateID int) ([]response.Response, error)
 
 	// getMessageID returns the message ID that this Responder targets.
 	getMessageID() imap.InternalMessageID
@@ -53,31 +54,43 @@ type Responder interface {
 }
 
 type exists struct {
-	messageID  imap.InternalMessageID
+	messageID  ids.MessageIDPair
 	messageUID int
+	flags      imap.FlagSet
 }
 
-func NewExists(messageID imap.InternalMessageID, messageUID int) *exists {
-	return &exists{messageID: messageID, messageUID: messageUID}
+func newExists(messageID ids.MessageIDPair, messageUID int, flags imap.FlagSet) *exists {
+	return &exists{messageID: messageID, messageUID: messageUID, flags: flags}
 }
 
-func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]response.Response, error) {
-	if snap.hasMessage(u.messageID) {
+func (u *exists) String() string {
+	return fmt.Sprintf("Exists: message=%v remote=%v", u.messageID.InternalID.ShortID(), u.messageID.RemoteID)
+}
+
+// targetedExists needs to be separate so that we update the targetStateID safely when doing concurrent updates
+// in different states. This way we also avoid the extra step of copying the `exists` data.
+type targetedExists struct {
+	resp          *exists
+	targetStateID int
+}
+
+func (u *targetedExists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot, stateID int) ([]response.Response, error) {
+	if snap.hasMessage(u.resp.messageID.InternalID) {
 		return nil, nil
 	}
 
-	client := tx.Client()
+	var flags imap.FlagSet
+	if u.targetStateID != stateID {
+		flags = flags.Remove(imap.FlagRecent)
+	} else {
+		flags = u.resp.flags
+	}
 
-	remoteID, err := db.GetRemoteMessageID(ctx, client, u.messageID)
-	if err != nil {
+	if err := snap.appendMessage(u.resp.messageID, u.resp.messageUID, flags); err != nil {
 		return nil, err
 	}
 
-	if err := snap.appendMessage(ctx, client, ids.MessageIDPair{InternalID: u.messageID, RemoteID: remoteID}); err != nil {
-		return nil, err
-	}
-
-	seq, err := snap.getMessageSeq(u.messageID)
+	seq, err := snap.getMessageSeq(u.resp.messageID.InternalID)
 	if err != nil {
 		return nil, err
 	}
@@ -85,10 +98,10 @@ func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]resp
 	res := []response.Response{response.Exists().WithCount(seq)}
 
 	if recent := len(snap.getMessagesWithFlag(imap.FlagRecent)); recent > 0 {
-		if msgFlags, err := snap.getMessageFlags(u.messageID); err != nil {
+		if msgFlags, err := snap.getMessageFlags(u.resp.messageID.InternalID); err != nil {
 			return nil, err
 		} else if msgFlags.Contains(imap.FlagRecent) {
-			if err := db.ClearRecentFlag(ctx, tx, snap.mboxID.InternalID, u.messageID); err != nil {
+			if err := db.ClearRecentFlag(ctx, tx, snap.mboxID.InternalID, u.resp.messageID.InternalID); err != nil {
 				return nil, err
 			}
 		}
@@ -99,12 +112,103 @@ func (u *exists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]resp
 	return res, nil
 }
 
-func (u *exists) getMessageID() imap.InternalMessageID {
-	return u.messageID
+func (u *targetedExists) getMessageID() imap.InternalMessageID {
+	return u.resp.messageID.InternalID
 }
 
-func (u *exists) String() string {
-	return fmt.Sprintf("Exists: message=%v", u.messageID.ShortID())
+func (u *targetedExists) String() string {
+	return fmt.Sprintf("TargetedExists: message = %v remote = %v targetStateID = %v", u.resp.messageID.InternalID.ShortID(), u.resp.messageID.RemoteID, u.targetStateID)
+}
+
+// ExistsStateUpdate needs to be a separate update since it has to deal with a Recent flag propagation. If a session
+// with a selected state appends a message, only that state should see the recent flag. If a message is appended to a
+// non-selected mailbox or arrives from remote, the first state with the selected mailbox should get the flag.
+// See ExistsStateUpdate.Apply() for more info.
+type ExistsStateUpdate struct {
+	lock sync.Mutex
+	MBoxIDStateFilter
+	responders     []*exists
+	targetStateID  int
+	targetStateSet bool
+}
+
+func NewExistsStateUpdate(mailboxID imap.InternalMailboxID, messageIDs []ids.MessageIDPair, uids map[imap.InternalMessageID]*ent.UID, s *State) Update {
+	var stateID int
+
+	var targetStateSet bool
+
+	if s != nil {
+		stateID = s.StateID
+		targetStateSet = true
+	}
+
+	responders := xslices.Map(messageIDs, func(messageID ids.MessageIDPair) *exists {
+		uid := uids[messageID.InternalID]
+		exists := newExists(ids.NewMessageIDPair(uid.Edges.Message), uid.UID, db.NewFlagSet(uid, uid.Edges.Message.Edges.Flags))
+
+		return exists
+	})
+
+	return &ExistsStateUpdate{
+		MBoxIDStateFilter: MBoxIDStateFilter{MboxID: mailboxID},
+		responders:        responders,
+		targetStateID:     stateID,
+		targetStateSet:    targetStateSet,
+	}
+}
+
+func newExistsStateUpdateWithExists(mailboxID imap.InternalMailboxID, responders []*exists, s *State) Update {
+	var stateID int
+
+	var targetStateSet bool
+
+	if s != nil {
+		stateID = s.StateID
+		targetStateSet = true
+	}
+
+	return &ExistsStateUpdate{
+		MBoxIDStateFilter: MBoxIDStateFilter{MboxID: mailboxID},
+		responders:        responders,
+		targetStateID:     stateID,
+		targetStateSet:    targetStateSet,
+	}
+}
+
+func (e *ExistsStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+	// This check needs to be thread safe since we don't know when a state update
+	// will be executed. Before each of these updates run we check whether at state
+	// target ID has been set and update for the first state that manages to run this code
+	// otherwise. To avoid race conditions on the contents of the exists update we
+	// create a new responder which has the correct data and avoid race conditions all together
+	targetStateID := func() int {
+		e.lock.Lock()
+		defer e.lock.Unlock()
+
+		if !e.targetStateSet {
+			e.targetStateID = s.StateID
+			e.targetStateSet = true
+		}
+
+		return e.targetStateID
+	}()
+
+	return s.PushResponder(ctx, tx, xslices.Map(e.responders, func(e *exists) Responder {
+		return &targetedExists{
+			resp:          e,
+			targetStateID: targetStateID,
+		}
+	})...)
+}
+
+func (e *ExistsStateUpdate) String() string {
+	return fmt.Sprintf("ExistsStateUpdate: %v Responders = %v targetStateId = %v",
+		e.MBoxIDStateFilter,
+		xslices.Map(e.responders, func(rsp *exists) string {
+			return rsp.String()
+		}),
+		e.targetStateID,
+	)
 }
 
 type expunge struct {
@@ -119,7 +223,7 @@ func NewExpunge(messageID imap.InternalMessageID, asClose bool) *expunge {
 	}
 }
 
-func (u *expunge) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]response.Response, error) {
+func (u *expunge) handle(ctx context.Context, tx *ent.Tx, snap *snapshot, _ int) ([]response.Response, error) {
 	if !snap.hasMessage(u.messageID) {
 		return nil, nil
 	}
@@ -179,7 +283,7 @@ func NewFetch(messageID imap.InternalMessageID, flags imap.FlagSet, asUID, asSil
 	}
 }
 
-func (u *fetch) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]response.Response, error) {
+func (u *fetch) handle(ctx context.Context, tx *ent.Tx, snap *snapshot, _ int) ([]response.Response, error) {
 	if !snap.hasMessage(u.messageID) {
 		return nil, nil
 	}

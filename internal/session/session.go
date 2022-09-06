@@ -139,6 +139,13 @@ func (s *Session) serve(ctx context.Context) error {
 
 	for {
 		select {
+		case stateUpdate := <-s.state.GetStateUpdatesCh():
+			if err := s.state.ApplyUpdate(ctx, stateUpdate); err != nil {
+				logrus.WithError(err).Error("Failed to apply state update")
+			}
+
+			continue
+
 		case res, ok := <-cmdCh:
 			if !ok {
 				logrus.Debugf("Failed to read from command channel")
@@ -162,13 +169,6 @@ func (s *Session) serve(ctx context.Context) error {
 
 		case <-s.state.Done():
 			return nil
-
-		case stateUpdate := <-s.state.GetStateUpdatesCh():
-			if err := s.state.ApplyUpdate(ctx, stateUpdate); err != nil {
-				logrus.WithError(err).Error("Failed to apply state update")
-			}
-
-			continue
 
 		case <-ctx.Done():
 			return ctx.Err()

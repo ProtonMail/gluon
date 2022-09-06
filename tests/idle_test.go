@@ -56,3 +56,23 @@ func TestIDLEPendingUpdates(t *testing.T) {
 		c[1].C("DONE").OK("A002")
 	})
 }
+
+func TestIDLERecentReceivedOnSelectedClient(t *testing.T) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
+		c[1].C("A001 select INBOX").OK("A001")
+
+		// Generate some pending updates.
+		c[2].doAppend("INBOX", "To: foo.foo")
+		c[2].C("C2 LOGOUT").OK("C2")
+
+		// Begin IDLE.
+		c[1].C("A002 IDLE").S("+ Ready")
+
+		// Pending updates are first flushed.
+		c[1].Se(`* 1 EXISTS`, `* 1 RECENT`)
+
+		// Stop IDLE.
+		c[1].C("DONE").OK("A002")
+		c[1].C("A2 LOGOUT").OK("A2")
+	})
+}

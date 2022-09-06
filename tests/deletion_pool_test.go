@@ -159,11 +159,19 @@ func TestExpungeUpdate(t *testing.T) {
 		c[1].Sx("A005 OK command completed in")
 
 		// session 2 sees the new message
+		c[1].C(`AXXX FETCH 1:* (UID FLAGS)`)
+		c[1].S(
+			`* 1 FETCH (UID 2 FLAGS (\Recent \Seen))`,
+			`* 2 FETCH (UID 3 FLAGS (\Answered \Recent))`,
+		).OK("AXXX")
+
+		// session 2 sees the new message
 		c[2].C(`B003 FETCH 1:* (UID FLAGS)`)
 		c[2].S(
 			`* 1 FETCH (UID 1 FLAGS (\Deleted \Flagged))`,
 			`* 2 FETCH (UID 2 FLAGS (\Seen))`,
 			`* 3 EXISTS`,
+			`* 3 FETCH (FLAGS (\Answered))`,
 		)
 		c[2].Sx(`B003 OK \[EXPUNGEISSUED\] command completed in`)
 
@@ -242,7 +250,7 @@ func TestDeletionFlagPropagation(t *testing.T) {
 		// Mark the message we copied as deleted. Only client 1 sees the flag.
 		c[1].C(`A001 STORE 1 +FLAGS (\Deleted)`).OK("A001")
 		c[1].C(`A005 FETCH 1 (FLAGS)`).Sxe(`FLAGS \(\\Deleted \\Recent\)`).OK("A005")
-		c[2].C(`B005 FETCH 1 (FLAGS)`).Sxe(`FLAGS \(\\Recent\)`).OK("B005")
+		c[2].C(`B005 FETCH 1 (FLAGS)`).Sxe(`FLAGS \(\)`).OK("B005")
 
 		// Expunge the message from origin; the message is now only in destination.
 		c[1].C(`B002 EXPUNGE`).OK("B002")
@@ -250,7 +258,7 @@ func TestDeletionFlagPropagation(t *testing.T) {
 		c[2].Cf(`B006 STATUS %v (MESSAGES)`, destination).Sxe("MESSAGES 1").OK("B006")
 
 		// The message in destination still doesn't have the deleted flag.
-		c[2].C(`B005 FETCH 1 (FLAGS)`).Sxe(`FLAGS \(\\Recent\)`).OK("B005")
+		c[2].C(`B005 FETCH 1 (FLAGS)`).Sxe(`FLAGS \(\)`).OK("B005")
 	})
 }
 

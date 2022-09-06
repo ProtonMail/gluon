@@ -223,11 +223,8 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 				return err
 			}
 
-			responders := xslices.Map(messageIDs, func(messageID ids.MessageIDPair) state.Responder {
-				return state.NewExists(messageID.InternalID, messageUIDs[messageID.InternalID])
-			})
+			user.queueStateUpdate(state.NewExistsStateUpdate(internalMailboxID, messageIDs, messageUIDs, nil))
 
-			user.queueStateUpdate(state.NewMailboxIDResponderStateUpdate(internalMailboxID, responders...))
 		}
 
 		return nil
@@ -347,8 +344,8 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx *ent.Tx, messageID
 }
 
 // applyMessagesAddedToMailbox adds the messages to the given mailbox.
-func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]int, error) {
-	messageUIDs, update, err := state.AddMessagesToMailbox(ctx, tx, mboxID, messageIDs)
+func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]*ent.UID, error) {
+	messageUIDs, update, err := state.AddMessagesToMailbox(ctx, tx, mboxID, messageIDs, nil)
 	if err != nil {
 		return nil, err
 	}
