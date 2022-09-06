@@ -22,39 +22,33 @@ type Update interface {
 }
 
 type messageFlagsAddedStateUpdate struct {
-	AnyMessageIDStateFilter
-	flags   imap.FlagSet
-	mboxID  ids.MailboxIDPair
-	stateID int
+	AllStateFilter
+	messageIDs []imap.InternalMessageID
+	flags      imap.FlagSet
+	mboxID     ids.MailboxIDPair
+	stateID    int
 }
 
 func newMessageFlagsAddedStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID int) Update {
 	return &messageFlagsAddedStateUpdate{
-		flags:                   flags,
-		mboxID:                  mboxID,
-		AnyMessageIDStateFilter: AnyMessageIDStateFilter{MessageIDs: messageIDs},
-		stateID:                 stateID,
+		flags:      flags,
+		mboxID:     mboxID,
+		messageIDs: messageIDs,
+		stateID:    stateID,
 	}
 }
 
 func (u *messageFlagsAddedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
-	for _, messageID := range u.MessageIDs {
-		snapFlags, err := s.snap.getMessageFlags(messageID)
-		if err != nil {
-			return err
-		}
-
-		newFlags := snapFlags.AddFlagSet(u.flags)
-
-		if s.snap.mboxID != u.mboxID {
-			newFlags = newFlags.Set(imap.FlagDeleted, snapFlags.Contains(imap.FlagDeleted))
-		}
+	for _, messageID := range u.messageIDs {
+		newFlags := u.flags
 
 		if err := s.PushResponder(ctx, tx, NewFetch(
 			messageID,
 			newFlags,
 			contexts.IsUID(ctx),
 			s.StateID == u.stateID && contexts.IsSilent(ctx),
+			s.snap.mboxID != u.mboxID,
+			FetchFlagOpAdd,
 		)); err != nil {
 			return err
 		}
@@ -66,7 +60,7 @@ func (u *messageFlagsAddedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s 
 func (u *messageFlagsAddedStateUpdate) String() string {
 	return fmt.Sprintf("MessagFlagsAddedStateUpdate: mbox = %v messages = %v flags = %v",
 		u.mboxID.InternalID.ShortID(),
-		xslices.Map(u.MessageIDs, func(id imap.InternalMessageID) string {
+		xslices.Map(u.messageIDs, func(id imap.InternalMessageID) string {
 			return id.ShortID()
 		}),
 		u.flags)
@@ -114,39 +108,33 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 }
 
 type messageFlagsRemovedStateUpdate struct {
-	AnyMessageIDStateFilter
-	flags   imap.FlagSet
-	mboxID  ids.MailboxIDPair
-	stateID int
+	AllStateFilter
+	messageIDs []imap.InternalMessageID
+	flags      imap.FlagSet
+	mboxID     ids.MailboxIDPair
+	stateID    int
 }
 
 func NewMessageFlagsRemovedStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID int) Update {
 	return &messageFlagsRemovedStateUpdate{
-		flags:                   flags,
-		mboxID:                  mboxID,
-		AnyMessageIDStateFilter: AnyMessageIDStateFilter{MessageIDs: messageIDs},
-		stateID:                 stateID,
+		flags:      flags,
+		mboxID:     mboxID,
+		messageIDs: messageIDs,
+		stateID:    stateID,
 	}
 }
 
 func (u *messageFlagsRemovedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
-	for _, messageID := range u.MessageIDs {
-		snapFlags, err := s.snap.getMessageFlags(messageID)
-		if err != nil {
-			return err
-		}
-
-		newFlags := snapFlags.RemoveFlagSet(u.flags)
-
-		if s.snap.mboxID != u.mboxID {
-			newFlags = newFlags.Set(imap.FlagDeleted, snapFlags.Contains(imap.FlagDeleted))
-		}
+	for _, messageID := range u.messageIDs {
+		newFlags := u.flags
 
 		if err := s.PushResponder(ctx, tx, NewFetch(
 			messageID,
 			newFlags,
 			contexts.IsUID(ctx),
 			s.StateID == u.stateID && contexts.IsSilent(ctx),
+			s.snap.mboxID != u.mboxID,
+			FetchFlagOpRem,
 		)); err != nil {
 			return err
 		}
@@ -158,7 +146,7 @@ func (u *messageFlagsRemovedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, 
 func (u *messageFlagsRemovedStateUpdate) String() string {
 	return fmt.Sprintf("MessagFlagsRemovedStateUpdate: mbox = %v messages = %v flags = %v",
 		u.mboxID.InternalID,
-		xslices.Map(u.MessageIDs, func(id imap.InternalMessageID) string {
+		xslices.Map(u.messageIDs, func(id imap.InternalMessageID) string {
 			return id.ShortID()
 		}),
 		u.flags)
@@ -212,39 +200,33 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 }
 
 type messageFlagsSetStateUpdate struct {
-	AnyMessageIDStateFilter
-	flags   imap.FlagSet
-	mboxID  ids.MailboxIDPair
-	stateID int
+	AllStateFilter
+	messageIDs []imap.InternalMessageID
+	flags      imap.FlagSet
+	mboxID     ids.MailboxIDPair
+	stateID    int
 }
 
 func NewMessageFlagsSetStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID int) Update {
 	return &messageFlagsSetStateUpdate{
-		flags:                   flags,
-		mboxID:                  mboxID,
-		AnyMessageIDStateFilter: AnyMessageIDStateFilter{MessageIDs: messageIDs},
-		stateID:                 stateID,
+		flags:      flags,
+		mboxID:     mboxID,
+		messageIDs: messageIDs,
+		stateID:    stateID,
 	}
 }
 
 func (u *messageFlagsSetStateUpdate) Apply(ctx context.Context, tx *ent.Tx, state *State) error {
-	for _, messageID := range u.MessageIDs {
+	for _, messageID := range u.messageIDs {
 		newFlags := u.flags
-
-		if state.snap.mboxID != u.mboxID {
-			snapFlags, err := state.snap.getMessageFlags(messageID)
-			if err != nil {
-				return err
-			}
-
-			newFlags = newFlags.Set(imap.FlagDeleted, snapFlags.Contains(imap.FlagDeleted))
-		}
 
 		if err := state.PushResponder(ctx, tx, NewFetch(
 			messageID,
 			newFlags,
 			contexts.IsUID(ctx),
 			state.StateID == u.stateID && contexts.IsSilent(ctx),
+			state.snap.mboxID != u.mboxID,
+			FetchFlagOpSet,
 		)); err != nil {
 			return err
 		}
@@ -254,7 +236,12 @@ func (u *messageFlagsSetStateUpdate) Apply(ctx context.Context, tx *ent.Tx, stat
 }
 
 func (u *messageFlagsSetStateUpdate) String() string {
-	return fmt.Sprintf("MessagFlagsSetStateUpdate: mbox = %v messages = %v flags=%v", u.mboxID.InternalID.ShortID(), u.MessageIDs, u.flags)
+	return fmt.Sprintf("MessagFlagsSetStateUpdate: mbox = %v messages = %v flags=%v",
+		u.mboxID.InternalID.ShortID(),
+		xslices.Map(u.messageIDs, func(id imap.InternalMessageID) string {
+			return id.ShortID()
+		}),
+		u.flags)
 }
 
 // applyMessageFlagsSet sets the flags of the given messages.
