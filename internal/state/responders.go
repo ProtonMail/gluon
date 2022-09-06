@@ -152,20 +152,30 @@ func (u *expunge) String() string {
 	)
 }
 
+const (
+	FetchFlagOpAdd = iota
+	FetchFlagOpRem
+	FetchFlagOpSet
+)
+
 type fetch struct {
 	messageID imap.InternalMessageID
 	flags     imap.FlagSet
 
-	asUID    bool
-	asSilent bool
+	fetchFlagOp              int
+	asUID                    bool
+	asSilent                 bool
+	cameFromDifferentMailbox bool
 }
 
-func NewFetch(messageID imap.InternalMessageID, flags imap.FlagSet, asUID, asSilent bool) *fetch {
+func NewFetch(messageID imap.InternalMessageID, flags imap.FlagSet, asUID, asSilent, cameFromDifferentMailbox bool, fetchFlagOp int) *fetch {
 	return &fetch{
-		messageID: messageID,
-		flags:     flags,
-		asUID:     asUID,
-		asSilent:  asSilent,
+		messageID:                messageID,
+		flags:                    flags,
+		asUID:                    asUID,
+		asSilent:                 asSilent,
+		fetchFlagOp:              fetchFlagOp,
+		cameFromDifferentMailbox: cameFromDifferentMailbox,
 	}
 }
 
@@ -181,7 +191,22 @@ func (u *fetch) handle(ctx context.Context, tx *ent.Tx, snap *snapshot) ([]respo
 	}
 
 	// Set the new flags as per the fetch response (recent flag is preserved).
-	if err := snap.setMessageFlags(u.messageID, u.flags); err != nil {
+	var newMessageFlags imap.FlagSet
+
+	switch u.fetchFlagOp {
+	case FetchFlagOpAdd:
+		newMessageFlags = curFlags.AddFlagSet(u.flags)
+	case FetchFlagOpRem:
+		newMessageFlags = curFlags.RemoveFlagSet(u.flags)
+	case FetchFlagOpSet:
+		newMessageFlags = u.flags
+	}
+
+	if u.cameFromDifferentMailbox {
+		newMessageFlags = newMessageFlags.Set(imap.FlagDeleted, curFlags.Contains(imap.FlagDeleted))
+	}
+
+	if err := snap.setMessageFlags(u.messageID, newMessageFlags); err != nil {
 		return nil, err
 	}
 

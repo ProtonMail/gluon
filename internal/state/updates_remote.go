@@ -2,8 +2,6 @@ package state
 
 import (
 	"context"
-	"errors"
-
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db/ent"
@@ -23,12 +21,7 @@ func NewRemoteAddMessageFlagsStateUpdate(messageID imap.InternalMessageID, flag 
 }
 
 func (u *RemoteAddMessageFlagsStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
-	snapFlags, err := s.snap.getMessageFlags(u.MessageID)
-	if err != nil {
-		return err
-	}
-
-	return s.PushResponder(ctx, tx, NewFetch(u.MessageID, snapFlags.Add(u.flag), contexts.IsUID(ctx), contexts.IsSilent(ctx)))
+	return s.PushResponder(ctx, tx, NewFetch(u.MessageID, imap.NewFlagSet(u.flag), contexts.IsUID(ctx), contexts.IsSilent(ctx), false, FetchFlagOpAdd))
 }
 
 type RemoteRemoveMessageFlagsStateUpdate struct {
@@ -44,16 +37,7 @@ func NewRemoteRemoveMessageFlagsStateUpdate(messageID imap.InternalMessageID, fl
 }
 
 func (u *RemoteRemoveMessageFlagsStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
-	snapFlags, err := s.snap.getMessageFlags(u.MessageID)
-	if err != nil {
-		if errors.Is(err, ErrNoSuchMessage) {
-			return nil
-		}
-
-		return err
-	}
-
-	return s.PushResponder(ctx, tx, NewFetch(u.MessageID, snapFlags.Remove(u.flag), contexts.IsUID(ctx), contexts.IsSilent(ctx)))
+	return s.PushResponder(ctx, tx, NewFetch(u.MessageID, imap.NewFlagSet(u.flag), contexts.IsUID(ctx), contexts.IsSilent(ctx), false, FetchFlagOpRem))
 }
 
 type RemoteMessageDeletedStateUpdate struct {
