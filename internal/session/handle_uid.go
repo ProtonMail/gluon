@@ -10,7 +10,7 @@ import (
 	"github.com/ProtonMail/gluon/profiling"
 )
 
-func (s *Session) handleUID(ctx context.Context, tag string, cmd *proto.UID, mailbox *state.Mailbox, profiler profiling.CmdProfiler, ch chan response.Response) error {
+func (s *Session) handleUID(ctx context.Context, tag string, cmd *proto.UID, mailbox *state.Mailbox, profiler profiling.CmdProfiler, ch chan response.Response) (response.Response, error) {
 	switch cmd := cmd.GetCommand().(type) {
 	case *proto.UID_Copy:
 		profiler.Start(profiling.CmdTypeUIDCopy)

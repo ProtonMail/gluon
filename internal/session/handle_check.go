@@ -8,12 +8,10 @@ import (
 	"github.com/ProtonMail/gluon/internal/state"
 )
 
-func (s *Session) handleCheck(ctx context.Context, tag string, cmd *proto.Check, mailbox *state.Mailbox, ch chan response.Response) error {
+func (s *Session) handleCheck(ctx context.Context, tag string, cmd *proto.Check, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
 	if err := flush(ctx, mailbox, true, ch); err != nil {
-		return err
+		return nil, err
 	}
 
-	ch <- response.Ok(tag).WithMessage("CHECK")
-
-	return nil
+	return response.Ok(tag).WithMessage("CHECK"), nil
 }

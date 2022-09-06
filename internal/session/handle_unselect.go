@@ -8,12 +8,10 @@ import (
 	"github.com/ProtonMail/gluon/internal/state"
 )
 
-func (s *Session) handleUnselect(ctx context.Context, tag string, cmd *proto.Unselect, mailbox *state.Mailbox, ch chan response.Response) error {
+func (s *Session) handleUnselect(ctx context.Context, tag string, cmd *proto.Unselect, mailbox *state.Mailbox, _ chan response.Response) (response.Response, error) {
 	if err := mailbox.Close(ctx); err != nil {
-		return err
+		return nil, err
 	}
 
-	ch <- response.Ok(tag).WithMessage("UNSELECT")
-
-	return nil
+	return response.Ok(tag).WithMessage("UNSELECT"), nil
 }
