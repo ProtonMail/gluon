@@ -119,9 +119,9 @@ func TestRecentExists(t *testing.T) {
 		// Client 3 appends a new message to INBOX.
 		c[3].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
 
-		// Client 1 is notified of the new message first; it appears as recent to client 1.
+		// Client 1 is notified of the new message. No recent is sent as client 2 still has the mailbox selected.
 		c[1].C("A007 NOOP")
-		c[1].S("* 1 EXISTS", "* 1 RECENT").OK("A007")
+		c[1].S("* 1 EXISTS").OK("A007")
 
 		// Client 2 is notified of the new message second; it does not appear as recent to client 2.
 		c[2].C("A007 NOOP")
@@ -163,8 +163,8 @@ func TestRecentIDLEExpunge(t *testing.T) {
 		c[2].C("A006 select INBOX").OK("A006")
 		c[2].C("A006 move 1:* folder").OK("A006")
 
-		// Client 1 receives EXISTS and RECENT updates for those messages.
-		c[1].S(`* 1 EXISTS`, `* 1 RECENT`, `* 2 EXISTS`, `* 2 RECENT`)
+		// Client 1 receives EXISTS. Since Client 2 still has the mailbox selected, recent updates are not sent.
+		c[1].S(`* 1 EXISTS`, `* 2 EXISTS`)
 
 		// Client 2 moves those two messages back to INBOX.
 		// In doing so, it sees the messages in the folder; they are no longer recent.

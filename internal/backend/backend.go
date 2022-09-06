@@ -120,6 +120,7 @@ func (b *Backend) GetState(username, password string, sessionID int) (*state.Sta
 	logrus.
 		WithField("userID", userID).
 		WithField("username", username).
+		WithField("stateID", state.StateID).
 		Debug("Created new IMAP state")
 
 	return state, nil

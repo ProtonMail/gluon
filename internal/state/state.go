@@ -506,7 +506,9 @@ func (state *State) flushResponses(ctx context.Context, tx *ent.Tx, permitExpung
 	}
 
 	for _, responder := range state.popResponders(permitExpunge) {
-		res, err := responder.handle(ctx, tx, state.snap)
+		logrus.WithField("state", state.StateID).WithField("Origin", "Flush").Tracef("Applying responder: %v", responder.String())
+		res, err := responder.handle(ctx, tx, state.snap, state.StateID)
+
 		if err != nil {
 			return nil, err
 		}
@@ -523,7 +525,9 @@ func (state *State) PushResponder(ctx context.Context, tx *ent.Tx, responder ...
 	}
 
 	for _, responder := range responder {
-		res, err := responder.handle(ctx, tx, state.snap)
+		logrus.WithField("state", state.StateID).WithField("Origin", "Push").Tracef("Applying responder: %v", responder.String())
+		res, err := responder.handle(ctx, tx, state.snap, state.StateID)
+
 		if err != nil {
 			return err
 		}
@@ -562,7 +566,7 @@ func (state *State) popResponders(permitExpunge bool) []Responder {
 		} else if _, ok := res.(*expunge); ok {
 			rem = append(rem, res)
 			skipIDs.Add(res.getMessageID())
-		} else if _, ok := res.(*exists); ok {
+		} else if _, ok := res.(*targetedExists); ok {
 			if skipIDs.Contains(res.getMessageID()) {
 				rem = append(rem, res)
 				skipIDs.Remove(res.getMessageID())

@@ -37,7 +37,7 @@ func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *en
 		snap.messages.insert(
 			ids.NewMessageIDPair(msgUID.Edges.Message),
 			msgUID.UID,
-			newFlagSet(msgUID, msgUID.Edges.Message.Edges.Flags),
+			db.NewFlagSet(msgUID, msgUID.Edges.Message.Edges.Flags),
 		)
 	}
 
@@ -213,16 +213,11 @@ func (snap *snapshot) getMessagesWithoutFlag(flag string) []*snapMsg {
 	})
 }
 
-func (snap *snapshot) appendMessage(ctx context.Context, client *ent.Client, messageID ids.MessageIDPair) error {
-	msgUID, err := db.GetMailboxMessage(ctx, client, snap.mboxID.InternalID, messageID.InternalID)
-	if err != nil {
-		return err
-	}
-
+func (snap *snapshot) appendMessage(messageID ids.MessageIDPair, uid int, flags imap.FlagSet) error {
 	snap.messages.insert(
 		messageID,
-		msgUID.UID,
-		newFlagSet(msgUID, msgUID.Edges.Message.Edges.Flags),
+		uid,
+		flags,
 	)
 
 	return nil
@@ -306,20 +301,4 @@ func (snap *snapshot) resolveUID(number string) (int, error) {
 	}
 
 	return strconv.Atoi(number)
-}
-
-func newFlagSet(msgUID *ent.UID, flags []*ent.MessageFlag) imap.FlagSet {
-	flagSet := imap.NewFlagSetFromSlice(xslices.Map(flags, func(flag *ent.MessageFlag) string {
-		return flag.Value
-	}))
-
-	if msgUID.Deleted {
-		flagSet = flagSet.Add(imap.FlagDeleted)
-	}
-
-	if msgUID.Recent {
-		flagSet = flagSet.Add(imap.FlagRecent)
-	}
-
-	return flagSet
 }

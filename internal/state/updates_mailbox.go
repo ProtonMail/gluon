@@ -7,6 +7,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
+	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
 )
 
@@ -18,7 +19,8 @@ func MoveMessagesFromMailbox(
 	tx *ent.Tx,
 	mboxFromID, mboxToID imap.InternalMailboxID,
 	messageIDs []imap.InternalMessageID,
-) (map[imap.InternalMessageID]int, []Update, error) {
+	s *State,
+) (map[imap.InternalMessageID]*ent.UID, []Update, error) {
 	if mboxFromID != mboxToID {
 		if err := db.RemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxFromID); err != nil {
 			return nil, nil, err
@@ -29,17 +31,18 @@ func MoveMessagesFromMailbox(
 		return nil, nil, err
 	}
 
-	messageUIDs, err := db.GetMessageUIDs(ctx, tx.Client(), mboxToID, messageIDs)
+	messageUIDs, err := db.GetMessageUIDsWithFlags(ctx, tx.Client(), mboxToID, messageIDs)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	stateUpdates := make([]Update, 0, len(messageIDs)+1)
 	{
-		responders := xslices.Map(messageIDs, func(id imap.InternalMessageID) Responder {
-			return NewExists(id, messageUIDs[id])
+		responders := xslices.Map(messageIDs, func(id imap.InternalMessageID) *exists {
+			uid := messageUIDs[id]
+			return newExists(ids.NewMessageIDPair(uid.Edges.Message), uid.UID, db.NewFlagSet(uid, uid.Edges.Message.Edges.Flags))
 		})
-		stateUpdates = append(stateUpdates, NewMailboxIDResponderStateUpdate(mboxToID, responders...))
+		stateUpdates = append(stateUpdates, newExistsStateUpdateWithExists(mboxToID, responders, s))
 	}
 
 	for _, messageID := range messageIDs {
@@ -50,17 +53,22 @@ func MoveMessagesFromMailbox(
 }
 
 // AddMessagesToMailbox adds the messages to the given mailbox.
-func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]int, Update, error) {
-	messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxID)
+func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, s *State) (map[imap.InternalMessageID]*ent.UID, Update, error) {
+	if _, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxID); err != nil {
+		return nil, nil, err
+	}
+
+	messageUIDs, err := db.GetMessageUIDsWithFlags(ctx, tx.Client(), mboxID, messageIDs)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	responders := xslices.Map(messageIDs, func(id imap.InternalMessageID) Responder {
-		return NewExists(id, messageUIDs[id])
+	responders := xslices.Map(messageIDs, func(id imap.InternalMessageID) *exists {
+		uid := messageUIDs[id]
+		return newExists(ids.NewMessageIDPair(uid.Edges.Message), uid.UID, db.NewFlagSet(uid, uid.Edges.Message.Edges.Flags))
 	})
 
-	return messageUIDs, NewMailboxIDResponderStateUpdate(mboxID, responders...), nil
+	return messageUIDs, newExistsStateUpdateWithExists(mboxID, responders, s), nil
 }
 
 // RemoveMessagesFromMailbox removes the messages from the given mailbox.

@@ -90,6 +90,7 @@ func (state *State) actionCreateMessage(
 	literal []byte,
 	flags imap.FlagSet,
 	date time.Time,
+	isSelectedMailbox bool,
 ) (int, error) {
 	internalID, res, err := state.user.GetRemote().CreateMessage(ctx, mboxID.RemoteID, literal, flags, date)
 	if err != nil {
@@ -136,11 +137,26 @@ func (state *State) actionCreateMessage(
 		return 0, err
 	}
 
-	if err := state.user.QueueOrApplyStateUpdate(ctx, tx, NewMailboxIDResponderStateUpdate(mboxID.InternalID, NewExists(internalID, messageUIDs[internalID]))); err != nil {
+	// We can append to non-selected mailboxes.
+	var st *State
+	if isSelectedMailbox {
+		st = state
+	}
+
+	uid := messageUIDs[internalID]
+	if err := state.user.QueueOrApplyStateUpdate(
+		ctx,
+		tx,
+		newExistsStateUpdateWithExists(
+			mboxID.InternalID,
+			[]*exists{newExists(ids.MessageIDPair{InternalID: internalID, RemoteID: res.ID}, uid.UID, db.NewFlagSet(uid, uid.Edges.Message.Edges.Flags))},
+			st,
+		),
+	); err != nil {
 		return 0, err
 	}
 
-	return messageUIDs[internalID], nil
+	return messageUIDs[internalID].UID, nil
 }
 
 func (state *State) actionAddMessagesToMailbox(
@@ -148,7 +164,8 @@ func (state *State) actionAddMessagesToMailbox(
 	tx *ent.Tx,
 	messageIDs []ids.MessageIDPair,
 	mboxID ids.MailboxIDPair,
-) (map[imap.InternalMessageID]int, error) {
+	isMailboxSelected bool,
+) (map[imap.InternalMessageID]*ent.UID, error) {
 	var haveMessageIDs []ids.MessageIDPair
 	if state.snap != nil && state.snap.mboxID.InternalID == mboxID.InternalID {
 		haveMessageIDs = state.snap.getAllMessageIDs()
@@ -175,7 +192,13 @@ func (state *State) actionAddMessagesToMailbox(
 		return nil, err
 	}
 
-	messageUIDs, update, err := AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs)
+	// Messages can be added to a mailbox that is not selected.
+	var st *State
+	if isMailboxSelected {
+		st = state
+	}
+
+	messageUIDs, update, err := AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, st)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +250,7 @@ func (state *State) actionMoveMessages(
 	tx *ent.Tx,
 	messageIDs []ids.MessageIDPair,
 	mboxFromID, mboxToID ids.MailboxIDPair,
-) (map[imap.InternalMessageID]int, error) {
+) (map[imap.InternalMessageID]*ent.UID, error) {
 	if mboxFromID.InternalID == mboxToID.InternalID {
 		internalIDs, _ := ids.SplitMessageIDPairSlice(messageIDs)
 
@@ -272,7 +295,7 @@ func (state *State) actionMoveMessages(
 		return nil, err
 	}
 
-	messageUIDs, updates, err := MoveMessagesFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs)
+	messageUIDs, updates, err := MoveMessagesFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs, state)
 	if err != nil {
 		return nil, err
 	}
