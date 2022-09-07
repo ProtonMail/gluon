@@ -4,6 +4,7 @@ package gluon
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
@@ -33,13 +35,18 @@ type Server struct {
 	// backend provides the server with access to the IMAP backend.
 	backend *backend.Backend
 
-	// listeners holds all listeners on which the server is listening.
-	listeners     map[net.Listener]struct{}
-	listenersLock sync.Mutex
-
 	// sessions holds all active IMAP sessions.
 	sessions     map[int]*session.Session
 	sessionsLock sync.RWMutex
+
+	// serveErrCh collects errors encountered while serving.
+	serveErrCh chan error
+
+	// serveDoneCh is used to stop the server.
+	serveDoneCh chan struct{}
+
+	// serveWG keeps track of serving goroutines.
+	serveWG wg
 
 	// nextID holds the ID that will be given to the next session.
 	nextID     int
@@ -52,7 +59,7 @@ type Server struct {
 	tlsConfig *tls.Config
 
 	// watchers holds streams of events.
-	watchers     map[chan events.Event]struct{}
+	watchers     map[*queue.QueuedChannel[events.Event]]struct{}
 	watchersLock sync.RWMutex
 
 	// storeBuilder builds message stores.
@@ -64,8 +71,7 @@ type Server struct {
 	// versionInfo holds info about the Gluon version.
 	versionInfo internal.VersionInfo
 
-	connectionWG sync.WaitGroup
-
+	// reporter is used to report errors to things like Sentry.
 	reporter reporter.Reporter
 }
 
@@ -127,79 +133,83 @@ func (s *Server) RemoveUser(ctx context.Context, userID string) error {
 }
 
 // AddWatcher adds a new watcher.
-func (s *Server) AddWatcher() chan events.Event {
+func (s *Server) AddWatcher() <-chan events.Event {
 	s.watchersLock.Lock()
 	defer s.watchersLock.Unlock()
 
-	eventCh := make(chan events.Event)
+	eventCh := queue.NewQueuedChannel[events.Event](0, 0)
 
 	s.watchers[eventCh] = struct{}{}
 
-	return eventCh
-}
-
-// RemoveWatcher removes the watcher from the server and closes the channel.
-func (s *Server) RemoveWatcher(ch chan events.Event) {
-	s.watchersLock.Lock()
-	defer s.watchersLock.Unlock()
-
-	if _, ok := s.watchers[ch]; ok {
-		close(ch)
-		delete(s.watchers, ch)
-	}
+	return eventCh.GetChannel()
 }
 
 // Serve serves connections accepted from the given listener.
-// It returns a channel of all errors which occur while serving.
-// The error channel is closed when either the connection is dropped or the server is closed.
-func (s *Server) Serve(ctx context.Context, l net.Listener) chan error {
+// It stops serving when the context is canceled, the listener is closed, or the server is closed.
+func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 
-	errCh := make(chan error)
+	s.publish(events.EventListenerAdded{
+		Addr: l.Addr(),
+	})
 
-	s.addListener(l)
+	s.serveWG.Go(func() {
+		defer s.publish(events.EventListenerRemoved{
+			Addr: l.Addr(),
+		})
 
-	go func() {
-		defer close(errCh)
-		defer s.removeListener(l)
-		defer s.connectionWG.Wait()
+		connCh := newConnCh(l)
+		defer l.Close()
 
-		for {
-			conn, err := l.Accept()
-			if err != nil {
+		s.serve(ctx, connCh)
+	})
+
+	return nil
+}
+
+// serve handles incoming connections and starts a new goroutine for each.
+func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
+	var connWG wg
+	defer connWG.Wait()
+
+	for {
+		select {
+		case <-ctx.Done():
+			logrus.Debug("Stopping serve, context canceled")
+			return
+
+		case <-s.serveDoneCh:
+			logrus.Debug("Stopping serve, server stopped")
+			return
+
+		case conn, ok := <-connCh:
+			if !ok {
+				logrus.Debug("Stopping serve, listener closed")
 				return
 			}
 
-			s.connectionWG.Add(1)
+			defer conn.Close()
 
-			go func() {
-				defer s.connectionWG.Done()
-				s.handleConn(ctx, conn, errCh)
-			}()
+			connWG.Go(func() {
+				session, sessionID := s.addSession(ctx, conn)
+				defer s.removeSession(sessionID)
+
+				labels := pprof.Labels("go", "Serve", "SessionID", strconv.Itoa(sessionID))
+				pprof.Do(ctx, labels, func(ctx context.Context) {
+					if err := session.Serve(ctx); err != nil {
+						if !errors.Is(err, net.ErrClosed) {
+							s.serveErrCh <- err
+						}
+					}
+				})
+			})
 		}
-	}()
-
-	return errCh
+	}
 }
 
-// Close closes the server.
-// It firstly closes all TCP listeners then closes the backend.
-func (s *Server) Close(ctx context.Context) error {
-	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
-
-	for l := range s.listeners {
-		s.removeListener(l)
-	}
-
-	s.connectionWG.Wait()
-
-	if err := s.backend.Close(ctx); err != nil {
-		return fmt.Errorf("failed to close backend: %w", err)
-	}
-
-	logrus.Debug("Mailserver was closed")
-
-	return nil
+// GetErrorCh returns the error channel.
+func (s *Server) GetErrorCh() <-chan error {
+	return s.serveErrCh
 }
 
 func (s *Server) GetVersionInfo() internal.VersionInfo {
@@ -218,44 +228,31 @@ func (s *Server) GetUserDataPath(userID string) (string, error) {
 	return filepath.Join(s.dir, userID), nil
 }
 
-func (s *Server) addListener(l net.Listener) {
-	s.listenersLock.Lock()
-	defer s.listenersLock.Unlock()
+// Close closes the server.
+// It firstly closes all TCP listeners then closes the backend.
+func (s *Server) Close(ctx context.Context) error {
+	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 
-	s.listeners[l] = struct{}{}
+	// Tell the server to stop serving.
+	close(s.serveDoneCh)
 
-	s.publish(events.EventListenerAdded{
-		Addr: l.Addr(),
-	})
-}
+	// Wait until all goroutines currently handling connections are done.
+	s.serveWG.Wait()
 
-func (s *Server) removeListener(l net.Listener) {
-	s.listenersLock.Lock()
-	defer s.listenersLock.Unlock()
-
-	if _, ok := s.listeners[l]; ok {
-		delete(s.listeners, l)
-
-		if err := l.Close(); err != nil {
-			logrus.WithError(err).Error("Failed to close listener")
-		}
+	// Close the backend.
+	if err := s.backend.Close(ctx); err != nil {
+		return fmt.Errorf("failed to close backend: %w", err)
 	}
 
-	s.publish(events.EventListenerRemoved{
-		Addr: l.Addr(),
-	})
-}
+	// Close the server error channel.
+	close(s.serveErrCh)
 
-func (s *Server) handleConn(ctx context.Context, conn net.Conn, errCh chan error) {
-	session, sessionID := s.addSession(ctx, conn)
-	labels := pprof.Labels("go", "Serve", "SessionID", strconv.Itoa(sessionID))
-	pprof.Do(ctx, labels, func(_ context.Context) {
-		defer s.removeSession(sessionID)
+	// Close any watchers.
+	for watcher := range s.watchers {
+		watcher.Close()
+	}
 
-		if err := session.Serve(ctx); err != nil {
-			errCh <- err
-		}
-	})
+	return nil
 }
 
 func (s *Server) addSession(ctx context.Context, conn net.Conn) (*session.Session, int) {
@@ -327,6 +324,27 @@ func (s *Server) publish(event events.Event) {
 	defer s.watchersLock.RUnlock()
 
 	for eventCh := range s.watchers {
-		eventCh <- event
+		eventCh.Queue(event)
 	}
+}
+
+// newConnCh accepts connections from the given listener.
+// It returns a channel of all accepted connections which is closed when the listener is closed.
+func newConnCh(l net.Listener) <-chan net.Conn {
+	connCh := make(chan net.Conn)
+
+	go func() {
+		defer close(connCh)
+
+		for {
+			conn, err := l.Accept()
+			if err != nil {
+				return
+			}
+
+			connCh <- conn
+		}
+	}()
+
+	return connCh
 }

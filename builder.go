@@ -3,13 +3,13 @@ package gluon
 import (
 	"crypto/tls"
 	"io"
-	"net"
 	"os"
 	"path/filepath"
 
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
@@ -59,12 +59,13 @@ func (builder *serverBuilder) build() (*Server, error) {
 	return &Server{
 		dir:                builder.dir,
 		backend:            backend,
-		listeners:          make(map[net.Listener]struct{}),
 		sessions:           make(map[int]*session.Session),
+		serveErrCh:         make(chan error),
+		serveDoneCh:        make(chan struct{}),
 		inLogger:           builder.inLogger,
 		outLogger:          builder.outLogger,
 		tlsConfig:          builder.tlsConfig,
-		watchers:           make(map[chan events.Event]struct{}),
+		watchers:           make(map[*queue.QueuedChannel[events.Event]]struct{}),
 		storeBuilder:       builder.storeBuilder,
 		cmdExecProfBuilder: builder.cmdExecProfBuilder,
 		versionInfo:        builder.versionInfo,

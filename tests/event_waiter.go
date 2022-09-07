@@ -9,7 +9,7 @@ import (
 
 type eventWaiter struct {
 	wg     sync.WaitGroup
-	ch     chan events.Event
+	ch     <-chan events.Event
 	server *gluon.Server
 }
 
@@ -35,8 +35,4 @@ func (e *eventWaiter) waitEndOfSession() {
 	}()
 
 	e.wg.Wait()
-}
-
-func (e *eventWaiter) close() {
-	e.server.RemoveWatcher(e.ch)
 }
