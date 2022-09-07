@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/schema"
@@ -18,11 +19,11 @@ func init() {
 	// mailboxDescUIDNext is the schema descriptor for UIDNext field.
 	mailboxDescUIDNext := mailboxFields[3].Descriptor()
 	// mailbox.DefaultUIDNext holds the default value on creation for the UIDNext field.
-	mailbox.DefaultUIDNext = mailboxDescUIDNext.Default.(int)
+	mailbox.DefaultUIDNext = imap.UID(mailboxDescUIDNext.Default.(uint32))
 	// mailboxDescUIDValidity is the schema descriptor for UIDValidity field.
 	mailboxDescUIDValidity := mailboxFields[4].Descriptor()
 	// mailbox.DefaultUIDValidity holds the default value on creation for the UIDValidity field.
-	mailbox.DefaultUIDValidity = mailboxDescUIDValidity.Default.(int)
+	mailbox.DefaultUIDValidity = imap.UID(mailboxDescUIDValidity.Default.(uint32))
 	// mailboxDescSubscribed is the schema descriptor for Subscribed field.
 	mailboxDescSubscribed := mailboxFields[5].Descriptor()
 	// mailbox.DefaultSubscribed holds the default value on creation for the Subscribed field.

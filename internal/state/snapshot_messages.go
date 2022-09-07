@@ -9,7 +9,7 @@ import (
 // snapMsg is a single message inside a snapshot.
 type snapMsg struct {
 	ID    ids.MessageIDPair
-	UID   int
+	UID   imap.UID
 	Seq   int
 	flags imap.FlagSet
 }
@@ -26,7 +26,7 @@ func newMsgList() *snapMsgList {
 	}
 }
 
-func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID int, flags imap.FlagSet) {
+func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
 	if len(list.msg) > 0 && list.msg[len(list.msg)-1].UID >= msgUID {
 		panic("UIDs must be strictly ascending")
 	}

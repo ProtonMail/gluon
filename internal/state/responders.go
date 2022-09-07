@@ -62,11 +62,11 @@ type Responder interface {
 
 type exists struct {
 	messageID  ids.MessageIDPair
-	messageUID int
+	messageUID imap.UID
 	flags      imap.FlagSet
 }
 
-func newExists(messageID ids.MessageIDPair, messageUID int, flags imap.FlagSet) *exists {
+func newExists(messageID ids.MessageIDPair, messageUID imap.UID, flags imap.FlagSet) *exists {
 	return &exists{messageID: messageID, messageUID: messageUID, flags: flags}
 }
 

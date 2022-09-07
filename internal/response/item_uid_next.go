@@ -1,12 +1,15 @@
 package response
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/ProtonMail/gluon/imap"
+)
 
 type itemUIDNext struct {
-	uid int
+	uid imap.UID
 }
 
-func ItemUIDNext(n int) *itemUIDNext {
+func ItemUIDNext(n imap.UID) *itemUIDNext {
 	return &itemUIDNext{uid: n}
 }
 

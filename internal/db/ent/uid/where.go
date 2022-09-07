@@ -5,6 +5,7 @@ package uid
 import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/predicate"
 )
 
@@ -80,9 +81,10 @@ func IDLTE(id int) predicate.UID {
 }
 
 // UID applies equality check predicate on the "UID" field. It's identical to UIDEQ.
-func UID(v int) predicate.UID {
+func UID(v imap.UID) predicate.UID {
+	vc := uint32(v)
 	return predicate.UID(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUID), v))
+		s.Where(sql.EQ(s.C(FieldUID), vc))
 	})
 }
 
@@ -101,24 +103,26 @@ func Recent(v bool) predicate.UID {
 }
 
 // UIDEQ applies the EQ predicate on the "UID" field.
-func UIDEQ(v int) predicate.UID {
+func UIDEQ(v imap.UID) predicate.UID {
+	vc := uint32(v)
 	return predicate.UID(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUID), v))
+		s.Where(sql.EQ(s.C(FieldUID), vc))
 	})
 }
 
 // UIDNEQ applies the NEQ predicate on the "UID" field.
-func UIDNEQ(v int) predicate.UID {
+func UIDNEQ(v imap.UID) predicate.UID {
+	vc := uint32(v)
 	return predicate.UID(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldUID), v))
+		s.Where(sql.NEQ(s.C(FieldUID), vc))
 	})
 }
 
 // UIDIn applies the In predicate on the "UID" field.
-func UIDIn(vs ...int) predicate.UID {
+func UIDIn(vs ...imap.UID) predicate.UID {
 	v := make([]interface{}, len(vs))
 	for i := range v {
-		v[i] = vs[i]
+		v[i] = uint32(vs[i])
 	}
 	return predicate.UID(func(s *sql.Selector) {
 		s.Where(sql.In(s.C(FieldUID), v...))
@@ -126,10 +130,10 @@ func UIDIn(vs ...int) predicate.UID {
 }
 
 // UIDNotIn applies the NotIn predicate on the "UID" field.
-func UIDNotIn(vs ...int) predicate.UID {
+func UIDNotIn(vs ...imap.UID) predicate.UID {
 	v := make([]interface{}, len(vs))
 	for i := range v {
-		v[i] = vs[i]
+		v[i] = uint32(vs[i])
 	}
 	return predicate.UID(func(s *sql.Selector) {
 		s.Where(sql.NotIn(s.C(FieldUID), v...))
@@ -137,30 +141,34 @@ func UIDNotIn(vs ...int) predicate.UID {
 }
 
 // UIDGT applies the GT predicate on the "UID" field.
-func UIDGT(v int) predicate.UID {
+func UIDGT(v imap.UID) predicate.UID {
+	vc := uint32(v)
 	return predicate.UID(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldUID), v))
+		s.Where(sql.GT(s.C(FieldUID), vc))
 	})
 }
 
 // UIDGTE applies the GTE predicate on the "UID" field.
-func UIDGTE(v int) predicate.UID {
+func UIDGTE(v imap.UID) predicate.UID {
+	vc := uint32(v)
 	return predicate.UID(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldUID), v))
+		s.Where(sql.GTE(s.C(FieldUID), vc))
 	})
 }
 
 // UIDLT applies the LT predicate on the "UID" field.
-func UIDLT(v int) predicate.UID {
+func UIDLT(v imap.UID) predicate.UID {
+	vc := uint32(v)
 	return predicate.UID(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldUID), v))
+		s.Where(sql.LT(s.C(FieldUID), vc))
 	})
 }
 
 // UIDLTE applies the LTE predicate on the "UID" field.
-func UIDLTE(v int) predicate.UID {
+func UIDLTE(v imap.UID) predicate.UID {
+	vc := uint32(v)
 	return predicate.UID(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldUID), v))
+		s.Where(sql.LTE(s.C(FieldUID), vc))
 	})
 }
 

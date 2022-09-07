@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 )
 
 // UID holds the schema definition for the UID entity.
@@ -14,7 +15,7 @@ type UID struct {
 // Fields of the UID.
 func (UID) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("UID"),
+		field.Uint32("UID").GoType(imap.UID(0)),
 		field.Bool("Deleted").Default(false),
 		field.Bool("Recent").Default(true),
 	}

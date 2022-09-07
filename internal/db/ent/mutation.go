@@ -49,10 +49,10 @@ type MailboxMutation struct {
 	_MailboxID             *imap.InternalMailboxID
 	_RemoteID              *imap.LabelID
 	_Name                  *string
-	_UIDNext               *int
-	add_UIDNext            *int
-	_UIDValidity           *int
-	add_UIDValidity        *int
+	_UIDNext               *imap.UID
+	add_UIDNext            *imap.UID
+	_UIDValidity           *imap.UID
+	add_UIDValidity        *imap.UID
 	_Subscribed            *bool
 	clearedFields          map[string]struct{}
 	_UIDs                  map[int]struct{}
@@ -292,13 +292,13 @@ func (m *MailboxMutation) ResetName() {
 }
 
 // SetUIDNext sets the "UIDNext" field.
-func (m *MailboxMutation) SetUIDNext(i int) {
+func (m *MailboxMutation) SetUIDNext(i imap.UID) {
 	m._UIDNext = &i
 	m.add_UIDNext = nil
 }
 
 // UIDNext returns the value of the "UIDNext" field in the mutation.
-func (m *MailboxMutation) UIDNext() (r int, exists bool) {
+func (m *MailboxMutation) UIDNext() (r imap.UID, exists bool) {
 	v := m._UIDNext
 	if v == nil {
 		return
@@ -309,7 +309,7 @@ func (m *MailboxMutation) UIDNext() (r int, exists bool) {
 // OldUIDNext returns the old "UIDNext" field's value of the Mailbox entity.
 // If the Mailbox object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MailboxMutation) OldUIDNext(ctx context.Context) (v int, err error) {
+func (m *MailboxMutation) OldUIDNext(ctx context.Context) (v imap.UID, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUIDNext is only allowed on UpdateOne operations")
 	}
@@ -324,7 +324,7 @@ func (m *MailboxMutation) OldUIDNext(ctx context.Context) (v int, err error) {
 }
 
 // AddUIDNext adds i to the "UIDNext" field.
-func (m *MailboxMutation) AddUIDNext(i int) {
+func (m *MailboxMutation) AddUIDNext(i imap.UID) {
 	if m.add_UIDNext != nil {
 		*m.add_UIDNext += i
 	} else {
@@ -333,7 +333,7 @@ func (m *MailboxMutation) AddUIDNext(i int) {
 }
 
 // AddedUIDNext returns the value that was added to the "UIDNext" field in this mutation.
-func (m *MailboxMutation) AddedUIDNext() (r int, exists bool) {
+func (m *MailboxMutation) AddedUIDNext() (r imap.UID, exists bool) {
 	v := m.add_UIDNext
 	if v == nil {
 		return
@@ -348,13 +348,13 @@ func (m *MailboxMutation) ResetUIDNext() {
 }
 
 // SetUIDValidity sets the "UIDValidity" field.
-func (m *MailboxMutation) SetUIDValidity(i int) {
+func (m *MailboxMutation) SetUIDValidity(i imap.UID) {
 	m._UIDValidity = &i
 	m.add_UIDValidity = nil
 }
 
 // UIDValidity returns the value of the "UIDValidity" field in the mutation.
-func (m *MailboxMutation) UIDValidity() (r int, exists bool) {
+func (m *MailboxMutation) UIDValidity() (r imap.UID, exists bool) {
 	v := m._UIDValidity
 	if v == nil {
 		return
@@ -365,7 +365,7 @@ func (m *MailboxMutation) UIDValidity() (r int, exists bool) {
 // OldUIDValidity returns the old "UIDValidity" field's value of the Mailbox entity.
 // If the Mailbox object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MailboxMutation) OldUIDValidity(ctx context.Context) (v int, err error) {
+func (m *MailboxMutation) OldUIDValidity(ctx context.Context) (v imap.UID, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUIDValidity is only allowed on UpdateOne operations")
 	}
@@ -380,7 +380,7 @@ func (m *MailboxMutation) OldUIDValidity(ctx context.Context) (v int, err error)
 }
 
 // AddUIDValidity adds i to the "UIDValidity" field.
-func (m *MailboxMutation) AddUIDValidity(i int) {
+func (m *MailboxMutation) AddUIDValidity(i imap.UID) {
 	if m.add_UIDValidity != nil {
 		*m.add_UIDValidity += i
 	} else {
@@ -389,7 +389,7 @@ func (m *MailboxMutation) AddUIDValidity(i int) {
 }
 
 // AddedUIDValidity returns the value that was added to the "UIDValidity" field in this mutation.
-func (m *MailboxMutation) AddedUIDValidity() (r int, exists bool) {
+func (m *MailboxMutation) AddedUIDValidity() (r imap.UID, exists bool) {
 	v := m.add_UIDValidity
 	if v == nil {
 		return
@@ -765,14 +765,14 @@ func (m *MailboxMutation) SetField(name string, value ent.Value) error {
 		m.SetName(v)
 		return nil
 	case mailbox.FieldUIDNext:
-		v, ok := value.(int)
+		v, ok := value.(imap.UID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUIDNext(v)
 		return nil
 	case mailbox.FieldUIDValidity:
-		v, ok := value.(int)
+		v, ok := value.(imap.UID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -821,14 +821,14 @@ func (m *MailboxMutation) AddedField(name string) (ent.Value, bool) {
 func (m *MailboxMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	case mailbox.FieldUIDNext:
-		v, ok := value.(int)
+		v, ok := value.(imap.UID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddUIDNext(v)
 		return nil
 	case mailbox.FieldUIDValidity:
-		v, ok := value.(int)
+		v, ok := value.(imap.UID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -3227,8 +3227,8 @@ type UIDMutation struct {
 	op             Op
 	typ            string
 	id             *int
-	_UID           *int
-	add_UID        *int
+	_UID           *imap.UID
+	add_UID        *imap.UID
 	_Deleted       *bool
 	_Recent        *bool
 	clearedFields  map[string]struct{}
@@ -3340,13 +3340,13 @@ func (m *UIDMutation) IDs(ctx context.Context) ([]int, error) {
 }
 
 // SetUID sets the "UID" field.
-func (m *UIDMutation) SetUID(i int) {
+func (m *UIDMutation) SetUID(i imap.UID) {
 	m._UID = &i
 	m.add_UID = nil
 }
 
 // UID returns the value of the "UID" field in the mutation.
-func (m *UIDMutation) UID() (r int, exists bool) {
+func (m *UIDMutation) UID() (r imap.UID, exists bool) {
 	v := m._UID
 	if v == nil {
 		return
@@ -3357,7 +3357,7 @@ func (m *UIDMutation) UID() (r int, exists bool) {
 // OldUID returns the old "UID" field's value of the UID entity.
 // If the UID object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UIDMutation) OldUID(ctx context.Context) (v int, err error) {
+func (m *UIDMutation) OldUID(ctx context.Context) (v imap.UID, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUID is only allowed on UpdateOne operations")
 	}
@@ -3372,7 +3372,7 @@ func (m *UIDMutation) OldUID(ctx context.Context) (v int, err error) {
 }
 
 // AddUID adds i to the "UID" field.
-func (m *UIDMutation) AddUID(i int) {
+func (m *UIDMutation) AddUID(i imap.UID) {
 	if m.add_UID != nil {
 		*m.add_UID += i
 	} else {
@@ -3381,7 +3381,7 @@ func (m *UIDMutation) AddUID(i int) {
 }
 
 // AddedUID returns the value that was added to the "UID" field in this mutation.
-func (m *UIDMutation) AddedUID() (r int, exists bool) {
+func (m *UIDMutation) AddedUID() (r imap.UID, exists bool) {
 	v := m.add_UID
 	if v == nil {
 		return
@@ -3613,7 +3613,7 @@ func (m *UIDMutation) OldField(ctx context.Context, name string) (ent.Value, err
 func (m *UIDMutation) SetField(name string, value ent.Value) error {
 	switch name {
 	case uid.FieldUID:
-		v, ok := value.(int)
+		v, ok := value.(imap.UID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -3664,7 +3664,7 @@ func (m *UIDMutation) AddedField(name string) (ent.Value, bool) {
 func (m *UIDMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	case uid.FieldUID:
-		v, ok := value.(int)
+		v, ok := value.(imap.UID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

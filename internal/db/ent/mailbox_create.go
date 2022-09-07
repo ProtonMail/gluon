@@ -51,13 +51,13 @@ func (mc *MailboxCreate) SetName(s string) *MailboxCreate {
 }
 
 // SetUIDNext sets the "UIDNext" field.
-func (mc *MailboxCreate) SetUIDNext(i int) *MailboxCreate {
+func (mc *MailboxCreate) SetUIDNext(i imap.UID) *MailboxCreate {
 	mc.mutation.SetUIDNext(i)
 	return mc
 }
 
 // SetNillableUIDNext sets the "UIDNext" field if the given value is not nil.
-func (mc *MailboxCreate) SetNillableUIDNext(i *int) *MailboxCreate {
+func (mc *MailboxCreate) SetNillableUIDNext(i *imap.UID) *MailboxCreate {
 	if i != nil {
 		mc.SetUIDNext(*i)
 	}
@@ -65,13 +65,13 @@ func (mc *MailboxCreate) SetNillableUIDNext(i *int) *MailboxCreate {
 }
 
 // SetUIDValidity sets the "UIDValidity" field.
-func (mc *MailboxCreate) SetUIDValidity(i int) *MailboxCreate {
+func (mc *MailboxCreate) SetUIDValidity(i imap.UID) *MailboxCreate {
 	mc.mutation.SetUIDValidity(i)
 	return mc
 }
 
 // SetNillableUIDValidity sets the "UIDValidity" field if the given value is not nil.
-func (mc *MailboxCreate) SetNillableUIDValidity(i *int) *MailboxCreate {
+func (mc *MailboxCreate) SetNillableUIDValidity(i *imap.UID) *MailboxCreate {
 	if i != nil {
 		mc.SetUIDValidity(*i)
 	}
@@ -313,7 +313,7 @@ func (mc *MailboxCreate) createSpec() (*Mailbox, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := mc.mutation.UIDNext(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDNext,
 		})
@@ -321,7 +321,7 @@ func (mc *MailboxCreate) createSpec() (*Mailbox, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := mc.mutation.UIDValidity(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDValidity,
 		})

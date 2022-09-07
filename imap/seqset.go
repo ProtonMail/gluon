@@ -2,6 +2,7 @@ package imap
 
 import (
 	"fmt"
+	"github.com/bradenaw/juniper/xslices"
 	"strconv"
 	"strings"
 
@@ -25,6 +26,12 @@ func (seqval SeqVal) String() string {
 }
 
 type SeqSet []SeqVal
+
+func NewSeqSetFromUID(set []UID) SeqSet {
+	return NewSeqSet(xslices.Map(set, func(t UID) int {
+		return int(t)
+	}))
+}
 
 func NewSeqSet(set []int) SeqSet {
 	slices.Sort(set)

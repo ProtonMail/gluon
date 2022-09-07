@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/uid"
@@ -18,7 +19,7 @@ type UID struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// UID holds the value of the "UID" field.
-	UID int `json:"UID,omitempty"`
+	UID imap.UID `json:"UID,omitempty"`
 	// Deleted holds the value of the "Deleted" field.
 	Deleted bool `json:"Deleted,omitempty"`
 	// Recent holds the value of the "Recent" field.
@@ -105,7 +106,7 @@ func (u *UID) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field UID", values[i])
 			} else if value.Valid {
-				u.UID = int(value.Int64)
+				u.UID = imap.UID(value.Int64)
 			}
 		case uid.FieldDeleted:
 			if value, ok := values[i].(*sql.NullBool); !ok {

@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/uid"
@@ -22,7 +23,7 @@ type UIDCreate struct {
 }
 
 // SetUID sets the "UID" field.
-func (uc *UIDCreate) SetUID(i int) *UIDCreate {
+func (uc *UIDCreate) SetUID(i imap.UID) *UIDCreate {
 	uc.mutation.SetUID(i)
 	return uc
 }
@@ -220,7 +221,7 @@ func (uc *UIDCreate) createSpec() (*UID, *sqlgraph.CreateSpec) {
 	)
 	if value, ok := uc.mutation.UID(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: uid.FieldUID,
 		})

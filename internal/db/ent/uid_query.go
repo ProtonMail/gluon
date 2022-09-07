@@ -326,7 +326,7 @@ func (uq *UIDQuery) WithMailbox(opts ...func(*MailboxQuery)) *UIDQuery {
 // Example:
 //
 //	var v []struct {
-//		UID int `json:"UID,omitempty"`
+//		UID imap.UID `json:"UID,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -355,7 +355,7 @@ func (uq *UIDQuery) GroupBy(field string, fields ...string) *UIDGroupBy {
 // Example:
 //
 //	var v []struct {
-//		UID int `json:"UID,omitempty"`
+//		UID imap.UID `json:"UID,omitempty"`
 //	}
 //
 //	client.UID.Query().

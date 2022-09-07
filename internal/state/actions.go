@@ -91,7 +91,7 @@ func (state *State) actionCreateMessage(
 	flags imap.FlagSet,
 	date time.Time,
 	isSelectedMailbox bool,
-) (int, error) {
+) (imap.UID, error) {
 	internalID, res, err := state.user.GetRemote().CreateMessage(ctx, mboxID.RemoteID, literal, flags, date)
 	if err != nil {
 		return 0, err

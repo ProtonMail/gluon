@@ -56,7 +56,7 @@ func CreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*CreateMessageReq) 
 }
 
 func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) (map[imap.InternalMessageID]*ent.UID, error) {
-	messageUIDs := make(map[imap.InternalMessageID]int)
+	messageUIDs := make(map[imap.InternalMessageID]imap.UID)
 
 	mbox, err := tx.Mailbox.Query().Where(mailbox.MailboxID(mboxID)).Only(ctx)
 	if err != nil {
@@ -71,7 +71,7 @@ func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.Int
 	var builders []*ent.UIDCreate
 
 	for idx, messageID := range messageIDs {
-		messageUIDs[messageID] = mbox.UIDNext + idx
+		messageUIDs[messageID] = mbox.UIDNext.Add(uint32(idx))
 
 		builders = append(builders, tx.UID.Create().
 			SetMailbox(mbox).
@@ -92,7 +92,7 @@ func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.Int
 }
 
 func BumpMailboxUIDsForMessage(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) (map[imap.InternalMessageID]*ent.UID, error) {
-	messageUIDs := make(map[imap.InternalMessageID]int)
+	messageUIDs := make(map[imap.InternalMessageID]imap.UID)
 
 	mbox, err := tx.Mailbox.Query().Where(mailbox.MailboxID(mboxID)).Only(ctx)
 	if err != nil {
@@ -102,7 +102,7 @@ func BumpMailboxUIDsForMessage(ctx context.Context, tx *ent.Tx, messageIDs []ima
 	var builders []*ent.UIDUpdate
 
 	for idx, messageID := range messageIDs {
-		uidNext := mbox.UIDNext + idx
+		uidNext := mbox.UIDNext.Add(uint32(idx))
 		messageUIDs[messageID] = uidNext
 
 		builders = append(builders, tx.UID.Update().
@@ -199,7 +199,7 @@ func GetMessageMailboxIDs(ctx context.Context, client *ent.Client, messageID ima
 	}), nil
 }
 
-func GetMessageUIDs(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]int, error) {
+func GetMessageUIDs(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]imap.UID, error) {
 	messageUIDs, err := client.UID.Query().
 		Where(
 			uid.HasMailboxWith(mailbox.MailboxID(mboxID)),
@@ -214,7 +214,7 @@ func GetMessageUIDs(ctx context.Context, client *ent.Client, mboxID imap.Interna
 		return nil, err
 	}
 
-	res := make(map[imap.InternalMessageID]int)
+	res := make(map[imap.InternalMessageID]imap.UID)
 
 	for _, messageUID := range messageUIDs {
 		res[messageUID.Edges.Message.MessageID] = messageUID.UID
