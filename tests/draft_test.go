@@ -23,6 +23,7 @@ func TestDraftScenario(t *testing.T) {
 
 		s.messageDeleted("user", messageID)
 		s.messageCreated("user", mailboxID, []byte("To: 4@4.pm"))
+		s.flush("user")
 
 		c.C("A002 NOOP")
 		c.S("* 1 EXPUNGE")
