@@ -70,7 +70,11 @@ func main() {
 
 	logrus.Infof("Server is listening on %v", listener.Addr())
 
-	for err := range server.Serve(ctx, listener) {
+	if err := server.Serve(ctx, listener); err != nil {
+		logrus.WithError(err).Fatal("Failed to serve")
+	}
+
+	for err := range server.GetErrorCh() {
 		logrus.WithError(err).Error("Error while serving")
 	}
 }

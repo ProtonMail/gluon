@@ -195,7 +195,8 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	listener, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))
 	require.NoError(tb, err)
 
-	errCh := server.Serve(ctx, listener)
+	// Start the server.
+	require.NoError(tb, server.Serve(ctx, listener))
 
 	// Run the test against the server.
 	labels := pprof.Labels("GLUON", "UNITTEST")
@@ -211,7 +212,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 
 	// Expect the server to shut down successfully when closed.
 	require.NoError(tb, server.Close(ctx))
-	require.NoError(tb, <-errCh)
+	require.NoError(tb, <-server.GetErrorCh())
 }
 
 // runServerWithPaths initializes and starts the mailserver.

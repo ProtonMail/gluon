@@ -115,12 +115,7 @@ func (s *Session) Serve(ctx context.Context) error {
 		return err
 	}
 
-	if err := s.serve(ctx); err != nil {
-		logrus.WithError(err).Errorf("Failed to serve session %v", s.sessionID)
-		return err
-	}
-
-	return nil
+	return s.serve(ctx)
 }
 
 func (s *Session) serve(ctx context.Context) error {
@@ -257,9 +252,7 @@ func (s *Session) done(ctx context.Context) {
 		}
 	}
 
-	if err := s.conn.Close(); err != nil {
-		logrus.WithError(err).Error("Failed to close connection")
-	}
+	_ = s.conn.Close()
 }
 
 func (s *Session) addCapability(capability imap.Capability) {

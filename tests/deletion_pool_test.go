@@ -389,7 +389,6 @@ func TestMessageErasedFromDB(t *testing.T) {
 		s.messageDeleted("user", messageID2)
 
 		waiter := newEventWaiter(s.server)
-		defer waiter.close()
 
 		// Noop should process their deletion.
 		c.C(`A002 LOGOUT`)
@@ -414,7 +413,6 @@ func TestMessageErasedFromDBOnStartup(t *testing.T) {
 		messageID1 := s.messageCreatedFromFile("user", mailboxID, "testdata/multipart-mixed.eml")
 
 		waiter := newEventWaiter(s.server)
-		defer waiter.close()
 
 		// Noop should process their deletion.
 		c.C(`A002 LOGOUT`)
@@ -453,7 +451,6 @@ func TestMessageErasedFromDBWithMany(t *testing.T) {
 		s.messageDeleted("user", messageID1)
 
 		waiter := newEventWaiter(s.server)
-		defer waiter.close()
 
 		// Logout client 1.
 		c[1].C(`A002 LOGOUT`)

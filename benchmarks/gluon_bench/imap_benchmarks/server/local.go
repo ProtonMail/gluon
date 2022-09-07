@@ -54,8 +54,12 @@ func (*LocalServerBuilder) New(ctx context.Context, serverPath string, profiler 
 		return nil, err
 	}
 
+	if err := server.Serve(ctx, listener); err != nil {
+		return nil, err
+	}
+
 	go func() {
-		for err := range server.Serve(ctx, listener) {
+		for err := range server.GetErrorCh() {
 			logrus.WithError(err).Error("Error while serving")
 		}
 	}()
