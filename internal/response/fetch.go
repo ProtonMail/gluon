@@ -2,14 +2,15 @@ package response
 
 import (
 	"fmt"
+	"github.com/ProtonMail/gluon/imap"
 )
 
 type fetch struct {
-	seq   int
+	seq   imap.SeqID
 	items []Item
 }
 
-func Fetch(seq int) *fetch {
+func Fetch(seq imap.SeqID) *fetch {
 	return &fetch{
 		seq: seq,
 	}

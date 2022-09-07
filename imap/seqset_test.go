@@ -8,17 +8,17 @@ import (
 
 func TestSeqSet(t *testing.T) {
 	tests := []struct {
-		have []int
+		have []SeqID
 		want string
 	}{
-		{have: []int{}, want: ""},
-		{have: []int{1}, want: "1"},
-		{have: []int{1, 3}, want: "1,3"},
-		{have: []int{1, 3, 5}, want: "1,3,5"},
-		{have: []int{1, 2, 3, 5}, want: "1:3,5"},
-		{have: []int{1, 2, 3, 5, 6}, want: "1:3,5:6"},
-		{have: []int{1, 2, 3, 4, 5, 6}, want: "1:6"},
-		{have: []int{1, 3, 4, 5, 6}, want: "1,3:6"},
+		{have: []SeqID{}, want: ""},
+		{have: []SeqID{1}, want: "1"},
+		{have: []SeqID{1, 3}, want: "1,3"},
+		{have: []SeqID{1, 3, 5}, want: "1,3,5"},
+		{have: []SeqID{1, 2, 3, 5}, want: "1:3,5"},
+		{have: []SeqID{1, 2, 3, 5, 6}, want: "1:3,5:6"},
+		{have: []SeqID{1, 2, 3, 4, 5, 6}, want: "1:6"},
+		{have: []SeqID{1, 3, 4, 5, 6}, want: "1,3:6"},
 	}
 
 	for _, tc := range tests {

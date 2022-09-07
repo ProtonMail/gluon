@@ -3,10 +3,10 @@ package response
 import "fmt"
 
 type itemUnseen struct {
-	count int
+	count uint32
 }
 
-func ItemUnseen(n int) *itemUnseen {
+func ItemUnseen(n uint32) *itemUnseen {
 	return &itemUnseen{count: n}
 }
 

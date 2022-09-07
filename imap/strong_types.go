@@ -33,3 +33,5 @@ type UID uint32
 func (u UID) Add(v uint32) UID {
 	return UID(uint32(u) + v)
 }
+
+type SeqID uint32

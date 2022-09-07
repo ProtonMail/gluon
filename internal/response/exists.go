@@ -2,17 +2,18 @@ package response
 
 import (
 	"fmt"
+	"github.com/ProtonMail/gluon/imap"
 )
 
 type exists struct {
-	count int
+	count imap.SeqID
 }
 
 func Exists() *exists {
 	return &exists{}
 }
 
-func (r *exists) WithCount(n int) *exists {
+func (r *exists) WithCount(n imap.SeqID) *exists {
 	r.count = n
 	return r
 }

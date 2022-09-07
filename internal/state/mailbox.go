@@ -113,14 +113,14 @@ func (m *Mailbox) Subscribed() bool {
 	return m.mbox.Subscribed
 }
 
-func (m *Mailbox) GetMessagesWithFlag(flag string) []int {
-	return xslices.Map(m.snap.getMessagesWithFlag(flag), func(msg *snapMsg) int {
+func (m *Mailbox) GetMessagesWithFlag(flag string) []imap.SeqID {
+	return xslices.Map(m.snap.getMessagesWithFlag(flag), func(msg *snapMsg) imap.SeqID {
 		return msg.Seq
 	})
 }
 
-func (m *Mailbox) GetMessagesWithoutFlag(flag string) []int {
-	return xslices.Map(m.snap.getMessagesWithoutFlag(flag), func(msg *snapMsg) int {
+func (m *Mailbox) GetMessagesWithoutFlag(flag string) []imap.SeqID {
+	return xslices.Map(m.snap.getMessagesWithoutFlag(flag), func(msg *snapMsg) imap.SeqID {
 		return msg.Seq
 	})
 }

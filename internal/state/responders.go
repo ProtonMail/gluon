@@ -123,7 +123,7 @@ func (u *targetedExists) handle(snap *snapshot, stateID StateID) ([]response.Res
 			}
 		}
 
-		res = append(res, response.Recent().WithCount(recent))
+		res = append(res, response.Recent().WithCount(uint32(recent)))
 	}
 
 	return res, dbUpdate, nil
