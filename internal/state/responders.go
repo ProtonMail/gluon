@@ -31,6 +31,13 @@ func (r *responderStateUpdate) String() string {
 	)
 }
 
+// responderDBUpdate may be returned by a responder in order to avoid locking the database writer for each update.
+// Seeing as this is only used right now to clear the recent flags, we can avoid a lot of necessary database locking
+// and transaction overhead.
+type responderDBUpdate interface {
+	apply(ctx context.Context, tx *ent.Tx) error
+}
+
 func NewMailboxIDResponderStateUpdate(id imap.InternalMailboxID, responders ...Responder) Update {
 	return &responderStateUpdate{SnapFilter: NewMBoxIDStateFilter(id), responders: responders}
 }
@@ -45,7 +52,7 @@ func NewMessageIDAndMailboxIDResponderStateUpdate(messageID imap.InternalMessage
 
 type Responder interface {
 	// handle generates responses in the context of the given snapshot.
-	handle(ctx context.Context, tx *ent.Tx, snap *snapshot, stateID int) ([]response.Response, error)
+	handle(snap *snapshot, stateID int) ([]response.Response, responderDBUpdate, error)
 
 	// getMessageID returns the message ID that this Responder targets.
 	getMessageID() imap.InternalMessageID
@@ -67,6 +74,15 @@ func (u *exists) String() string {
 	return fmt.Sprintf("Exists: message=%v remote=%v", u.messageID.InternalID.ShortID(), u.messageID.RemoteID)
 }
 
+type clearRecentFlagRespUpdate struct {
+	messageID imap.InternalMessageID
+	mboxID    imap.InternalMailboxID
+}
+
+func (u *clearRecentFlagRespUpdate) apply(ctx context.Context, tx *ent.Tx) error {
+	return db.ClearRecentFlag(ctx, tx, u.mboxID, u.messageID)
+}
+
 // targetedExists needs to be separate so that we update the targetStateID safely when doing concurrent updates
 // in different states. This way we also avoid the extra step of copying the `exists` data.
 type targetedExists struct {
@@ -74,9 +90,9 @@ type targetedExists struct {
 	targetStateID int
 }
 
-func (u *targetedExists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot, stateID int) ([]response.Response, error) {
+func (u *targetedExists) handle(snap *snapshot, stateID int) ([]response.Response, responderDBUpdate, error) {
 	if snap.hasMessage(u.resp.messageID.InternalID) {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	var flags imap.FlagSet
@@ -87,29 +103,30 @@ func (u *targetedExists) handle(ctx context.Context, tx *ent.Tx, snap *snapshot,
 	}
 
 	if err := snap.appendMessage(u.resp.messageID, u.resp.messageUID, flags); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	seq, err := snap.getMessageSeq(u.resp.messageID.InternalID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	res := []response.Response{response.Exists().WithCount(seq)}
 
+	var dbUpdate responderDBUpdate
+
 	if recent := len(snap.getMessagesWithFlag(imap.FlagRecent)); recent > 0 {
-		if msgFlags, err := snap.getMessageFlags(u.resp.messageID.InternalID); err != nil {
-			return nil, err
-		} else if msgFlags.Contains(imap.FlagRecent) {
-			if err := db.ClearRecentFlag(ctx, tx, snap.mboxID.InternalID, u.resp.messageID.InternalID); err != nil {
-				return nil, err
+		if flags.Contains(imap.FlagRecent) {
+			dbUpdate = &clearRecentFlagRespUpdate{
+				mboxID:    snap.mboxID.InternalID,
+				messageID: u.resp.messageID.InternalID,
 			}
 		}
 
 		res = append(res, response.Recent().WithCount(recent))
 	}
 
-	return res, nil
+	return res, dbUpdate, nil
 }
 
 func (u *targetedExists) getMessageID() imap.InternalMessageID {
@@ -223,26 +240,26 @@ func NewExpunge(messageID imap.InternalMessageID, asClose bool) *expunge {
 	}
 }
 
-func (u *expunge) handle(ctx context.Context, tx *ent.Tx, snap *snapshot, _ int) ([]response.Response, error) {
+func (u *expunge) handle(snap *snapshot, _ int) ([]response.Response, responderDBUpdate, error) {
 	if !snap.hasMessage(u.messageID) {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	seq, err := snap.getMessageSeq(u.messageID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err := snap.expungeMessage(u.messageID); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// When handling a CLOSE command, EXPUNGE responses are not sent.
 	if u.asClose {
-		return nil, nil
+		return nil, nil, nil
 	}
 
-	return []response.Response{response.Expunge(seq)}, nil
+	return []response.Response{response.Expunge(seq)}, nil, nil
 }
 
 func (u *expunge) getMessageID() imap.InternalMessageID {
@@ -283,15 +300,15 @@ func NewFetch(messageID imap.InternalMessageID, flags imap.FlagSet, asUID, asSil
 	}
 }
 
-func (u *fetch) handle(ctx context.Context, tx *ent.Tx, snap *snapshot, _ int) ([]response.Response, error) {
+func (u *fetch) handle(snap *snapshot, _ int) ([]response.Response, responderDBUpdate, error) {
 	if !snap.hasMessage(u.messageID) {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// Get the flags in this particular snapshot (might contain Recent flag).
 	curFlags, err := snap.getMessageFlags(u.messageID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Set the new flags as per the fetch response (recent flag is preserved).
@@ -311,23 +328,23 @@ func (u *fetch) handle(ctx context.Context, tx *ent.Tx, snap *snapshot, _ int) (
 	}
 
 	if err := snap.setMessageFlags(u.messageID, newMessageFlags); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Get the updated newFlags in this particular snapshot (might contain Recent flag).
 	newFlags, err := snap.getMessageFlags(u.messageID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// If the flags are unchanged, we don't send a FETCH response.
 	if curFlags.Equals(newFlags) {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// When handling a SILENT STORE command, the FETCH response is not sent.
 	if u.asSilent {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	items := []response.Item{response.ItemFlags(newFlags)}
@@ -336,7 +353,7 @@ func (u *fetch) handle(ctx context.Context, tx *ent.Tx, snap *snapshot, _ int) (
 	if u.asUID {
 		uid, err := snap.getMessageUID(u.messageID)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		items = append(items, response.ItemUID(uid))
@@ -344,10 +361,10 @@ func (u *fetch) handle(ctx context.Context, tx *ent.Tx, snap *snapshot, _ int) (
 
 	seq, err := snap.getMessageSeq(u.messageID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return []response.Response{response.Fetch(seq).WithItems(items...)}, nil
+	return []response.Response{response.Fetch(seq).WithItems(items...)}, nil, nil
 }
 
 func (u *fetch) getMessageID() imap.InternalMessageID {

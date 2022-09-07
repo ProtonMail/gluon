@@ -300,9 +300,7 @@ func (m *Mailbox) expunge(ctx context.Context, messages []*snapMsg) error {
 }
 
 func (m *Mailbox) Flush(ctx context.Context, permitExpunge bool) ([]response.Response, error) {
-	return db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]response.Response, error) {
-		return m.state.flushResponses(ctx, tx, permitExpunge)
-	})
+	return m.state.flushResponses(ctx, permitExpunge)
 }
 
 func (m *Mailbox) Close(ctx context.Context) error {
