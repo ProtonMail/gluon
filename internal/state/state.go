@@ -472,11 +472,8 @@ func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mail
 func (state *State) beginIdle(ctx context.Context) ([]response.Response, error) {
 	var res []response.Response
 
-	var err error
-
-	if res, err = db.WriteResult(ctx, state.db(), func(ctx context.Context, tx *ent.Tx) ([]response.Response, error) {
-		return state.flushResponses(ctx, tx, true)
-	}); err != nil {
+	res, err := state.flushResponses(ctx, true)
+	if err != nil {
 		return nil, err
 	}
 
@@ -495,7 +492,7 @@ func (state *State) getLiteral(messageID imap.InternalMessageID) ([]byte, error)
 	return state.user.GetStore().Get(messageID)
 }
 
-func (state *State) flushResponses(ctx context.Context, tx *ent.Tx, permitExpunge bool) ([]response.Response, error) {
+func (state *State) flushResponses(ctx context.Context, permitExpunge bool) ([]response.Response, error) {
 	var responses []response.Response
 
 	select {
@@ -505,15 +502,33 @@ func (state *State) flushResponses(ctx context.Context, tx *ent.Tx, permitExpung
 	default: // fallthrough
 	}
 
+	var dbUpdates []responderDBUpdate
+
 	for _, responder := range state.popResponders(permitExpunge) {
 		logrus.WithField("state", state.StateID).WithField("Origin", "Flush").Tracef("Applying responder: %v", responder.String())
-		res, err := responder.handle(ctx, tx, state.snap, state.StateID)
+		res, dbUpdate, err := responder.handle(state.snap, state.StateID)
 
 		if err != nil {
 			return nil, err
 		}
 
 		responses = append(responses, res...)
+
+		if dbUpdate != nil {
+			dbUpdates = append(dbUpdates, dbUpdate)
+		}
+	}
+
+	if err := state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		for _, update := range dbUpdates {
+			if err := update.apply(ctx, tx); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return responses, nil
@@ -526,10 +541,16 @@ func (state *State) PushResponder(ctx context.Context, tx *ent.Tx, responder ...
 
 	for _, responder := range responder {
 		logrus.WithField("state", state.StateID).WithField("Origin", "Push").Tracef("Applying responder: %v", responder.String())
-		res, err := responder.handle(ctx, tx, state.snap, state.StateID)
+		res, dbUpdate, err := responder.handle(state.snap, state.StateID)
 
 		if err != nil {
 			return err
+		}
+
+		if dbUpdate != nil {
+			if err := dbUpdate.apply(ctx, tx); err != nil {
+				return err
+			}
 		}
 
 		for _, res := range res {
