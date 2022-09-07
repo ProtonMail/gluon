@@ -29,7 +29,7 @@ type user struct {
 
 	db *db.DB
 
-	states      map[int]*state.State
+	states      map[state.StateID]*state.State
 	statesLock  sync.RWMutex
 	nextStateID int
 
@@ -52,7 +52,7 @@ func newUser(ctx context.Context, userID string, db *db.DB, conn connector.Conne
 		store:          store,
 		delimiter:      delimiter,
 		db:             db,
-		states:         make(map[int]*state.State),
+		states:         make(map[state.StateID]*state.State),
 		updateQuitCh:   make(chan struct{}),
 	}
 
@@ -154,12 +154,12 @@ func (user *user) newState() (*state.State, error) {
 	user.nextStateID++
 
 	newState := state.NewState(
-		user.nextStateID,
+		state.StateID(user.nextStateID),
 		newStateUserInterfaceImpl(user, newStateConnectorImpl(user)),
 		user.delimiter,
 	)
 
-	user.states[user.nextStateID] = newState
+	user.states[state.StateID(user.nextStateID)] = newState
 
 	user.statesWG.Add(1)
 
