@@ -18,6 +18,7 @@ import (
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
@@ -40,7 +41,7 @@ type Server struct {
 	sessionsLock sync.RWMutex
 
 	// serveErrCh collects errors encountered while serving.
-	serveErrCh chan error
+	serveErrCh *queue.QueuedChannel[error]
 
 	// serveDoneCh is used to stop the server.
 	serveDoneCh chan struct{}
@@ -199,7 +200,7 @@ func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
 				pprof.Do(ctx, labels, func(ctx context.Context) {
 					if err := session.Serve(ctx); err != nil {
 						if !errors.Is(err, net.ErrClosed) {
-							s.serveErrCh <- err
+							s.serveErrCh.Enqueue(err)
 						}
 					}
 				})
@@ -210,7 +211,7 @@ func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
 
 // GetErrorCh returns the error channel.
 func (s *Server) GetErrorCh() <-chan error {
-	return s.serveErrCh
+	return s.serveErrCh.GetChannel()
 }
 
 func (s *Server) GetVersionInfo() internal.VersionInfo {
@@ -246,7 +247,7 @@ func (s *Server) Close(ctx context.Context) error {
 	}
 
 	// Close the server error channel.
-	close(s.serveErrCh)
+	s.serveErrCh.Close()
 
 	// Close any watchers.
 	for _, watcher := range s.watchers {
