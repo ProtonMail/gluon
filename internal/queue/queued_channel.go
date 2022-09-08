@@ -4,16 +4,14 @@ package queue
 // has actually consumed existing items first or if there's no way of knowing ahead of time what the ideal channel
 // buffer size should be.
 type QueuedChannel[T any] struct {
-	ch      chan T
-	closeCh chan struct{}
-	queue   *CTQueue[T]
+	ch    chan T
+	queue *CTQueue[T]
 }
 
 func NewQueuedChannel[T any](channelBufferSize int, capacity int) *QueuedChannel[T] {
 	queue := &QueuedChannel[T]{
-		ch:      make(chan T, channelBufferSize),
-		queue:   NewCTQueueWithCapacity[T](capacity),
-		closeCh: make(chan struct{}),
+		ch:    make(chan T, channelBufferSize),
+		queue: NewCTQueueWithCapacity[T](capacity),
 	}
 
 	go func() {
@@ -25,12 +23,7 @@ func NewQueuedChannel[T any](channelBufferSize int, capacity int) *QueuedChannel
 				return
 			}
 
-			select {
-			case queue.ch <- item:
-
-			case <-queue.closeCh:
-				return
-			}
+			queue.ch <- item
 		}
 	}()
 
@@ -47,5 +40,4 @@ func (q *QueuedChannel[T]) GetChannel() <-chan T {
 
 func (q *QueuedChannel[T]) Close() {
 	q.queue.Close()
-	close(q.closeCh)
 }
