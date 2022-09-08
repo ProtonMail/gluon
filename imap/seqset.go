@@ -2,10 +2,10 @@ package imap
 
 import (
 	"fmt"
-	"github.com/bradenaw/juniper/xslices"
 	"strconv"
 	"strings"
 
+	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
 

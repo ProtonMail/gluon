@@ -6,10 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
-	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
@@ -65,7 +63,6 @@ func (builder *serverBuilder) build() (*Server, error) {
 		inLogger:           builder.inLogger,
 		outLogger:          builder.outLogger,
 		tlsConfig:          builder.tlsConfig,
-		watchers:           make(map[*queue.QueuedChannel[events.Event]]struct{}),
 		storeBuilder:       builder.storeBuilder,
 		cmdExecProfBuilder: builder.cmdExecProfBuilder,
 		versionInfo:        builder.versionInfo,

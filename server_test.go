@@ -17,7 +17,7 @@ func TestServer(t *testing.T) {
 	defer cancel()
 
 	// Get an event channel.
-	eventCh := server.AddWatcher()
+	eventCh := server.AddWatcher(events.EventListenerAdded{}, events.EventListenerRemoved{})
 
 	// Create a listener.
 	l, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))
