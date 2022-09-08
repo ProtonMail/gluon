@@ -27,6 +27,12 @@ type Mailbox struct {
 	readOnly bool
 }
 
+type AppendOnlyMailbox interface {
+	Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error)
+	Flush(ctx context.Context, permitExpunge bool) ([]response.Response, error)
+	UIDValidity() imap.UID
+}
+
 func newMailbox(mbox *ent.Mailbox, state *State, snap *snapshot) *Mailbox {
 	return &Mailbox{
 		mbox: mbox,

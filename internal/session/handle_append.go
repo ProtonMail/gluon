@@ -23,7 +23,7 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Appen
 		return response.Bad(tag).WithError(err)
 	}
 
-	if err := s.state.Mailbox(ctx, nameUTF8, func(mailbox *state.Mailbox) error {
+	if err := s.state.AppendOnlyMailbox(ctx, nameUTF8, func(mailbox state.AppendOnlyMailbox, isSameMBox bool) error {
 		messageUID, err := mailbox.Append(ctx, cmd.GetMessage(), flags, toTime(cmd.GetDateTime()))
 		if err != nil {
 			reporter.MessageWithContext(ctx,
@@ -34,8 +34,10 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Appen
 			return err
 		}
 
-		if err := flush(ctx, mailbox, true, ch); err != nil {
-			return err
+		if isSameMBox {
+			if err := flush(ctx, mailbox, true, ch); err != nil {
+				return err
+			}
 		}
 
 		ch <- response.Ok(tag).WithItems(response.ItemAppendUID(mailbox.UIDValidity(), messageUID)).WithMessage("APPEND")
