@@ -8,6 +8,7 @@ import (
 
 	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
@@ -58,7 +59,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 		dir:                builder.dir,
 		backend:            backend,
 		sessions:           make(map[int]*session.Session),
-		serveErrCh:         make(chan error),
+		serveErrCh:         queue.NewQueuedChannel[error](1, 1),
 		serveDoneCh:        make(chan struct{}),
 		inLogger:           builder.inLogger,
 		outLogger:          builder.outLogger,
