@@ -417,7 +417,7 @@ func (state *State) GetStateUpdatesCh() <-chan Update {
 }
 
 func (state *State) QueueUpdates(updates ...Update) bool {
-	return state.updatesQueue.Queue(updates...)
+	return state.updatesQueue.Enqueue(updates...)
 }
 
 func (state *State) ApplyUpdate(ctx context.Context, update Update) error {
@@ -427,18 +427,18 @@ func (state *State) ApplyUpdate(ctx context.Context, update Update) error {
 		return nil
 	}
 
-	err := state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	if err := state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return update.Apply(ctx, tx, state)
-	})
-
-	if err != nil {
+	}); err != nil {
 		reporter.MessageWithContext(ctx,
 			"Failed to apply state update",
 			reporter.Context{"error": err, "update": update.String()},
 		)
+
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func (state *State) HasMessage(id imap.InternalMessageID) bool {
@@ -515,8 +515,8 @@ func (state *State) flushResponses(ctx context.Context, permitExpunge bool) ([]r
 
 	for _, responder := range state.popResponders(permitExpunge) {
 		logrus.WithField("state", state.StateID).WithField("Origin", "Flush").Tracef("Applying responder: %v", responder.String())
-		res, dbUpdate, err := responder.handle(state.snap, state.StateID)
 
+		res, dbUpdate, err := responder.handle(state.snap, state.StateID)
 		if err != nil {
 			return nil, err
 		}
@@ -550,8 +550,8 @@ func (state *State) PushResponder(ctx context.Context, tx *ent.Tx, responder ...
 
 	for _, responder := range responder {
 		logrus.WithField("state", state.StateID).WithField("Origin", "Push").Tracef("Applying responder: %v", responder.String())
-		res, dbUpdate, err := responder.handle(state.snap, state.StateID)
 
+		res, dbUpdate, err := responder.handle(state.snap, state.StateID)
 		if err != nil {
 			return err
 		}

@@ -2,6 +2,8 @@ package tests
 
 import (
 	"testing"
+
+	"github.com/ProtonMail/gluon/events"
 )
 
 func TestDeletionPool(t *testing.T) {
@@ -388,14 +390,18 @@ func TestMessageErasedFromDB(t *testing.T) {
 		s.messageDeleted("user", messageID1)
 		s.messageDeleted("user", messageID2)
 
-		waiter := newEventWaiter(s.server)
+		// Add a watcher that waits for end of session.
+		eventCh := s.server.AddWatcher(events.EventSessionRemoved{})
 
 		// Noop should process their deletion.
 		c.C(`A002 LOGOUT`)
 		c.S(`* BYE`)
 		c.Sx(`A002 OK`)
 
-		waiter.waitEndOfSession()
+		// Wait until the session was removed.
+		<-eventCh
+
+		// The user should now have no messages.
 		dbCheckUserMessageCount(s, "user", 0)
 	})
 }
@@ -412,17 +418,24 @@ func TestMessageErasedFromDBOnStartup(t *testing.T) {
 		// Create some messages in the mailbox.
 		messageID1 := s.messageCreatedFromFile("user", mailboxID, "testdata/multipart-mixed.eml")
 
-		waiter := newEventWaiter(s.server)
+		// Add a watcher that waits for end of session.
+		eventCh := s.server.AddWatcher(events.EventSessionRemoved{})
 
 		// Noop should process their deletion.
 		c.C(`A002 LOGOUT`)
 		c.S(`* BYE`)
 		c.Sx(`A002 OK LOGOUT`)
-		waiter.waitEndOfSession()
+
+		// Wait until the session was removed.
+		<-eventCh
+
+		// The user should have one message.
 		dbCheckUserMessageCount(s, "user", 1)
 
 		// delete message
 		s.messageDeleted("user", messageID1)
+
+		// The user should still have one message.
 		dbCheckUserMessageCount(s, "user", 1)
 	})
 
@@ -450,7 +463,8 @@ func TestMessageErasedFromDBWithMany(t *testing.T) {
 		// Message marked for deletion externally
 		s.messageDeleted("user", messageID1)
 
-		waiter := newEventWaiter(s.server)
+		// Add a watcher that waits for end of session.
+		eventCh := s.server.AddWatcher(events.EventSessionRemoved{})
 
 		// Logout client 1.
 		c[1].C(`A002 LOGOUT`)
@@ -458,7 +472,7 @@ func TestMessageErasedFromDBWithMany(t *testing.T) {
 		c[1].Sx(`A002 OK LOGOUT`)
 
 		// Ensure session is properly finished its exit work to ensure the database writes take place.
-		waiter.waitEndOfSession()
+		<-eventCh
 
 		// Message should still be in the db as the other client still has an active state instance.
 		dbCheckUserMessageCount(s, "user", 2)
@@ -470,7 +484,7 @@ func TestMessageErasedFromDBWithMany(t *testing.T) {
 		c[2].Sx(`A002 OK LOGOUT`)
 
 		// Ensure session is properly finished its exit work to ensure the database writes take place.
-		waiter.waitEndOfSession()
+		<-eventCh
 
 		// The message should now be deleted.
 		dbCheckUserMessageCount(s, "user", 1)

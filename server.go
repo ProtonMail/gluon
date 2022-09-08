@@ -18,7 +18,6 @@ import (
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
-	"github.com/ProtonMail/gluon/internal/queue"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
@@ -59,7 +58,7 @@ type Server struct {
 	tlsConfig *tls.Config
 
 	// watchers holds streams of events.
-	watchers     map[*queue.QueuedChannel[events.Event]]struct{}
+	watchers     []*watcher
 	watchersLock sync.RWMutex
 
 	// storeBuilder builds message stores.
@@ -132,16 +131,17 @@ func (s *Server) RemoveUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-// AddWatcher adds a new watcher.
-func (s *Server) AddWatcher() <-chan events.Event {
+// AddWatcher adds a new watcher which watches events of the given types.
+// If no types are specified, the watcher watches all events.
+func (s *Server) AddWatcher(ofType ...events.Event) <-chan events.Event {
 	s.watchersLock.Lock()
 	defer s.watchersLock.Unlock()
 
-	eventCh := queue.NewQueuedChannel[events.Event](0, 0)
+	watcher := newWatcher(ofType...)
 
-	s.watchers[eventCh] = struct{}{}
+	s.watchers = append(s.watchers, watcher)
 
-	return eventCh.GetChannel()
+	return watcher.getChannel()
 }
 
 // Serve serves connections accepted from the given listener.
@@ -248,8 +248,8 @@ func (s *Server) Close(ctx context.Context) error {
 	close(s.serveErrCh)
 
 	// Close any watchers.
-	for watcher := range s.watchers {
-		watcher.Close()
+	for _, watcher := range s.watchers {
+		watcher.close()
 	}
 
 	return nil
@@ -323,8 +323,12 @@ func (s *Server) publish(event events.Event) {
 	s.watchersLock.RLock()
 	defer s.watchersLock.RUnlock()
 
-	for eventCh := range s.watchers {
-		eventCh.Queue(event)
+	for _, watcher := range s.watchers {
+		if watcher.isWatching(event) {
+			if ok := watcher.send(event); !ok {
+				logrus.WithField("event", event).Warn("Failed to send event to watcher")
+			}
+		}
 	}
 }
 

@@ -26,7 +26,6 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 
 			for {
 				tag, cmd, err := s.readCommand(del)
-
 				if err != nil {
 					reporter.MessageWithContext(ctx,
 						"Failed to parse imap command",
