@@ -27,15 +27,12 @@ func (s *Session) handleOther(
 
 			ctx := state.NewStateContext(ctx, s.state)
 
-			if exitResponse, err := s.handleCommand(ctx, tag, cmd, ch, profiler); err != nil {
+			if err := s.handleCommand(ctx, tag, cmd, ch, profiler); err != nil {
 				if res, ok := response.FromError(err); ok {
 					ch <- res
 				} else {
 					ch <- response.No(tag).WithError(err)
 				}
-			} else if exitResponse != nil {
-				ch <- exitResponse
-				return
 			}
 		})
 	}()
@@ -50,19 +47,19 @@ func (s *Session) handleCommand(
 	cmd *proto.Command,
 	ch chan response.Response,
 	profiler profiling.CmdProfiler,
-) (response.Response, error) {
+) error {
 	switch {
 	case
 		cmd.GetCapability() != nil,
 		cmd.GetIdGet() != nil,
 		cmd.GetIdSet() != nil,
 		cmd.GetNoop() != nil:
-		return nil, s.handleAnyCommand(ctx, tag, cmd, ch, profiler)
+		return s.handleAnyCommand(ctx, tag, cmd, ch, profiler)
 
 	case
 		cmd.GetAuth() != nil,
 		cmd.GetLogin() != nil:
-		return nil, s.handleNotAuthenticatedCommand(ctx, tag, cmd, ch, profiler)
+		return s.handleNotAuthenticatedCommand(ctx, tag, cmd, ch, profiler)
 
 	case
 		cmd.GetSelect() != nil,
@@ -89,10 +86,10 @@ func (s *Session) handleCommand(
 		cmd.GetCopy() != nil,
 		cmd.GetMove() != nil,
 		cmd.GetUid() != nil:
-		return nil, s.handleSelectedCommand(ctx, tag, cmd, ch, profiler)
+		return s.handleSelectedCommand(ctx, tag, cmd, ch, profiler)
 
 	default:
-		return nil, fmt.Errorf("bad command")
+		return fmt.Errorf("bad command")
 	}
 }
 
@@ -159,12 +156,12 @@ func (s *Session) handleAuthenticatedCommand(
 	cmd *proto.Command,
 	ch chan response.Response,
 	profiler profiling.CmdProfiler,
-) (response.Response, error) {
+) error {
 	s.userLock.Lock()
 	defer s.userLock.Unlock()
 
 	if s.state == nil {
-		return nil, ErrNotAuthenticated
+		return ErrNotAuthenticated
 	}
 
 	switch {
@@ -172,19 +169,19 @@ func (s *Session) handleAuthenticatedCommand(
 		profiler.Start(profiling.CmdTypeSelect)
 		defer profiler.Stop(profiling.CmdTypeSelect)
 		// 6.3.1. SELECT Command
-		return nil, s.handleSelect(ctx, tag, cmd.GetSelect(), ch)
+		return s.handleSelect(ctx, tag, cmd.GetSelect(), ch)
 
 	case cmd.GetExamine() != nil:
 		profiler.Start(profiling.CmdTypeExamine)
 		defer profiler.Stop(profiling.CmdTypeExamine)
 		// 6.3.2. EXAMINE Command
-		return nil, s.handleExamine(ctx, tag, cmd.GetExamine(), ch)
+		return s.handleExamine(ctx, tag, cmd.GetExamine(), ch)
 
 	case cmd.GetCreate() != nil:
 		profiler.Start(profiling.CmdTypeCreate)
 		defer profiler.Stop(profiling.CmdTypeCreate)
 		// 6.3.3. CREATE Command
-		return nil, s.handleCreate(ctx, tag, cmd.GetCreate(), ch)
+		return s.handleCreate(ctx, tag, cmd.GetCreate(), ch)
 
 	case cmd.GetDel() != nil:
 		profiler.Start(profiling.CmdTypeDelete)
@@ -196,46 +193,46 @@ func (s *Session) handleAuthenticatedCommand(
 		profiler.Start(profiling.CmdTypeRename)
 		defer profiler.Stop(profiling.CmdTypeRename)
 		// 6.3.5. RENAME Command
-		return nil, s.handleRename(ctx, tag, cmd.GetRename(), ch)
+		return s.handleRename(ctx, tag, cmd.GetRename(), ch)
 
 	case cmd.GetSub() != nil:
 		profiler.Start(profiling.CmdTypeSubscribe)
 		defer profiler.Stop(profiling.CmdTypeSubscribe)
 		// 6.3.6. SUBSCRIBE Command
-		return nil, s.handleSub(ctx, tag, cmd.GetSub(), ch)
+		return s.handleSub(ctx, tag, cmd.GetSub(), ch)
 
 	case cmd.GetUnsub() != nil:
 		profiler.Start(profiling.CmdTypeUnsubscribe)
 		defer profiler.Stop(profiling.CmdTypeUnsubscribe)
 		// 6.3.7. UNSUBSCRIBE Command
-		return nil, s.handleUnsub(ctx, tag, cmd.GetUnsub(), ch)
+		return s.handleUnsub(ctx, tag, cmd.GetUnsub(), ch)
 
 	case cmd.GetList() != nil:
 		profiler.Start(profiling.CmdTypeList)
 		defer profiler.Stop(profiling.CmdTypeList)
 		// 6.3.8. LIST Command
-		return nil, s.handleList(ctx, tag, cmd.GetList(), ch)
+		return s.handleList(ctx, tag, cmd.GetList(), ch)
 
 	case cmd.GetLsub() != nil:
 		profiler.Start(profiling.CmdTypeLSub)
 		defer profiler.Stop(profiling.CmdTypeLSub)
 		// 6.3.9. Lsub Command
-		return nil, s.handleLsub(ctx, tag, cmd.GetLsub(), ch)
+		return s.handleLsub(ctx, tag, cmd.GetLsub(), ch)
 
 	case cmd.GetStatus() != nil:
 		profiler.Start(profiling.CmdTypeStatus)
 		defer profiler.Stop(profiling.CmdTypeStatus)
 		// 6.3.10. STATUS Command
-		return nil, s.handleStatus(ctx, tag, cmd.GetStatus(), ch)
+		return s.handleStatus(ctx, tag, cmd.GetStatus(), ch)
 
 	case cmd.GetAppend() != nil:
 		profiler.Start(profiling.CmdTypeAppend)
 		defer profiler.Stop(profiling.CmdTypeAppend)
 		// 6.3.11. APPEND Command
-		return nil, s.handleAppend(ctx, tag, cmd.GetAppend(), ch)
+		return s.handleAppend(ctx, tag, cmd.GetAppend(), ch)
 
 	default:
-		return nil, fmt.Errorf("bad command")
+		return fmt.Errorf("bad command")
 	}
 }
 

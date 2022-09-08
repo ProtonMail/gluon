@@ -11,14 +11,14 @@ import (
 	"github.com/emersion/go-imap/utf7"
 )
 
-func (s *Session) handleDelete(ctx context.Context, tag string, cmd *proto.Del, ch chan response.Response) (response.Response, error) {
+func (s *Session) handleDelete(ctx context.Context, tag string, cmd *proto.Del, ch chan response.Response) error {
 	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if strings.EqualFold(nameUTF8, imap.Inbox) {
-		return nil, ErrDeleteInbox
+		return ErrDeleteInbox
 	}
 
 	selectedDeleted, err := s.state.Delete(ctx, nameUTF8)
@@ -28,16 +28,14 @@ func (s *Session) handleDelete(ctx context.Context, tag string, cmd *proto.Del, 
 			reporter.Context{"error": err},
 		)
 
-		return nil, err
+		return err
 	}
 
 	ch <- response.Ok(tag).WithMessage("DELETE")
 
-	var rep response.Response
-
 	if selectedDeleted {
-		rep = response.Bye().WithMailboxDeleted()
+		ch <- response.Bye().WithMailboxDeleted()
 	}
 
-	return rep, nil
+	return nil
 }
