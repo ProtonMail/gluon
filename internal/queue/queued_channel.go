@@ -17,6 +17,8 @@ func NewQueuedChannel[T any](channelBufferSize int, capacity int) *QueuedChannel
 	}
 
 	go func() {
+		defer close(queue.ch)
+
 		for {
 			item, ok := queue.queue.Pop()
 			if !ok {
