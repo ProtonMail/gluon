@@ -159,3 +159,46 @@ From me`, string(section.Part(2, 1).Literal()))
 
 This part is also embedded`, string(section.Part(2, 2).Literal()))
 }
+
+func TestParseSpaceLineHeaderMessage(t *testing.T) {
+	const literal = `Content-Type: text/plain
+Date: Thu, 03 Sep 2020 16:47:43 +0000 (UTC)
+Subject: Sometimes
+ 
+ header fields can be long and contain space line :shrug:
+From: Dad <dadjokes@arethebest.com>
+To: Ships <navy@withbarcode.no>
+
+Why does the Norway navy have bar codes on the side of their ships?
+
+So when they com back to port they can
+
+Scandinavian
+`
+
+	section, err := Parse([]byte(literal))
+	require.NoError(t, err)
+
+	assert.Equal(t, literal, string(section.Literal()))
+
+	assert.Equal(t, `Content-Type: text/plain
+Date: Thu, 03 Sep 2020 16:47:43 +0000 (UTC)
+Subject: Sometimes
+ 
+ header fields can be long and contain space line :shrug:
+From: Dad <dadjokes@arethebest.com>
+To: Ships <navy@withbarcode.no>
+
+`,
+		string(section.Header()),
+	)
+
+	assert.Equal(t, `Why does the Norway navy have bar codes on the side of their ships?
+
+So when they com back to port they can
+
+Scandinavian
+`,
+		string(section.Body()),
+	)
+}

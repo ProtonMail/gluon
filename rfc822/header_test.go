@@ -180,10 +180,10 @@ func TestParseHeaderMultilineFilenameWithColonAndNewline(t *testing.T) {
 }
 
 func TestParseHeaderMultilineIndent(t *testing.T) {
-	const header = "Subject: a very\r\n\tlong: line with a colon and indent\r\nFrom: sender\r\n"
+	const header = "Subject: a very\r\n\tlong: line with a colon and indent\r\n \r\nand space line\r\nFrom: sender\r\n"
 
 	assert.Equal(t, [][]byte{
-		[]byte("Subject: a very\r\n\tlong: line with a colon and indent\r\n"),
+		[]byte("Subject: a very\r\n\tlong: line with a colon and indent\r\n \r\nand space line\r\n"),
 		[]byte("From: sender\r\n"),
 	}, ParseHeader([]byte(header)).lines)
 }

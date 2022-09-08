@@ -143,7 +143,7 @@ func Split(b []byte) ([]byte, []byte, error) {
 
 		header = append(header, b...)
 
-		if len(bytes.TrimSpace(b)) == 0 {
+		if len(bytes.Trim(b, "\r\n")) == 0 {
 			break
 		}
 	}
