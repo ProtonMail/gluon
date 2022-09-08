@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"bytes"
+	"os"
 	"testing"
 	"time"
 
@@ -124,5 +126,51 @@ func TestAppendWhileSelected(t *testing.T) {
 		status, err := client.Status(mailboxName, []goimap.StatusItem{goimap.StatusMessages})
 		require.NoError(t, err)
 		require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
+	})
+}
+
+func TestAppendHeaderWithSpaceLine(t *testing.T) {
+	r := require.New(t)
+
+	const (
+		mailboxName = "saved-messages"
+		messagePath = "testdata/space_line_header.eml"
+	)
+
+	// Get full header from file
+	fullMessage, err := os.ReadFile(messagePath)
+	r.NoError(err)
+
+	endOfHeader := []byte{13, 10, 13, 10}
+	endOfHeaderKey := bytes.Index(fullMessage, endOfHeader)
+
+	r.NotEqual(-1, endOfHeaderKey)
+	wantHeader := string(fullMessage[0 : endOfHeaderKey+len(endOfHeader)])
+
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
+		r.NoError(client.Create(mailboxName))
+		// Mailbox should have read-write modifier
+		mailboxStatus, err := client.Select(mailboxName, false)
+		r.NoError(err)
+		r.False(mailboxStatus.ReadOnly)
+
+		// Add new message
+		require.NoError(t, doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.SeenFlag))
+		// EXISTS response is assigned to Messages member
+		require.Equal(t, uint32(1), client.Mailbox().Messages)
+		// Check if added
+		status, err := client.Status(mailboxName, []goimap.StatusItem{goimap.StatusMessages})
+		require.NoError(t, err)
+		require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
+		// Check has full header
+		newFetchCommand(t, client).
+			withItems(goimap.FetchRFC822Header).fetch("1").
+			forSeqNum(1, func(v *validatorBuilder) {
+				v.ignoreFlags()
+				v.wantSectionString(goimap.FetchRFC822Header, func(t testing.TB, literal string) {
+					haveHeader := skipGLUONHeader(literal)
+					r.Equal(wantHeader, haveHeader)
+				})
+			}).check()
 	})
 }

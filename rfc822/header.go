@@ -218,7 +218,7 @@ func ParseHeader(header []byte) *Header {
 		split := splitLine(line)
 
 		switch {
-		case len(bytes.TrimSpace(line)) == 0:
+		case len(bytes.Trim(line, "\r\n")) == 0:
 			lines = append(lines, line)
 
 		case quote%2 != 0, rxWhitespace.Match(split[0]), len(split) != 2:
