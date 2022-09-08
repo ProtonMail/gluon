@@ -77,6 +77,10 @@ func main() {
 	for err := range server.GetErrorCh() {
 		logrus.WithError(err).Error("Error while serving")
 	}
+
+	if err := listener.Close(); err != nil {
+		logrus.WithError(err).Error("Failed to close listener")
+	}
 }
 
 func addUser(ctx context.Context, server *gluon.Server, addresses []string, password string) error {

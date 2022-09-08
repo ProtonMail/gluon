@@ -160,10 +160,7 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 			Addr: l.Addr(),
 		})
 
-		connCh := newConnCh(l)
-		defer l.Close()
-
-		s.serve(ctx, connCh)
+		s.serve(ctx, newConnCh(l))
 	})
 
 	return nil
@@ -231,7 +228,6 @@ func (s *Server) GetUserDataPath(userID string) (string, error) {
 }
 
 // Close closes the server.
-// It firstly closes all TCP listeners then closes the backend.
 func (s *Server) Close(ctx context.Context) error {
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 

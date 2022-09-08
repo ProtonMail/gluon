@@ -213,6 +213,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	// Expect the server to shut down successfully when closed.
 	require.NoError(tb, server.Close(ctx))
 	require.NoError(tb, <-server.GetErrorCh())
+	require.NoError(tb, listener.Close())
 }
 
 // runServerWithPaths initializes and starts the mailserver.
