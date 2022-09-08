@@ -44,6 +44,14 @@ func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *en
 	return snap, nil
 }
 
+func newEmptySnapshot(state *State, mbox *ent.Mailbox) *snapshot {
+	return &snapshot{
+		mboxID:   ids.NewMailboxIDPair(mbox),
+		state:    state,
+		messages: newMsgList(),
+	}
+}
+
 func (snap *snapshot) hasMessage(messageID imap.InternalMessageID) bool {
 	return snap.messages.has(messageID)
 }
