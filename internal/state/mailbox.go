@@ -17,6 +17,12 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+type NoLoadMailbox interface {
+	UIDValidity() imap.UID
+	Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error)
+	Flush(ctx context.Context, permitExpunge bool) ([]response.Response, error)
+}
+
 type Mailbox struct {
 	mbox *ent.Mailbox
 

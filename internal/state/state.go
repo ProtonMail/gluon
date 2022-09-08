@@ -357,7 +357,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 
 // EmptyMailbox does not load the mailbox snapshot data from the database and passes true into the function
 // if the currently selected mailbox matches the requested mailbox.
-func (state *State) EmptyMailbox(ctx context.Context, name string, fn func(*Mailbox, bool) error) error {
+func (state *State) EmptyMailbox(ctx context.Context, name string, fn func(NoLoadMailbox, bool) error) error {
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return db.GetMailboxByName(ctx, client, name)
 	})

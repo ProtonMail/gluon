@@ -23,7 +23,7 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Appen
 		return response.Bad(tag).WithError(err)
 	}
 
-	if err := s.state.EmptyMailbox(ctx, nameUTF8, func(mailbox *state.Mailbox, isSameMBox bool) error {
+	if err := s.state.EmptyMailbox(ctx, nameUTF8, func(mailbox state.NoLoadMailbox, isSameMBox bool) error {
 		messageUID, err := mailbox.Append(ctx, cmd.GetMessage(), flags, toTime(cmd.GetDateTime()))
 		if err != nil {
 			reporter.MessageWithContext(ctx,
