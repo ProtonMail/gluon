@@ -25,7 +25,11 @@ func (l *LocalServer) Address() net.Addr {
 }
 
 func (l *LocalServer) Close(ctx context.Context) error {
-	return l.server.Close(ctx)
+	if err := l.server.Close(ctx); err != nil {
+		return err
+	}
+
+	return l.listener.Close()
 }
 
 type LocalServerBuilder struct{}
