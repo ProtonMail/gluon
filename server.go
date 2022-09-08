@@ -22,6 +22,7 @@ import (
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
+	"github.com/ProtonMail/gluon/watcher"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 )
@@ -58,7 +59,7 @@ type Server struct {
 	tlsConfig *tls.Config
 
 	// watchers holds streams of events.
-	watchers     []*watcher
+	watchers     []*watcher.Watcher[events.Event]
 	watchersLock sync.RWMutex
 
 	// storeBuilder builds message stores.
@@ -137,11 +138,11 @@ func (s *Server) AddWatcher(ofType ...events.Event) <-chan events.Event {
 	s.watchersLock.Lock()
 	defer s.watchersLock.Unlock()
 
-	watcher := newWatcher(ofType...)
+	watcher := watcher.New(ofType...)
 
 	s.watchers = append(s.watchers, watcher)
 
-	return watcher.getChannel()
+	return watcher.GetChannel()
 }
 
 // Serve serves connections accepted from the given listener.
@@ -249,7 +250,7 @@ func (s *Server) Close(ctx context.Context) error {
 
 	// Close any watchers.
 	for _, watcher := range s.watchers {
-		watcher.close()
+		watcher.Close()
 	}
 
 	return nil
@@ -324,8 +325,8 @@ func (s *Server) publish(event events.Event) {
 	defer s.watchersLock.RUnlock()
 
 	for _, watcher := range s.watchers {
-		if watcher.isWatching(event) {
-			if ok := watcher.send(event); !ok {
+		if watcher.IsWatching(event) {
+			if ok := watcher.Send(event); !ok {
 				logrus.WithField("event", event).Warn("Failed to send event to watcher")
 			}
 		}

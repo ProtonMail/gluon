@@ -1,14 +1,9 @@
 package queue
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 )
-
-// closed represents the closed state.
-// Should use atomic.Bool once we support go 1.19 or later.
-const closed uint32 = 1
 
 // QueuedChannel represents a channel on which queued items can be published without having to worry if the reader
 // has actually consumed existing items first or if there's no way of knowing ahead of time what the ideal channel
@@ -17,7 +12,7 @@ type QueuedChannel[T any] struct {
 	ch     chan T
 	items  []T
 	cond   *sync.Cond
-	closed atomic.Uint32
+	closed atomic.Value // Should use atomic.Bool once we use Go 1.19.
 }
 
 func NewQueuedChannel[T any](chanBufferSize, queueCapacity int) *QueuedChannel[T] {
@@ -26,6 +21,9 @@ func NewQueuedChannel[T any](chanBufferSize, queueCapacity int) *QueuedChannel[T
 		items: make([]T, 0, queueCapacity),
 		cond:  sync.NewCond(&sync.Mutex{}),
 	}
+
+	// The queue is initially not closed.
+	queue.closed.Store(false)
 
 	go func() {
 		defer close(queue.ch)
@@ -44,7 +42,7 @@ func NewQueuedChannel[T any](chanBufferSize, queueCapacity int) *QueuedChannel[T
 }
 
 func (q *QueuedChannel[T]) Enqueue(items ...T) bool {
-	if q.closed.Load() == closed {
+	if q.closed.Load().(bool) {
 		return false
 	}
 
@@ -63,16 +61,12 @@ func (q *QueuedChannel[T]) GetChannel() <-chan T {
 }
 
 func (q *QueuedChannel[T]) Close() {
-	q.closed.Store(closed)
+	q.closed.Store(true)
 
 	q.cond.L.Lock()
 	defer q.cond.L.Unlock()
 
 	q.cond.Broadcast()
-
-	for _, item := range q.items {
-		fmt.Println(item)
-	}
 }
 
 func (q *QueuedChannel[T]) pop() (T, bool) {
@@ -85,7 +79,7 @@ func (q *QueuedChannel[T]) pop() (T, bool) {
 	// This allows the queue to continue popping elements if it's closed,
 	// but will prevent it from hanging indefinitely once it runs out of items.
 	for len(q.items) == 0 {
-		if q.closed.Load() == closed {
+		if q.closed.Load().(bool) {
 			return item, false
 		}
 
