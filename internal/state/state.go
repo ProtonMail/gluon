@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
@@ -17,7 +18,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type StateID int
+type StateID int64
 
 // State represents the active session's state after a user has been authenticated. This code is expected to run on
 // one single goroutine/thread and should some interaction be required with other states from other session, they shall
@@ -45,10 +46,16 @@ type State struct {
 	invalid bool
 }
 
-func NewState(stateID StateID, user UserInterface, delimiter string) *State {
+var stateIDGenerator int64
+
+func nextStateID() StateID {
+	return StateID(atomic.AddInt64(&stateIDGenerator, 1))
+}
+
+func NewState(user UserInterface, delimiter string) *State {
 	return &State{
 		user:         user,
-		StateID:      stateID,
+		StateID:      nextStateID(),
 		doneCh:       make(chan struct{}),
 		snap:         nil,
 		delimiter:    delimiter,

@@ -29,9 +29,8 @@ type user struct {
 
 	db *db.DB
 
-	states      map[state.StateID]*state.State
-	statesLock  sync.RWMutex
-	nextStateID int
+	states     map[state.StateID]*state.State
+	statesLock sync.RWMutex
 
 	updateWG     sync.WaitGroup
 	updateQuitCh chan struct{}
@@ -151,15 +150,12 @@ func (user *user) newState() (*state.State, error) {
 	user.statesLock.Lock()
 	defer user.statesLock.Unlock()
 
-	user.nextStateID++
-
 	newState := state.NewState(
-		state.StateID(user.nextStateID),
 		newStateUserInterfaceImpl(user, newStateConnectorImpl(user)),
 		user.delimiter,
 	)
 
-	user.states[state.StateID(user.nextStateID)] = newState
+	user.states[newState.StateID] = newState
 
 	user.statesWG.Add(1)
 
