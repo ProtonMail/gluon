@@ -2,6 +2,10 @@
 
 package mailbox
 
+import (
+	"github.com/ProtonMail/gluon/imap"
+)
+
 const (
 	// Label holds the string label denoting the mailbox type in the database.
 	Label = "mailbox"
@@ -82,9 +86,9 @@ func ValidColumn(column string) bool {
 
 var (
 	// DefaultUIDNext holds the default value on creation for the "UIDNext" field.
-	DefaultUIDNext int
+	DefaultUIDNext imap.UID
 	// DefaultUIDValidity holds the default value on creation for the "UIDValidity" field.
-	DefaultUIDValidity int
+	DefaultUIDValidity imap.UID
 	// DefaultSubscribed holds the default value on creation for the "Subscribed" field.
 	DefaultSubscribed bool
 )

@@ -59,14 +59,14 @@ func (mu *MailboxUpdate) SetName(s string) *MailboxUpdate {
 }
 
 // SetUIDNext sets the "UIDNext" field.
-func (mu *MailboxUpdate) SetUIDNext(i int) *MailboxUpdate {
+func (mu *MailboxUpdate) SetUIDNext(i imap.UID) *MailboxUpdate {
 	mu.mutation.ResetUIDNext()
 	mu.mutation.SetUIDNext(i)
 	return mu
 }
 
 // SetNillableUIDNext sets the "UIDNext" field if the given value is not nil.
-func (mu *MailboxUpdate) SetNillableUIDNext(i *int) *MailboxUpdate {
+func (mu *MailboxUpdate) SetNillableUIDNext(i *imap.UID) *MailboxUpdate {
 	if i != nil {
 		mu.SetUIDNext(*i)
 	}
@@ -74,20 +74,20 @@ func (mu *MailboxUpdate) SetNillableUIDNext(i *int) *MailboxUpdate {
 }
 
 // AddUIDNext adds i to the "UIDNext" field.
-func (mu *MailboxUpdate) AddUIDNext(i int) *MailboxUpdate {
+func (mu *MailboxUpdate) AddUIDNext(i imap.UID) *MailboxUpdate {
 	mu.mutation.AddUIDNext(i)
 	return mu
 }
 
 // SetUIDValidity sets the "UIDValidity" field.
-func (mu *MailboxUpdate) SetUIDValidity(i int) *MailboxUpdate {
+func (mu *MailboxUpdate) SetUIDValidity(i imap.UID) *MailboxUpdate {
 	mu.mutation.ResetUIDValidity()
 	mu.mutation.SetUIDValidity(i)
 	return mu
 }
 
 // SetNillableUIDValidity sets the "UIDValidity" field if the given value is not nil.
-func (mu *MailboxUpdate) SetNillableUIDValidity(i *int) *MailboxUpdate {
+func (mu *MailboxUpdate) SetNillableUIDValidity(i *imap.UID) *MailboxUpdate {
 	if i != nil {
 		mu.SetUIDValidity(*i)
 	}
@@ -95,7 +95,7 @@ func (mu *MailboxUpdate) SetNillableUIDValidity(i *int) *MailboxUpdate {
 }
 
 // AddUIDValidity adds i to the "UIDValidity" field.
-func (mu *MailboxUpdate) AddUIDValidity(i int) *MailboxUpdate {
+func (mu *MailboxUpdate) AddUIDValidity(i imap.UID) *MailboxUpdate {
 	mu.mutation.AddUIDValidity(i)
 	return mu
 }
@@ -357,28 +357,28 @@ func (mu *MailboxUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := mu.mutation.UIDNext(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDNext,
 		})
 	}
 	if value, ok := mu.mutation.AddedUIDNext(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDNext,
 		})
 	}
 	if value, ok := mu.mutation.UIDValidity(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDValidity,
 		})
 	}
 	if value, ok := mu.mutation.AddedUIDValidity(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDValidity,
 		})
@@ -652,14 +652,14 @@ func (muo *MailboxUpdateOne) SetName(s string) *MailboxUpdateOne {
 }
 
 // SetUIDNext sets the "UIDNext" field.
-func (muo *MailboxUpdateOne) SetUIDNext(i int) *MailboxUpdateOne {
+func (muo *MailboxUpdateOne) SetUIDNext(i imap.UID) *MailboxUpdateOne {
 	muo.mutation.ResetUIDNext()
 	muo.mutation.SetUIDNext(i)
 	return muo
 }
 
 // SetNillableUIDNext sets the "UIDNext" field if the given value is not nil.
-func (muo *MailboxUpdateOne) SetNillableUIDNext(i *int) *MailboxUpdateOne {
+func (muo *MailboxUpdateOne) SetNillableUIDNext(i *imap.UID) *MailboxUpdateOne {
 	if i != nil {
 		muo.SetUIDNext(*i)
 	}
@@ -667,20 +667,20 @@ func (muo *MailboxUpdateOne) SetNillableUIDNext(i *int) *MailboxUpdateOne {
 }
 
 // AddUIDNext adds i to the "UIDNext" field.
-func (muo *MailboxUpdateOne) AddUIDNext(i int) *MailboxUpdateOne {
+func (muo *MailboxUpdateOne) AddUIDNext(i imap.UID) *MailboxUpdateOne {
 	muo.mutation.AddUIDNext(i)
 	return muo
 }
 
 // SetUIDValidity sets the "UIDValidity" field.
-func (muo *MailboxUpdateOne) SetUIDValidity(i int) *MailboxUpdateOne {
+func (muo *MailboxUpdateOne) SetUIDValidity(i imap.UID) *MailboxUpdateOne {
 	muo.mutation.ResetUIDValidity()
 	muo.mutation.SetUIDValidity(i)
 	return muo
 }
 
 // SetNillableUIDValidity sets the "UIDValidity" field if the given value is not nil.
-func (muo *MailboxUpdateOne) SetNillableUIDValidity(i *int) *MailboxUpdateOne {
+func (muo *MailboxUpdateOne) SetNillableUIDValidity(i *imap.UID) *MailboxUpdateOne {
 	if i != nil {
 		muo.SetUIDValidity(*i)
 	}
@@ -688,7 +688,7 @@ func (muo *MailboxUpdateOne) SetNillableUIDValidity(i *int) *MailboxUpdateOne {
 }
 
 // AddUIDValidity adds i to the "UIDValidity" field.
-func (muo *MailboxUpdateOne) AddUIDValidity(i int) *MailboxUpdateOne {
+func (muo *MailboxUpdateOne) AddUIDValidity(i imap.UID) *MailboxUpdateOne {
 	muo.mutation.AddUIDValidity(i)
 	return muo
 }
@@ -980,28 +980,28 @@ func (muo *MailboxUpdateOne) sqlSave(ctx context.Context) (_node *Mailbox, err e
 	}
 	if value, ok := muo.mutation.UIDNext(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDNext,
 		})
 	}
 	if value, ok := muo.mutation.AddedUIDNext(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDNext,
 		})
 	}
 	if value, ok := muo.mutation.UIDValidity(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDValidity,
 		})
 	}
 	if value, ok := muo.mutation.AddedUIDValidity(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDValidity,
 		})

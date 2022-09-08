@@ -52,7 +52,7 @@ func NewMessageIDAndMailboxIDResponderStateUpdate(messageID imap.InternalMessage
 
 type Responder interface {
 	// handle generates responses in the context of the given snapshot.
-	handle(snap *snapshot, stateID int) ([]response.Response, responderDBUpdate, error)
+	handle(snap *snapshot, stateID StateID) ([]response.Response, responderDBUpdate, error)
 
 	// getMessageID returns the message ID that this Responder targets.
 	getMessageID() imap.InternalMessageID
@@ -62,11 +62,11 @@ type Responder interface {
 
 type exists struct {
 	messageID  ids.MessageIDPair
-	messageUID int
+	messageUID imap.UID
 	flags      imap.FlagSet
 }
 
-func newExists(messageID ids.MessageIDPair, messageUID int, flags imap.FlagSet) *exists {
+func newExists(messageID ids.MessageIDPair, messageUID imap.UID, flags imap.FlagSet) *exists {
 	return &exists{messageID: messageID, messageUID: messageUID, flags: flags}
 }
 
@@ -87,10 +87,10 @@ func (u *clearRecentFlagRespUpdate) apply(ctx context.Context, tx *ent.Tx) error
 // in different states. This way we also avoid the extra step of copying the `exists` data.
 type targetedExists struct {
 	resp          *exists
-	targetStateID int
+	targetStateID StateID
 }
 
-func (u *targetedExists) handle(snap *snapshot, stateID int) ([]response.Response, responderDBUpdate, error) {
+func (u *targetedExists) handle(snap *snapshot, stateID StateID) ([]response.Response, responderDBUpdate, error) {
 	if snap.hasMessage(u.resp.messageID.InternalID) {
 		return nil, nil, nil
 	}
@@ -123,7 +123,7 @@ func (u *targetedExists) handle(snap *snapshot, stateID int) ([]response.Respons
 			}
 		}
 
-		res = append(res, response.Recent().WithCount(recent))
+		res = append(res, response.Recent().WithCount(uint32(recent)))
 	}
 
 	return res, dbUpdate, nil
@@ -145,12 +145,12 @@ type ExistsStateUpdate struct {
 	lock sync.Mutex
 	MBoxIDStateFilter
 	responders     []*exists
-	targetStateID  int
+	targetStateID  StateID
 	targetStateSet bool
 }
 
 func NewExistsStateUpdate(mailboxID imap.InternalMailboxID, messageIDs []ids.MessageIDPair, uids map[imap.InternalMessageID]*ent.UID, s *State) Update {
-	var stateID int
+	var stateID StateID
 
 	var targetStateSet bool
 
@@ -175,7 +175,7 @@ func NewExistsStateUpdate(mailboxID imap.InternalMailboxID, messageIDs []ids.Mes
 }
 
 func newExistsStateUpdateWithExists(mailboxID imap.InternalMailboxID, responders []*exists, s *State) Update {
-	var stateID int
+	var stateID StateID
 
 	var targetStateSet bool
 
@@ -198,7 +198,7 @@ func (e *ExistsStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) err
 	// target ID has been set and update for the first state that manages to run this code
 	// otherwise. To avoid race conditions on the contents of the exists update we
 	// create a new responder which has the correct data and avoid race conditions all together
-	targetStateID := func() int {
+	targetStateID := func() StateID {
 		e.lock.Lock()
 		defer e.lock.Unlock()
 
@@ -240,7 +240,7 @@ func NewExpunge(messageID imap.InternalMessageID, asClose bool) *expunge {
 	}
 }
 
-func (u *expunge) handle(snap *snapshot, _ int) ([]response.Response, responderDBUpdate, error) {
+func (u *expunge) handle(snap *snapshot, _ StateID) ([]response.Response, responderDBUpdate, error) {
 	if !snap.hasMessage(u.messageID) {
 		return nil, nil, nil
 	}
@@ -300,7 +300,7 @@ func NewFetch(messageID imap.InternalMessageID, flags imap.FlagSet, asUID, asSil
 	}
 }
 
-func (u *fetch) handle(snap *snapshot, _ int) ([]response.Response, responderDBUpdate, error) {
+func (u *fetch) handle(snap *snapshot, _ StateID) ([]response.Response, responderDBUpdate, error) {
 	if !snap.hasMessage(u.messageID) {
 		return nil, nil, nil
 	}

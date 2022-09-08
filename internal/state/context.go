@@ -16,13 +16,13 @@ func NewStateContext(ctx context.Context, s *State) context.Context {
 	return context.WithValue(ctx, stateContextKey, s.StateID)
 }
 
-func GetStateIDFromContext(ctx context.Context) (int, bool) {
+func GetStateIDFromContext(ctx context.Context) (StateID, bool) {
 	v := ctx.Value(stateContextKey)
 	if v == nil {
 		return 0, false
 	}
 
-	stateID, ok := v.(int)
+	stateID, ok := v.(StateID)
 
 	return stateID, ok
 }

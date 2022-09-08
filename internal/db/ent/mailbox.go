@@ -23,9 +23,9 @@ type Mailbox struct {
 	// Name holds the value of the "Name" field.
 	Name string `json:"Name,omitempty"`
 	// UIDNext holds the value of the "UIDNext" field.
-	UIDNext int `json:"UIDNext,omitempty"`
+	UIDNext imap.UID `json:"UIDNext,omitempty"`
 	// UIDValidity holds the value of the "UIDValidity" field.
-	UIDValidity int `json:"UIDValidity,omitempty"`
+	UIDValidity imap.UID `json:"UIDValidity,omitempty"`
 	// Subscribed holds the value of the "Subscribed" field.
 	Subscribed bool `json:"Subscribed,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -138,13 +138,13 @@ func (m *Mailbox) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field UIDNext", values[i])
 			} else if value.Valid {
-				m.UIDNext = int(value.Int64)
+				m.UIDNext = imap.UID(value.Int64)
 			}
 		case mailbox.FieldUIDValidity:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field UIDValidity", values[i])
 			} else if value.Valid {
-				m.UIDValidity = int(value.Int64)
+				m.UIDValidity = imap.UID(value.Int64)
 			}
 		case mailbox.FieldSubscribed:
 			if value, ok := values[i].(*sql.NullBool); !ok {

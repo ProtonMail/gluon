@@ -2,6 +2,7 @@ package imap
 
 import (
 	"fmt"
+	"github.com/bradenaw/juniper/xslices"
 	"strconv"
 	"strings"
 
@@ -9,11 +10,11 @@ import (
 )
 
 type SeqVal struct {
-	Begin, End int
+	Begin, End SeqID
 }
 
-func (seqval SeqVal) canCombine(val int) bool {
-	return val == seqval.End+1
+func (seqval SeqVal) canCombine(val SeqID) bool {
+	return val == SeqID(uint32(seqval.End)+1)
 }
 
 func (seqval SeqVal) String() string {
@@ -21,12 +22,18 @@ func (seqval SeqVal) String() string {
 		return fmt.Sprintf("%v:%v", seqval.Begin, seqval.End)
 	}
 
-	return strconv.Itoa(seqval.End)
+	return strconv.FormatUint(uint64(seqval.End), 10)
 }
 
 type SeqSet []SeqVal
 
-func NewSeqSet(set []int) SeqSet {
+func NewSeqSetFromUID(set []UID) SeqSet {
+	return NewSeqSet(xslices.Map(set, func(t UID) SeqID {
+		return SeqID(t)
+	}))
+}
+
+func NewSeqSet(set []SeqID) SeqSet {
 	slices.Sort(set)
 
 	var res SeqSet

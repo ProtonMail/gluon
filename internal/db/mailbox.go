@@ -113,7 +113,7 @@ func BumpMailboxUIDNext(ctx context.Context, tx *ent.Tx, mbox *ent.Mailbox, with
 	}
 
 	if _, err := mbox.Update().
-		SetUIDNext(mbox.UIDNext + n).
+		SetUIDNext(mbox.UIDNext.Add(uint32(n))).
 		Save(ctx); err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func GetMailboxMessageIDPairs(ctx context.Context, client *ent.Client, mailboxID
 	}), nil
 }
 
-func GetUIDInterval(ctx context.Context, client *ent.Client, mbox *ent.Mailbox, begin, end int) ([]*ent.UID, error) {
+func GetUIDInterval(ctx context.Context, client *ent.Client, mbox *ent.Mailbox, begin, end imap.UID) ([]*ent.UID, error) {
 	return mbox.QueryUIDs().
 		Where(uid.UIDGTE(begin), uid.UIDLTE(end)).
 		WithMessage().

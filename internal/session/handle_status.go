@@ -41,7 +41,7 @@ func (s *Session) handleStatus(ctx context.Context, tag string, cmd *proto.Statu
 				items = append(items, response.ItemUIDValidity(mailbox.UIDValidity()))
 
 			case strings.EqualFold(att, imap.StatusUnseen):
-				items = append(items, response.ItemUnseen(len(mailbox.GetMessagesWithoutFlag(imap.FlagSeen))))
+				items = append(items, response.ItemUnseen(uint32(len(mailbox.GetMessagesWithoutFlag(imap.FlagSeen)))))
 			}
 		}
 

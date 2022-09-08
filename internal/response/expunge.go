@@ -2,13 +2,14 @@ package response
 
 import (
 	"fmt"
+	"github.com/ProtonMail/gluon/imap"
 )
 
 type expunge struct {
-	seq int
+	seq imap.SeqID
 }
 
-func Expunge(seq int) *expunge {
+func Expunge(seq imap.SeqID) *expunge {
 	return &expunge{
 		seq: seq,
 	}

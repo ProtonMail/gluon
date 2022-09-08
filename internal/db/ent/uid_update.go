@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/predicate"
@@ -30,14 +31,14 @@ func (uu *UIDUpdate) Where(ps ...predicate.UID) *UIDUpdate {
 }
 
 // SetUID sets the "UID" field.
-func (uu *UIDUpdate) SetUID(i int) *UIDUpdate {
+func (uu *UIDUpdate) SetUID(i imap.UID) *UIDUpdate {
 	uu.mutation.ResetUID()
 	uu.mutation.SetUID(i)
 	return uu
 }
 
 // AddUID adds i to the "UID" field.
-func (uu *UIDUpdate) AddUID(i int) *UIDUpdate {
+func (uu *UIDUpdate) AddUID(i imap.UID) *UIDUpdate {
 	uu.mutation.AddUID(i)
 	return uu
 }
@@ -199,14 +200,14 @@ func (uu *UIDUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := uu.mutation.UID(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: uid.FieldUID,
 		})
 	}
 	if value, ok := uu.mutation.AddedUID(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: uid.FieldUID,
 		})
@@ -315,14 +316,14 @@ type UIDUpdateOne struct {
 }
 
 // SetUID sets the "UID" field.
-func (uuo *UIDUpdateOne) SetUID(i int) *UIDUpdateOne {
+func (uuo *UIDUpdateOne) SetUID(i imap.UID) *UIDUpdateOne {
 	uuo.mutation.ResetUID()
 	uuo.mutation.SetUID(i)
 	return uuo
 }
 
 // AddUID adds i to the "UID" field.
-func (uuo *UIDUpdateOne) AddUID(i int) *UIDUpdateOne {
+func (uuo *UIDUpdateOne) AddUID(i imap.UID) *UIDUpdateOne {
 	uuo.mutation.AddUID(i)
 	return uuo
 }
@@ -514,14 +515,14 @@ func (uuo *UIDUpdateOne) sqlSave(ctx context.Context) (_node *UID, err error) {
 	}
 	if value, ok := uuo.mutation.UID(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: uid.FieldUID,
 		})
 	}
 	if value, ok := uuo.mutation.AddedUID(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
+			Type:   field.TypeUint32,
 			Value:  value,
 			Column: uid.FieldUID,
 		})

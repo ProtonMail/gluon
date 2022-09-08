@@ -14,8 +14,8 @@ var (
 		{Name: "mailbox_id", Type: field.TypeString, Unique: true},
 		{Name: "remote_id", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "name", Type: field.TypeString, Unique: true},
-		{Name: "uid_next", Type: field.TypeInt, Default: 1},
-		{Name: "uid_validity", Type: field.TypeInt, Default: 1},
+		{Name: "uid_next", Type: field.TypeUint32, Default: 1},
+		{Name: "uid_validity", Type: field.TypeUint32, Default: 1},
 		{Name: "subscribed", Type: field.TypeBool, Default: true},
 	}
 	// MailboxesTable holds the schema information for the "mailboxes" table.
@@ -125,7 +125,7 @@ var (
 	// UIDsColumns holds the columns for the "ui_ds" table.
 	UIDsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "uid", Type: field.TypeInt},
+		{Name: "uid", Type: field.TypeUint32},
 		{Name: "deleted", Type: field.TypeBool, Default: false},
 		{Name: "recent", Type: field.TypeBool, Default: true},
 		{Name: "mailbox_ui_ds", Type: field.TypeInt, Nullable: true},

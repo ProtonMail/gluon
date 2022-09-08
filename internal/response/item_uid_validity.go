@@ -1,12 +1,15 @@
 package response
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/ProtonMail/gluon/imap"
+)
 
 type itemUIDValidity struct {
-	val int
+	val imap.UID
 }
 
-func ItemUIDValidity(n int) *itemUIDValidity {
+func ItemUIDValidity(n imap.UID) *itemUIDValidity {
 	return &itemUIDValidity{val: n}
 }
 

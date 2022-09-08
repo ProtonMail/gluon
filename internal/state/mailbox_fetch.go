@@ -40,7 +40,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 	return nil
 }
 
-func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*proto.FetchAttribute) (int, []response.Item, error) {
+func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*proto.FetchAttribute) (imap.SeqID, []response.Item, error) {
 	var (
 		items []response.Item
 

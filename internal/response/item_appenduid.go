@@ -1,12 +1,15 @@
 package response
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/ProtonMail/gluon/imap"
+)
 
 type itemAppendUID struct {
-	uidValidity, messageUID int
+	uidValidity, messageUID imap.UID
 }
 
-func ItemAppendUID(uidValidity, messageUID int) *itemAppendUID {
+func ItemAppendUID(uidValidity, messageUID imap.UID) *itemAppendUID {
 	return &itemAppendUID{
 		uidValidity: uidValidity,
 		messageUID:  messageUID,

@@ -101,11 +101,11 @@ func (m *Mailbox) Attributes(ctx context.Context) (imap.FlagSet, error) {
 	})), nil
 }
 
-func (m *Mailbox) UIDNext() int {
+func (m *Mailbox) UIDNext() imap.UID {
 	return m.mbox.UIDNext
 }
 
-func (m *Mailbox) UIDValidity() int {
+func (m *Mailbox) UIDValidity() imap.UID {
 	return m.mbox.UIDValidity
 }
 
@@ -113,19 +113,19 @@ func (m *Mailbox) Subscribed() bool {
 	return m.mbox.Subscribed
 }
 
-func (m *Mailbox) GetMessagesWithFlag(flag string) []int {
-	return xslices.Map(m.snap.getMessagesWithFlag(flag), func(msg *snapMsg) int {
+func (m *Mailbox) GetMessagesWithFlag(flag string) []imap.SeqID {
+	return xslices.Map(m.snap.getMessagesWithFlag(flag), func(msg *snapMsg) imap.SeqID {
 		return msg.Seq
 	})
 }
 
-func (m *Mailbox) GetMessagesWithoutFlag(flag string) []int {
-	return xslices.Map(m.snap.getMessagesWithoutFlag(flag), func(msg *snapMsg) int {
+func (m *Mailbox) GetMessagesWithoutFlag(flag string) []imap.SeqID {
+	return xslices.Map(m.snap.getMessagesWithoutFlag(flag), func(msg *snapMsg) imap.SeqID {
 		return msg.Seq
 	})
 }
 
-func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (int, error) {
+func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
 	internalID, err := rfc822.GetHeaderValue(literal, ids.InternalIDKey)
 	if err != nil {
 		return 0, err
@@ -147,7 +147,7 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 		}
 	}
 
-	return db.WriteAndStoreResult(ctx, m.state.db(), m.state.user.GetStore(), func(ctx context.Context, tx *ent.Tx, transaction store.Transaction) (int, error) {
+	return db.WriteAndStoreResult(ctx, m.state.db(), m.state.user.GetStore(), func(ctx context.Context, tx *ent.Tx, transaction store.Transaction) (imap.UID, error) {
 		return m.state.actionCreateMessage(ctx, tx, transaction, m.snap.mboxID, literal, flags, date, m.snap == m.state.snap)
 	})
 }
@@ -172,7 +172,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 		return msg.ID
 	})
 
-	msgUIDs := xslices.Map(messages, func(msg *snapMsg) int {
+	msgUIDs := xslices.Map(messages, func(msg *snapMsg) imap.UID {
 		return msg.UID
 	})
 
@@ -186,7 +186,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 	var res response.Item
 
 	if len(destUIDs) > 0 {
-		res = response.ItemCopyUID(mbox.UIDValidity, msgUIDs, xslices.Map(maps.Keys(destUIDs), func(messageID imap.InternalMessageID) int {
+		res = response.ItemCopyUID(mbox.UIDValidity, msgUIDs, xslices.Map(maps.Keys(destUIDs), func(messageID imap.InternalMessageID) imap.UID {
 			return destUIDs[messageID].UID
 		}))
 	}
@@ -214,7 +214,7 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 		return msg.ID
 	})
 
-	msgUIDs := xslices.Map(messages, func(msg *snapMsg) int {
+	msgUIDs := xslices.Map(messages, func(msg *snapMsg) imap.UID {
 		return msg.UID
 	})
 
@@ -228,7 +228,7 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 	var res response.Item
 
 	if len(destUIDs) > 0 {
-		res = response.ItemCopyUID(mbox.UIDValidity, msgUIDs, xslices.Map(maps.Keys(destUIDs), func(messageID imap.InternalMessageID) int {
+		res = response.ItemCopyUID(mbox.UIDValidity, msgUIDs, xslices.Map(maps.Keys(destUIDs), func(messageID imap.InternalMessageID) imap.UID {
 			return destUIDs[messageID].UID
 		}))
 	}

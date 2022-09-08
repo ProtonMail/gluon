@@ -9,8 +9,8 @@ import (
 // snapMsg is a single message inside a snapshot.
 type snapMsg struct {
 	ID    ids.MessageIDPair
-	UID   int
-	Seq   int
+	UID   imap.UID
+	Seq   imap.SeqID
 	flags imap.FlagSet
 }
 
@@ -26,7 +26,7 @@ func newMsgList() *snapMsgList {
 	}
 }
 
-func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID int, flags imap.FlagSet) {
+func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
 	if len(list.msg) > 0 && list.msg[len(list.msg)-1].UID >= msgUID {
 		panic("UIDs must be strictly ascending")
 	}
@@ -34,7 +34,7 @@ func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID int, flags imap.
 	list.msg = append(list.msg, &snapMsg{
 		ID:    msgID,
 		UID:   msgUID,
-		Seq:   len(list.msg) + 1,
+		Seq:   imap.SeqID(len(list.msg) + 1),
 		flags: flags,
 	})
 
@@ -107,8 +107,8 @@ func (list *snapMsgList) get(msgID imap.InternalMessageID) (*snapMsg, bool) {
 	return list.msg[idx], true
 }
 
-func (list *snapMsgList) seq(seq int) (*snapMsg, bool) {
-	if len(list.msg) < seq {
+func (list *snapMsgList) seq(seq imap.SeqID) (*snapMsg, bool) {
+	if imap.SeqID(len(list.msg)) < seq {
 		return nil, false
 	}
 

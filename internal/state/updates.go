@@ -26,10 +26,10 @@ type messageFlagsAddedStateUpdate struct {
 	messageIDs []imap.InternalMessageID
 	flags      imap.FlagSet
 	mboxID     ids.MailboxIDPair
-	stateID    int
+	stateID    StateID
 }
 
-func newMessageFlagsAddedStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID int) Update {
+func newMessageFlagsAddedStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID StateID) Update {
 	return &messageFlagsAddedStateUpdate{
 		flags:      flags,
 		mboxID:     mboxID,
@@ -112,10 +112,10 @@ type messageFlagsRemovedStateUpdate struct {
 	messageIDs []imap.InternalMessageID
 	flags      imap.FlagSet
 	mboxID     ids.MailboxIDPair
-	stateID    int
+	stateID    StateID
 }
 
-func NewMessageFlagsRemovedStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID int) Update {
+func NewMessageFlagsRemovedStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID StateID) Update {
 	return &messageFlagsRemovedStateUpdate{
 		flags:      flags,
 		mboxID:     mboxID,
@@ -204,10 +204,10 @@ type messageFlagsSetStateUpdate struct {
 	messageIDs []imap.InternalMessageID
 	flags      imap.FlagSet
 	mboxID     ids.MailboxIDPair
-	stateID    int
+	stateID    StateID
 }
 
-func NewMessageFlagsSetStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID int) Update {
+func NewMessageFlagsSetStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID StateID) Update {
 	return &messageFlagsSetStateUpdate{
 		flags:      flags,
 		mboxID:     mboxID,

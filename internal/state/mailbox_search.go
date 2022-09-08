@@ -18,7 +18,7 @@ import (
 	"golang.org/x/text/encoding"
 )
 
-func (m *Mailbox) Search(ctx context.Context, keys []*proto.SearchKey, decoder *encoding.Decoder) ([]int, error) {
+func (m *Mailbox) Search(ctx context.Context, keys []*proto.SearchKey, decoder *encoding.Decoder) ([]uint32, error) {
 	snapMessages := m.snap.getAllMessages()
 
 	messages, err := doSearch(ctx, m, snapMessages, keys, decoder)
@@ -26,12 +26,12 @@ func (m *Mailbox) Search(ctx context.Context, keys []*proto.SearchKey, decoder *
 		return nil, err
 	}
 
-	return xslices.Map(messages, func(msg *snapMsg) int {
+	return xslices.Map(messages, func(msg *snapMsg) uint32 {
 		if contexts.IsUID(ctx) {
-			return msg.UID
+			return uint32(msg.UID)
 		}
 
-		return msg.Seq
+		return uint32(msg.Seq)
 	}), nil
 }
 

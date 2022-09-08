@@ -104,16 +104,18 @@ func Name(v string) predicate.Mailbox {
 }
 
 // UIDNext applies equality check predicate on the "UIDNext" field. It's identical to UIDNextEQ.
-func UIDNext(v int) predicate.Mailbox {
+func UIDNext(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUIDNext), v))
+		s.Where(sql.EQ(s.C(FieldUIDNext), vc))
 	})
 }
 
 // UIDValidity applies equality check predicate on the "UIDValidity" field. It's identical to UIDValidityEQ.
-func UIDValidity(v int) predicate.Mailbox {
+func UIDValidity(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUIDValidity), v))
+		s.Where(sql.EQ(s.C(FieldUIDValidity), vc))
 	})
 }
 
@@ -458,24 +460,26 @@ func NameContainsFold(v string) predicate.Mailbox {
 }
 
 // UIDNextEQ applies the EQ predicate on the "UIDNext" field.
-func UIDNextEQ(v int) predicate.Mailbox {
+func UIDNextEQ(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUIDNext), v))
+		s.Where(sql.EQ(s.C(FieldUIDNext), vc))
 	})
 }
 
 // UIDNextNEQ applies the NEQ predicate on the "UIDNext" field.
-func UIDNextNEQ(v int) predicate.Mailbox {
+func UIDNextNEQ(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldUIDNext), v))
+		s.Where(sql.NEQ(s.C(FieldUIDNext), vc))
 	})
 }
 
 // UIDNextIn applies the In predicate on the "UIDNext" field.
-func UIDNextIn(vs ...int) predicate.Mailbox {
+func UIDNextIn(vs ...imap.UID) predicate.Mailbox {
 	v := make([]interface{}, len(vs))
 	for i := range v {
-		v[i] = vs[i]
+		v[i] = uint32(vs[i])
 	}
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.In(s.C(FieldUIDNext), v...))
@@ -483,10 +487,10 @@ func UIDNextIn(vs ...int) predicate.Mailbox {
 }
 
 // UIDNextNotIn applies the NotIn predicate on the "UIDNext" field.
-func UIDNextNotIn(vs ...int) predicate.Mailbox {
+func UIDNextNotIn(vs ...imap.UID) predicate.Mailbox {
 	v := make([]interface{}, len(vs))
 	for i := range v {
-		v[i] = vs[i]
+		v[i] = uint32(vs[i])
 	}
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.NotIn(s.C(FieldUIDNext), v...))
@@ -494,52 +498,58 @@ func UIDNextNotIn(vs ...int) predicate.Mailbox {
 }
 
 // UIDNextGT applies the GT predicate on the "UIDNext" field.
-func UIDNextGT(v int) predicate.Mailbox {
+func UIDNextGT(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldUIDNext), v))
+		s.Where(sql.GT(s.C(FieldUIDNext), vc))
 	})
 }
 
 // UIDNextGTE applies the GTE predicate on the "UIDNext" field.
-func UIDNextGTE(v int) predicate.Mailbox {
+func UIDNextGTE(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldUIDNext), v))
+		s.Where(sql.GTE(s.C(FieldUIDNext), vc))
 	})
 }
 
 // UIDNextLT applies the LT predicate on the "UIDNext" field.
-func UIDNextLT(v int) predicate.Mailbox {
+func UIDNextLT(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldUIDNext), v))
+		s.Where(sql.LT(s.C(FieldUIDNext), vc))
 	})
 }
 
 // UIDNextLTE applies the LTE predicate on the "UIDNext" field.
-func UIDNextLTE(v int) predicate.Mailbox {
+func UIDNextLTE(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldUIDNext), v))
+		s.Where(sql.LTE(s.C(FieldUIDNext), vc))
 	})
 }
 
 // UIDValidityEQ applies the EQ predicate on the "UIDValidity" field.
-func UIDValidityEQ(v int) predicate.Mailbox {
+func UIDValidityEQ(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldUIDValidity), v))
+		s.Where(sql.EQ(s.C(FieldUIDValidity), vc))
 	})
 }
 
 // UIDValidityNEQ applies the NEQ predicate on the "UIDValidity" field.
-func UIDValidityNEQ(v int) predicate.Mailbox {
+func UIDValidityNEQ(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldUIDValidity), v))
+		s.Where(sql.NEQ(s.C(FieldUIDValidity), vc))
 	})
 }
 
 // UIDValidityIn applies the In predicate on the "UIDValidity" field.
-func UIDValidityIn(vs ...int) predicate.Mailbox {
+func UIDValidityIn(vs ...imap.UID) predicate.Mailbox {
 	v := make([]interface{}, len(vs))
 	for i := range v {
-		v[i] = vs[i]
+		v[i] = uint32(vs[i])
 	}
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.In(s.C(FieldUIDValidity), v...))
@@ -547,10 +557,10 @@ func UIDValidityIn(vs ...int) predicate.Mailbox {
 }
 
 // UIDValidityNotIn applies the NotIn predicate on the "UIDValidity" field.
-func UIDValidityNotIn(vs ...int) predicate.Mailbox {
+func UIDValidityNotIn(vs ...imap.UID) predicate.Mailbox {
 	v := make([]interface{}, len(vs))
 	for i := range v {
-		v[i] = vs[i]
+		v[i] = uint32(vs[i])
 	}
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.NotIn(s.C(FieldUIDValidity), v...))
@@ -558,30 +568,34 @@ func UIDValidityNotIn(vs ...int) predicate.Mailbox {
 }
 
 // UIDValidityGT applies the GT predicate on the "UIDValidity" field.
-func UIDValidityGT(v int) predicate.Mailbox {
+func UIDValidityGT(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldUIDValidity), v))
+		s.Where(sql.GT(s.C(FieldUIDValidity), vc))
 	})
 }
 
 // UIDValidityGTE applies the GTE predicate on the "UIDValidity" field.
-func UIDValidityGTE(v int) predicate.Mailbox {
+func UIDValidityGTE(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldUIDValidity), v))
+		s.Where(sql.GTE(s.C(FieldUIDValidity), vc))
 	})
 }
 
 // UIDValidityLT applies the LT predicate on the "UIDValidity" field.
-func UIDValidityLT(v int) predicate.Mailbox {
+func UIDValidityLT(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldUIDValidity), v))
+		s.Where(sql.LT(s.C(FieldUIDValidity), vc))
 	})
 }
 
 // UIDValidityLTE applies the LTE predicate on the "UIDValidity" field.
-func UIDValidityLTE(v int) predicate.Mailbox {
+func UIDValidityLTE(v imap.UID) predicate.Mailbox {
+	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldUIDValidity), v))
+		s.Where(sql.LTE(s.C(FieldUIDValidity), vc))
 	})
 }
 

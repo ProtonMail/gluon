@@ -19,8 +19,8 @@ func (Mailbox) Fields() []ent.Field {
 		field.String("MailboxID").Unique().Immutable().GoType(imap.InternalMailboxID("")),
 		field.String("RemoteID").Optional().Unique().GoType(imap.LabelID("")),
 		field.String("Name").Unique(),
-		field.Int("UIDNext").Default(1),
-		field.Int("UIDValidity").Default(1),
+		field.Uint32("UIDNext").Default(1).GoType(imap.UID(0)),
+		field.Uint32("UIDValidity").Default(1).GoType(imap.UID(0)),
 		field.Bool("Subscribed").Default(true),
 	}
 }

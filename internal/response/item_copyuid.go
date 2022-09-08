@@ -7,15 +7,15 @@ import (
 )
 
 type itemCopyUID struct {
-	uidValidity        int
+	uidValidity        imap.UID
 	sourceSet, destSet imap.SeqSet
 }
 
-func ItemCopyUID(uidValidity int, sourceSet, destSet []int) *itemCopyUID {
+func ItemCopyUID(uidValidity imap.UID, sourceSet, destSet []imap.UID) *itemCopyUID {
 	return &itemCopyUID{
 		uidValidity: uidValidity,
-		sourceSet:   imap.NewSeqSet(sourceSet),
-		destSet:     imap.NewSeqSet(destSet),
+		sourceSet:   imap.NewSeqSetFromUID(sourceSet),
+		destSet:     imap.NewSeqSetFromUID(destSet),
 	}
 }
 

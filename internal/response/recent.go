@@ -5,14 +5,14 @@ import (
 )
 
 type recent struct {
-	count int
+	count uint32
 }
 
 func Recent() *recent {
 	return &recent{}
 }
 
-func (r *recent) WithCount(n int) *recent {
+func (r *recent) WithCount(n uint32) *recent {
 	r.count = n
 	return r
 }

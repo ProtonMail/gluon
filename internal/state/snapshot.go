@@ -48,7 +48,7 @@ func (snap *snapshot) hasMessage(messageID imap.InternalMessageID) bool {
 	return snap.messages.has(messageID)
 }
 
-func (snap *snapshot) getMessageSeq(messageID imap.InternalMessageID) (int, error) {
+func (snap *snapshot) getMessageSeq(messageID imap.InternalMessageID) (imap.SeqID, error) {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
 		return 0, ErrNoSuchMessage
@@ -57,7 +57,7 @@ func (snap *snapshot) getMessageSeq(messageID imap.InternalMessageID) (int, erro
 	return msg.Seq, nil
 }
 
-func (snap *snapshot) getMessageUID(messageID imap.InternalMessageID) (int, error) {
+func (snap *snapshot) getMessageUID(messageID imap.InternalMessageID) (imap.UID, error) {
 	msg, ok := snap.messages.get(messageID)
 	if !ok {
 		return 0, ErrNoSuchMessage
@@ -213,7 +213,7 @@ func (snap *snapshot) getMessagesWithoutFlag(flag string) []*snapMsg {
 	})
 }
 
-func (snap *snapshot) appendMessage(messageID ids.MessageIDPair, uid int, flags imap.FlagSet) error {
+func (snap *snapshot) appendMessage(messageID ids.MessageIDPair, uid imap.UID, flags imap.FlagSet) error {
 	snap.messages.insert(
 		messageID,
 		uid,
@@ -250,14 +250,14 @@ func (snap *snapshot) updateMessageRemoteID(internalID imap.InternalMessageID, r
 }
 
 // TODO: How serious is the performance impact of this?
-func (snap *snapshot) seqRange(seqLo, seqHi int) []*snapMsg {
+func (snap *snapshot) seqRange(seqLo, seqHi imap.SeqID) []*snapMsg {
 	return snap.messages.where(func(msg *snapMsg) bool {
 		return seqLo <= msg.Seq && msg.Seq <= seqHi
 	})
 }
 
 // TODO: How serious is the performance impact of this?
-func (snap *snapshot) uidRange(uidLo, uidHi int) []*snapMsg {
+func (snap *snapshot) uidRange(uidLo, uidHi imap.UID) []*snapMsg {
 	return snap.messages.where(func(msg *snapMsg) bool {
 		return uidLo <= msg.UID && msg.UID <= uidHi
 	})
@@ -268,7 +268,7 @@ func (snap *snapshot) uidRange(uidLo, uidHi int) []*snapMsg {
 // - No sequence number is valid if mailbox is empty, not even "*"
 // - "*" is converted to the number of messages in the mailbox
 // - when used in a range, the order of the indexes in irrelevant.
-func (snap *snapshot) resolveSeq(number string) (int, error) {
+func (snap *snapshot) resolveSeq(number string) (imap.SeqID, error) {
 	if snap.messages.len() == 0 {
 		return 0, ErrNoSuchMessage
 	}
@@ -277,12 +277,12 @@ func (snap *snapshot) resolveSeq(number string) (int, error) {
 		return snap.messages.last().Seq, nil
 	}
 
-	seq, err := strconv.Atoi(number)
+	num, err := strconv.ParseUint(number, 10, 32)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse sequence number: %w", err)
 	}
 
-	msg, ok := snap.messages.seq(seq)
+	msg, ok := snap.messages.seq(imap.SeqID(num))
 	if !ok {
 		return 0, ErrNoSuchMessage
 	}
@@ -291,7 +291,7 @@ func (snap *snapshot) resolveSeq(number string) (int, error) {
 }
 
 // resolveUID converts a textual message UID into an integer.
-func (snap *snapshot) resolveUID(number string) (int, error) {
+func (snap *snapshot) resolveUID(number string) (imap.UID, error) {
 	if snap.messages.len() == 0 {
 		return 0, ErrNoSuchMessage
 	}
@@ -300,5 +300,10 @@ func (snap *snapshot) resolveUID(number string) (int, error) {
 		return snap.messages.last().UID, nil
 	}
 
-	return strconv.Atoi(number)
+	num, err := strconv.ParseUint(number, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse UID number: %w", err)
+	}
+
+	return imap.UID(num), nil
 }

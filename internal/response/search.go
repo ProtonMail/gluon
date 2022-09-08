@@ -7,10 +7,10 @@ import (
 )
 
 type search struct {
-	seqs []int
+	seqs []uint32
 }
 
-func Search(seqs ...int) *search {
+func Search(seqs ...uint32) *search {
 	slices.Sort(seqs)
 
 	return &search{
@@ -29,7 +29,7 @@ func (r *search) String() string {
 		var seqs []string
 
 		for _, seq := range r.seqs {
-			seqs = append(seqs, strconv.Itoa(seq))
+			seqs = append(seqs, strconv.Itoa(int(seq)))
 		}
 
 		parts = append(parts, join(seqs))
