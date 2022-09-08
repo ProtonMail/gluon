@@ -355,6 +355,26 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 	return fn(newMailbox(mbox, state, snap))
 }
 
+// AppendOnlyMailbox does not guarantee that the mailbox snapshot is loaded data from the database
+// and passes true into the function if the currently selected mailbox matches the requested mailbox.
+// It can only be used for appending.
+func (state *State) AppendOnlyMailbox(ctx context.Context, name string, fn func(AppendOnlyMailbox, bool) error) error {
+	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return db.GetMailboxByName(ctx, client, name)
+	})
+	if err != nil {
+		return ErrNoSuchMailbox
+	}
+
+	if state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID {
+		return fn(newMailbox(mbox, state, state.snap), true)
+	}
+
+	snap := newEmptySnapshot(state, mbox)
+
+	return fn(newMailbox(mbox, state, snap), false)
+}
+
 func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error {
 	if !state.IsSelected() {
 		return ErrSessionNotSelected
