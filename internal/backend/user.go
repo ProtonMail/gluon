@@ -63,9 +63,14 @@ func newUser(ctx context.Context, userID string, db *db.DB, conn connector.Conne
 
 	go func() {
 		defer user.updateWG.Done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ctx = contexts.NewRemoteUpdateCtx(ctx)
+
 		labels := pprof.Labels("go", "Connector Updates", "UserID", user.userID)
 		pprof.Do(ctx, labels, func(_ context.Context) {
-			ctx := contexts.NewRemoteUpdateCtx(context.Background())
 			updateCh := user.updateInjector.GetUpdates()
 			for {
 				select {

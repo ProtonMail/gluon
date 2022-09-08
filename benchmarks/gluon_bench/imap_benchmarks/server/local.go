@@ -87,7 +87,7 @@ func addUser(ctx context.Context, server *gluon.Server) error {
 		fmt.Printf("Adding user ID=%v\n", userID)
 	}
 
-	if err := c.Sync(context.Background()); err != nil {
+	if err := c.Sync(ctx); err != nil {
 		return err
 	}
 

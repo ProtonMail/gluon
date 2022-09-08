@@ -98,7 +98,7 @@ func addUser(ctx context.Context, server *gluon.Server, addresses []string, pass
 		return err
 	}
 
-	if err := connector.Sync(context.Background()); err != nil {
+	if err := connector.Sync(ctx); err != nil {
 		return err
 	}
 
