@@ -24,12 +24,6 @@ type MailboxCreate struct {
 	hooks    []Hook
 }
 
-// SetMailboxID sets the "MailboxID" field.
-func (mc *MailboxCreate) SetMailboxID(imi imap.InternalMailboxID) *MailboxCreate {
-	mc.mutation.SetMailboxID(imi)
-	return mc
-}
-
 // SetRemoteID sets the "RemoteID" field.
 func (mc *MailboxCreate) SetRemoteID(ii imap.LabelID) *MailboxCreate {
 	mc.mutation.SetRemoteID(ii)
@@ -89,6 +83,12 @@ func (mc *MailboxCreate) SetNillableSubscribed(b *bool) *MailboxCreate {
 	if b != nil {
 		mc.SetSubscribed(*b)
 	}
+	return mc
+}
+
+// SetID sets the "id" field.
+func (mc *MailboxCreate) SetID(imi imap.InternalMailboxID) *MailboxCreate {
+	mc.mutation.SetID(imi)
 	return mc
 }
 
@@ -245,9 +245,6 @@ func (mc *MailboxCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (mc *MailboxCreate) check() error {
-	if _, ok := mc.mutation.MailboxID(); !ok {
-		return &ValidationError{Name: "MailboxID", err: errors.New(`ent: missing required field "Mailbox.MailboxID"`)}
-	}
 	if _, ok := mc.mutation.Name(); !ok {
 		return &ValidationError{Name: "Name", err: errors.New(`ent: missing required field "Mailbox.Name"`)}
 	}
@@ -260,6 +257,11 @@ func (mc *MailboxCreate) check() error {
 	if _, ok := mc.mutation.Subscribed(); !ok {
 		return &ValidationError{Name: "Subscribed", err: errors.New(`ent: missing required field "Mailbox.Subscribed"`)}
 	}
+	if v, ok := mc.mutation.ID(); ok {
+		if err := mailbox.IDValidator(string(v)); err != nil {
+			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Mailbox.id": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -271,8 +273,13 @@ func (mc *MailboxCreate) sqlSave(ctx context.Context) (*Mailbox, error) {
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(imap.InternalMailboxID); ok {
+			_node.ID = id
+		} else {
+			return nil, fmt.Errorf("unexpected Mailbox.ID type: %T", _spec.ID.Value)
+		}
+	}
 	return _node, nil
 }
 
@@ -282,18 +289,14 @@ func (mc *MailboxCreate) createSpec() (*Mailbox, *sqlgraph.CreateSpec) {
 		_spec = &sqlgraph.CreateSpec{
 			Table: mailbox.Table,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
+				Type:   field.TypeString,
 				Column: mailbox.FieldID,
 			},
 		}
 	)
-	if value, ok := mc.mutation.MailboxID(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: mailbox.FieldMailboxID,
-		})
-		_node.MailboxID = value
+	if id, ok := mc.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = id
 	}
 	if value, ok := mc.mutation.RemoteID(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -455,10 +458,6 @@ func (mcb *MailboxCreateBulk) Save(ctx context.Context) ([]*Mailbox, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})

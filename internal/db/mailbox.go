@@ -16,7 +16,7 @@ import (
 
 func CreateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, labelID imap.LabelID, name string, flags, permFlags, attrs imap.FlagSet) (*ent.Mailbox, error) {
 	create := tx.Mailbox.Create().
-		SetMailboxID(mboxID).
+		SetID(mboxID).
 		SetName(name)
 
 	for _, flag := range flags.ToSlice() {
@@ -39,7 +39,7 @@ func CreateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxI
 }
 
 func MailboxExistsWithID(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (bool, error) {
-	return client.Mailbox.Query().Where(mailbox.MailboxID(mboxID)).Exist(ctx)
+	return client.Mailbox.Query().Where(mailbox.ID(mboxID)).Exist(ctx)
 }
 
 func MailboxExistsWithRemoteID(ctx context.Context, client *ent.Client, mboxID imap.LabelID) (bool, error) {
@@ -52,7 +52,7 @@ func MailboxExistsWithName(ctx context.Context, client *ent.Client, name string)
 
 func RenameMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, name string) error {
 	if _, err := tx.Mailbox.Update().
-		Where(mailbox.MailboxID(mboxID)).
+		Where(mailbox.ID(mboxID)).
 		SetName(name).
 		Save(ctx); err != nil {
 		return err
@@ -74,7 +74,7 @@ func RenameMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.Labe
 
 func DeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID) error {
 	if _, err := tx.Mailbox.Delete().
-		Where(mailbox.MailboxID(mboxID)).
+		Where(mailbox.ID(mboxID)).
 		Exec(ctx); err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func DeleteMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.Labe
 
 func UpdateRemoteMailboxID(ctx context.Context, tx *ent.Tx, internalID imap.InternalMailboxID, remoteID imap.LabelID) error {
 	if _, err := tx.Mailbox.Update().
-		Where(mailbox.MailboxID(internalID)).
+		Where(mailbox.ID(internalID)).
 		SetRemoteID(remoteID).
 		Save(ctx); err != nil {
 		return err
@@ -122,7 +122,7 @@ func BumpMailboxUIDNext(ctx context.Context, tx *ent.Tx, mbox *ent.Mailbox, with
 }
 
 func GetMailboxName(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (string, error) {
-	mailbox, err := client.Mailbox.Query().Where(mailbox.MailboxID(mboxID)).Select(mailbox.FieldName).Only(ctx)
+	mailbox, err := client.Mailbox.Query().Where(mailbox.ID(mboxID)).Select(mailbox.FieldName).Only(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -141,22 +141,22 @@ func GetMailboxNameWithRemoteID(ctx context.Context, client *ent.Client, mboxID 
 
 func GetMailboxMessageIDs(ctx context.Context, client *ent.Client, mailboxID imap.InternalMailboxID) ([]imap.InternalMessageID, error) {
 	messages, err := client.Message.Query().
-		Where(message.HasUIDsWith(uid.HasMailboxWith(mailbox.MailboxID(mailboxID)))).
-		Select(message.FieldMessageID).
+		Where(message.HasUIDsWith(uid.HasMailboxWith(mailbox.ID(mailboxID)))).
+		Select(message.FieldID).
 		All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	return xslices.Map(messages, func(message *ent.Message) imap.InternalMessageID {
-		return message.MessageID
+		return message.ID
 	}), nil
 }
 
 func GetMailboxMessageIDPairs(ctx context.Context, client *ent.Client, mailboxID imap.InternalMailboxID) ([]ids.MessageIDPair, error) {
 	messages, err := client.Message.Query().
-		Where(message.HasUIDsWith(uid.HasMailboxWith(mailbox.MailboxID(mailboxID)))).
-		Select(message.FieldMessageID, message.FieldRemoteID).
+		Where(message.HasUIDsWith(uid.HasMailboxWith(mailbox.ID(mailboxID)))).
+		Select(message.FieldID, message.FieldRemoteID).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -179,14 +179,11 @@ func GetAllMailboxes(ctx context.Context, client *ent.Client) ([]*ent.Mailbox, e
 
 	var mailboxes []*ent.Mailbox
 
-	queryOffset := 0
-
 	for i := 0; ; i += QueryLimit {
 		result, err := client.Mailbox.Query().
-			Where(mailbox.IDGT(queryOffset)).
 			WithAttributes().
 			Limit(QueryLimit).
-			Order(func(selector *sql.Selector) { selector.OrderBy(mailbox.FieldID) }).
+			Offset(i).
 			All(ctx)
 		if err != nil {
 			return nil, err
@@ -197,7 +194,6 @@ func GetAllMailboxes(ctx context.Context, client *ent.Client) ([]*ent.Mailbox, e
 			break
 		}
 
-		queryOffset = result[resultLen-1].ID
 		mailboxes = append(mailboxes, result...)
 	}
 
@@ -209,7 +205,7 @@ func GetMailboxByName(ctx context.Context, client *ent.Client, name string) (*en
 }
 
 func GetMailboxByID(ctx context.Context, client *ent.Client, id imap.InternalMailboxID) (*ent.Mailbox, error) {
-	return client.Mailbox.Query().Where(mailbox.MailboxID(id)).Only(ctx)
+	return client.Mailbox.Query().Where(mailbox.ID(id)).Only(ctx)
 }
 
 func GetMailboxMessages(ctx context.Context, client *ent.Client, mbox *ent.Mailbox) ([]*ent.UID, error) {
@@ -230,7 +226,7 @@ func GetMailboxMessagesForNewSnapshot(ctx context.Context, client *ent.Client, m
 	for i := 0; ; i += QueryLimit {
 		result, err := mbox.QueryUIDs().
 			Where(uid.IDGT(queryOffset)).
-			WithMessage(func(query *ent.MessageQuery) { query.WithFlags().Select(message.FieldMessageID, message.FieldRemoteID) }).
+			WithMessage(func(query *ent.MessageQuery) { query.WithFlags().Select(message.FieldID, message.FieldRemoteID) }).
 			Select(uid.FieldID, uid.FieldUID, uid.FieldRecent, uid.FieldDeleted).Order(func(selector *sql.Selector) {
 			selector.OrderBy(uid.FieldID)
 		}).Limit(QueryLimit).All(ctx)
@@ -254,30 +250,30 @@ func GetMailboxMessagesForNewSnapshot(ctx context.Context, client *ent.Client, m
 func GetMailboxMessage(ctx context.Context, client *ent.Client, mailboxID imap.InternalMailboxID, messageID imap.InternalMessageID) (*ent.UID, error) {
 	return client.UID.Query().
 		Where(
-			uid.HasMailboxWith(mailbox.MailboxID(mailboxID)),
-			uid.HasMessageWith(message.MessageID(messageID)),
+			uid.HasMailboxWith(mailbox.ID(mailboxID)),
+			uid.HasMessageWith(message.ID(messageID)),
 		).
 		WithMessage(func(query *ent.MessageQuery) { query.WithFlags() }).
 		Only(ctx)
 }
 
 func GetMailboxIDWithRemoteID(ctx context.Context, client *ent.Client, labelID imap.LabelID) (imap.InternalMailboxID, error) {
-	mbox, err := client.Mailbox.Query().Where(mailbox.RemoteID(labelID)).Select(mailbox.FieldMailboxID).Only(ctx)
+	mbox, err := client.Mailbox.Query().Where(mailbox.RemoteID(labelID)).Select(mailbox.FieldID).Only(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	return mbox.MailboxID, nil
+	return mbox.ID, nil
 }
 
 func TranslateRemoteMailboxIDs(ctx context.Context, client *ent.Client, mboxIDs []imap.LabelID) ([]imap.InternalMailboxID, error) {
-	mboxes, err := client.Mailbox.Query().Where(mailbox.RemoteIDIn(mboxIDs...)).Select(mailbox.FieldMailboxID).All(ctx)
+	mboxes, err := client.Mailbox.Query().Where(mailbox.RemoteIDIn(mboxIDs...)).Select(mailbox.FieldID).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	return xslices.Map(mboxes, func(m *ent.Mailbox) imap.InternalMailboxID {
-		return m.MailboxID
+		return m.ID
 	}), nil
 }
 

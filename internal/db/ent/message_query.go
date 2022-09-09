@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/db/ent/predicate"
@@ -132,8 +133,8 @@ func (mq *MessageQuery) FirstX(ctx context.Context) *Message {
 
 // FirstID returns the first Message ID from the query.
 // Returns a *NotFoundError when no Message ID was found.
-func (mq *MessageQuery) FirstID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (mq *MessageQuery) FirstID(ctx context.Context) (id imap.InternalMessageID, err error) {
+	var ids []imap.InternalMessageID
 	if ids, err = mq.Limit(1).IDs(ctx); err != nil {
 		return
 	}
@@ -145,7 +146,7 @@ func (mq *MessageQuery) FirstID(ctx context.Context) (id int, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (mq *MessageQuery) FirstIDX(ctx context.Context) int {
+func (mq *MessageQuery) FirstIDX(ctx context.Context) imap.InternalMessageID {
 	id, err := mq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -183,8 +184,8 @@ func (mq *MessageQuery) OnlyX(ctx context.Context) *Message {
 // OnlyID is like Only, but returns the only Message ID in the query.
 // Returns a *NotSingularError when more than one Message ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (mq *MessageQuery) OnlyID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (mq *MessageQuery) OnlyID(ctx context.Context) (id imap.InternalMessageID, err error) {
+	var ids []imap.InternalMessageID
 	if ids, err = mq.Limit(2).IDs(ctx); err != nil {
 		return
 	}
@@ -200,7 +201,7 @@ func (mq *MessageQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (mq *MessageQuery) OnlyIDX(ctx context.Context) int {
+func (mq *MessageQuery) OnlyIDX(ctx context.Context) imap.InternalMessageID {
 	id, err := mq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -226,8 +227,8 @@ func (mq *MessageQuery) AllX(ctx context.Context) []*Message {
 }
 
 // IDs executes the query and returns a list of Message IDs.
-func (mq *MessageQuery) IDs(ctx context.Context) ([]int, error) {
-	var ids []int
+func (mq *MessageQuery) IDs(ctx context.Context) ([]imap.InternalMessageID, error) {
+	var ids []imap.InternalMessageID
 	if err := mq.Select(message.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
@@ -235,7 +236,7 @@ func (mq *MessageQuery) IDs(ctx context.Context) ([]int, error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (mq *MessageQuery) IDsX(ctx context.Context) []int {
+func (mq *MessageQuery) IDsX(ctx context.Context) []imap.InternalMessageID {
 	ids, err := mq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -326,12 +327,12 @@ func (mq *MessageQuery) WithUIDs(opts ...func(*UIDQuery)) *MessageQuery {
 // Example:
 //
 //	var v []struct {
-//		MessageID imap.InternalMessageID `json:"MessageID,omitempty"`
+//		RemoteID imap.MessageID `json:"RemoteID,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Message.Query().
-//		GroupBy(message.FieldMessageID).
+//		GroupBy(message.FieldRemoteID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 //
@@ -355,11 +356,11 @@ func (mq *MessageQuery) GroupBy(field string, fields ...string) *MessageGroupBy 
 // Example:
 //
 //	var v []struct {
-//		MessageID imap.InternalMessageID `json:"MessageID,omitempty"`
+//		RemoteID imap.MessageID `json:"RemoteID,omitempty"`
 //	}
 //
 //	client.Message.Query().
-//		Select(message.FieldMessageID).
+//		Select(message.FieldRemoteID).
 //		Scan(ctx, &v)
 //
 func (mq *MessageQuery) Select(fields ...string) *MessageSelect {
@@ -432,7 +433,7 @@ func (mq *MessageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Mess
 
 func (mq *MessageQuery) loadFlags(ctx context.Context, query *MessageFlagQuery, nodes []*Message, init func(*Message), assign func(*Message, *MessageFlag)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Message)
+	nodeids := make(map[imap.InternalMessageID]*Message)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -463,7 +464,7 @@ func (mq *MessageQuery) loadFlags(ctx context.Context, query *MessageFlagQuery, 
 }
 func (mq *MessageQuery) loadUIDs(ctx context.Context, query *UIDQuery, nodes []*Message, init func(*Message), assign func(*Message, *UID)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Message)
+	nodeids := make(map[imap.InternalMessageID]*Message)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -516,7 +517,7 @@ func (mq *MessageQuery) querySpec() *sqlgraph.QuerySpec {
 			Table:   message.Table,
 			Columns: message.Columns,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
+				Type:   field.TypeString,
 				Column: message.FieldID,
 			},
 		},

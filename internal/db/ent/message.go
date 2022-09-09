@@ -16,9 +16,7 @@ import (
 type Message struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
-	// MessageID holds the value of the "MessageID" field.
-	MessageID imap.InternalMessageID `json:"MessageID,omitempty"`
+	ID imap.InternalMessageID `json:"id,omitempty"`
 	// RemoteID holds the value of the "RemoteID" field.
 	RemoteID imap.MessageID `json:"RemoteID,omitempty"`
 	// Date holds the value of the "Date" field.
@@ -74,9 +72,9 @@ func (*Message) scanValues(columns []string) ([]interface{}, error) {
 		switch columns[i] {
 		case message.FieldDeleted:
 			values[i] = new(sql.NullBool)
-		case message.FieldID, message.FieldSize:
+		case message.FieldSize:
 			values[i] = new(sql.NullInt64)
-		case message.FieldMessageID, message.FieldRemoteID, message.FieldBody, message.FieldBodyStructure, message.FieldEnvelope:
+		case message.FieldID, message.FieldRemoteID, message.FieldBody, message.FieldBodyStructure, message.FieldEnvelope:
 			values[i] = new(sql.NullString)
 		case message.FieldDate:
 			values[i] = new(sql.NullTime)
@@ -96,16 +94,10 @@ func (m *Message) assignValues(columns []string, values []interface{}) error {
 	for i := range columns {
 		switch columns[i] {
 		case message.FieldID:
-			value, ok := values[i].(*sql.NullInt64)
-			if !ok {
-				return fmt.Errorf("unexpected type %T for field id", value)
-			}
-			m.ID = int(value.Int64)
-		case message.FieldMessageID:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field MessageID", values[i])
+				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value.Valid {
-				m.MessageID = imap.InternalMessageID(value.String)
+				m.ID = imap.InternalMessageID(value.String)
 			}
 		case message.FieldRemoteID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -187,9 +179,6 @@ func (m *Message) String() string {
 	var builder strings.Builder
 	builder.WriteString("Message(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
-	builder.WriteString("MessageID=")
-	builder.WriteString(fmt.Sprintf("%v", m.MessageID))
-	builder.WriteString(", ")
 	builder.WriteString("RemoteID=")
 	builder.WriteString(fmt.Sprintf("%v", m.RemoteID))
 	builder.WriteString(", ")

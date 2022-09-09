@@ -5,6 +5,7 @@ import (
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/ProtonMail/gluon/imap"
 )
 
@@ -16,7 +17,7 @@ type Mailbox struct {
 // Fields of the Mailbox.
 func (Mailbox) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("MailboxID").Unique().Immutable().GoType(imap.InternalMailboxID("")),
+		field.String("id").GoType(imap.InternalMailboxID("")).NotEmpty().Unique().Immutable(),
 		field.String("RemoteID").Optional().Unique().GoType(imap.LabelID("")),
 		field.String("Name").Unique(),
 		field.Uint32("UIDNext").Default(1).GoType(imap.UID(0)),
@@ -39,5 +40,12 @@ func (Mailbox) Edges() []ent.Edge {
 
 		// Apply mailbox has many attributes.
 		edge.To("attributes", MailboxAttr.Type).Annotations(entsql.Annotation{OnDelete: entsql.Cascade}),
+	}
+}
+
+func (Mailbox) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("RemoteID"),
+		index.Fields("Name"),
 	}
 }

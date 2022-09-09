@@ -45,8 +45,7 @@ type MailboxMutation struct {
 	config
 	op                     Op
 	typ                    string
-	id                     *int
-	_MailboxID             *imap.InternalMailboxID
+	id                     *imap.InternalMailboxID
 	_RemoteID              *imap.LabelID
 	_Name                  *string
 	_UIDNext               *imap.UID
@@ -92,7 +91,7 @@ func newMailboxMutation(c config, op Op, opts ...mailboxOption) *MailboxMutation
 }
 
 // withMailboxID sets the ID field of the mutation.
-func withMailboxID(id int) mailboxOption {
+func withMailboxID(id imap.InternalMailboxID) mailboxOption {
 	return func(m *MailboxMutation) {
 		var (
 			err   error
@@ -142,9 +141,15 @@ func (m MailboxMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Mailbox entities.
+func (m *MailboxMutation) SetID(id imap.InternalMailboxID) {
+	m.id = &id
+}
+
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *MailboxMutation) ID() (id int, exists bool) {
+func (m *MailboxMutation) ID() (id imap.InternalMailboxID, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -155,12 +160,12 @@ func (m *MailboxMutation) ID() (id int, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *MailboxMutation) IDs(ctx context.Context) ([]int, error) {
+func (m *MailboxMutation) IDs(ctx context.Context) ([]imap.InternalMailboxID, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int{id}, nil
+			return []imap.InternalMailboxID{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -168,42 +173,6 @@ func (m *MailboxMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
-}
-
-// SetMailboxID sets the "MailboxID" field.
-func (m *MailboxMutation) SetMailboxID(imi imap.InternalMailboxID) {
-	m._MailboxID = &imi
-}
-
-// MailboxID returns the value of the "MailboxID" field in the mutation.
-func (m *MailboxMutation) MailboxID() (r imap.InternalMailboxID, exists bool) {
-	v := m._MailboxID
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldMailboxID returns the old "MailboxID" field's value of the Mailbox entity.
-// If the Mailbox object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MailboxMutation) OldMailboxID(ctx context.Context) (v imap.InternalMailboxID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldMailboxID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldMailboxID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldMailboxID: %w", err)
-	}
-	return oldValue.MailboxID, nil
-}
-
-// ResetMailboxID resets all changes to the "MailboxID" field.
-func (m *MailboxMutation) ResetMailboxID() {
-	m._MailboxID = nil
 }
 
 // SetRemoteID sets the "RemoteID" field.
@@ -674,10 +643,7 @@ func (m *MailboxMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MailboxMutation) Fields() []string {
-	fields := make([]string, 0, 6)
-	if m._MailboxID != nil {
-		fields = append(fields, mailbox.FieldMailboxID)
-	}
+	fields := make([]string, 0, 5)
 	if m._RemoteID != nil {
 		fields = append(fields, mailbox.FieldRemoteID)
 	}
@@ -701,8 +667,6 @@ func (m *MailboxMutation) Fields() []string {
 // schema.
 func (m *MailboxMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case mailbox.FieldMailboxID:
-		return m.MailboxID()
 	case mailbox.FieldRemoteID:
 		return m.RemoteID()
 	case mailbox.FieldName:
@@ -722,8 +686,6 @@ func (m *MailboxMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *MailboxMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case mailbox.FieldMailboxID:
-		return m.OldMailboxID(ctx)
 	case mailbox.FieldRemoteID:
 		return m.OldRemoteID(ctx)
 	case mailbox.FieldName:
@@ -743,13 +705,6 @@ func (m *MailboxMutation) OldField(ctx context.Context, name string) (ent.Value,
 // type.
 func (m *MailboxMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case mailbox.FieldMailboxID:
-		v, ok := value.(imap.InternalMailboxID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetMailboxID(v)
-		return nil
 	case mailbox.FieldRemoteID:
 		v, ok := value.(imap.LabelID)
 		if !ok {
@@ -870,9 +825,6 @@ func (m *MailboxMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *MailboxMutation) ResetField(name string) error {
 	switch name {
-	case mailbox.FieldMailboxID:
-		m.ResetMailboxID()
-		return nil
 	case mailbox.FieldRemoteID:
 		m.ResetRemoteID()
 		return nil
@@ -1992,8 +1944,7 @@ type MessageMutation struct {
 	config
 	op             Op
 	typ            string
-	id             *int
-	_MessageID     *imap.InternalMessageID
+	id             *imap.InternalMessageID
 	_RemoteID      *imap.MessageID
 	_Date          *time.Time
 	_Size          *int
@@ -2034,7 +1985,7 @@ func newMessageMutation(c config, op Op, opts ...messageOption) *MessageMutation
 }
 
 // withMessageID sets the ID field of the mutation.
-func withMessageID(id int) messageOption {
+func withMessageID(id imap.InternalMessageID) messageOption {
 	return func(m *MessageMutation) {
 		var (
 			err   error
@@ -2084,9 +2035,15 @@ func (m MessageMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Message entities.
+func (m *MessageMutation) SetID(id imap.InternalMessageID) {
+	m.id = &id
+}
+
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *MessageMutation) ID() (id int, exists bool) {
+func (m *MessageMutation) ID() (id imap.InternalMessageID, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -2097,12 +2054,12 @@ func (m *MessageMutation) ID() (id int, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *MessageMutation) IDs(ctx context.Context) ([]int, error) {
+func (m *MessageMutation) IDs(ctx context.Context) ([]imap.InternalMessageID, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int{id}, nil
+			return []imap.InternalMessageID{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -2110,42 +2067,6 @@ func (m *MessageMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
-}
-
-// SetMessageID sets the "MessageID" field.
-func (m *MessageMutation) SetMessageID(imi imap.InternalMessageID) {
-	m._MessageID = &imi
-}
-
-// MessageID returns the value of the "MessageID" field in the mutation.
-func (m *MessageMutation) MessageID() (r imap.InternalMessageID, exists bool) {
-	v := m._MessageID
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldMessageID returns the old "MessageID" field's value of the Message entity.
-// If the Message object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MessageMutation) OldMessageID(ctx context.Context) (v imap.InternalMessageID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldMessageID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldMessageID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldMessageID: %w", err)
-	}
-	return oldValue.MessageID, nil
-}
-
-// ResetMessageID resets all changes to the "MessageID" field.
-func (m *MessageMutation) ResetMessageID() {
-	m._MessageID = nil
 }
 
 // SetRemoteID sets the "RemoteID" field.
@@ -2560,10 +2481,7 @@ func (m *MessageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MessageMutation) Fields() []string {
-	fields := make([]string, 0, 8)
-	if m._MessageID != nil {
-		fields = append(fields, message.FieldMessageID)
-	}
+	fields := make([]string, 0, 7)
 	if m._RemoteID != nil {
 		fields = append(fields, message.FieldRemoteID)
 	}
@@ -2593,8 +2511,6 @@ func (m *MessageMutation) Fields() []string {
 // schema.
 func (m *MessageMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case message.FieldMessageID:
-		return m.MessageID()
 	case message.FieldRemoteID:
 		return m.RemoteID()
 	case message.FieldDate:
@@ -2618,8 +2534,6 @@ func (m *MessageMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *MessageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case message.FieldMessageID:
-		return m.OldMessageID(ctx)
 	case message.FieldRemoteID:
 		return m.OldRemoteID(ctx)
 	case message.FieldDate:
@@ -2643,13 +2557,6 @@ func (m *MessageMutation) OldField(ctx context.Context, name string) (ent.Value,
 // type.
 func (m *MessageMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case message.FieldMessageID:
-		v, ok := value.(imap.InternalMessageID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetMessageID(v)
-		return nil
 	case message.FieldRemoteID:
 		v, ok := value.(imap.MessageID)
 		if !ok {
@@ -2772,9 +2679,6 @@ func (m *MessageMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *MessageMutation) ResetField(name string) error {
 	switch name {
-	case message.FieldMessageID:
-		m.ResetMessageID()
-		return nil
 	case message.FieldRemoteID:
 		m.ResetRemoteID()
 		return nil
@@ -3232,9 +3136,9 @@ type UIDMutation struct {
 	_Deleted       *bool
 	_Recent        *bool
 	clearedFields  map[string]struct{}
-	message        *int
+	message        *imap.InternalMessageID
 	clearedmessage bool
-	mailbox        *int
+	mailbox        *imap.InternalMailboxID
 	clearedmailbox bool
 	done           bool
 	oldValue       func(context.Context) (*UID, error)
@@ -3468,7 +3372,7 @@ func (m *UIDMutation) ResetRecent() {
 }
 
 // SetMessageID sets the "message" edge to the Message entity by id.
-func (m *UIDMutation) SetMessageID(id int) {
+func (m *UIDMutation) SetMessageID(id imap.InternalMessageID) {
 	m.message = &id
 }
 
@@ -3483,7 +3387,7 @@ func (m *UIDMutation) MessageCleared() bool {
 }
 
 // MessageID returns the "message" edge ID in the mutation.
-func (m *UIDMutation) MessageID() (id int, exists bool) {
+func (m *UIDMutation) MessageID() (id imap.InternalMessageID, exists bool) {
 	if m.message != nil {
 		return *m.message, true
 	}
@@ -3493,7 +3397,7 @@ func (m *UIDMutation) MessageID() (id int, exists bool) {
 // MessageIDs returns the "message" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
 // MessageID instead. It exists only for internal usage by the builders.
-func (m *UIDMutation) MessageIDs() (ids []int) {
+func (m *UIDMutation) MessageIDs() (ids []imap.InternalMessageID) {
 	if id := m.message; id != nil {
 		ids = append(ids, *id)
 	}
@@ -3507,7 +3411,7 @@ func (m *UIDMutation) ResetMessage() {
 }
 
 // SetMailboxID sets the "mailbox" edge to the Mailbox entity by id.
-func (m *UIDMutation) SetMailboxID(id int) {
+func (m *UIDMutation) SetMailboxID(id imap.InternalMailboxID) {
 	m.mailbox = &id
 }
 
@@ -3522,7 +3426,7 @@ func (m *UIDMutation) MailboxCleared() bool {
 }
 
 // MailboxID returns the "mailbox" edge ID in the mutation.
-func (m *UIDMutation) MailboxID() (id int, exists bool) {
+func (m *UIDMutation) MailboxID() (id imap.InternalMailboxID, exists bool) {
 	if m.mailbox != nil {
 		return *m.mailbox, true
 	}
@@ -3532,7 +3436,7 @@ func (m *UIDMutation) MailboxID() (id int, exists bool) {
 // MailboxIDs returns the "mailbox" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
 // MailboxID instead. It exists only for internal usage by the builders.
-func (m *UIDMutation) MailboxIDs() (ids []int) {
+func (m *UIDMutation) MailboxIDs() (ids []imap.InternalMailboxID) {
 	if id := m.mailbox; id != nil {
 		ids = append(ids, *id)
 	}

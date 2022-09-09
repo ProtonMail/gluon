@@ -11,8 +11,6 @@ const (
 	Label = "mailbox"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldMailboxID holds the string denoting the mailboxid field in the database.
-	FieldMailboxID = "mailbox_id"
 	// FieldRemoteID holds the string denoting the remoteid field in the database.
 	FieldRemoteID = "remote_id"
 	// FieldName holds the string denoting the name field in the database.
@@ -66,7 +64,6 @@ const (
 // Columns holds all SQL columns for mailbox fields.
 var Columns = []string{
 	FieldID,
-	FieldMailboxID,
 	FieldRemoteID,
 	FieldName,
 	FieldUIDNext,
@@ -91,4 +88,6 @@ var (
 	DefaultUIDValidity imap.UID
 	// DefaultSubscribed holds the default value on creation for the "Subscribed" field.
 	DefaultSubscribed bool
+	// IDValidator is a validator for the "id" field. It is called by the builders before save.
+	IDValidator func(string) error
 )

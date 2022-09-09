@@ -28,12 +28,20 @@ func init() {
 	mailboxDescSubscribed := mailboxFields[5].Descriptor()
 	// mailbox.DefaultSubscribed holds the default value on creation for the Subscribed field.
 	mailbox.DefaultSubscribed = mailboxDescSubscribed.Default.(bool)
+	// mailboxDescID is the schema descriptor for id field.
+	mailboxDescID := mailboxFields[0].Descriptor()
+	// mailbox.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	mailbox.IDValidator = mailboxDescID.Validators[0].(func(string) error)
 	messageFields := schema.Message{}.Fields()
 	_ = messageFields
 	// messageDescDeleted is the schema descriptor for Deleted field.
 	messageDescDeleted := messageFields[7].Descriptor()
 	// message.DefaultDeleted holds the default value on creation for the Deleted field.
 	message.DefaultDeleted = messageDescDeleted.Default.(bool)
+	// messageDescID is the schema descriptor for id field.
+	messageDescID := messageFields[0].Descriptor()
+	// message.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	message.IDValidator = messageDescID.Validators[0].(func(string) error)
 	uidFields := schema.UID{}.Fields()
 	_ = uidFields
 	// uidDescDeleted is the schema descriptor for Deleted field.

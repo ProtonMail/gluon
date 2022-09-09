@@ -7,8 +7,6 @@ const (
 	Label = "message"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldMessageID holds the string denoting the messageid field in the database.
-	FieldMessageID = "message_id"
 	// FieldRemoteID holds the string denoting the remoteid field in the database.
 	FieldRemoteID = "remote_id"
 	// FieldDate holds the string denoting the date field in the database.
@@ -48,7 +46,6 @@ const (
 // Columns holds all SQL columns for message fields.
 var Columns = []string{
 	FieldID,
-	FieldMessageID,
 	FieldRemoteID,
 	FieldDate,
 	FieldSize,
@@ -71,4 +68,6 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultDeleted holds the default value on creation for the "Deleted" field.
 	DefaultDeleted bool
+	// IDValidator is a validator for the "id" field. It is called by the builders before save.
+	IDValidator func(string) error
 )

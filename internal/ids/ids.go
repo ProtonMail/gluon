@@ -27,7 +27,7 @@ func (m *MessageIDPair) String() string {
 
 func NewMailboxIDPair(mbox *ent.Mailbox) MailboxIDPair {
 	return MailboxIDPair{
-		InternalID: mbox.MailboxID,
+		InternalID: mbox.ID,
 		RemoteID:   mbox.RemoteID,
 	}
 }
@@ -41,7 +41,7 @@ func NewMailboxIDPairWithoutRemote(internalID imap.InternalMailboxID) MailboxIDP
 
 func NewMessageIDPair(msg *ent.Message) MessageIDPair {
 	return MessageIDPair{
-		InternalID: msg.MessageID,
+		InternalID: msg.ID,
 		RemoteID:   msg.RemoteID,
 	}
 }
