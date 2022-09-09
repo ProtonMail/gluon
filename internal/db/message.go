@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
@@ -89,6 +88,61 @@ func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.Int
 	}
 
 	return GetMessageUIDsWithFlags(ctx, tx.Client(), mboxID, messageIDs)
+}
+
+func CreateAndAddMessageToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, req *CreateMessageReq) (imap.UID, imap.FlagSet, error) {
+	mbox, err := tx.Mailbox.Query().Where(mailbox.MailboxID(mboxID)).Select(mailbox.FieldID, mailbox.FieldUIDNext).Only(ctx)
+	if err != nil {
+		return 0, imap.FlagSet{}, err
+	}
+
+	var flags []*ent.MessageFlag
+
+	{
+		builders := xslices.Map(req.Message.Flags.ToSlice(), func(flag string) *ent.MessageFlagCreate {
+			return tx.MessageFlag.Create().SetValue(flag)
+		})
+
+		entFlags, err := tx.MessageFlag.CreateBulk(builders...).Save(ctx)
+		if err != nil {
+			return 0, imap.FlagSet{}, err
+		}
+
+		flags = entFlags
+	}
+
+	msgCreate := tx.Message.Create().
+		SetMessageID(req.InternalID).
+		SetDate(req.Message.Date).
+		SetBody(req.Body).
+		SetBodyStructure(req.Structure).
+		SetEnvelope(req.Envelope).
+		SetSize(len(req.Literal)).
+		AddFlags(flags...)
+
+	if len(req.Message.ID) != 0 {
+		msgCreate = msgCreate.SetRemoteID(req.Message.ID)
+	}
+
+	message, err := msgCreate.Save(ctx)
+	if err != nil {
+		return 0, imap.FlagSet{}, err
+	}
+
+	uid, err := tx.UID.Create().
+		SetMailbox(mbox).
+		SetMessage(message).
+		SetUID(mbox.UIDNext).
+		Save(ctx)
+	if err != nil {
+		return 0, imap.FlagSet{}, err
+	}
+
+	if err := BumpMailboxUIDNext(ctx, tx, mbox, 1); err != nil {
+		return 0, imap.FlagSet{}, err
+	}
+
+	return uid.UID, NewFlagSet(uid, flags), err
 }
 
 func BumpMailboxUIDsForMessage(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) (map[imap.InternalMessageID]*ent.UID, error) {

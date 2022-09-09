@@ -103,36 +103,27 @@ func (state *State) actionCreateMessage(
 		return 0, err
 	}
 
-	var reqs []*db.CreateMessageReq
+	msg := update.Messages[0]
+	literalWithHeader, err := rfc822.SetHeaderValue(msg.Literal, ids.InternalIDKey, string(internalID))
 
-	{
-		msg := update.Messages[0]
-		literal, err := rfc822.SetHeaderValue(msg.Literal, ids.InternalIDKey, string(internalID))
-		if err != nil {
-			return 0, fmt.Errorf("failed to set internal ID: %w", err)
-		}
-
-		if err := stx.Set(internalID, literal); err != nil {
-			return 0, fmt.Errorf("failed to store message literal: %w", err)
-		}
-
-		reqs = append(reqs, &db.CreateMessageReq{
-			Message:    msg.Message,
-			Literal:    literal,
-			Body:       msg.Body,
-			Structure:  msg.Structure,
-			Envelope:   msg.Envelope,
-			InternalID: internalID,
-		})
+	if err != nil {
+		return 0, fmt.Errorf("failed to set internal ID: %w", err)
 	}
 
-	if _, err := db.CreateMessages(ctx, tx, reqs...); err != nil {
-		return 0, fmt.Errorf("failed to create message: %w", err)
+	if err := stx.Set(internalID, literalWithHeader); err != nil {
+		return 0, fmt.Errorf("failed to store message literal: %w", err)
 	}
 
-	msgIDs := []imap.InternalMessageID{internalID}
+	req := db.CreateMessageReq{
+		Message:    msg.Message,
+		Literal:    literalWithHeader,
+		Body:       msg.Body,
+		Structure:  msg.Structure,
+		Envelope:   msg.Envelope,
+		InternalID: internalID,
+	}
 
-	messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, msgIDs, mboxID.InternalID)
+	messageUID, flagSet, err := db.CreateAndAddMessageToMailbox(ctx, tx, mboxID.InternalID, &req)
 	if err != nil {
 		return 0, err
 	}
@@ -143,20 +134,19 @@ func (state *State) actionCreateMessage(
 		st = state
 	}
 
-	uid := messageUIDs[internalID]
 	if err := state.user.QueueOrApplyStateUpdate(
 		ctx,
 		tx,
 		newExistsStateUpdateWithExists(
 			mboxID.InternalID,
-			[]*exists{newExists(ids.MessageIDPair{InternalID: internalID, RemoteID: res.ID}, uid.UID, db.NewFlagSet(uid, uid.Edges.Message.Edges.Flags))},
+			[]*exists{newExists(ids.MessageIDPair{InternalID: internalID, RemoteID: res.ID}, messageUID, flagSet)},
 			st,
 		),
 	); err != nil {
 		return 0, err
 	}
 
-	return messageUIDs[internalID].UID, nil
+	return messageUID, nil
 }
 
 func (state *State) actionAddMessagesToMailbox(
