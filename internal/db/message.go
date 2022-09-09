@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"entgo.io/ent/dialect/sql"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
@@ -57,12 +58,7 @@ func CreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*CreateMessageReq) 
 func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) (map[imap.InternalMessageID]*ent.UID, error) {
 	messageUIDs := make(map[imap.InternalMessageID]imap.UID)
 
-	mbox, err := tx.Mailbox.Query().Where(mailbox.ID(mboxID)).Only(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	messages, err := GetMessages(ctx, tx.Client(), messageIDs...)
+	mbox, err := tx.Mailbox.Query().Where(mailbox.ID(mboxID)).Select(mailbox.FieldUIDNext).Only(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -70,12 +66,13 @@ func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.Int
 	var builders []*ent.UIDCreate
 
 	for idx, messageID := range messageIDs {
-		messageUIDs[messageID] = mbox.UIDNext.Add(uint32(idx))
+		nextUID := mbox.UIDNext.Add(uint32(idx))
+		messageUIDs[messageID] = nextUID
 
 		builders = append(builders, tx.UID.Create().
-			SetMailbox(mbox).
-			SetMessage(messages[messageID]).
-			SetUID(messageUIDs[messageID]),
+			SetMailboxID(mboxID).
+			SetMessageID(messageID).
+			SetUID(nextUID),
 		)
 	}
 
@@ -180,24 +177,16 @@ func BumpMailboxUIDsForMessage(ctx context.Context, tx *ent.Tx, messageIDs []ima
 
 func RemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) error {
 	if _, err := tx.UID.Delete().
-		Where(
-			uid.HasMailboxWith(mailbox.ID(mboxID)),
-			uid.HasMessageWith(message.IDIn(messageIDs...)),
-		).
+		Where(func(s *sql.Selector) {
+			s.Where(sql.And(sql.In(uid.MessageColumn, xslices.Map(messageIDs, func(t imap.InternalMessageID) interface{} {
+				return interface{}(t)
+			})...), sql.EQ(uid.MailboxColumn, mboxID)))
+		}).
 		Exec(ctx); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func MessageExists(ctx context.Context, client *ent.Client, messageID imap.InternalMessageID) (bool, error) {
-	count, err := client.Message.Query().Where(message.ID(messageID)).Count(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	return count > 0, nil
 }
 
 func MessageExistsWithRemoteID(ctx context.Context, client *ent.Client, messageID imap.MessageID) (bool, error) {
@@ -213,68 +202,22 @@ func GetMessage(ctx context.Context, client *ent.Client, messageID imap.Internal
 	return client.Message.Query().Where(message.ID(messageID)).Only(ctx)
 }
 
-func GetMessages(ctx context.Context, client *ent.Client, messageIDs ...imap.InternalMessageID) (map[imap.InternalMessageID]*ent.Message, error) {
-	messages, err := client.Message.Query().Where(message.IDIn(messageIDs...)).All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make(map[imap.InternalMessageID]*ent.Message)
-
-	for _, message := range messages {
-		res[message.ID] = message
-	}
-
-	return res, nil
-}
-
-func GetRemoteMessageID(ctx context.Context, client *ent.Client, internalID imap.InternalMessageID) (imap.MessageID, error) {
-	message, err := client.Message.Query().Where(message.ID(internalID)).Select(message.FieldRemoteID).Only(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	return message.RemoteID, nil
-}
-
 func GetMessageMailboxIDs(ctx context.Context, client *ent.Client, messageID imap.InternalMessageID) ([]imap.InternalMailboxID, error) {
-	messageUIDs, err := client.UID.Query().
-		Where(uid.HasMessageWith(message.ID(messageID))).
-		WithMailbox(func(query *ent.MailboxQuery) {
-			query.Select(mailbox.FieldID)
-		}).
-		All(ctx)
-	if err != nil {
+	type tmp struct {
+		MBoxID imap.InternalMailboxID `json:"mailbox_ui_ds"`
+	}
+
+	var messageUIDs []tmp
+
+	if err := client.UID.Query().Where(func(s *sql.Selector) {
+		s.Where(sql.EQ(uid.MessageColumn, messageID))
+	}).Select(uid.MailboxColumn).Scan(ctx, &messageUIDs); err != nil {
 		return nil, err
 	}
 
-	return xslices.Map(messageUIDs, func(message *ent.UID) imap.InternalMailboxID {
-		return message.Edges.Mailbox.ID
+	return xslices.Map(messageUIDs, func(t tmp) imap.InternalMailboxID {
+		return t.MBoxID
 	}), nil
-}
-
-func GetMessageUIDs(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]imap.UID, error) {
-	messageUIDs, err := client.UID.Query().
-		Where(
-			uid.HasMailboxWith(mailbox.ID(mboxID)),
-			uid.HasMessageWith(message.IDIn(messageIDs...)),
-		).
-		WithMessage(func(query *ent.MessageQuery) {
-			query.Select(message.FieldID)
-			query.Select(message.FieldRemoteID)
-		}).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make(map[imap.InternalMessageID]imap.UID)
-
-	for _, messageUID := range messageUIDs {
-		res[messageUID.Edges.Message.ID] = messageUID.UID
-	}
-
-	return res, nil
 }
 
 func GetMessageUIDsWithFlags(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]*ent.UID, error) {
@@ -311,6 +254,7 @@ func GetMessageFlags(ctx context.Context, client *ent.Client, messageIDs []imap.
 		WithFlags(func(query *ent.MessageFlagQuery) {
 			query.Select(messageflag.FieldValue)
 		}).
+		Select(message.FieldID).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -328,37 +272,35 @@ func GetMessageFlags(ctx context.Context, client *ent.Client, messageIDs []imap.
 }
 
 func GetMessageDeleted(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]bool, error) {
-	messageUIDs, err := client.UID.Query().
-		Where(
-			uid.HasMailboxWith(mailbox.ID(mboxID)),
-			uid.HasMessageWith(message.IDIn(messageIDs...)),
-		).
-		WithMessage(func(query *ent.MessageQuery) {
-			query.Select(message.FieldID)
+	type tmp struct {
+		MsgID   imap.InternalMessageID `json:"uid_message"`
+		Deleted bool                   `json:"deleted"`
+	}
+
+	var result []tmp
+
+	if err := client.UID.Query().Where(
+		func(s *sql.Selector) {
+			s.Where(sql.And(sql.In(uid.MessageColumn, xslices.Map(messageIDs, func(t imap.InternalMessageID) interface{} {
+				return interface{}(t)
+			})...), sql.EQ(uid.MailboxColumn, mboxID)))
 		}).
-		All(ctx)
-	if err != nil {
+		Select(uid.MessageColumn, uid.FieldDeleted).
+		Scan(ctx, &result); err != nil {
 		return nil, err
 	}
 
 	res := make(map[imap.InternalMessageID]bool)
 
-	for _, messageUID := range messageUIDs {
-		res[messageUID.Edges.Message.ID] = messageUID.Deleted
+	for _, r := range result {
+		res[r.MsgID] = r.Deleted
 	}
 
 	return res, nil
 }
 
 func AddMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, addFlag string) error {
-	messages, err := tx.Message.Query().
-		Where(message.IDIn(messageIDs...)).
-		All(ctx)
-	if err != nil {
-		return err
-	}
-
-	builders := xslices.Map(messages, func(*ent.Message) *ent.MessageFlagCreate {
+	builders := xslices.Map(messageIDs, func(imap.InternalMessageID) *ent.MessageFlagCreate {
 		return tx.MessageFlag.Create().SetValue(addFlag)
 	})
 
@@ -367,8 +309,8 @@ func AddMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalM
 		return err
 	}
 
-	for idx, message := range messages {
-		if _, err := message.Update().AddFlags(flags[idx]).Save(ctx); err != nil {
+	for idx, msg := range messageIDs {
+		if _, err := tx.Message.Update().Where(message.ID(msg)).AddFlags(flags[idx]).Save(ctx); err != nil {
 			return err
 		}
 	}
@@ -379,6 +321,7 @@ func AddMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalM
 func RemoveMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, remFlag string) error {
 	messages, err := tx.Message.Query().
 		Where(message.IDIn(messageIDs...)).
+		Select(message.FieldID).
 		WithFlags().
 		All(ctx)
 	if err != nil {
@@ -403,6 +346,7 @@ func RemoveMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.Intern
 func SetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, setFlags imap.FlagSet) error {
 	messages, err := tx.Message.Query().
 		Where(message.IDIn(messageIDs...)).
+		Select(message.FieldID).
 		WithFlags().
 		All(ctx)
 	if err != nil {
@@ -445,9 +389,11 @@ func SetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []imap.Internal
 func SetDeletedFlag(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, deleted bool) error {
 	if _, err := tx.UID.Update().
 		Where(
-			uid.HasMailboxWith(mailbox.ID(mboxID)),
-			uid.HasMessageWith(message.IDIn(messageIDs...)),
-		).
+			func(s *sql.Selector) {
+				s.Where(sql.And(sql.In(uid.MessageColumn, xslices.Map(messageIDs, func(t imap.InternalMessageID) interface{} {
+					return interface{}(t)
+				})...), sql.EQ(uid.MailboxColumn, mboxID)))
+			}).
 		SetDeleted(deleted).
 		Save(ctx); err != nil {
 		return err
@@ -459,10 +405,9 @@ func SetDeletedFlag(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailbox
 func ClearRecentFlag(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageID imap.InternalMessageID) error {
 	if _, err := tx.UID.Update().
 		Where(
-			uid.HasMailboxWith(mailbox.ID(mboxID)),
-			uid.HasMessageWith(message.ID(messageID)),
-			uid.Recent(true),
-		).
+			func(s *sql.Selector) {
+				s.Where(sql.And(sql.EQ(uid.MessageColumn, messageID), sql.EQ(uid.MailboxColumn, mboxID), sql.EQ(uid.FieldRecent, true)))
+			}).
 		SetRecent(false).
 		Save(ctx); err != nil {
 		return err
@@ -474,9 +419,9 @@ func ClearRecentFlag(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailbo
 func ClearRecentFlags(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID) error {
 	if _, err := tx.UID.Update().
 		Where(
-			uid.HasMailboxWith(mailbox.ID(mboxID)),
-			uid.Recent(true),
-		).
+			func(s *sql.Selector) {
+				s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.EQ(uid.FieldRecent, true)))
+			}).
 		SetRecent(false).
 		Save(ctx); err != nil {
 		return err
@@ -490,14 +435,6 @@ func UpdateRemoteMessageID(ctx context.Context, tx *ent.Tx, internalID imap.Inte
 		Where(message.ID(internalID)).
 		SetRemoteID(remoteID).
 		Save(ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func MarkMessageAsDeleted(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID) error {
-	if _, err := tx.Message.Update().Where(message.ID(messageID)).SetDeleted(true).Save(ctx); err != nil {
 		return err
 	}
 
