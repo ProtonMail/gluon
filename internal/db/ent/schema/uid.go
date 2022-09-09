@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/ProtonMail/gluon/imap"
 )
 
@@ -29,5 +30,11 @@ func (UID) Edges() []ent.Edge {
 
 		// Apply UID is in a single mailbox.
 		edge.From("mailbox", Mailbox.Type).Ref("UIDs").Unique(),
+	}
+}
+
+func (UID) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("UID").Edges("message"),
 	}
 }

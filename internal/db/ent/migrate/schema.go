@@ -10,8 +10,7 @@ import (
 var (
 	// MailboxesColumns holds the columns for the "mailboxes" table.
 	MailboxesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "mailbox_id", Type: field.TypeString, Unique: true},
+		{Name: "id", Type: field.TypeString, Unique: true},
 		{Name: "remote_id", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "name", Type: field.TypeString, Unique: true},
 		{Name: "uid_next", Type: field.TypeUint32, Default: 1},
@@ -23,12 +22,24 @@ var (
 		Name:       "mailboxes",
 		Columns:    MailboxesColumns,
 		PrimaryKey: []*schema.Column{MailboxesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "mailbox_remote_id",
+				Unique:  false,
+				Columns: []*schema.Column{MailboxesColumns[1]},
+			},
+			{
+				Name:    "mailbox_name",
+				Unique:  false,
+				Columns: []*schema.Column{MailboxesColumns[2]},
+			},
+		},
 	}
 	// MailboxAttrsColumns holds the columns for the "mailbox_attrs" table.
 	MailboxAttrsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "value", Type: field.TypeString},
-		{Name: "mailbox_attributes", Type: field.TypeInt, Nullable: true},
+		{Name: "mailbox_attributes", Type: field.TypeString, Nullable: true},
 	}
 	// MailboxAttrsTable holds the schema information for the "mailbox_attrs" table.
 	MailboxAttrsTable = &schema.Table{
@@ -48,7 +59,7 @@ var (
 	MailboxFlagsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "value", Type: field.TypeString},
-		{Name: "mailbox_flags", Type: field.TypeInt, Nullable: true},
+		{Name: "mailbox_flags", Type: field.TypeString, Nullable: true},
 	}
 	// MailboxFlagsTable holds the schema information for the "mailbox_flags" table.
 	MailboxFlagsTable = &schema.Table{
@@ -68,7 +79,7 @@ var (
 	MailboxPermFlagsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "value", Type: field.TypeString},
-		{Name: "mailbox_permanent_flags", Type: field.TypeInt, Nullable: true},
+		{Name: "mailbox_permanent_flags", Type: field.TypeString, Nullable: true},
 	}
 	// MailboxPermFlagsTable holds the schema information for the "mailbox_perm_flags" table.
 	MailboxPermFlagsTable = &schema.Table{
@@ -86,8 +97,7 @@ var (
 	}
 	// MessagesColumns holds the columns for the "messages" table.
 	MessagesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "message_id", Type: field.TypeString, Unique: true},
+		{Name: "id", Type: field.TypeString, Unique: true},
 		{Name: "remote_id", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "date", Type: field.TypeTime},
 		{Name: "size", Type: field.TypeInt},
@@ -101,12 +111,19 @@ var (
 		Name:       "messages",
 		Columns:    MessagesColumns,
 		PrimaryKey: []*schema.Column{MessagesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "message_remote_id",
+				Unique:  false,
+				Columns: []*schema.Column{MessagesColumns[1]},
+			},
+		},
 	}
 	// MessageFlagsColumns holds the columns for the "message_flags" table.
 	MessageFlagsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "value", Type: field.TypeString},
-		{Name: "message_flags", Type: field.TypeInt, Nullable: true},
+		{Name: "message_flags", Type: field.TypeString, Nullable: true},
 	}
 	// MessageFlagsTable holds the schema information for the "message_flags" table.
 	MessageFlagsTable = &schema.Table{
@@ -128,8 +145,8 @@ var (
 		{Name: "uid", Type: field.TypeUint32},
 		{Name: "deleted", Type: field.TypeBool, Default: false},
 		{Name: "recent", Type: field.TypeBool, Default: true},
-		{Name: "mailbox_ui_ds", Type: field.TypeInt, Nullable: true},
-		{Name: "uid_message", Type: field.TypeInt, Nullable: true},
+		{Name: "mailbox_ui_ds", Type: field.TypeString, Nullable: true},
+		{Name: "uid_message", Type: field.TypeString, Nullable: true},
 	}
 	// UIDsTable holds the schema information for the "ui_ds" table.
 	UIDsTable = &schema.Table{
@@ -148,6 +165,13 @@ var (
 				Columns:    []*schema.Column{UIDsColumns[5]},
 				RefColumns: []*schema.Column{MessagesColumns[0]},
 				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "uid_uid_uid_message",
+				Unique:  false,
+				Columns: []*schema.Column{UIDsColumns[1], UIDsColumns[5]},
 			},
 		},
 	}

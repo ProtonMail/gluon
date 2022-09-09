@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailboxpermflag"
 )
 
@@ -17,7 +18,7 @@ type MailboxPermFlag struct {
 	ID int `json:"id,omitempty"`
 	// Value holds the value of the "Value" field.
 	Value                   string `json:"Value,omitempty"`
-	mailbox_permanent_flags *int
+	mailbox_permanent_flags *imap.InternalMailboxID
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -30,7 +31,7 @@ func (*MailboxPermFlag) scanValues(columns []string) ([]interface{}, error) {
 		case mailboxpermflag.FieldValue:
 			values[i] = new(sql.NullString)
 		case mailboxpermflag.ForeignKeys[0]: // mailbox_permanent_flags
-			values[i] = new(sql.NullInt64)
+			values[i] = new(sql.NullString)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type MailboxPermFlag", columns[i])
 		}
@@ -59,11 +60,11 @@ func (mpf *MailboxPermFlag) assignValues(columns []string, values []interface{})
 				mpf.Value = value.String
 			}
 		case mailboxpermflag.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field mailbox_permanent_flags", value)
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mailbox_permanent_flags", values[i])
 			} else if value.Valid {
-				mpf.mailbox_permanent_flags = new(int)
-				*mpf.mailbox_permanent_flags = int(value.Int64)
+				mpf.mailbox_permanent_flags = new(imap.InternalMailboxID)
+				*mpf.mailbox_permanent_flags = imap.InternalMailboxID(value.String)
 			}
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/ProtonMail/gluon/imap"
 )
 
@@ -16,7 +17,7 @@ type Message struct {
 // Fields of the Message.
 func (Message) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("MessageID").Unique().Immutable().GoType(imap.InternalMessageID("")),
+		field.String("id").GoType(imap.InternalMessageID("")).NotEmpty().Unique().Immutable(),
 		field.String("RemoteID").Optional().Unique().GoType(imap.MessageID("")),
 		field.Time("Date"),
 		field.Int("Size"),
@@ -35,5 +36,11 @@ func (Message) Edges() []ent.Edge {
 
 		// Apply message has many UIDs.
 		edge.From("UIDs", UID.Type).Ref("message"),
+	}
+}
+
+func (Message) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("RemoteID"),
 	}
 }

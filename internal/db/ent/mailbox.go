@@ -15,9 +15,7 @@ import (
 type Mailbox struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
-	// MailboxID holds the value of the "MailboxID" field.
-	MailboxID imap.InternalMailboxID `json:"MailboxID,omitempty"`
+	ID imap.InternalMailboxID `json:"id,omitempty"`
 	// RemoteID holds the value of the "RemoteID" field.
 	RemoteID imap.LabelID `json:"RemoteID,omitempty"`
 	// Name holds the value of the "Name" field.
@@ -91,9 +89,9 @@ func (*Mailbox) scanValues(columns []string) ([]interface{}, error) {
 		switch columns[i] {
 		case mailbox.FieldSubscribed:
 			values[i] = new(sql.NullBool)
-		case mailbox.FieldID, mailbox.FieldUIDNext, mailbox.FieldUIDValidity:
+		case mailbox.FieldUIDNext, mailbox.FieldUIDValidity:
 			values[i] = new(sql.NullInt64)
-		case mailbox.FieldMailboxID, mailbox.FieldRemoteID, mailbox.FieldName:
+		case mailbox.FieldID, mailbox.FieldRemoteID, mailbox.FieldName:
 			values[i] = new(sql.NullString)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Mailbox", columns[i])
@@ -111,16 +109,10 @@ func (m *Mailbox) assignValues(columns []string, values []interface{}) error {
 	for i := range columns {
 		switch columns[i] {
 		case mailbox.FieldID:
-			value, ok := values[i].(*sql.NullInt64)
-			if !ok {
-				return fmt.Errorf("unexpected type %T for field id", value)
-			}
-			m.ID = int(value.Int64)
-		case mailbox.FieldMailboxID:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field MailboxID", values[i])
+				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value.Valid {
-				m.MailboxID = imap.InternalMailboxID(value.String)
+				m.ID = imap.InternalMailboxID(value.String)
 			}
 		case mailbox.FieldRemoteID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -200,9 +192,6 @@ func (m *Mailbox) String() string {
 	var builder strings.Builder
 	builder.WriteString("Mailbox(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
-	builder.WriteString("MailboxID=")
-	builder.WriteString(fmt.Sprintf("%v", m.MailboxID))
-	builder.WriteString(", ")
 	builder.WriteString("RemoteID=")
 	builder.WriteString(fmt.Sprintf("%v", m.RemoteID))
 	builder.WriteString(", ")

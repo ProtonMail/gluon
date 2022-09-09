@@ -10,28 +10,28 @@ import (
 )
 
 // ID filters vertices based on their ID field.
-func ID(id int) predicate.Mailbox {
+func ID(id imap.InternalMailboxID) predicate.Mailbox {
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldID), id))
 	})
 }
 
 // IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id int) predicate.Mailbox {
+func IDEQ(id imap.InternalMailboxID) predicate.Mailbox {
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldID), id))
 	})
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id int) predicate.Mailbox {
+func IDNEQ(id imap.InternalMailboxID) predicate.Mailbox {
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.NEQ(s.C(FieldID), id))
 	})
 }
 
 // IDIn applies the In predicate on the ID field.
-func IDIn(ids ...int) predicate.Mailbox {
+func IDIn(ids ...imap.InternalMailboxID) predicate.Mailbox {
 	return predicate.Mailbox(func(s *sql.Selector) {
 		v := make([]interface{}, len(ids))
 		for i := range v {
@@ -42,7 +42,7 @@ func IDIn(ids ...int) predicate.Mailbox {
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...int) predicate.Mailbox {
+func IDNotIn(ids ...imap.InternalMailboxID) predicate.Mailbox {
 	return predicate.Mailbox(func(s *sql.Selector) {
 		v := make([]interface{}, len(ids))
 		for i := range v {
@@ -53,38 +53,30 @@ func IDNotIn(ids ...int) predicate.Mailbox {
 }
 
 // IDGT applies the GT predicate on the ID field.
-func IDGT(id int) predicate.Mailbox {
+func IDGT(id imap.InternalMailboxID) predicate.Mailbox {
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.GT(s.C(FieldID), id))
 	})
 }
 
 // IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id int) predicate.Mailbox {
+func IDGTE(id imap.InternalMailboxID) predicate.Mailbox {
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.GTE(s.C(FieldID), id))
 	})
 }
 
 // IDLT applies the LT predicate on the ID field.
-func IDLT(id int) predicate.Mailbox {
+func IDLT(id imap.InternalMailboxID) predicate.Mailbox {
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.LT(s.C(FieldID), id))
 	})
 }
 
 // IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id int) predicate.Mailbox {
+func IDLTE(id imap.InternalMailboxID) predicate.Mailbox {
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldID), id))
-	})
-}
-
-// MailboxID applies equality check predicate on the "MailboxID" field. It's identical to MailboxIDEQ.
-func MailboxID(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldMailboxID), vc))
 	})
 }
 
@@ -123,116 +115,6 @@ func UIDValidity(v imap.UID) predicate.Mailbox {
 func Subscribed(v bool) predicate.Mailbox {
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldSubscribed), v))
-	})
-}
-
-// MailboxIDEQ applies the EQ predicate on the "MailboxID" field.
-func MailboxIDEQ(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldMailboxID), vc))
-	})
-}
-
-// MailboxIDNEQ applies the NEQ predicate on the "MailboxID" field.
-func MailboxIDNEQ(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldMailboxID), vc))
-	})
-}
-
-// MailboxIDIn applies the In predicate on the "MailboxID" field.
-func MailboxIDIn(vs ...imap.InternalMailboxID) predicate.Mailbox {
-	v := make([]interface{}, len(vs))
-	for i := range v {
-		v[i] = string(vs[i])
-	}
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.In(s.C(FieldMailboxID), v...))
-	})
-}
-
-// MailboxIDNotIn applies the NotIn predicate on the "MailboxID" field.
-func MailboxIDNotIn(vs ...imap.InternalMailboxID) predicate.Mailbox {
-	v := make([]interface{}, len(vs))
-	for i := range v {
-		v[i] = string(vs[i])
-	}
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.NotIn(s.C(FieldMailboxID), v...))
-	})
-}
-
-// MailboxIDGT applies the GT predicate on the "MailboxID" field.
-func MailboxIDGT(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldMailboxID), vc))
-	})
-}
-
-// MailboxIDGTE applies the GTE predicate on the "MailboxID" field.
-func MailboxIDGTE(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldMailboxID), vc))
-	})
-}
-
-// MailboxIDLT applies the LT predicate on the "MailboxID" field.
-func MailboxIDLT(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldMailboxID), vc))
-	})
-}
-
-// MailboxIDLTE applies the LTE predicate on the "MailboxID" field.
-func MailboxIDLTE(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldMailboxID), vc))
-	})
-}
-
-// MailboxIDContains applies the Contains predicate on the "MailboxID" field.
-func MailboxIDContains(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldMailboxID), vc))
-	})
-}
-
-// MailboxIDHasPrefix applies the HasPrefix predicate on the "MailboxID" field.
-func MailboxIDHasPrefix(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldMailboxID), vc))
-	})
-}
-
-// MailboxIDHasSuffix applies the HasSuffix predicate on the "MailboxID" field.
-func MailboxIDHasSuffix(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldMailboxID), vc))
-	})
-}
-
-// MailboxIDEqualFold applies the EqualFold predicate on the "MailboxID" field.
-func MailboxIDEqualFold(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldMailboxID), vc))
-	})
-}
-
-// MailboxIDContainsFold applies the ContainsFold predicate on the "MailboxID" field.
-func MailboxIDContainsFold(v imap.InternalMailboxID) predicate.Mailbox {
-	vc := string(v)
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldMailboxID), vc))
 	})
 }
 

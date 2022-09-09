@@ -72,13 +72,13 @@ func (uu *UIDUpdate) SetNillableRecent(b *bool) *UIDUpdate {
 }
 
 // SetMessageID sets the "message" edge to the Message entity by ID.
-func (uu *UIDUpdate) SetMessageID(id int) *UIDUpdate {
+func (uu *UIDUpdate) SetMessageID(id imap.InternalMessageID) *UIDUpdate {
 	uu.mutation.SetMessageID(id)
 	return uu
 }
 
 // SetNillableMessageID sets the "message" edge to the Message entity by ID if the given value is not nil.
-func (uu *UIDUpdate) SetNillableMessageID(id *int) *UIDUpdate {
+func (uu *UIDUpdate) SetNillableMessageID(id *imap.InternalMessageID) *UIDUpdate {
 	if id != nil {
 		uu = uu.SetMessageID(*id)
 	}
@@ -91,13 +91,13 @@ func (uu *UIDUpdate) SetMessage(m *Message) *UIDUpdate {
 }
 
 // SetMailboxID sets the "mailbox" edge to the Mailbox entity by ID.
-func (uu *UIDUpdate) SetMailboxID(id int) *UIDUpdate {
+func (uu *UIDUpdate) SetMailboxID(id imap.InternalMailboxID) *UIDUpdate {
 	uu.mutation.SetMailboxID(id)
 	return uu
 }
 
 // SetNillableMailboxID sets the "mailbox" edge to the Mailbox entity by ID if the given value is not nil.
-func (uu *UIDUpdate) SetNillableMailboxID(id *int) *UIDUpdate {
+func (uu *UIDUpdate) SetNillableMailboxID(id *imap.InternalMailboxID) *UIDUpdate {
 	if id != nil {
 		uu = uu.SetMailboxID(*id)
 	}
@@ -235,7 +235,7 @@ func (uu *UIDUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
+					Type:   field.TypeString,
 					Column: message.FieldID,
 				},
 			},
@@ -251,7 +251,7 @@ func (uu *UIDUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
+					Type:   field.TypeString,
 					Column: message.FieldID,
 				},
 			},
@@ -270,7 +270,7 @@ func (uu *UIDUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
+					Type:   field.TypeString,
 					Column: mailbox.FieldID,
 				},
 			},
@@ -286,7 +286,7 @@ func (uu *UIDUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
+					Type:   field.TypeString,
 					Column: mailbox.FieldID,
 				},
 			},
@@ -357,13 +357,13 @@ func (uuo *UIDUpdateOne) SetNillableRecent(b *bool) *UIDUpdateOne {
 }
 
 // SetMessageID sets the "message" edge to the Message entity by ID.
-func (uuo *UIDUpdateOne) SetMessageID(id int) *UIDUpdateOne {
+func (uuo *UIDUpdateOne) SetMessageID(id imap.InternalMessageID) *UIDUpdateOne {
 	uuo.mutation.SetMessageID(id)
 	return uuo
 }
 
 // SetNillableMessageID sets the "message" edge to the Message entity by ID if the given value is not nil.
-func (uuo *UIDUpdateOne) SetNillableMessageID(id *int) *UIDUpdateOne {
+func (uuo *UIDUpdateOne) SetNillableMessageID(id *imap.InternalMessageID) *UIDUpdateOne {
 	if id != nil {
 		uuo = uuo.SetMessageID(*id)
 	}
@@ -376,13 +376,13 @@ func (uuo *UIDUpdateOne) SetMessage(m *Message) *UIDUpdateOne {
 }
 
 // SetMailboxID sets the "mailbox" edge to the Mailbox entity by ID.
-func (uuo *UIDUpdateOne) SetMailboxID(id int) *UIDUpdateOne {
+func (uuo *UIDUpdateOne) SetMailboxID(id imap.InternalMailboxID) *UIDUpdateOne {
 	uuo.mutation.SetMailboxID(id)
 	return uuo
 }
 
 // SetNillableMailboxID sets the "mailbox" edge to the Mailbox entity by ID if the given value is not nil.
-func (uuo *UIDUpdateOne) SetNillableMailboxID(id *int) *UIDUpdateOne {
+func (uuo *UIDUpdateOne) SetNillableMailboxID(id *imap.InternalMailboxID) *UIDUpdateOne {
 	if id != nil {
 		uuo = uuo.SetMailboxID(*id)
 	}
@@ -550,7 +550,7 @@ func (uuo *UIDUpdateOne) sqlSave(ctx context.Context) (_node *UID, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
+					Type:   field.TypeString,
 					Column: message.FieldID,
 				},
 			},
@@ -566,7 +566,7 @@ func (uuo *UIDUpdateOne) sqlSave(ctx context.Context) (_node *UID, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
+					Type:   field.TypeString,
 					Column: message.FieldID,
 				},
 			},
@@ -585,7 +585,7 @@ func (uuo *UIDUpdateOne) sqlSave(ctx context.Context) (_node *UID, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
+					Type:   field.TypeString,
 					Column: mailbox.FieldID,
 				},
 			},
@@ -601,7 +601,7 @@ func (uuo *UIDUpdateOne) sqlSave(ctx context.Context) (_node *UID, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
+					Type:   field.TypeString,
 					Column: mailbox.FieldID,
 				},
 			},

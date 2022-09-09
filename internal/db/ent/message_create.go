@@ -23,12 +23,6 @@ type MessageCreate struct {
 	hooks    []Hook
 }
 
-// SetMessageID sets the "MessageID" field.
-func (mc *MessageCreate) SetMessageID(imi imap.InternalMessageID) *MessageCreate {
-	mc.mutation.SetMessageID(imi)
-	return mc
-}
-
 // SetRemoteID sets the "RemoteID" field.
 func (mc *MessageCreate) SetRemoteID(ii imap.MessageID) *MessageCreate {
 	mc.mutation.SetRemoteID(ii)
@@ -84,6 +78,12 @@ func (mc *MessageCreate) SetNillableDeleted(b *bool) *MessageCreate {
 	if b != nil {
 		mc.SetDeleted(*b)
 	}
+	return mc
+}
+
+// SetID sets the "id" field.
+func (mc *MessageCreate) SetID(imi imap.InternalMessageID) *MessageCreate {
+	mc.mutation.SetID(imi)
 	return mc
 }
 
@@ -202,9 +202,6 @@ func (mc *MessageCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (mc *MessageCreate) check() error {
-	if _, ok := mc.mutation.MessageID(); !ok {
-		return &ValidationError{Name: "MessageID", err: errors.New(`ent: missing required field "Message.MessageID"`)}
-	}
 	if _, ok := mc.mutation.Date(); !ok {
 		return &ValidationError{Name: "Date", err: errors.New(`ent: missing required field "Message.Date"`)}
 	}
@@ -223,6 +220,11 @@ func (mc *MessageCreate) check() error {
 	if _, ok := mc.mutation.Deleted(); !ok {
 		return &ValidationError{Name: "Deleted", err: errors.New(`ent: missing required field "Message.Deleted"`)}
 	}
+	if v, ok := mc.mutation.ID(); ok {
+		if err := message.IDValidator(string(v)); err != nil {
+			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Message.id": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -234,8 +236,13 @@ func (mc *MessageCreate) sqlSave(ctx context.Context) (*Message, error) {
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(imap.InternalMessageID); ok {
+			_node.ID = id
+		} else {
+			return nil, fmt.Errorf("unexpected Message.ID type: %T", _spec.ID.Value)
+		}
+	}
 	return _node, nil
 }
 
@@ -245,18 +252,14 @@ func (mc *MessageCreate) createSpec() (*Message, *sqlgraph.CreateSpec) {
 		_spec = &sqlgraph.CreateSpec{
 			Table: message.Table,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
+				Type:   field.TypeString,
 				Column: message.FieldID,
 			},
 		}
 	)
-	if value, ok := mc.mutation.MessageID(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: message.FieldMessageID,
-		})
-		_node.MessageID = value
+	if id, ok := mc.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = id
 	}
 	if value, ok := mc.mutation.RemoteID(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -396,10 +399,6 @@ func (mcb *MessageCreateBulk) Save(ctx context.Context) ([]*Message, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})

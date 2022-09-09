@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailboxattr"
 )
 
@@ -17,7 +18,7 @@ type MailboxAttr struct {
 	ID int `json:"id,omitempty"`
 	// Value holds the value of the "Value" field.
 	Value              string `json:"Value,omitempty"`
-	mailbox_attributes *int
+	mailbox_attributes *imap.InternalMailboxID
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -30,7 +31,7 @@ func (*MailboxAttr) scanValues(columns []string) ([]interface{}, error) {
 		case mailboxattr.FieldValue:
 			values[i] = new(sql.NullString)
 		case mailboxattr.ForeignKeys[0]: // mailbox_attributes
-			values[i] = new(sql.NullInt64)
+			values[i] = new(sql.NullString)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type MailboxAttr", columns[i])
 		}
@@ -59,11 +60,11 @@ func (ma *MailboxAttr) assignValues(columns []string, values []interface{}) erro
 				ma.Value = value.String
 			}
 		case mailboxattr.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field mailbox_attributes", value)
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mailbox_attributes", values[i])
 			} else if value.Valid {
-				ma.mailbox_attributes = new(int)
-				*ma.mailbox_attributes = int(value.Int64)
+				ma.mailbox_attributes = new(imap.InternalMailboxID)
+				*ma.mailbox_attributes = imap.InternalMailboxID(value.String)
 			}
 		}
 	}

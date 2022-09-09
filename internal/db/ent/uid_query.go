@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/predicate"
@@ -436,8 +437,8 @@ func (uq *UIDQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*UID, err
 }
 
 func (uq *UIDQuery) loadMessage(ctx context.Context, query *MessageQuery, nodes []*UID, init func(*UID), assign func(*UID, *Message)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*UID)
+	ids := make([]imap.InternalMessageID, 0, len(nodes))
+	nodeids := make(map[imap.InternalMessageID][]*UID)
 	for i := range nodes {
 		if nodes[i].uid_message == nil {
 			continue
@@ -465,8 +466,8 @@ func (uq *UIDQuery) loadMessage(ctx context.Context, query *MessageQuery, nodes 
 	return nil
 }
 func (uq *UIDQuery) loadMailbox(ctx context.Context, query *MailboxQuery, nodes []*UID, init func(*UID), assign func(*UID, *Mailbox)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*UID)
+	ids := make([]imap.InternalMailboxID, 0, len(nodes))
+	nodeids := make(map[imap.InternalMailboxID][]*UID)
 	for i := range nodes {
 		if nodes[i].mailbox_ui_ds == nil {
 			continue

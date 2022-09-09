@@ -109,7 +109,7 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 	}
 
 	if err := state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return db.ClearRecentFlags(ctx, tx, mbox.MailboxID)
+		return db.ClearRecentFlags(ctx, tx, mbox.ID)
 	}); err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func (state *State) Delete(ctx context.Context, name string) (bool, error) {
 		return false, err
 	}
 
-	return state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID, nil
+	return state.snap != nil && state.snap.mboxID.InternalID == mbox.ID, nil
 }
 
 func (state *State) Rename(ctx context.Context, oldName, newName string) error {
@@ -341,7 +341,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 		return ErrNoSuchMailbox
 	}
 
-	if state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID {
+	if state.snap != nil && state.snap.mboxID.InternalID == mbox.ID {
 		return fn(newMailbox(mbox, state, state.snap))
 	}
 
@@ -366,7 +366,7 @@ func (state *State) AppendOnlyMailbox(ctx context.Context, name string, fn func(
 		return ErrNoSuchMailbox
 	}
 
-	if state.snap != nil && state.snap.mboxID.InternalID == mbox.MailboxID {
+	if state.snap != nil && state.snap.mboxID.InternalID == mbox.ID {
 		return fn(newMailbox(mbox, state, state.snap), true)
 	}
 

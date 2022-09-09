@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailboxattr"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailboxflag"
@@ -180,8 +181,8 @@ func (mq *MailboxQuery) FirstX(ctx context.Context) *Mailbox {
 
 // FirstID returns the first Mailbox ID from the query.
 // Returns a *NotFoundError when no Mailbox ID was found.
-func (mq *MailboxQuery) FirstID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (mq *MailboxQuery) FirstID(ctx context.Context) (id imap.InternalMailboxID, err error) {
+	var ids []imap.InternalMailboxID
 	if ids, err = mq.Limit(1).IDs(ctx); err != nil {
 		return
 	}
@@ -193,7 +194,7 @@ func (mq *MailboxQuery) FirstID(ctx context.Context) (id int, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (mq *MailboxQuery) FirstIDX(ctx context.Context) int {
+func (mq *MailboxQuery) FirstIDX(ctx context.Context) imap.InternalMailboxID {
 	id, err := mq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -231,8 +232,8 @@ func (mq *MailboxQuery) OnlyX(ctx context.Context) *Mailbox {
 // OnlyID is like Only, but returns the only Mailbox ID in the query.
 // Returns a *NotSingularError when more than one Mailbox ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (mq *MailboxQuery) OnlyID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (mq *MailboxQuery) OnlyID(ctx context.Context) (id imap.InternalMailboxID, err error) {
+	var ids []imap.InternalMailboxID
 	if ids, err = mq.Limit(2).IDs(ctx); err != nil {
 		return
 	}
@@ -248,7 +249,7 @@ func (mq *MailboxQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (mq *MailboxQuery) OnlyIDX(ctx context.Context) int {
+func (mq *MailboxQuery) OnlyIDX(ctx context.Context) imap.InternalMailboxID {
 	id, err := mq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -274,8 +275,8 @@ func (mq *MailboxQuery) AllX(ctx context.Context) []*Mailbox {
 }
 
 // IDs executes the query and returns a list of Mailbox IDs.
-func (mq *MailboxQuery) IDs(ctx context.Context) ([]int, error) {
-	var ids []int
+func (mq *MailboxQuery) IDs(ctx context.Context) ([]imap.InternalMailboxID, error) {
+	var ids []imap.InternalMailboxID
 	if err := mq.Select(mailbox.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
@@ -283,7 +284,7 @@ func (mq *MailboxQuery) IDs(ctx context.Context) ([]int, error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (mq *MailboxQuery) IDsX(ctx context.Context) []int {
+func (mq *MailboxQuery) IDsX(ctx context.Context) []imap.InternalMailboxID {
 	ids, err := mq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -398,12 +399,12 @@ func (mq *MailboxQuery) WithAttributes(opts ...func(*MailboxAttrQuery)) *Mailbox
 // Example:
 //
 //	var v []struct {
-//		MailboxID imap.InternalMailboxID `json:"MailboxID,omitempty"`
+//		RemoteID imap.LabelID `json:"RemoteID,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Mailbox.Query().
-//		GroupBy(mailbox.FieldMailboxID).
+//		GroupBy(mailbox.FieldRemoteID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 //
@@ -427,11 +428,11 @@ func (mq *MailboxQuery) GroupBy(field string, fields ...string) *MailboxGroupBy 
 // Example:
 //
 //	var v []struct {
-//		MailboxID imap.InternalMailboxID `json:"MailboxID,omitempty"`
+//		RemoteID imap.LabelID `json:"RemoteID,omitempty"`
 //	}
 //
 //	client.Mailbox.Query().
-//		Select(mailbox.FieldMailboxID).
+//		Select(mailbox.FieldRemoteID).
 //		Scan(ctx, &v)
 //
 func (mq *MailboxQuery) Select(fields ...string) *MailboxSelect {
@@ -520,7 +521,7 @@ func (mq *MailboxQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Mail
 
 func (mq *MailboxQuery) loadUIDs(ctx context.Context, query *UIDQuery, nodes []*Mailbox, init func(*Mailbox), assign func(*Mailbox, *UID)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Mailbox)
+	nodeids := make(map[imap.InternalMailboxID]*Mailbox)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -551,7 +552,7 @@ func (mq *MailboxQuery) loadUIDs(ctx context.Context, query *UIDQuery, nodes []*
 }
 func (mq *MailboxQuery) loadFlags(ctx context.Context, query *MailboxFlagQuery, nodes []*Mailbox, init func(*Mailbox), assign func(*Mailbox, *MailboxFlag)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Mailbox)
+	nodeids := make(map[imap.InternalMailboxID]*Mailbox)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -582,7 +583,7 @@ func (mq *MailboxQuery) loadFlags(ctx context.Context, query *MailboxFlagQuery, 
 }
 func (mq *MailboxQuery) loadPermanentFlags(ctx context.Context, query *MailboxPermFlagQuery, nodes []*Mailbox, init func(*Mailbox), assign func(*Mailbox, *MailboxPermFlag)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Mailbox)
+	nodeids := make(map[imap.InternalMailboxID]*Mailbox)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -613,7 +614,7 @@ func (mq *MailboxQuery) loadPermanentFlags(ctx context.Context, query *MailboxPe
 }
 func (mq *MailboxQuery) loadAttributes(ctx context.Context, query *MailboxAttrQuery, nodes []*Mailbox, init func(*Mailbox), assign func(*Mailbox, *MailboxAttr)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Mailbox)
+	nodeids := make(map[imap.InternalMailboxID]*Mailbox)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -666,7 +667,7 @@ func (mq *MailboxQuery) querySpec() *sqlgraph.QuerySpec {
 			Table:   mailbox.Table,
 			Columns: mailbox.Columns,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
+				Type:   field.TypeString,
 				Column: mailbox.FieldID,
 			},
 		},

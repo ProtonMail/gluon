@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 )
 
@@ -17,7 +18,7 @@ type MessageFlag struct {
 	ID int `json:"id,omitempty"`
 	// Value holds the value of the "Value" field.
 	Value         string `json:"Value,omitempty"`
-	message_flags *int
+	message_flags *imap.InternalMessageID
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -30,7 +31,7 @@ func (*MessageFlag) scanValues(columns []string) ([]interface{}, error) {
 		case messageflag.FieldValue:
 			values[i] = new(sql.NullString)
 		case messageflag.ForeignKeys[0]: // message_flags
-			values[i] = new(sql.NullInt64)
+			values[i] = new(sql.NullString)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type MessageFlag", columns[i])
 		}
@@ -59,11 +60,11 @@ func (mf *MessageFlag) assignValues(columns []string, values []interface{}) erro
 				mf.Value = value.String
 			}
 		case messageflag.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field message_flags", value)
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field message_flags", values[i])
 			} else if value.Valid {
-				mf.message_flags = new(int)
-				*mf.message_flags = int(value.Int64)
+				mf.message_flags = new(imap.InternalMessageID)
+				*mf.message_flags = imap.InternalMessageID(value.String)
 			}
 		}
 	}

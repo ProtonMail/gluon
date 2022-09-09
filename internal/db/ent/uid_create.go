@@ -57,13 +57,13 @@ func (uc *UIDCreate) SetNillableRecent(b *bool) *UIDCreate {
 }
 
 // SetMessageID sets the "message" edge to the Message entity by ID.
-func (uc *UIDCreate) SetMessageID(id int) *UIDCreate {
+func (uc *UIDCreate) SetMessageID(id imap.InternalMessageID) *UIDCreate {
 	uc.mutation.SetMessageID(id)
 	return uc
 }
 
 // SetNillableMessageID sets the "message" edge to the Message entity by ID if the given value is not nil.
-func (uc *UIDCreate) SetNillableMessageID(id *int) *UIDCreate {
+func (uc *UIDCreate) SetNillableMessageID(id *imap.InternalMessageID) *UIDCreate {
 	if id != nil {
 		uc = uc.SetMessageID(*id)
 	}
@@ -76,13 +76,13 @@ func (uc *UIDCreate) SetMessage(m *Message) *UIDCreate {
 }
 
 // SetMailboxID sets the "mailbox" edge to the Mailbox entity by ID.
-func (uc *UIDCreate) SetMailboxID(id int) *UIDCreate {
+func (uc *UIDCreate) SetMailboxID(id imap.InternalMailboxID) *UIDCreate {
 	uc.mutation.SetMailboxID(id)
 	return uc
 }
 
 // SetNillableMailboxID sets the "mailbox" edge to the Mailbox entity by ID if the given value is not nil.
-func (uc *UIDCreate) SetNillableMailboxID(id *int) *UIDCreate {
+func (uc *UIDCreate) SetNillableMailboxID(id *imap.InternalMailboxID) *UIDCreate {
 	if id != nil {
 		uc = uc.SetMailboxID(*id)
 	}
@@ -252,7 +252,7 @@ func (uc *UIDCreate) createSpec() (*UID, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
+					Type:   field.TypeString,
 					Column: message.FieldID,
 				},
 			},
@@ -272,7 +272,7 @@ func (uc *UIDCreate) createSpec() (*UID, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
+					Type:   field.TypeString,
 					Column: mailbox.FieldID,
 				},
 			},

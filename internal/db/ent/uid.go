@@ -27,8 +27,8 @@ type UID struct {
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UIDQuery when eager-loading is set.
 	Edges         UIDEdges `json:"edges"`
-	mailbox_ui_ds *int
-	uid_message   *int
+	mailbox_ui_ds *imap.InternalMailboxID
+	uid_message   *imap.InternalMessageID
 }
 
 // UIDEdges holds the relations/edges for other nodes in the graph.
@@ -78,9 +78,9 @@ func (*UID) scanValues(columns []string) ([]interface{}, error) {
 		case uid.FieldID, uid.FieldUID:
 			values[i] = new(sql.NullInt64)
 		case uid.ForeignKeys[0]: // mailbox_ui_ds
-			values[i] = new(sql.NullInt64)
+			values[i] = new(sql.NullString)
 		case uid.ForeignKeys[1]: // uid_message
-			values[i] = new(sql.NullInt64)
+			values[i] = new(sql.NullString)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type UID", columns[i])
 		}
@@ -121,18 +121,18 @@ func (u *UID) assignValues(columns []string, values []interface{}) error {
 				u.Recent = value.Bool
 			}
 		case uid.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field mailbox_ui_ds", value)
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mailbox_ui_ds", values[i])
 			} else if value.Valid {
-				u.mailbox_ui_ds = new(int)
-				*u.mailbox_ui_ds = int(value.Int64)
+				u.mailbox_ui_ds = new(imap.InternalMailboxID)
+				*u.mailbox_ui_ds = imap.InternalMailboxID(value.String)
 			}
 		case uid.ForeignKeys[1]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field uid_message", value)
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field uid_message", values[i])
 			} else if value.Valid {
-				u.uid_message = new(int)
-				*u.uid_message = int(value.Int64)
+				u.uid_message = new(imap.InternalMessageID)
+				*u.uid_message = imap.InternalMessageID(value.String)
 			}
 		}
 	}

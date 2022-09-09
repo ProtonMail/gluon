@@ -239,7 +239,7 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Table:   message.Table,
 			Columns: message.Columns,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
+				Type:   field.TypeString,
 				Column: message.FieldID,
 			},
 		},
@@ -661,7 +661,7 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 			Table:   message.Table,
 			Columns: message.Columns,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
+				Type:   field.TypeString,
 				Column: message.FieldID,
 			},
 		},

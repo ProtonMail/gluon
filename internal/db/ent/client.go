@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/migrate"
 
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
@@ -206,7 +207,7 @@ func (c *MailboxClient) UpdateOne(m *Mailbox) *MailboxUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *MailboxClient) UpdateOneID(id int) *MailboxUpdateOne {
+func (c *MailboxClient) UpdateOneID(id imap.InternalMailboxID) *MailboxUpdateOne {
 	mutation := newMailboxMutation(c.config, OpUpdateOne, withMailboxID(id))
 	return &MailboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -223,7 +224,7 @@ func (c *MailboxClient) DeleteOne(m *Mailbox) *MailboxDeleteOne {
 }
 
 // DeleteOne returns a builder for deleting the given entity by its id.
-func (c *MailboxClient) DeleteOneID(id int) *MailboxDeleteOne {
+func (c *MailboxClient) DeleteOneID(id imap.InternalMailboxID) *MailboxDeleteOne {
 	builder := c.Delete().Where(mailbox.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -238,12 +239,12 @@ func (c *MailboxClient) Query() *MailboxQuery {
 }
 
 // Get returns a Mailbox entity by its id.
-func (c *MailboxClient) Get(ctx context.Context, id int) (*Mailbox, error) {
+func (c *MailboxClient) Get(ctx context.Context, id imap.InternalMailboxID) (*Mailbox, error) {
 	return c.Query().Where(mailbox.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *MailboxClient) GetX(ctx context.Context, id int) *Mailbox {
+func (c *MailboxClient) GetX(ctx context.Context, id imap.InternalMailboxID) *Mailbox {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -630,7 +631,7 @@ func (c *MessageClient) UpdateOne(m *Message) *MessageUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *MessageClient) UpdateOneID(id int) *MessageUpdateOne {
+func (c *MessageClient) UpdateOneID(id imap.InternalMessageID) *MessageUpdateOne {
 	mutation := newMessageMutation(c.config, OpUpdateOne, withMessageID(id))
 	return &MessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -647,7 +648,7 @@ func (c *MessageClient) DeleteOne(m *Message) *MessageDeleteOne {
 }
 
 // DeleteOne returns a builder for deleting the given entity by its id.
-func (c *MessageClient) DeleteOneID(id int) *MessageDeleteOne {
+func (c *MessageClient) DeleteOneID(id imap.InternalMessageID) *MessageDeleteOne {
 	builder := c.Delete().Where(message.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -662,12 +663,12 @@ func (c *MessageClient) Query() *MessageQuery {
 }
 
 // Get returns a Message entity by its id.
-func (c *MessageClient) Get(ctx context.Context, id int) (*Message, error) {
+func (c *MessageClient) Get(ctx context.Context, id imap.InternalMessageID) (*Message, error) {
 	return c.Query().Where(message.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *MessageClient) GetX(ctx context.Context, id int) *Message {
+func (c *MessageClient) GetX(ctx context.Context, id imap.InternalMessageID) *Message {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
