@@ -480,14 +480,10 @@ func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mail
 		return err
 	}
 
-	messages, err := db.GetMailboxMessages(ctx, tx.Client(), inbox)
+	messageIDs, err := db.GetMailboxMessageIDPairs(ctx, tx.Client(), inbox.ID)
 	if err != nil {
 		return err
 	}
-
-	messageIDs := xslices.Map(messages, func(messageUID *ent.UID) ids.MessageIDPair {
-		return ids.NewMessageIDPair(messageUID.Edges.Message)
-	})
 
 	mboxIDPair := ids.NewMailboxIDPair(mbox)
 
