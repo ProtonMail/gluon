@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 
@@ -32,10 +31,6 @@ type Backend struct {
 }
 
 func New(dir string, storeBuilder store.Builder, delim string) (*Backend, error) {
-	if err := os.MkdirAll(filepath.Join(dir, "remote"), 0o700); err != nil {
-		return nil, err
-	}
-
 	return &Backend{
 		dir:          dir,
 		storeBuilder: storeBuilder,
@@ -56,21 +51,21 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
-	store, err := b.storeBuilder.New(filepath.Join(b.dir, "store"), userID, passphrase)
+	storeBuilder, err := b.storeBuilder.New(b.getStoreDir(), userID, passphrase)
 	if err != nil {
 		return err
 	}
 
-	db, err := db.NewDB(filepath.Join(b.dir, "db"), userID)
+	db, err := db.NewDB(b.getDBDir(), userID)
 	if err != nil {
-		if err := store.Close(); err != nil {
-			logrus.WithError(err).Error("Failed to close storage")
+		if err := storeBuilder.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close store builder")
 		}
 
 		return err
 	}
 
-	user, err := newUser(ctx, userID, db, conn, store, b.delim)
+	user, err := newUser(ctx, userID, db, conn, storeBuilder, b.delim)
 	if err != nil {
 		return err
 	}
@@ -80,7 +75,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 	return nil
 }
 
-func (b *Backend) RemoveUser(ctx context.Context, userID string) error {
+func (b *Backend) RemoveUser(ctx context.Context, userID string, removeFiles bool) error {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
@@ -99,6 +94,16 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string) error {
 	}
 
 	delete(b.users, userID)
+
+	if removeFiles {
+		if err := b.storeBuilder.Delete(b.getStoreDir(), userID); err != nil {
+			return err
+		}
+
+		if err := db.DeleteDB(b.getDBDir(), userID); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -170,4 +175,12 @@ func (b *Backend) getUserID(username, password string) (string, error) {
 	}
 
 	return "", ErrNoSuchUser
+}
+
+func (b *Backend) getStoreDir() string {
+	return filepath.Join(b.dir, "store")
+}
+
+func (b *Backend) getDBDir() string {
+	return filepath.Join(b.dir, "db")
 }

@@ -118,11 +118,11 @@ func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID 
 	return nil
 }
 
-// RemoveUser removes a user from the mailserver.
-func (s *Server) RemoveUser(ctx context.Context, userID string) error {
+// RemoveUser removes a user from gluon.
+func (s *Server) RemoveUser(ctx context.Context, userID string, removeFiles bool) error {
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 
-	if err := s.backend.RemoveUser(ctx, userID); err != nil {
+	if err := s.backend.RemoveUser(ctx, userID, removeFiles); err != nil {
 		return err
 	}
 

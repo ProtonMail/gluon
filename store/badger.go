@@ -2,6 +2,7 @@ package store
 
 import (
 	"crypto/sha256"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -26,25 +27,8 @@ func NewBadgerStore(path string, userID string, encryptionPassphrase []byte) (*B
 
 	db, err := badger.Open(badger.DefaultOptions(filepath.Join(path, userID)).
 		WithLogger(logrus.StandardLogger()).
-		WithEncryptionKey(encryptionKey[:]).
-		WithIndexCacheSize(128 * 1024 * 1024),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	store := &BadgerStore{db: db, gcExitCh: make(chan struct{})}
-
-	store.startGCCollector()
-
-	return store, nil
-}
-
-func NewTestBadgerStore(path string, userID string, encryptionPassphrase []byte) (*BadgerStore, error) {
-	db, err := badger.Open(badger.DefaultOptions(filepath.Join(path, userID)).
-		WithLogger(logrus.StandardLogger()).
 		WithLoggingLevel(badger.ERROR).
-		WithEncryptionKey(encryptionPassphrase).
+		WithEncryptionKey(encryptionKey[:]).
 		WithIndexCacheSize(128 * 1024 * 1024),
 	)
 	if err != nil {
@@ -144,4 +128,8 @@ type BadgerStoreBuilder struct{}
 
 func (*BadgerStoreBuilder) New(directory, userID string, encryptionPassphrase []byte) (Store, error) {
 	return NewBadgerStore(directory, userID, encryptionPassphrase)
+}
+
+func (*BadgerStoreBuilder) Delete(directory, userID string) error {
+	return os.RemoveAll(filepath.Join(directory, userID))
 }

@@ -94,8 +94,12 @@ func WriteResult[T any](ctx context.Context, db *DB, fn func(context.Context, *e
 	return result, nil
 }
 
+func getDatabaseConn(dir, userID string) string {
+	return fmt.Sprintf("file:%v?cache=shared&_fk=1", getDatabasePath(dir, userID))
+}
+
 func getDatabasePath(dir, userID string) string {
-	return fmt.Sprintf("file:%v?cache=shared&_fk=1", filepath.Join(dir, fmt.Sprintf("%v.db", userID)))
+	return filepath.Join(dir, fmt.Sprintf("%v.db", userID))
 }
 
 func NewDB(dir, userID string) (*DB, error) {
@@ -103,12 +107,16 @@ func NewDB(dir, userID string) (*DB, error) {
 		return nil, err
 	}
 
-	client, err := ent.Open(dialect.SQLite, getDatabasePath(dir, userID))
+	client, err := ent.Open(dialect.SQLite, getDatabaseConn(dir, userID))
 	if err != nil {
 		return nil, err
 	}
 
 	return &DB{db: client}, nil
+}
+
+func DeleteDB(dir, userID string) error {
+	return os.Remove(getDatabasePath(dir, userID))
 }
 
 // WriteAndStore is the same as WriteStoreAndResult.
