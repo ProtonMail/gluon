@@ -3,7 +3,7 @@ package watcher
 import (
 	"reflect"
 
-	"github.com/ProtonMail/gluon/internal/queue"
+	"github.com/ProtonMail/gluon/queue"
 )
 
 type Watcher[T any] struct {
