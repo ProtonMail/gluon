@@ -28,7 +28,12 @@ func NewParsedMessage(literal []byte) (*ParsedMessage, error) {
 		return nil, fmt.Errorf("failed to build message body structure: %w", err)
 	}
 
-	envelope, err := Envelope(root.ParseHeader())
+	header, err := root.ParseHeader()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parser message header: %w", err)
+	}
+
+	envelope, err := Envelope(header)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build message envelope: %w", err)
 	}

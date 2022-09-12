@@ -1,15 +1,11 @@
 package rfc822
 
 import (
-	"bufio"
 	"bytes"
-	"errors"
-	"io"
 	"net/textproto"
 	"regexp"
 	"strings"
 
-	"github.com/bradenaw/juniper/iterator"
 	"golang.org/x/exp/slices"
 )
 
@@ -183,7 +179,10 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 		return nil, err
 	}
 
-	header := ParseHeader(rawHeader)
+	header, err := ParseHeader(rawHeader)
+	if err != nil {
+		return nil, err
+	}
 
 	header.Set(key, val)
 
@@ -197,24 +196,22 @@ func GetHeaderValue(literal []byte, key string) (string, error) {
 		return "", err
 	}
 
-	return ParseHeader(rawHeader).Get(key), nil
+	header, err := ParseHeader(rawHeader)
+	if err != nil {
+		return "", err
+	}
+
+	return header.Get(key), nil
 }
 
 // TODO: This is shitty -- should use a real generated parser like the IMAP parser or the RFC5322 parser.
-func ParseHeader(header []byte) *Header {
+func ParseHeader(header []byte) (*Header, error) {
 	var (
 		lines [][]byte
 		quote int
 	)
 
-	lineIt := iterator.Chan(forLines(bufio.NewReader(bytes.NewReader(header))))
-
-	for {
-		line, ok := lineIt.Next()
-		if !ok {
-			break
-		}
-
+	forLines(header, func(line []byte) {
 		split := splitLine(line)
 
 		switch {
@@ -233,50 +230,64 @@ func ParseHeader(header []byte) *Header {
 		}
 
 		quote += bytes.Count(line, []byte(`"`))
-	}
+	})
 
-	return &Header{lines: lines}
+	return &Header{lines: lines}, nil
 }
 
-func forLines(br *bufio.Reader) chan []byte {
-	ch := make(chan []byte)
+func forLines(lines []byte, fn func(line []byte)) {
+	remaining := lines
+	separator := []byte{'\n'}
 
-	go func() {
-		defer close(ch)
-
-		for {
-			b, err := br.ReadBytes('\n')
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					panic(err)
-				}
-
-				if len(b) > 0 {
-					ch <- b
-				}
-
-				return
+	for {
+		index := bytes.Index(remaining, separator)
+		if index < 0 {
+			if len(remaining) > 0 {
+				fn(remaining)
 			}
 
-			ch <- b
+			return
 		}
-	}()
 
-	return ch
+		line := remaining[0 : index+1]
+		remaining = remaining[index+1:]
+
+		fn(line)
+	}
 }
 
-// TODO: This is terrible! Need to properly handle multiline fields.
 func mergeMultiline(line []byte) string {
-	var res [][]byte
+	remaining := line
 
-	for line := range forLines(bufio.NewReader(bytes.NewReader(line))) {
-		trimmed := bytes.TrimSpace(line)
-		if trimmed != nil {
-			res = append(res, trimmed)
+	builder := strings.Builder{}
+	separator := []byte{'\n'}
+
+	for len(remaining) != 0 {
+		index := bytes.Index(remaining, separator)
+		if index < 0 {
+			builder.Write(bytes.TrimSpace(remaining))
+			break
+		}
+
+		var section []byte
+		if index >= 1 && remaining[index-1] == '\r' {
+			section = remaining[0 : index-1]
+		} else {
+			section = remaining[0:index]
+		}
+
+		remaining = remaining[index+1:]
+
+		if len(section) != 0 {
+			builder.Write(bytes.TrimSpace(section))
+
+			if len(remaining) != 0 {
+				builder.WriteRune(' ')
+			}
 		}
 	}
 
-	return string(bytes.Join(res, []byte(" ")))
+	return builder.String()
 }
 
 func splitLine(line []byte) [][]byte {
