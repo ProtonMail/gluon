@@ -21,6 +21,7 @@ type Transaction interface {
 
 type Builder interface {
 	New(dir, userID string, passphrase []byte) (Store, error)
+	Delete(dir, userID string) error
 }
 
 func Tx(store Store, fn func(Transaction) error) error {

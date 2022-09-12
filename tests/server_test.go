@@ -115,14 +115,6 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 	return options
 }
 
-// Wrapper to ensure we always pass 32bytes worth of encryption key to the tests.
-type testBadgerStoreBuilder struct{}
-
-func (*testBadgerStoreBuilder) New(directory, userID string, encryptionPassphrase []byte) (store.Store, error) {
-	encryptionBytes := sha256.Sum256(encryptionPassphrase)
-	return store.NewTestBadgerStore(directory, userID, encryptionBytes[:])
-}
-
 // runServer initializes and starts the mailserver.
 func runServer(tb testing.TB, options *serverOptions, tests func(session *testSession)) {
 	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
@@ -154,7 +146,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 			TestServerVersionInfo.Vendor,
 			TestServerVersionInfo.SupportURL,
 		),
-		gluon.WithStoreBuilder(&testBadgerStoreBuilder{}),
+		gluon.WithStoreBuilder(&store.BadgerStoreBuilder{}),
 	)
 	require.NoError(tb, err)
 
@@ -207,7 +199,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	// Flush and remove user before shutdown.
 	for userID, conn := range conns {
 		conn.Flush()
-		require.NoError(tb, server.RemoveUser(ctx, userID))
+		require.NoError(tb, server.RemoveUser(ctx, userID, false))
 	}
 
 	// Expect the server to shut down successfully when closed.
