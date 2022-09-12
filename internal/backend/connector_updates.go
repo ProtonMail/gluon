@@ -192,9 +192,9 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 					request = &db.CreateMessageReq{
 						Message:    update.Message,
 						Literal:    literal,
-						Body:       update.Body,
-						Structure:  update.Structure,
-						Envelope:   update.Envelope,
+						Body:       update.ParsedMessage.Body,
+						Structure:  update.ParsedMessage.Structure,
+						Envelope:   update.ParsedMessage.Envelope,
 						InternalID: imap.InternalMessageID(internalID),
 					}
 

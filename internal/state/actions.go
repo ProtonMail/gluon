@@ -92,19 +92,17 @@ func (state *State) actionCreateMessage(
 	date time.Time,
 	isSelectedMailbox bool,
 ) (imap.UID, error) {
-	internalID, res, err := state.user.GetRemote().CreateMessage(ctx, mboxID.RemoteID, literal, flags, date)
+	parsedMessage, err := imap.NewParsedMessage(literal)
 	if err != nil {
 		return 0, err
 	}
 
-	update := imap.NewMessagesCreated()
-
-	if err := update.Add(res, literal, mboxID.RemoteID); err != nil {
+	internalID, res, err := state.user.GetRemote().CreateMessage(ctx, mboxID.RemoteID, literal, parsedMessage, flags, date)
+	if err != nil {
 		return 0, err
 	}
 
-	msg := update.Messages[0]
-	literalWithHeader, err := rfc822.SetHeaderValue(msg.Literal, ids.InternalIDKey, string(internalID))
+	literalWithHeader, err := rfc822.SetHeaderValue(literal, ids.InternalIDKey, string(internalID))
 
 	if err != nil {
 		return 0, fmt.Errorf("failed to set internal ID: %w", err)
@@ -115,11 +113,11 @@ func (state *State) actionCreateMessage(
 	}
 
 	req := db.CreateMessageReq{
-		Message:    msg.Message,
+		Message:    res,
 		Literal:    literalWithHeader,
-		Body:       msg.Body,
-		Structure:  msg.Structure,
-		Envelope:   msg.Envelope,
+		Body:       parsedMessage.Body,
+		Structure:  parsedMessage.Structure,
+		Envelope:   parsedMessage.Envelope,
 		InternalID: internalID,
 	}
 
