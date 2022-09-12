@@ -57,3 +57,5 @@ require (
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
+
+replace github.com/emersion/go-mbox => github.com/ProtonMail/go-mbox v0.0.0-20220912191848-2c87d986f209

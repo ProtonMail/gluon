@@ -96,12 +96,16 @@ func (s *testConnection) Sx(want ...string) *testConnection {
 		}); idx >= 0 {
 			want = slices.Delete(want, idx, idx+1)
 		} else {
-			bad = append(bad, string(bytes.TrimSpace(have)))
+			bad = append(bad, string(have))
 		}
 	}
 
 	if len(bad) > 0 {
-		require.Fail(s.tb, "Received unexpected responses", bad)
+		require.Failf(s.tb,
+			"Received unexpected responses",
+			"want: %q\nbut have:%q",
+			want, bad,
+		)
 	}
 
 	return s

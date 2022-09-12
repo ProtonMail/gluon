@@ -1,6 +1,9 @@
 package tests
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestDraftScenario(t *testing.T) {
 	// Simulate a draft update issued from the connector, which involves deleting the original message in drafts
@@ -10,7 +13,7 @@ func TestDraftScenario(t *testing.T) {
 
 		c.C("A002 SELECT Drafts").OK("A002")
 
-		messageID := s.messageCreated("user", mailboxID, []byte("To: 3@3.pm"))
+		messageID := s.messageCreated("user", mailboxID, []byte("To: 3@3.pm"), time.Now())
 
 		c.C("A002 NOOP")
 		c.S("* 1 EXISTS")
@@ -22,7 +25,7 @@ func TestDraftScenario(t *testing.T) {
 		c.OK("A003")
 
 		s.messageDeleted("user", messageID)
-		s.messageCreated("user", mailboxID, []byte("To: 4@4.pm"))
+		s.messageCreated("user", mailboxID, []byte("To: 4@4.pm"), time.Now())
 		s.flush("user")
 
 		c.C("A002 NOOP")
