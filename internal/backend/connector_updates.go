@@ -159,76 +159,89 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 		return err
 	}
 
-	var reqs []*db.CreateMessageReq
+	remoteMessageRequestsMap := make(map[imap.MessageID]*db.CreateMessageReq, len(updates))
 
-	remoteToLocalMessageID := make(map[imap.MessageID]imap.InternalMessageID)
+	const maxUpdateChunk = 1000
 
-	return db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, storeTx store.Transaction) error {
-		for _, update := range updates {
-			internalID := uuid.NewString()
+	chunkedUpdates := xslices.Chunk(updates, maxUpdateChunk)
 
-			literal, err := rfc822.SetHeaderValue(update.Literal, ids.InternalIDKey, internalID)
-			if err != nil {
-				return fmt.Errorf("failed to set internal ID: %w", err)
-			}
+	for _, chunk := range chunkedUpdates {
+		messagesForMailboxes := make(map[imap.InternalMailboxID][]*db.CreateMessageReq)
 
-			if err := storeTx.Set(imap.InternalMessageID(internalID), literal); err != nil {
-				return fmt.Errorf("failed to store message literal: %w", err)
-			}
+		if err := db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, storeTx store.Transaction) error {
+			for _, update := range chunk {
 
-			reqs = append(reqs, &db.CreateMessageReq{
-				Message:    update.Message,
-				Literal:    literal,
-				Body:       update.Body,
-				Structure:  update.Structure,
-				Envelope:   update.Envelope,
-				InternalID: imap.InternalMessageID(internalID),
-			})
+				var request *db.CreateMessageReq
 
-			remoteToLocalMessageID[update.Message.ID] = imap.InternalMessageID(internalID)
-		}
+				// Do not reprocess the message if we have previously processed it.
+				if req, ok := remoteMessageRequestsMap[update.Message.ID]; ok {
+					request = req
+				} else {
 
-		if _, err := db.CreateMessages(ctx, tx, reqs...); err != nil {
-			return fmt.Errorf("failed to create message: %w", err)
-		}
+					internalID := uuid.NewString()
 
-		messageIDs := make(map[imap.LabelID][]ids.MessageIDPair)
+					literal, err := rfc822.SetHeaderValue(update.Literal, ids.InternalIDKey, internalID)
+					if err != nil {
+						return fmt.Errorf("failed to set internal ID: %w", err)
+					}
 
-		for _, update := range updates {
-			for _, mailboxID := range update.MailboxIDs {
-				localID := remoteToLocalMessageID[update.Message.ID]
-				idPair := ids.MessageIDPair{
-					InternalID: localID,
-					RemoteID:   update.Message.ID,
+					if err := storeTx.Set(imap.InternalMessageID(internalID), literal); err != nil {
+						return fmt.Errorf("failed to store message literal: %w", err)
+					}
+
+					request = &db.CreateMessageReq{
+						Message:    update.Message,
+						Literal:    literal,
+						Body:       update.Body,
+						Structure:  update.Structure,
+						Envelope:   update.Envelope,
+						InternalID: imap.InternalMessageID(internalID),
+					}
+
+					remoteMessageRequestsMap[update.Message.ID] = req
 				}
 
-				if !slices.Contains(messageIDs[mailboxID], idPair) {
-					messageIDs[mailboxID] = append(messageIDs[mailboxID], idPair)
+				for _, mbox := range update.MailboxIDs {
+					internalMailboxID, err := db.GetMailboxIDWithRemoteID(ctx, tx.Client(), mbox)
+					if err != nil {
+						return err
+					}
+
+					existingRequests := messagesForMailboxes[internalMailboxID]
+
+					var alreadyPresent bool
+
+					for _, e := range existingRequests {
+						if e.Message.ID == request.Message.ID {
+							alreadyPresent = true
+							break
+						}
+					}
+
+					if alreadyPresent {
+						continue
+					}
+
+					messagesForMailboxes[internalMailboxID] = append(messagesForMailboxes[internalMailboxID], request)
 				}
 			}
-		}
 
-		for mailboxID, messageIDs := range messageIDs {
-			internalMailboxID, err := db.GetMailboxIDWithRemoteID(ctx, tx.Client(), mailboxID)
-			if err != nil {
-				return err
+			for mbox, request := range messagesForMailboxes {
+				result, err := db.CreateAndAddMessagesToMailbox(ctx, tx, mbox, request)
+				if err != nil {
+					return err
+				}
+
+				user.queueStateUpdate(state.NewExistsStateUpdate(mbox, result, nil))
 			}
 
-			internalIDs := xslices.Map(messageIDs, func(id ids.MessageIDPair) imap.InternalMessageID {
-				return id.InternalID
-			})
-
-			messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, internalIDs, internalMailboxID)
-			if err != nil {
-				return err
-			}
-
-			user.queueStateUpdate(state.NewExistsStateUpdate(internalMailboxID, messageIDs, messageUIDs, nil))
-
+			return nil
+		}); err != nil {
+			return err
 		}
+	}
 
-		return nil
-	})
+	return nil
 }
 
 // applyMessageLabelsUpdated applies a MessageLabelsUpdated update.
