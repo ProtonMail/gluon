@@ -284,7 +284,42 @@ func TestSearchOld(t *testing.T) {
 
 func TestSearchOn(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
-		// GOMSRV-132: Implement test.
+		// None
+		c.C(`A001 search on 13-Aug-1982`)
+		c.S("* SEARCH")
+		c.OK("A001")
+
+		// One
+		c.C(`A001 search on 23-Jul-2002`)
+		c.S("* SEARCH 1")
+		c.OK("A001")
+
+		// More
+		c.C(`A001 search on 26-Nov-2002`)
+		c.S("* SEARCH 99 100")
+		c.OK("A001")
+	})
+}
+
+func TestSearchSentOnAndOn(t *testing.T) {
+	// Test search senton/on when internal date (e.g. 11-Aug-2002) and
+	// header date (10-Aug-2002) are different.
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+		c.C(`A001 search on 10-Aug-2002`)
+		c.S("* SEARCH")
+		c.OK("A001")
+
+		c.C(`A001 search senton 10-Aug-2002`)
+		c.S("* SEARCH 19")
+		c.OK("A001")
+
+		c.C(`A001 search on 11-Aug-2002`)
+		c.S("* SEARCH 19")
+		c.OK("A001")
+
+		c.C(`A001 search senton 11-Aug-2002`)
+		c.S("* SEARCH")
+		c.OK("A001")
 	})
 }
 
@@ -371,7 +406,7 @@ func TestSearchSeen(t *testing.T) {
 func TestSearchSentBefore(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
 		c.C(`A001 search sentbefore 10-Aug-2002`)
-		c.S("* SEARCH " + seq(1, 19))
+		c.S("* SEARCH " + seq(1, 18))
 		c.OK("A001")
 	})
 }
@@ -411,7 +446,20 @@ func TestSearchSentSince(t *testing.T) {
 
 func TestSearchSince(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
-		// GOMSRV-132: Implement test.
+		// None
+		c.C(`A001 search since 13-Aug-2200`)
+		c.S("* SEARCH")
+		c.OK("A001")
+
+		// All
+		c.C(`A001 search since 13-Aug-1982`)
+		c.S("* SEARCH " + seq(1, 100))
+		c.OK("A001")
+
+		// Latest messages
+		c.C(`A001 search since 26-Nov-2002`)
+		c.S("* SEARCH 99 100")
+		c.OK("A001")
 	})
 }
 
