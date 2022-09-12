@@ -37,6 +37,7 @@ type Connector interface {
 		ctx context.Context,
 		mboxID imap.LabelID,
 		literal []byte,
+		message *imap.ParsedMessage,
 		flags imap.FlagSet,
 		date time.Time,
 	) (imap.InternalMessageID, imap.Message, error)

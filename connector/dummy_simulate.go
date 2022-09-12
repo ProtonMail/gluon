@@ -54,6 +54,11 @@ func (conn *Dummy) MailboxDeleted(labelID imap.LabelID) error {
 }
 
 func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs []imap.LabelID) error {
+	parsedMessage, err := imap.NewParsedMessage(literal)
+	if err != nil {
+		return err
+	}
+
 	conn.state.lock.Lock()
 	defer conn.state.lock.Unlock()
 
@@ -64,18 +69,17 @@ func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs 
 	}
 
 	conn.state.messages[message.ID] = &dummyMessage{
-		literal:  literal,
-		seen:     message.Flags.Contains(imap.FlagSeen),
-		flagged:  message.Flags.Contains(imap.FlagFlagged),
-		date:     message.Date,
-		labelIDs: labelIDs,
+		literal:       literal,
+		seen:          message.Flags.Contains(imap.FlagSeen),
+		flagged:       message.Flags.Contains(imap.FlagFlagged),
+		parsedMessage: parsedMessage,
+		date:          message.Date,
+		labelIDs:      labelIDs,
 	}
 
 	update := imap.NewMessagesCreated()
 
-	if err := update.Add(message, literal, mboxIDs...); err != nil {
-		return err
-	}
+	update.Add(message, literal, parsedMessage, mboxIDs...)
 
 	conn.pushUpdate(update)
 

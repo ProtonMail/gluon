@@ -65,12 +65,13 @@ func (sc *stateConnectorImpl) CreateMessage(
 	ctx context.Context,
 	mboxID imap.LabelID,
 	literal []byte,
+	parsedMessage *imap.ParsedMessage,
 	flags imap.FlagSet,
 	date time.Time,
 ) (imap.InternalMessageID, imap.Message, error) {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	msg, err := sc.connector.CreateMessage(ctx, mboxID, literal, flags, date)
+	msg, err := sc.connector.CreateMessage(ctx, mboxID, literal, parsedMessage, flags, date)
 	if err != nil {
 		return "", imap.Message{}, err
 	}

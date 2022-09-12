@@ -87,13 +87,25 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 		[]byte(utils.MessageAfterNoonMeeting),
 	}
 
+	parsedMessages := make([]*imap.ParsedMessage, len(messages))
+
+	for i, m := range messages {
+		pmsg, err := imap.NewParsedMessage(m)
+		if err != nil {
+			return nil, err
+		}
+
+		parsedMessages[i] = pmsg
+	}
+
 	flagSet := imap.NewFlagSet("\\Recent")
 
 	s.mailboxes = make([]imap.LabelID, 0, len(mboxIDs))
 
 	for _, mboxID := range mboxIDs {
 		for i := uint(0); i < *syncMessageCountFlag; i++ {
-			if _, err := c.Connector().CreateMessage(ctx, mboxID, messages[rand.Intn(len(messages))], flagSet, time.Now()); err != nil {
+			randIndex := rand.Intn(len(messages))
+			if _, err := c.Connector().CreateMessage(ctx, mboxID, messages[randIndex], parsedMessages[randIndex], flagSet, time.Now()); err != nil {
 				return nil, err
 			}
 		}

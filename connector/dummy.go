@@ -145,7 +145,7 @@ func (conn *Dummy) GetMessage(ctx context.Context, messageID imap.MessageID) (im
 	return message, conn.state.getLabelIDs(messageID), nil
 }
 
-func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, error) {
+func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, literal []byte, parsedMessage *imap.ParsedMessage, flags imap.FlagSet, date time.Time) (imap.Message, error) {
 	// NOTE: We are only recording this here since it was the easiest command to verify the data has been record properly
 	// in the context, as APPEND will always require a communication with the remote connector.
 	conn.state.recordIMAPID(ctx)
@@ -153,6 +153,7 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, liter
 	message := conn.state.createMessage(
 		mboxID,
 		literal,
+		parsedMessage,
 		flags.Contains(imap.FlagSeen),
 		flags.Contains(imap.FlagFlagged),
 		date,
@@ -160,9 +161,7 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, liter
 
 	update := imap.NewMessagesCreated()
 
-	if err := update.Add(message, literal, mboxID); err != nil {
-		return imap.Message{}, err
-	}
+	update.Add(message, literal, parsedMessage, mboxID)
 
 	conn.pushUpdate(update)
 
@@ -255,7 +254,7 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 	defer update.Wait()
 
 	for _, message := range conn.state.getMessages() {
-		if err := update.Add(message, conn.state.getLiteral(message.ID), conn.state.getLabelIDs(message.ID)...); err != nil {
+		if err := conn.state.fillCreateMessageUpdate(update, message.ID); err != nil {
 			return err
 		}
 	}
