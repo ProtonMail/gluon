@@ -40,7 +40,7 @@ func TestSequenceRange(t *testing.T) {
 		}
 		c.OK(`A010`)
 		c.C(`A011 COPY 1,3:* mbox2`)
-		c.S(`A011`)
+		c.OK(`A011`)
 		c.C(`A012 COPY 6:* mbox2`).BAD(`A012`)
 		c.C(`A012 COPY 6:* mbox2`).BAD(`A012`)
 		c.C(`A013 MOVE 1,5,3 mbox2`)

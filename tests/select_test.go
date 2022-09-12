@@ -17,10 +17,10 @@ func TestSelect(t *testing.T) {
 		c.S(`* FLAGS (\Deleted \Flagged \Seen)`,
 			`* 2 EXISTS`,
 			`* 2 RECENT`,
-			`* OK [UNSEEN 2]`,
-			`* OK [PERMANENTFLAGS (\Deleted \Flagged \Seen)]`,
-			`* OK [UIDNEXT 3]`,
-			`* OK [UIDVALIDITY 1]`)
+			`* OK [UNSEEN 2] Unseen messages`,
+			`* OK [PERMANENTFLAGS (\Deleted \Flagged \Seen)] Flags permitted`,
+			`* OK [UIDNEXT 3] Predicted next UID`,
+			`* OK [UIDVALIDITY 1] UIDs valid`)
 		c.S("A006 OK [READ-WRITE] SELECT")
 
 		// Selecting again modifies the RECENT value.
@@ -28,19 +28,19 @@ func TestSelect(t *testing.T) {
 		c.S(`* FLAGS (\Deleted \Flagged \Seen)`,
 			`* 2 EXISTS`,
 			`* 0 RECENT`,
-			`* OK [UNSEEN 2]`,
-			`* OK [PERMANENTFLAGS (\Deleted \Flagged \Seen)]`,
-			`* OK [UIDNEXT 3]`,
-			`* OK [UIDVALIDITY 1]`)
+			`* OK [UNSEEN 2] Unseen messages`,
+			`* OK [PERMANENTFLAGS (\Deleted \Flagged \Seen)] Flags permitted`,
+			`* OK [UIDNEXT 3] Predicted next UID`,
+			`* OK [UIDVALIDITY 1] UIDs valid`)
 		c.S("A006 OK [READ-WRITE] SELECT")
 
 		c.C("A007 select Archive")
 		c.S(`* FLAGS (\Deleted \Flagged \Seen)`,
 			`* 1 EXISTS`,
 			`* 1 RECENT`,
-			`* OK [PERMANENTFLAGS (\Deleted \Flagged \Seen)]`,
-			`* OK [UIDNEXT 2]`,
-			`* OK [UIDVALIDITY 1]`)
+			`* OK [PERMANENTFLAGS (\Deleted \Flagged \Seen)] Flags permitted`,
+			`* OK [UIDNEXT 2] Predicted next UID`,
+			`* OK [UIDVALIDITY 1] UIDs valid`)
 		c.S(`A007 OK [READ-WRITE] SELECT`)
 	})
 }

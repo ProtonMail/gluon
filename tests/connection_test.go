@@ -83,7 +83,7 @@ func (s *testConnection) Cf(format string, a ...any) *testConnection {
 
 // S expects that the server returns the given lines (in any order).
 func (s *testConnection) S(want ...string) *testConnection {
-	return s.Sx(xslices.Map(want, func(want string) string { return regexp.QuoteMeta(want) })...)
+	return s.Sx(xslices.Map(want, func(want string) string { return "^" + regexp.QuoteMeta(want) + "\r\n" })...)
 }
 
 // Sx expects that the server returns lines matching the given regexps (in any order).
@@ -113,7 +113,7 @@ func (s *testConnection) Sx(want ...string) *testConnection {
 
 // Se expects that the server eventually returns the given lines (in any order).
 func (s *testConnection) Se(want ...string) *testConnection {
-	return s.Sxe(xslices.Map(want, func(want string) string { return regexp.QuoteMeta(want) })...)
+	return s.Sxe(xslices.Map(want, func(want string) string { return "^" + regexp.QuoteMeta(want) + "\r\n" })...)
 }
 
 // Sxe expects that the server eventually returns lines matching the given regexps (in any order).
