@@ -149,7 +149,7 @@ type ExistsStateUpdate struct {
 	targetStateSet bool
 }
 
-func NewExistsStateUpdate(mailboxID imap.InternalMailboxID, messageIDs []ids.MessageIDPair, uids map[imap.InternalMessageID]*ent.UID, s *State) Update {
+func NewExistsStateUpdate(mailboxID imap.InternalMailboxID, messages []db.CreateAndAddMessagesResult, s *State) Update {
 	var stateID StateID
 
 	var targetStateSet bool
@@ -159,9 +159,8 @@ func NewExistsStateUpdate(mailboxID imap.InternalMailboxID, messageIDs []ids.Mes
 		targetStateSet = true
 	}
 
-	responders := xslices.Map(messageIDs, func(messageID ids.MessageIDPair) *exists {
-		uid := uids[messageID.InternalID]
-		exists := newExists(ids.NewMessageIDPair(uid.Edges.Message), uid.UID, db.NewFlagSet(uid, uid.Edges.Message.Edges.Flags))
+	responders := xslices.Map(messages, func(result db.CreateAndAddMessagesResult) *exists {
+		exists := newExists(result.MessageID, result.UID, result.Flags)
 
 		return exists
 	})
