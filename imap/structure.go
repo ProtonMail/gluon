@@ -1,7 +1,6 @@
 package imap
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -34,7 +33,10 @@ func structure(section *rfc822.Section, ext bool) (fmt.Stringer, error) {
 
 	fields.add(children)
 
-	header := section.ParseHeader()
+	header, err := section.ParseHeader()
+	if err != nil {
+		return nil, err
+	}
 
 	_, mimeSubType, mimeParams, err := getMIMEInfo(header)
 	if err != nil {
@@ -55,7 +57,10 @@ func structure(section *rfc822.Section, ext bool) (fmt.Stringer, error) {
 }
 
 func singlePartStructure(section *rfc822.Section, ext bool) (fmt.Stringer, error) {
-	header := section.ParseHeader()
+	header, err := section.ParseHeader()
+	if err != nil {
+		return nil, err
+	}
 
 	var fields parList
 
@@ -79,7 +84,12 @@ func singlePartStructure(section *rfc822.Section, ext bool) (fmt.Stringer, error
 			return nil, err
 		}
 
-		envelope, err := envelope(child.ParseHeader())
+		header, err := child.ParseHeader()
+		if err != nil {
+			return nil, err
+		}
+
+		envelope, err := envelope(header)
 		if err != nil {
 			return nil, err
 		}
@@ -147,12 +157,20 @@ func getDispInfo(header *rfc822.Header) fmt.Stringer {
 }
 
 func countLines(b []byte) int {
-	var lines int
+	lines := 0
+	remaining := b
+	separator := []byte{'\n'}
 
-	scanner := bufio.NewScanner(bytes.NewReader(b))
+	for len(remaining) != 0 {
+		index := bytes.Index(remaining, separator)
+		if index < 0 {
+			lines++
+			break
+		}
 
-	for scanner.Scan() {
 		lines++
+
+		remaining = remaining[index+1:]
 	}
 
 	return lines

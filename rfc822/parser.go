@@ -9,12 +9,13 @@ import (
 )
 
 type Section struct {
-	identifier []int
-	literal    []byte
-	header     int
-	body       int
-	end        int
-	children   []*Section
+	identifier   []int
+	literal      []byte
+	parsedHeader *Header
+	header       int
+	body         int
+	end          int
+	children     []*Section
 }
 
 func Parse(literal []byte) (*Section, error) {
@@ -26,15 +27,29 @@ func (section *Section) Identifier() []int {
 }
 
 func (section *Section) ContentType() (string, map[string]string, error) {
-	return ParseContentType(section.ParseHeader().Get("Content-Type"))
+	header, err := section.ParseHeader()
+	if err != nil {
+		return "", nil, err
+	}
+
+	return ParseContentType(header.Get("Content-Type"))
 }
 
 func (section *Section) Header() []byte {
 	return section.literal[section.header:section.body]
 }
 
-func (section *Section) ParseHeader() *Header {
-	return ParseHeader(section.Header())
+func (section *Section) ParseHeader() (*Header, error) {
+	if section.parsedHeader == nil {
+		h, err := ParseHeader(section.Header())
+		if err != nil {
+			return nil, err
+		}
+
+		section.parsedHeader = h
+	}
+
+	return section.parsedHeader, nil
 }
 
 func (section *Section) Body() []byte {

@@ -10,13 +10,16 @@ import (
 const literal = "To: somebody\r\nFrom: somebody else\r\nSubject: this is\r\n\ta multiline field\r\nFrom: duplicate entry\r\n\r\n"
 
 func TestHeader_Raw(t *testing.T) {
-	assert.Equal(t, literal, string(ParseHeader([]byte(literal)).Raw()))
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
+	assert.Equal(t, literal, string(header.Raw()))
 }
 
 func TestHeader_Has(t *testing.T) {
 	const literal = "To: somebody\r\nFrom: somebody else\r\nSubject: this is\r\n\ta multiline field\r\nFrom: duplicate entry\r\nReferences:\r\n\t <foo@bar.com>\r\n\r\n"
 
-	header := ParseHeader([]byte(literal))
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, true, header.Has("To"))
 	assert.Equal(t, true, header.Has("to"))
@@ -33,7 +36,8 @@ func TestHeader_Has(t *testing.T) {
 func TestHeader_Get(t *testing.T) {
 	const literal = "To: somebody\r\nFrom: somebody else\r\nSubject: this is\r\n\ta multiline field\r\nFrom: duplicate entry\r\nReferences:\r\n\t <foo@bar.com>\r\n\r\n"
 
-	header := ParseHeader([]byte(literal))
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, "somebody", header.Get("To"))
 	assert.Equal(t, "somebody", header.Get("to"))
@@ -45,7 +49,8 @@ func TestHeader_Get(t *testing.T) {
 }
 
 func TestHeader_GetRaw(t *testing.T) {
-	header := ParseHeader([]byte(literal))
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, []byte("somebody\r\n"), header.GetRaw("To"))
 	assert.Equal(t, []byte("somebody else\r\n"), header.GetRaw("From"))
@@ -53,7 +58,8 @@ func TestHeader_GetRaw(t *testing.T) {
 }
 
 func TestHeader_GetLine(t *testing.T) {
-	header := ParseHeader([]byte(literal))
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, []byte("To: somebody\r\n"), header.GetLine("To"))
 	assert.Equal(t, []byte("From: somebody else\r\n"), header.GetLine("From"))
@@ -61,7 +67,8 @@ func TestHeader_GetLine(t *testing.T) {
 }
 
 func TestHeader_Set(t *testing.T) {
-	header := ParseHeader([]byte(literal))
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, "somebody", header.Get("To"))
 	header.Set("To", "who is this?")
@@ -73,7 +80,8 @@ func TestHeader_Set(t *testing.T) {
 }
 
 func TestHeader_SetNew(t *testing.T) {
-	header := ParseHeader([]byte(literal))
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	header.Set("Something", "something new...")
 	assert.Equal(t, "something new...", header.Get("Something"))
@@ -87,7 +95,8 @@ func TestHeader_SetNew(t *testing.T) {
 }
 
 func TestHeader_Del(t *testing.T) {
-	header := ParseHeader([]byte(literal))
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	header.Del("From")
 	assert.Equal(t, "To: somebody\r\nSubject: this is\r\n\ta multiline field\r\nFrom: duplicate entry\r\n\r\n", string(header.Raw()))
@@ -103,7 +112,8 @@ func TestHeader_Del(t *testing.T) {
 }
 
 func TestHeader_Fields(t *testing.T) {
-	header := ParseHeader([]byte(literal))
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, "To: somebody\r\n\r\n", string(header.Fields([]string{"To"})))
 	assert.Equal(t, "From: somebody else\r\nFrom: duplicate entry\r\n\r\n", string(header.Fields([]string{"From"})))
@@ -112,7 +122,8 @@ func TestHeader_Fields(t *testing.T) {
 }
 
 func TestHeader_FieldsNot(t *testing.T) {
-	header := ParseHeader([]byte(literal))
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, "To: somebody\r\n\r\n", string(header.FieldsNot([]string{"From", "Subject"})))
 	assert.Equal(t, "From: somebody else\r\nFrom: duplicate entry\r\n\r\n", string(header.FieldsNot([]string{"To", "Subject"})))
@@ -123,7 +134,10 @@ func TestHeader_FieldsNot(t *testing.T) {
 func TestHeader_Entries(t *testing.T) {
 	var lines [][]string
 
-	ParseHeader([]byte(literal)).Entries(func(key, val string) {
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
+
+	header.Entries(func(key, val string) {
 		lines = append(lines, []string{key, val})
 	})
 
@@ -136,60 +150,78 @@ func TestHeader_Entries(t *testing.T) {
 }
 
 func TestParseHeader(t *testing.T) {
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
+
 	assert.Equal(t, [][]byte{
 		[]byte("To: somebody\r\n"),
 		[]byte("From: somebody else\r\n"),
 		[]byte("Subject: this is\r\n\ta multiline field\r\n"),
 		[]byte("From: duplicate entry\r\n"),
 		[]byte("\r\n"),
-	}, ParseHeader([]byte(literal)).lines)
+	}, header.lines)
 }
 
 func TestParseHeaderFoldedLine(t *testing.T) {
 	const literal = "To:\r\n\tsomebody\r\nFrom: \r\n someone\r\n\r\n"
 
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
+
 	assert.Equal(t, [][]byte{
 		[]byte("To:\r\n\tsomebody\r\n"),
 		[]byte("From: \r\n someone\r\n"),
 		[]byte("\r\n"),
-	}, ParseHeader([]byte(literal)).lines)
+	}, header.lines)
 }
 
 func TestParseHeaderMultilineFilename(t *testing.T) {
-	const header = "Content-Type: application/msword; name=\"this is a very long\nfilename.doc\""
+	const literal = "Content-Type: application/msword; name=\"this is a very long\nfilename.doc\""
+
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, [][]byte{
 		[]byte("Content-Type: application/msword; name=\"this is a very long\nfilename.doc\""),
-	}, ParseHeader([]byte(header)).lines)
+	}, header.lines)
 }
 
 func TestParseHeaderMultilineFilenameWithColon(t *testing.T) {
-	const header = "Content-Type: application/msword; name=\"this is a very long\nfilename: too long.doc\""
+	const literal = "Content-Type: application/msword; name=\"this is a very long\nfilename: too long.doc\""
+
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, [][]byte{
 		[]byte("Content-Type: application/msword; name=\"this is a very long\nfilename: too long.doc\""),
-	}, ParseHeader([]byte(header)).lines)
+	}, header.lines)
 }
 
 func TestParseHeaderMultilineFilenameWithColonAndNewline(t *testing.T) {
-	const header = "Content-Type: application/msword; name=\"this is a very long\nfilename: too long.doc\"\n"
+	const literal = "Content-Type: application/msword; name=\"this is a very long\nfilename: too long.doc\"\n"
+
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, [][]byte{
 		[]byte("Content-Type: application/msword; name=\"this is a very long\nfilename: too long.doc\"\n"),
-	}, ParseHeader([]byte(header)).lines)
+	}, header.lines)
 }
 
 func TestParseHeaderMultilineIndent(t *testing.T) {
-	const header = "Subject: a very\r\n\tlong: line with a colon and indent\r\n \r\nand space line\r\nFrom: sender\r\n"
+	const literal = "Subject: a very\r\n\tlong: line with a colon and indent\r\n \r\nand space line\r\nFrom: sender\r\n"
+
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
 
 	assert.Equal(t, [][]byte{
 		[]byte("Subject: a very\r\n\tlong: line with a colon and indent\r\n \r\nand space line\r\n"),
 		[]byte("From: sender\r\n"),
-	}, ParseHeader([]byte(header)).lines)
+	}, header.lines)
 }
 
 func TestParseHeaderMultipleMultilineFilenames(t *testing.T) {
-	const header = `Content-Type: application/msword; name="=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=
+	const literal = `Content-Type: application/msword; name="=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=
 =BB=B6.DOC"
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=
@@ -197,12 +229,15 @@ Content-Disposition: attachment; filename="=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=
 Content-ID: <>
 `
 
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
+
 	assert.Equal(t, [][]byte{
 		[]byte("Content-Type: application/msword; name=\"=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=\n=BB=B6.DOC\"\n"),
 		[]byte("Content-Transfer-Encoding: base64\n"),
 		[]byte("Content-Disposition: attachment; filename=\"=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=\n=BB=B6.DOC\"\n"),
 		[]byte("Content-ID: <>\n"),
-	}, ParseHeader([]byte(header)).lines)
+	}, header.lines)
 }
 
 func TestSplitHeaderBody(t *testing.T) {

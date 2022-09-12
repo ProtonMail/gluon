@@ -263,10 +263,20 @@ func (m *Mailbox) fetchBodySection(section *proto.BodySection, literal []byte) (
 			return root.Header(), nil
 
 		case proto.SectionKeyword_HeaderFields:
-			return root.ParseHeader().Fields(section.Fields), nil
+			header, err := root.ParseHeader()
+			if err != nil {
+				return nil, err
+			}
+
+			return header.Fields(section.Fields), nil
 
 		case proto.SectionKeyword_HeaderFieldsNot:
-			return root.ParseHeader().FieldsNot(section.Fields), nil
+			header, err := root.ParseHeader()
+			if err != nil {
+				return nil, err
+			}
+
+			return header.FieldsNot(section.Fields), nil
 
 		case proto.SectionKeyword_Text:
 			return root.Body(), nil
