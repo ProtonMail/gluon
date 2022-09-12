@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -170,14 +171,14 @@ func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, pe
 	return mboxID
 }
 
-func (s *testSession) messageCreated(user string, mailboxID imap.LabelID, literal []byte, flags ...string) imap.MessageID {
+func (s *testSession) messageCreated(user string, mailboxID imap.LabelID, literal []byte, internalDate time.Time, flags ...string) imap.MessageID {
 	messageID := imap.MessageID(utils.NewRandomMessageID())
 
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageCreated(
 		imap.Message{
 			ID:    messageID,
 			Flags: imap.NewFlagSetFromSlice(flags),
-			Date:  time.Now(),
+			Date:  internalDate,
 		},
 		literal,
 		[]imap.LabelID{mailboxID},
@@ -217,15 +218,22 @@ func (s *testSession) messageCreatedFromFile(user string, mailboxID imap.LabelID
 	literal, err := os.ReadFile(path)
 	require.NoError(s.tb, err)
 
-	return s.messageCreated(user, mailboxID, literal, flags...)
+	return s.messageCreated(user, mailboxID, literal, time.Now(), flags...)
 }
 
 func (s *testSession) messagesCreatedFromMBox(user string, mailboxID imap.LabelID, path string, flags ...string) {
 	f, err := os.Open(path)
 	require.NoError(s.tb, err)
 
-	require.NoError(s.tb, forMessageInMBox(f, func(literal []byte) {
-		s.messageCreated(user, mailboxID, literal, flags...)
+	require.NoError(s.tb, forMessageInMBox(f, func(messageDelimiter, literal []byte) {
+		// If possible use mbox delimiter time as internal date to able to
+		// test cases where header and internal date are different.
+		internalDate, err := parseDateFromDelimiter(string(messageDelimiter))
+		if err != nil {
+			internalDate = time.Now()
+		}
+
+		s.messageCreated(user, mailboxID, literal, internalDate, flags...)
 	}))
 
 	require.NoError(s.tb, f.Close())
@@ -265,7 +273,7 @@ func (s *testSession) flush(user string) {
 	s.conns[s.userIDs[user]].Flush()
 }
 
-func forMessageInMBox(rr io.Reader, fn func([]byte)) error {
+func forMessageInMBox(rr io.Reader, fn func(messageDelimiter, literal []byte)) error {
 	mr := mbox.NewReader(rr)
 
 	var (
@@ -279,7 +287,7 @@ func forMessageInMBox(rr io.Reader, fn func([]byte)) error {
 			return err
 		}
 
-		fn(literal)
+		fn(mr.GetMessageDelimiter(), literal)
 	}
 
 	if !errors.Is(err, io.EOF) {
@@ -287,4 +295,13 @@ func forMessageInMBox(rr io.Reader, fn func([]byte)) error {
 	}
 
 	return nil
+
+}
+
+func parseDateFromDelimiter(messageDelimiter string) (t time.Time, err error) {
+	split := strings.Split(messageDelimiter, " ")
+	if len(split) <= 3 {
+		return t, errors.New("not enough arguments in delimiter")
+	}
+	return time.Parse("Mon Jan _2 15:04:05 2006", strings.TrimSpace(strings.Join(split[2:], " ")))
 }

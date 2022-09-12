@@ -88,7 +88,20 @@ func TestSearchBcc(t *testing.T) {
 
 func TestSearchBefore(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
-		// GOMSRV-132: Implement test.
+		// None
+		c.C(`A001 search before 13-Aug-1982`)
+		c.S("* SEARCH")
+		c.OK("A001")
+
+		// All
+		c.C(`A001 search before 13-Aug-2200`)
+		c.S("* SEARCH " + seq(1, 100))
+		c.OK("A001")
+
+		// Earliest messages
+		c.C(`A001 search before 30-Jul-2002`)
+		c.S("* SEARCH 1 2")
+		c.OK("A001")
 	})
 }
 
