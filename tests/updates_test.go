@@ -230,23 +230,23 @@ func TestMessageSeenUpdate(t *testing.T) {
 		c.C("A001 SELECT mbox").OK("A001")
 
 		c.C("A002 FETCH 1 (FLAGS)")
-		c.S(`* 1 FETCH (FLAGS (\Recent)`)
+		c.S(`* 1 FETCH (FLAGS (\Recent))`)
 		c.OK("A002")
 
 		s.messageSeen("user", messageID, true)
 
 		c.C("A003 FETCH 1 (FLAGS)")
-		c.S(`* 1 FETCH (FLAGS (\Recent)`)
+		c.S(`* 1 FETCH (FLAGS (\Recent))`)
 		// Unilateral update arrives after fetch.
-		c.S(`* 1 FETCH (FLAGS (\Recent \Seen)`)
+		c.S(`* 1 FETCH (FLAGS (\Recent \Seen))`)
 		c.OK("A003")
 
 		s.messageSeen("user", messageID, false)
 
 		c.C("A004 FETCH 1 (FLAGS)")
-		c.S(`* 1 FETCH (FLAGS (\Recent \Seen)`)
+		c.S(`* 1 FETCH (FLAGS (\Recent \Seen))`)
 		// Unilateral update arrives after fetch.
-		c.S(`* 1 FETCH (FLAGS (\Recent)`)
+		c.S(`* 1 FETCH (FLAGS (\Recent))`)
 		c.OK("A004")
 	})
 }
@@ -260,14 +260,14 @@ func TestMessageFlaggedUpdate(t *testing.T) {
 
 		s.messageFlagged("user", messageID, true)
 		c.C("A003 FETCH 1 (FLAGS)")
-		c.S(`* 1 FETCH (FLAGS (\Recent)`)
+		c.S(`* 1 FETCH (FLAGS (\Recent))`)
 		c.OK("A003")
 
 		s.messageFlagged("user", messageID, false)
 		c.C("A004 FETCH 1 (FLAGS)")
-		c.S(`* 1 FETCH (FLAGS (\Flagged \Recent)`)
+		c.S(`* 1 FETCH (FLAGS (\Flagged \Recent))`)
 		// Unilateral updates arrive afterwards.
-		c.S(`* 1 FETCH (FLAGS (\Recent)`)
+		c.S(`* 1 FETCH (FLAGS (\Recent))`)
 		c.OK("A004")
 	})
 }

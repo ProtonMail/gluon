@@ -18,7 +18,7 @@ func TestDraftScenario(t *testing.T) {
 		c.C("A002 NOOP")
 		c.S("* 1 EXISTS")
 		c.S("* 1 RECENT")
-		c.S("A002 OK")
+		c.OK("A002")
 
 		c.C("A003 FETCH 1 (BODY.PEEK[HEADER.FIELDS (To)])")
 		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 3@3.pm)")
@@ -28,14 +28,14 @@ func TestDraftScenario(t *testing.T) {
 		s.messageCreated("user", mailboxID, []byte("To: 4@4.pm"), time.Now())
 		s.flush("user")
 
-		c.C("A002 NOOP")
+		c.C("A004 NOOP")
 		c.S("* 1 EXPUNGE")
 		c.S("* 1 EXISTS")
 		c.S("* 1 RECENT")
-		c.S("A002 OK")
+		c.OK("A004")
 
-		c.C("A003 FETCH 1 (BODY.PEEK[HEADER.FIELDS (To)])")
+		c.C("A005 FETCH 1 (BODY.PEEK[HEADER.FIELDS (To)])")
 		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 4@4.pm)")
-		c.OK("A003")
+		c.OK("A005")
 	})
 }
