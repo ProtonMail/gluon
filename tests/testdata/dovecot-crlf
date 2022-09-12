@@ -995,7 +995,7 @@ maildir_copy_with_hardlinks=yes that'd be possible even with quota full.
 I guess I'll have to install quota support and start fixing.
 
 
-From marcelo@carpa.ciagri.usp.br  Fri Aug  9 22:05:26 2002
+From marcelo@carpa.ciagri.usp.br  Sun Aug 11 22:05:26 2002
 Received: with ECARTIS (v1.0.0; list dovecot); Fri, 09 Aug 2002 22:05:26 +0300 (EEST)
 Return-Path: <marcelo@carpa.ciagri.usp.br>
 Delivered-To: dovecot@procontrol.fi
@@ -1004,7 +1004,7 @@ Received: from carpa.ciagri.usp.br (carpa.ciagri.usp.br [143.107.209.25])
 	for <dovecot@procontrol.fi>; Fri,  9 Aug 2002 22:03:46 +0300 (EEST)
 Received: (qmail 27100 invoked by uid 1000); 9 Aug 2002 19:03:39 -0000
 From: marcelo@carpa.ciagri.usp.br
-Date: Fri, 9 Aug 2002 16:03:39 -0300
+Date: Sat, 10 Aug 2002 16:03:39 -0300
 To: dovecot@procontrol.fi
 Subject: [dovecot] Re: Disk quotas
 Message-ID: <20020809190339.GA2063@carpa.ciagri.usp.br>

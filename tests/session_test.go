@@ -17,8 +17,8 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/utils"
+	"github.com/ProtonMail/go-mbox"
 	"github.com/emersion/go-imap/client"
-	"github.com/emersion/go-mbox"
 	"github.com/stretchr/testify/require"
 )
 
@@ -314,7 +314,6 @@ func forMessageInMBox(rr io.Reader, fn func(messageDelimiter, literal []byte)) e
 	}
 
 	return nil
-
 }
 
 func parseDateFromDelimiter(messageDelimiter string) (t time.Time, err error) {
@@ -322,5 +321,6 @@ func parseDateFromDelimiter(messageDelimiter string) (t time.Time, err error) {
 	if len(split) <= 3 {
 		return t, errors.New("not enough arguments in delimiter")
 	}
+
 	return time.Parse("Mon Jan _2 15:04:05 2006", strings.TrimSpace(strings.Join(split[2:], " ")))
 }

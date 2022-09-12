@@ -4,12 +4,12 @@ go 1.18
 
 require (
 	entgo.io/ent v0.11.2
+	github.com/ProtonMail/go-mbox v1.1.0
 	github.com/ProtonMail/gopenpgp/v2 v2.4.7
 	github.com/bradenaw/juniper v0.6.0
 	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/emersion/go-imap v1.2.1-0.20220429085312-746087b7a317
 	github.com/emersion/go-imap-uidplus v0.0.0-20200503180755-e75854c361e9
-	github.com/emersion/go-mbox v1.0.2
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/mattn/go-sqlite3 v1.14.13
@@ -57,5 +57,3 @@ require (
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
-
-replace github.com/emersion/go-mbox => github.com/ProtonMail/go-mbox v0.0.0-20220912191848-2c87d986f209
