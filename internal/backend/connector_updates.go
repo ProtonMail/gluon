@@ -198,7 +198,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 						InternalID: imap.InternalMessageID(internalID),
 					}
 
-					remoteMessageRequestsMap[update.Message.ID] = req
+					remoteMessageRequestsMap[update.Message.ID] = request
 				}
 
 				for _, mbox := range update.MailboxIDs {
