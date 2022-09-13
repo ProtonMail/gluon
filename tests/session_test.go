@@ -31,6 +31,7 @@ type Connector interface {
 	MailboxDeleted(imap.LabelID) error
 
 	MessageCreated(imap.Message, []byte, []imap.LabelID) error
+	MessagesCreated([]imap.Message, [][]byte, [][]imap.LabelID) error
 	MessageAdded(imap.MessageID, imap.LabelID) error
 	MessageRemoved(imap.MessageID, imap.LabelID) error
 	MessageSeen(imap.MessageID, bool) error
@@ -173,6 +174,12 @@ func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, pe
 func (s *testSession) messageCreated(user string, mailboxID imap.LabelID, literal []byte, flags ...string) imap.MessageID {
 	messageID := imap.MessageID(utils.NewRandomMessageID())
 
+	s.messageCreatedWithID(user, messageID, mailboxID, literal, flags...)
+
+	return messageID
+}
+
+func (s *testSession) messageCreatedWithID(user string, messageID imap.MessageID, mailboxID imap.LabelID, literal []byte, flags ...string) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageCreated(
 		imap.Message{
 			ID:    messageID,
@@ -184,30 +191,42 @@ func (s *testSession) messageCreated(user string, mailboxID imap.LabelID, litera
 	))
 
 	s.conns[s.userIDs[user]].Flush()
-
-	return messageID
 }
 
 func (s *testSession) batchMessageCreated(user string, mailboxID imap.LabelID, count int, createMessage func(int) ([]byte, []string)) []imap.MessageID {
-	var messageIDs []imap.MessageID
-
-	for i := 0; i < count; i++ {
+	return s.batchMessageCreatedWithID(user, mailboxID, count, func(i int) (imap.MessageID, []byte, []string) {
 		messageID := imap.MessageID(utils.NewRandomMessageID())
-
 		literal, flags := createMessage(i)
 
-		require.NoError(s.tb, s.conns[s.userIDs[user]].MessageCreated(
-			imap.Message{
-				ID:    messageID,
-				Flags: imap.NewFlagSetFromSlice(flags),
-				Date:  time.Now(),
-			},
-			literal,
-			[]imap.LabelID{mailboxID},
-		))
+		return messageID, literal, flags
+	})
+}
+
+func (s *testSession) batchMessageCreatedWithID(user string, mailboxID imap.LabelID, count int, createMessage func(int) (imap.MessageID, []byte, []string)) []imap.MessageID {
+	var messageIDs []imap.MessageID
+
+	messages := make([]imap.Message, 0, count)
+	literals := make([][]byte, 0, count)
+	mailboxes := make([][]imap.LabelID, 0, count)
+
+	for i := 0; i < count; i++ {
+		messageID, literal, flags := createMessage(i)
+
+		messages = append(messages, imap.Message{
+			ID:    messageID,
+			Flags: imap.NewFlagSetFromSlice(flags),
+			Date:  time.Now(),
+		})
+
+		literals = append(literals, literal)
+
+		mailboxes = append(mailboxes, []imap.LabelID{mailboxID})
 
 		messageIDs = append(messageIDs, messageID)
 	}
+
+	require.NoError(s.tb, s.conns[s.userIDs[user]].MessagesCreated(messages, literals, mailboxes))
+
 	s.conns[s.userIDs[user]].Flush()
 
 	return messageIDs

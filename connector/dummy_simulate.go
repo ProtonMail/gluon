@@ -1,6 +1,8 @@
 package connector
 
-import "github.com/ProtonMail/gluon/imap"
+import (
+	"github.com/ProtonMail/gluon/imap"
+)
 
 func (conn *Dummy) SetFolderPrefix(pfx string) {
 	defer conn.Flush()
@@ -80,6 +82,41 @@ func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs 
 	update := imap.NewMessagesCreated()
 
 	update.Add(message, literal, parsedMessage, mboxIDs...)
+
+	conn.pushUpdate(update)
+
+	return nil
+}
+
+func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, mboxIDs [][]imap.LabelID) error {
+	conn.state.lock.Lock()
+	defer conn.state.lock.Unlock()
+
+	update := imap.NewMessagesCreated()
+
+	for i := 0; i < len(messages); i++ {
+		parsedMessage, err := imap.NewParsedMessage(literals[i])
+		if err != nil {
+			return err
+		}
+
+		labelIDs := make(map[imap.LabelID]struct{})
+
+		for _, mboxID := range mboxIDs[i] {
+			labelIDs[mboxID] = struct{}{}
+		}
+
+		conn.state.messages[messages[i].ID] = &dummyMessage{
+			literal:       literals[i],
+			seen:          messages[i].Flags.Contains(imap.FlagSeen),
+			flagged:       messages[i].Flags.Contains(imap.FlagFlagged),
+			parsedMessage: parsedMessage,
+			date:          messages[i].Date,
+			labelIDs:      labelIDs,
+		}
+
+		update.Add(messages[i], literals[i], parsedMessage, mboxIDs[i]...)
+	}
 
 	conn.pushUpdate(update)
 

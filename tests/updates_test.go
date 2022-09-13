@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"testing"
 )
 
@@ -267,5 +269,24 @@ func TestMessageFlaggedUpdate(t *testing.T) {
 		// Unilateral updates arrive afterwards.
 		c.S(`* 1 FETCH (FLAGS (\Recent)`)
 		c.OK("A004")
+	})
+}
+
+func TestMessageAddWithSameID(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		mailboxID := s.mailboxCreated("user", []string{"mbox"})
+		flags := []string{imap.FlagFlagged, imap.FlagDraft, "\\foo", "\\bar", imap.AttrMarked}
+		messageID := imap.MessageID(utils.NewRandomMessageID())
+		s.batchMessageCreatedWithID("user", mailboxID, 2, func(i int) (imap.MessageID, []byte, []string) {
+			return messageID, []byte("to: 1@1.com"), flags
+		})
+
+		s.flush("user")
+
+		c.C("A001 SELECT mbox").OK("A001")
+
+		c.C("A003 FETCH 1 (FLAGS)")
+		c.S(`* 1 FETCH (FLAGS (\Draft \Flagged \Marked \Recent \bar \foo)`)
+		c.OK("A003")
 	})
 }
