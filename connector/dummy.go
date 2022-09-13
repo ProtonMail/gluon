@@ -156,6 +156,7 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, liter
 		parsedMessage,
 		flags.Contains(imap.FlagSeen),
 		flags.Contains(imap.FlagFlagged),
+		flags,
 		date,
 	)
 

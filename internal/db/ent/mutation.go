@@ -2817,14 +2817,16 @@ func (m *MessageMutation) ResetEdge(name string) error {
 // MessageFlagMutation represents an operation that mutates the MessageFlag nodes in the graph.
 type MessageFlagMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	_Value        *string
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*MessageFlag, error)
-	predicates    []predicate.MessageFlag
+	op              Op
+	typ             string
+	id              *int
+	_Value          *string
+	clearedFields   map[string]struct{}
+	messages        *imap.InternalMessageID
+	clearedmessages bool
+	done            bool
+	oldValue        func(context.Context) (*MessageFlag, error)
+	predicates      []predicate.MessageFlag
 }
 
 var _ ent.Mutation = (*MessageFlagMutation)(nil)
@@ -2961,6 +2963,45 @@ func (m *MessageFlagMutation) ResetValue() {
 	m._Value = nil
 }
 
+// SetMessagesID sets the "messages" edge to the Message entity by id.
+func (m *MessageFlagMutation) SetMessagesID(id imap.InternalMessageID) {
+	m.messages = &id
+}
+
+// ClearMessages clears the "messages" edge to the Message entity.
+func (m *MessageFlagMutation) ClearMessages() {
+	m.clearedmessages = true
+}
+
+// MessagesCleared reports if the "messages" edge to the Message entity was cleared.
+func (m *MessageFlagMutation) MessagesCleared() bool {
+	return m.clearedmessages
+}
+
+// MessagesID returns the "messages" edge ID in the mutation.
+func (m *MessageFlagMutation) MessagesID() (id imap.InternalMessageID, exists bool) {
+	if m.messages != nil {
+		return *m.messages, true
+	}
+	return
+}
+
+// MessagesIDs returns the "messages" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// MessagesID instead. It exists only for internal usage by the builders.
+func (m *MessageFlagMutation) MessagesIDs() (ids []imap.InternalMessageID) {
+	if id := m.messages; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetMessages resets all changes to the "messages" edge.
+func (m *MessageFlagMutation) ResetMessages() {
+	m.messages = nil
+	m.clearedmessages = false
+}
+
 // Where appends a list predicates to the MessageFlagMutation builder.
 func (m *MessageFlagMutation) Where(ps ...predicate.MessageFlag) {
 	m.predicates = append(m.predicates, ps...)
@@ -3079,49 +3120,77 @@ func (m *MessageFlagMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *MessageFlagMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.messages != nil {
+		edges = append(edges, messageflag.EdgeMessages)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *MessageFlagMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case messageflag.EdgeMessages:
+		if id := m.messages; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *MessageFlagMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *MessageFlagMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *MessageFlagMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedmessages {
+		edges = append(edges, messageflag.EdgeMessages)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *MessageFlagMutation) EdgeCleared(name string) bool {
+	switch name {
+	case messageflag.EdgeMessages:
+		return m.clearedmessages
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *MessageFlagMutation) ClearEdge(name string) error {
+	switch name {
+	case messageflag.EdgeMessages:
+		m.ClearMessages()
+		return nil
+	}
 	return fmt.Errorf("unknown MessageFlag unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *MessageFlagMutation) ResetEdge(name string) error {
+	switch name {
+	case messageflag.EdgeMessages:
+		m.ResetMessages()
+		return nil
+	}
 	return fmt.Errorf("unknown MessageFlag edge %s", name)
 }
 

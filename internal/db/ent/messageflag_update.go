@@ -10,6 +10,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/db/ent/predicate"
 )
@@ -33,9 +35,34 @@ func (mfu *MessageFlagUpdate) SetValue(s string) *MessageFlagUpdate {
 	return mfu
 }
 
+// SetMessagesID sets the "messages" edge to the Message entity by ID.
+func (mfu *MessageFlagUpdate) SetMessagesID(id imap.InternalMessageID) *MessageFlagUpdate {
+	mfu.mutation.SetMessagesID(id)
+	return mfu
+}
+
+// SetNillableMessagesID sets the "messages" edge to the Message entity by ID if the given value is not nil.
+func (mfu *MessageFlagUpdate) SetNillableMessagesID(id *imap.InternalMessageID) *MessageFlagUpdate {
+	if id != nil {
+		mfu = mfu.SetMessagesID(*id)
+	}
+	return mfu
+}
+
+// SetMessages sets the "messages" edge to the Message entity.
+func (mfu *MessageFlagUpdate) SetMessages(m *Message) *MessageFlagUpdate {
+	return mfu.SetMessagesID(m.ID)
+}
+
 // Mutation returns the MessageFlagMutation object of the builder.
 func (mfu *MessageFlagUpdate) Mutation() *MessageFlagMutation {
 	return mfu.mutation
+}
+
+// ClearMessages clears the "messages" edge to the Message entity.
+func (mfu *MessageFlagUpdate) ClearMessages() *MessageFlagUpdate {
+	mfu.mutation.ClearMessages()
+	return mfu
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -117,6 +144,41 @@ func (mfu *MessageFlagUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: messageflag.FieldValue,
 		})
 	}
+	if mfu.mutation.MessagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   messageflag.MessagesTable,
+			Columns: []string{messageflag.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: message.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := mfu.mutation.MessagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   messageflag.MessagesTable,
+			Columns: []string{messageflag.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: message.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, mfu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{messageflag.Label}
@@ -142,9 +204,34 @@ func (mfuo *MessageFlagUpdateOne) SetValue(s string) *MessageFlagUpdateOne {
 	return mfuo
 }
 
+// SetMessagesID sets the "messages" edge to the Message entity by ID.
+func (mfuo *MessageFlagUpdateOne) SetMessagesID(id imap.InternalMessageID) *MessageFlagUpdateOne {
+	mfuo.mutation.SetMessagesID(id)
+	return mfuo
+}
+
+// SetNillableMessagesID sets the "messages" edge to the Message entity by ID if the given value is not nil.
+func (mfuo *MessageFlagUpdateOne) SetNillableMessagesID(id *imap.InternalMessageID) *MessageFlagUpdateOne {
+	if id != nil {
+		mfuo = mfuo.SetMessagesID(*id)
+	}
+	return mfuo
+}
+
+// SetMessages sets the "messages" edge to the Message entity.
+func (mfuo *MessageFlagUpdateOne) SetMessages(m *Message) *MessageFlagUpdateOne {
+	return mfuo.SetMessagesID(m.ID)
+}
+
 // Mutation returns the MessageFlagMutation object of the builder.
 func (mfuo *MessageFlagUpdateOne) Mutation() *MessageFlagMutation {
 	return mfuo.mutation
+}
+
+// ClearMessages clears the "messages" edge to the Message entity.
+func (mfuo *MessageFlagUpdateOne) ClearMessages() *MessageFlagUpdateOne {
+	mfuo.mutation.ClearMessages()
+	return mfuo
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -255,6 +342,41 @@ func (mfuo *MessageFlagUpdateOne) sqlSave(ctx context.Context) (_node *MessageFl
 			Value:  value,
 			Column: messageflag.FieldValue,
 		})
+	}
+	if mfuo.mutation.MessagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   messageflag.MessagesTable,
+			Columns: []string{messageflag.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: message.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := mfuo.mutation.MessagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   messageflag.MessagesTable,
+			Columns: []string{messageflag.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: message.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &MessageFlag{config: mfuo.config}
 	_spec.Assign = _node.assignValues

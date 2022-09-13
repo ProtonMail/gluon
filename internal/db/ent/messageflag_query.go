@@ -10,6 +10,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/db/ent/predicate"
 )
@@ -17,13 +19,14 @@ import (
 // MessageFlagQuery is the builder for querying MessageFlag entities.
 type MessageFlagQuery struct {
 	config
-	limit      *int
-	offset     *int
-	unique     *bool
-	order      []OrderFunc
-	fields     []string
-	predicates []predicate.MessageFlag
-	withFKs    bool
+	limit        *int
+	offset       *int
+	unique       *bool
+	order        []OrderFunc
+	fields       []string
+	predicates   []predicate.MessageFlag
+	withMessages *MessageQuery
+	withFKs      bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -58,6 +61,28 @@ func (mfq *MessageFlagQuery) Unique(unique bool) *MessageFlagQuery {
 func (mfq *MessageFlagQuery) Order(o ...OrderFunc) *MessageFlagQuery {
 	mfq.order = append(mfq.order, o...)
 	return mfq
+}
+
+// QueryMessages chains the current query on the "messages" edge.
+func (mfq *MessageFlagQuery) QueryMessages() *MessageQuery {
+	query := &MessageQuery{config: mfq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := mfq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := mfq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(messageflag.Table, messageflag.FieldID, selector),
+			sqlgraph.To(message.Table, message.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, messageflag.MessagesTable, messageflag.MessagesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(mfq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first MessageFlag entity from the query.
@@ -236,16 +261,28 @@ func (mfq *MessageFlagQuery) Clone() *MessageFlagQuery {
 		return nil
 	}
 	return &MessageFlagQuery{
-		config:     mfq.config,
-		limit:      mfq.limit,
-		offset:     mfq.offset,
-		order:      append([]OrderFunc{}, mfq.order...),
-		predicates: append([]predicate.MessageFlag{}, mfq.predicates...),
+		config:       mfq.config,
+		limit:        mfq.limit,
+		offset:       mfq.offset,
+		order:        append([]OrderFunc{}, mfq.order...),
+		predicates:   append([]predicate.MessageFlag{}, mfq.predicates...),
+		withMessages: mfq.withMessages.Clone(),
 		// clone intermediate query.
 		sql:    mfq.sql.Clone(),
 		path:   mfq.path,
 		unique: mfq.unique,
 	}
+}
+
+// WithMessages tells the query-builder to eager-load the nodes that are connected to
+// the "messages" edge. The optional arguments are used to configure the query builder of the edge.
+func (mfq *MessageFlagQuery) WithMessages(opts ...func(*MessageQuery)) *MessageFlagQuery {
+	query := &MessageQuery{config: mfq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	mfq.withMessages = query
+	return mfq
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -316,10 +353,16 @@ func (mfq *MessageFlagQuery) prepareQuery(ctx context.Context) error {
 
 func (mfq *MessageFlagQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*MessageFlag, error) {
 	var (
-		nodes   = []*MessageFlag{}
-		withFKs = mfq.withFKs
-		_spec   = mfq.querySpec()
+		nodes       = []*MessageFlag{}
+		withFKs     = mfq.withFKs
+		_spec       = mfq.querySpec()
+		loadedTypes = [1]bool{
+			mfq.withMessages != nil,
+		}
 	)
+	if mfq.withMessages != nil {
+		withFKs = true
+	}
 	if withFKs {
 		_spec.Node.Columns = append(_spec.Node.Columns, messageflag.ForeignKeys...)
 	}
@@ -329,6 +372,7 @@ func (mfq *MessageFlagQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	_spec.Assign = func(columns []string, values []interface{}) error {
 		node := &MessageFlag{config: mfq.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -340,7 +384,43 @@ func (mfq *MessageFlagQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := mfq.withMessages; query != nil {
+		if err := mfq.loadMessages(ctx, query, nodes, nil,
+			func(n *MessageFlag, e *Message) { n.Edges.Messages = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (mfq *MessageFlagQuery) loadMessages(ctx context.Context, query *MessageQuery, nodes []*MessageFlag, init func(*MessageFlag), assign func(*MessageFlag, *Message)) error {
+	ids := make([]imap.InternalMessageID, 0, len(nodes))
+	nodeids := make(map[imap.InternalMessageID][]*MessageFlag)
+	for i := range nodes {
+		if nodes[i].message_flags == nil {
+			continue
+		}
+		fk := *nodes[i].message_flags
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	query.Where(message.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "message_flags" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
 }
 
 func (mfq *MessageFlagQuery) sqlCount(ctx context.Context) (int, error) {

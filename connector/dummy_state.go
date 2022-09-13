@@ -32,6 +32,7 @@ type dummyMessage struct {
 	seen          bool
 	flagged       bool
 	date          time.Time
+	flags         imap.FlagSet
 
 	labelIDs map[imap.LabelID]struct{}
 }
@@ -167,17 +168,26 @@ func (state *dummyState) getLiteral(messageID imap.MessageID) []byte {
 	return state.messages[messageID].literal
 }
 
-func (state *dummyState) createMessage(mboxID imap.LabelID, literal []byte, parsedMessage *imap.ParsedMessage, seen, flagged bool, date time.Time) imap.Message {
+func (state *dummyState) createMessage(mboxID imap.LabelID, literal []byte, parsedMessage *imap.ParsedMessage, seen, flagged bool, otherFlags imap.FlagSet, date time.Time) imap.Message {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
 	messageID := imap.MessageID(uuid.NewString())
+
+	if seen {
+		otherFlags = otherFlags.Remove(imap.FlagSeen)
+	}
+
+	if flagged {
+		otherFlags = otherFlags.Remove(imap.FlagFlagged)
+	}
 
 	state.messages[messageID] = &dummyMessage{
 		literal:       literal,
 		seen:          seen,
 		parsedMessage: parsedMessage,
 		flagged:       flagged,
+		flags:         otherFlags,
 		date:          date,
 		labelIDs:      map[imap.LabelID]struct{}{mboxID: {}},
 	}
@@ -251,6 +261,8 @@ func (state *dummyState) toMessage(messageID imap.MessageID) imap.Message {
 	if state.messages[messageID].flagged {
 		flags = flags.Add(imap.FlagFlagged)
 	}
+
+	flags = flags.AddFlagSet(state.messages[messageID].flags)
 
 	return imap.Message{
 		ID:    messageID,

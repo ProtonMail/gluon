@@ -9,6 +9,8 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 )
 
@@ -23,6 +25,25 @@ type MessageFlagCreate struct {
 func (mfc *MessageFlagCreate) SetValue(s string) *MessageFlagCreate {
 	mfc.mutation.SetValue(s)
 	return mfc
+}
+
+// SetMessagesID sets the "messages" edge to the Message entity by ID.
+func (mfc *MessageFlagCreate) SetMessagesID(id imap.InternalMessageID) *MessageFlagCreate {
+	mfc.mutation.SetMessagesID(id)
+	return mfc
+}
+
+// SetNillableMessagesID sets the "messages" edge to the Message entity by ID if the given value is not nil.
+func (mfc *MessageFlagCreate) SetNillableMessagesID(id *imap.InternalMessageID) *MessageFlagCreate {
+	if id != nil {
+		mfc = mfc.SetMessagesID(*id)
+	}
+	return mfc
+}
+
+// SetMessages sets the "messages" edge to the Message entity.
+func (mfc *MessageFlagCreate) SetMessages(m *Message) *MessageFlagCreate {
+	return mfc.SetMessagesID(m.ID)
 }
 
 // Mutation returns the MessageFlagMutation object of the builder.
@@ -138,6 +159,26 @@ func (mfc *MessageFlagCreate) createSpec() (*MessageFlag, *sqlgraph.CreateSpec) 
 			Column: messageflag.FieldValue,
 		})
 		_node.Value = value
+	}
+	if nodes := mfc.mutation.MessagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   messageflag.MessagesTable,
+			Columns: []string{messageflag.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: message.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.message_flags = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

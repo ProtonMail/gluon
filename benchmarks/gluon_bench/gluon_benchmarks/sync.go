@@ -98,7 +98,7 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 		parsedMessages[i] = pmsg
 	}
 
-	flagSet := imap.NewFlagSet("\\Recent")
+	flagSet := imap.NewFlagSet("\\Recent", "\\Draft", "\\Foo")
 
 	s.mailboxes = make([]imap.LabelID, 0, len(mboxIDs))
 

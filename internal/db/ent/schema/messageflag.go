@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
@@ -19,5 +20,5 @@ func (MessageFlag) Fields() []ent.Field {
 
 // Edges of the Flag.
 func (MessageFlag) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{edge.From("messages", Message.Type).Ref("flags").Unique()}
 }
