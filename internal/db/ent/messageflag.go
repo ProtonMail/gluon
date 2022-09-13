@@ -8,6 +8,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 )
 
@@ -17,8 +18,33 @@ type MessageFlag struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// Value holds the value of the "Value" field.
-	Value         string `json:"Value,omitempty"`
+	Value string `json:"Value,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the MessageFlagQuery when eager-loading is set.
+	Edges         MessageFlagEdges `json:"edges"`
 	message_flags *imap.InternalMessageID
+}
+
+// MessageFlagEdges holds the relations/edges for other nodes in the graph.
+type MessageFlagEdges struct {
+	// Messages holds the value of the messages edge.
+	Messages *Message `json:"messages,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// MessagesOrErr returns the Messages value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e MessageFlagEdges) MessagesOrErr() (*Message, error) {
+	if e.loadedTypes[0] {
+		if e.Messages == nil {
+			// Edge was loaded but was not found.
+			return nil, &NotFoundError{label: message.Label}
+		}
+		return e.Messages, nil
+	}
+	return nil, &NotLoadedError{edge: "messages"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -69,6 +95,11 @@ func (mf *MessageFlag) assignValues(columns []string, values []interface{}) erro
 		}
 	}
 	return nil
+}
+
+// QueryMessages queries the "messages" edge of the MessageFlag entity.
+func (mf *MessageFlag) QueryMessages() *MessageQuery {
+	return (&MessageFlagClient{config: mf.config}).QueryMessages(mf)
 }
 
 // Update returns a builder for updating this MessageFlag.

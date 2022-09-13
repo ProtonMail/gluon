@@ -798,6 +798,22 @@ func (c *MessageFlagClient) GetX(ctx context.Context, id int) *MessageFlag {
 	return obj
 }
 
+// QueryMessages queries the messages edge of a MessageFlag.
+func (c *MessageFlagClient) QueryMessages(mf *MessageFlag) *MessageQuery {
+	query := &MessageQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := mf.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(messageflag.Table, messageflag.FieldID, id),
+			sqlgraph.To(message.Table, message.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, messageflag.MessagesTable, messageflag.MessagesColumn),
+		)
+		fromV = sqlgraph.Neighbors(mf.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *MessageFlagClient) Hooks() []Hook {
 	return c.hooks.MessageFlag

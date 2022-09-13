@@ -4,6 +4,7 @@ package messageflag
 
 import (
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/ProtonMail/gluon/internal/db/ent/predicate"
 )
 
@@ -181,6 +182,34 @@ func ValueEqualFold(v string) predicate.MessageFlag {
 func ValueContainsFold(v string) predicate.MessageFlag {
 	return predicate.MessageFlag(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldValue), v))
+	})
+}
+
+// HasMessages applies the HasEdge predicate on the "messages" edge.
+func HasMessages() predicate.MessageFlag {
+	return predicate.MessageFlag(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(MessagesTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, MessagesTable, MessagesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMessagesWith applies the HasEdge predicate on the "messages" edge with a given conditions (other predicates).
+func HasMessagesWith(preds ...predicate.Message) predicate.MessageFlag {
+	return predicate.MessageFlag(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(MessagesInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, MessagesTable, MessagesColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
 	})
 }
 
