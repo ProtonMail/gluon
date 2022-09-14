@@ -150,87 +150,6 @@ type CreateAndAddMessagesResult struct {
 	MessageID ids.MessageIDPair
 }
 
-func CreateAndAddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, requests []*CreateMessageReq) ([]CreateAndAddMessagesResult, error) {
-	mbox, err := tx.Mailbox.Query().Where(mailbox.ID(mboxID)).Select(mailbox.FieldID, mailbox.FieldUIDNext).Only(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	msgBuilders := make([]*ent.MessageCreate, 0, len(requests))
-	flags := make([][]*ent.MessageFlag, 0, len(requests))
-
-	for _, request := range requests {
-		builders := xslices.Map(request.Message.Flags.ToSlice(), func(flag string) *ent.MessageFlagCreate {
-			return tx.MessageFlag.Create().SetValue(flag)
-		})
-
-		entFlags, err := tx.MessageFlag.CreateBulk(builders...).Save(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		flags = append(flags, entFlags)
-
-		msgCreate := tx.Message.Create().
-			SetID(request.InternalID).
-			SetDate(request.Message.Date).
-			SetBody(request.Body).
-			SetBodyStructure(request.Structure).
-			SetEnvelope(request.Envelope).
-			SetSize(len(request.Literal)).
-			AddFlags(entFlags...)
-
-		if len(request.Message.ID) != 0 {
-			msgCreate = msgCreate.SetRemoteID(request.Message.ID)
-		}
-
-		msgBuilders = append(msgBuilders, msgCreate)
-	}
-
-	messages, err := tx.Message.CreateBulk(msgBuilders...).Save(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	uidBuilders := make([]*ent.UIDCreate, 0, len(requests))
-
-	for i, message := range messages {
-		uidBuilders = append(uidBuilders, tx.UID.Create().
-			SetMailboxID(mbox.ID).
-			SetMessageID(message.ID).
-			SetUID(mbox.UIDNext.Add(uint32(i))),
-		)
-	}
-
-	uids, err := tx.UID.CreateBulk(uidBuilders...).Save(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := BumpMailboxUIDNext(ctx, tx, mbox, len(requests)); err != nil {
-		return nil, err
-	}
-
-	result := make([]CreateAndAddMessagesResult, 0, len(requests))
-
-	for i := 0; i < len(requests); i++ {
-		if uids[i].UID != mbox.UIDNext.Add(uint32(i)) {
-			panic("Invalid UID ")
-		}
-
-		result = append(result, CreateAndAddMessagesResult{
-			MessageID: ids.MessageIDPair{
-				InternalID: messages[i].ID,
-				RemoteID:   messages[i].RemoteID,
-			},
-			UID:   uids[i].UID,
-			Flags: NewFlagSet(uids[i], flags[i]),
-		})
-	}
-
-	return result, err
-}
-
 func BumpMailboxUIDsForMessage(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) (map[imap.InternalMessageID]*ent.UID, error) {
 	messageUIDs := make(map[imap.InternalMessageID]imap.UID)
 
@@ -558,12 +477,11 @@ func GetMessageIDsMarkedDeleted(ctx context.Context, client *ent.Client) ([]imap
 }
 
 func HasMessageWithID(ctx context.Context, client *ent.Client, id imap.InternalMessageID) (bool, error) {
-	count, err := client.Message.Query().Where(message.ID(id)).Count(ctx)
-	if err != nil {
-		return false, err
-	}
+	return client.Message.Query().Where(message.ID(id)).Exist(ctx)
+}
 
-	return count > 0, nil
+func HasMessageWithRemoteID(ctx context.Context, client *ent.Client, id imap.MessageID) (bool, error) {
+	return client.Message.Query().Where(message.RemoteID(id)).Exist(ctx)
 }
 
 func GetMessageIDFromRemoteID(ctx context.Context, client *ent.Client, id imap.MessageID) (imap.InternalMessageID, error) {

@@ -290,3 +290,15 @@ func TestMessageAddWithSameID(t *testing.T) {
 		c.OK("A003")
 	})
 }
+
+func TestBatchMessageAddedWithMultipleFlags(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		mailboxID := s.mailboxCreated("user", []string{"mbox"})
+		flags := []string{imap.FlagFlagged, imap.FlagDraft, "\\foo", "\\bar", imap.AttrMarked}
+		s.batchMessageCreated("user", mailboxID, 2, func(i int) ([]byte, []string) {
+			return []byte("to: 1@1.com"), flags
+		})
+
+		s.flush("user")
+	})
+}
