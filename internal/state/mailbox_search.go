@@ -222,10 +222,7 @@ func (m *Mailbox) matchSearchKeyBody(ctx context.Context, candidates []*snapMsg,
 			return false, err
 		}
 
-		section, err := rfc822.Parse(literal)
-		if err != nil {
-			return false, err
-		}
+		section := rfc822.Parse(literal)
 
 		b, err := decoder.Bytes(key.GetText())
 		if err != nil {

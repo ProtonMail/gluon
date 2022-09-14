@@ -243,8 +243,7 @@ Content-ID: <>
 func TestSplitHeaderBody(t *testing.T) {
 	const literal = "To: user@pm.me\r\n\r\nhi\r\n"
 
-	header, body, err := Split([]byte(literal))
-	require.NoError(t, err)
+	header, body := Split([]byte(literal))
 
 	assert.Equal(t, []byte("To: user@pm.me\r\n\r\n"), header)
 	assert.Equal(t, []byte("hi\r\n"), body)
@@ -253,8 +252,7 @@ func TestSplitHeaderBody(t *testing.T) {
 func TestSplitHeaderBodyNoBody(t *testing.T) {
 	const literal = "To: user@pm.me\r\n\r\n"
 
-	header, body, err := Split([]byte(literal))
-	require.NoError(t, err)
+	header, body := Split([]byte(literal))
 
 	assert.Equal(t, []byte("To: user@pm.me\r\n\r\n"), header)
 	assert.Equal(t, []byte(""), body)
@@ -263,8 +261,7 @@ func TestSplitHeaderBodyNoBody(t *testing.T) {
 func TestSplitHeaderBodyOnlyHeader(t *testing.T) {
 	const literal = "To: user@pm.me\r\n"
 
-	header, body, err := Split([]byte(literal))
-	require.NoError(t, err)
+	header, body := Split([]byte(literal))
 
 	assert.Equal(t, []byte("To: user@pm.me\r\n"), header)
 	assert.Equal(t, []byte(""), body)
@@ -273,8 +270,7 @@ func TestSplitHeaderBodyOnlyHeader(t *testing.T) {
 func TestSplitHeaderBodyOnlyHeaderNoNewline(t *testing.T) {
 	const literal = "To: user@pm.me"
 
-	header, body, err := Split([]byte(literal))
-	require.NoError(t, err)
+	header, body := Split([]byte(literal))
 
 	assert.Equal(t, []byte("To: user@pm.me"), header)
 	assert.Equal(t, []byte(""), body)

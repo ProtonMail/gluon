@@ -13,10 +13,7 @@ type ParsedMessage struct {
 }
 
 func NewParsedMessage(literal []byte) (*ParsedMessage, error) {
-	root, err := rfc822.Parse(literal)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse message literal: %w", err)
-	}
+	root := rfc822.Parse(literal)
 
 	body, err := Structure(root, false)
 	if err != nil {

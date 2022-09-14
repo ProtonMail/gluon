@@ -21,10 +21,7 @@ func Encrypt(kr *crypto.KeyRing, r io.Reader) ([]byte, error) {
 		return nil, err
 	}
 
-	header, body, err := Split(b)
-	if err != nil {
-		return nil, err
-	}
+	header, body := Split(b)
 
 	buf := new(bytes.Buffer)
 
@@ -168,10 +165,7 @@ func writeEncryptedMultiPart(kr *crypto.KeyRing, w io.Writer, header *Header, r 
 	multipartWriter := NewMultipartWriter(w, contentParams["boundary"])
 
 	for _, part := range parts {
-		header, body, err := Split(part.Data)
-		if err != nil {
-			return err
-		}
+		header, body := Split(part.Data)
 
 		headerParsed, err := ParseHeader(header)
 		if err != nil {
