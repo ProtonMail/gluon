@@ -143,96 +143,95 @@ func (user *user) applyMailboxIDChanged(ctx context.Context, update *imap.Mailbo
 
 // applyMessagesCreated applies a MessagesCreated update.
 func (user *user) applyMessagesCreated(ctx context.Context, update *imap.MessagesCreated) error {
-	var updates []*imap.MessageCreated
+	// collect all unique messages to create
+	messagesToCreate := make([]*db.CreateMessageReq, 0, len(update.Messages))
+	messagesToCreateFilter := make(map[imap.MessageID]imap.InternalMessageID, len(update.Messages)/2)
+	messageForMBox := make(map[imap.InternalMailboxID][]imap.InternalMessageID)
+	mboxInternalIDMap := make(map[imap.LabelID]imap.InternalMailboxID)
 
 	if err := user.db.Read(ctx, func(ctx context.Context, client *ent.Client) error {
-		for _, update := range update.Messages {
-			if exists, err := db.MessageExistsWithRemoteID(ctx, client, update.Message.ID); err != nil {
-				return err
-			} else if !exists {
-				updates = append(updates, update)
+		for _, message := range update.Messages {
+			internalID, ok := messagesToCreateFilter[message.Message.ID]
+			if !ok {
+				_, err := db.GetMessageIDFromRemoteID(ctx, client, message.Message.ID)
+				if ent.IsNotFound(err) {
+					internalID = imap.InternalMessageID(uuid.NewString())
+				} else {
+					return err
+				}
+
+				literal, err := rfc822.SetHeaderValue(message.Literal, ids.InternalIDKey, string(internalID))
+				if err != nil {
+					return fmt.Errorf("failed to set internal ID: %w", err)
+				}
+
+				request := &db.CreateMessageReq{
+					Message:    message.Message,
+					Literal:    literal,
+					Body:       message.ParsedMessage.Body,
+					Structure:  message.ParsedMessage.Structure,
+					Envelope:   message.ParsedMessage.Envelope,
+					InternalID: internalID,
+				}
+
+				messagesToCreate = append(messagesToCreate, request)
+				messagesToCreateFilter[message.Message.ID] = internalID
+			}
+
+			for _, mboxID := range message.MailboxIDs {
+				v, ok := mboxInternalIDMap[mboxID]
+				if !ok {
+					internalMBoxID, err := db.GetMailboxIDWithRemoteID(ctx, client, mboxID)
+					if err != nil {
+						return err
+					}
+
+					v = internalMBoxID
+					mboxInternalIDMap[mboxID] = v
+				}
+
+				messageList, ok := messageForMBox[v]
+				if !ok {
+					messageList = []imap.InternalMessageID{}
+					messageForMBox[v] = messageList
+				}
+
+				if !slices.Contains(messageList, internalID) {
+					messageList = append(messageList, internalID)
+					messageForMBox[v] = messageList
+				}
 			}
 		}
-
 		return nil
 	}); err != nil {
 		return err
 	}
 
-	remoteMessageRequestsMap := make(map[imap.MessageID]*db.CreateMessageReq, len(updates))
+	if len(messagesToCreate) == 0 && len(messageForMBox) == 0 {
+		return nil
+	}
 
 	const maxUpdateChunk = 1000
-
-	chunkedUpdates := xslices.Chunk(updates, maxUpdateChunk)
-
-	for _, chunk := range chunkedUpdates {
-		messagesForMailboxes := make(map[imap.InternalMailboxID][]*db.CreateMessageReq)
-
+	// We sadly have to split this up into two separate transactions where we create the messages and one where we
+	// assign them to the mailbox. There's an upper limit to the number of items badger can track in one transaction.
+	// This way we can keep the database consistent.
+	for _, chunk := range xslices.Chunk(messagesToCreate, maxUpdateChunk) {
 		if err := db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, storeTx store.Transaction) error {
-			for _, update := range chunk {
-
-				var request *db.CreateMessageReq
-
-				// Do not reprocess the message if we have previously processed it.
-				if req, ok := remoteMessageRequestsMap[update.Message.ID]; ok {
-					request = req
-				} else {
-
-					internalID := uuid.NewString()
-
-					literal, err := rfc822.SetHeaderValue(update.Literal, ids.InternalIDKey, internalID)
-					if err != nil {
-						return fmt.Errorf("failed to set internal ID: %w", err)
-					}
-
-					if err := storeTx.Set(imap.InternalMessageID(internalID), literal); err != nil {
-						return fmt.Errorf("failed to store message literal: %w", err)
-					}
-
-					request = &db.CreateMessageReq{
-						Message:    update.Message,
-						Literal:    literal,
-						Body:       update.ParsedMessage.Body,
-						Structure:  update.ParsedMessage.Structure,
-						Envelope:   update.ParsedMessage.Envelope,
-						InternalID: imap.InternalMessageID(internalID),
-					}
-
-					remoteMessageRequestsMap[update.Message.ID] = request
+			// Create messages in the store
+			for _, msg := range chunk {
+				literalWithHeader, err := rfc822.SetHeaderValue(msg.Literal, ids.InternalIDKey, string(msg.InternalID))
+				if err != nil {
+					return fmt.Errorf("failed to set internal ID: %w", err)
 				}
 
-				for _, mbox := range update.MailboxIDs {
-					internalMailboxID, err := db.GetMailboxIDWithRemoteID(ctx, tx.Client(), mbox)
-					if err != nil {
-						return err
-					}
-
-					existingRequests := messagesForMailboxes[internalMailboxID]
-
-					var alreadyPresent bool
-
-					for _, e := range existingRequests {
-						if e.Message.ID == request.Message.ID {
-							alreadyPresent = true
-							break
-						}
-					}
-
-					if alreadyPresent {
-						continue
-					}
-
-					messagesForMailboxes[internalMailboxID] = append(messagesForMailboxes[internalMailboxID], request)
+				if err := storeTx.Set(msg.InternalID, literalWithHeader); err != nil {
+					return fmt.Errorf("failed to store message literal: %w", err)
 				}
 			}
 
-			for mbox, request := range messagesForMailboxes {
-				result, err := db.CreateAndAddMessagesToMailbox(ctx, tx, mbox, request)
-				if err != nil {
-					return err
-				}
-
-				user.queueStateUpdate(state.NewExistsStateUpdate(mbox, result, nil))
+			// Create message in the database
+			if _, err := db.CreateMessages(ctx, tx, chunk...); err != nil {
+				return err
 			}
 
 			return nil
@@ -241,7 +240,19 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 		}
 	}
 
-	return nil
+	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		// Assign all the messages to the mailbox
+		for mboxID, msgList := range messageForMBox {
+			for _, chunk := range xslices.Chunk(msgList, maxUpdateChunk) {
+				if _, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, chunk); err != nil {
+					return err
+				}
+			}
+
+		}
+
+		return nil
+	})
 }
 
 // applyMessageLabelsUpdated applies a MessageLabelsUpdated update.
