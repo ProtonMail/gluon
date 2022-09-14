@@ -170,10 +170,7 @@ func (m *Mailbox) fetchRFC822Header(messageID imap.InternalMessageID) (response.
 		return nil, err
 	}
 
-	section, err := rfc822.Parse(literal)
-	if err != nil {
-		return nil, err
-	}
+	section := rfc822.Parse(literal)
 
 	return response.ItemRFC822Header(section.Header()), nil
 }
@@ -184,10 +181,7 @@ func (m *Mailbox) fetchRFC822Text(messageID imap.InternalMessageID) (response.It
 		return nil, err
 	}
 
-	section, err := rfc822.Parse(literal)
-	if err != nil {
-		return nil, err
-	}
+	section := rfc822.Parse(literal)
 
 	return response.ItemRFC822Text(section.Body()), nil
 }
@@ -229,10 +223,7 @@ func (m *Mailbox) fetchBodyLiteral(body *proto.FetchBody, literal []byte) ([]byt
 }
 
 func (m *Mailbox) fetchBodySection(section *proto.BodySection, literal []byte) ([]byte, error) {
-	root, err := rfc822.Parse(literal)
-	if err != nil {
-		return nil, err
-	}
+	root := rfc822.Parse(literal)
 
 	if parts := intParts(section.Parts); len(parts) > 0 {
 		root = root.Part(parts...)
@@ -252,9 +243,7 @@ func (m *Mailbox) fetchBodySection(section *proto.BodySection, literal []byte) (
 			}
 
 			if rfc822.MIMEType(contentType) == rfc822.MessageRFC822 {
-				if root, err = rfc822.Parse(root.Body()); err != nil {
-					return nil, err
-				}
+				root = rfc822.Parse(root.Body())
 			}
 		}
 

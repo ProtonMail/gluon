@@ -14,8 +14,7 @@ func TestEnvelope(t *testing.T) {
 	b, err := os.ReadFile("testdata/envelope.eml")
 	require.NoError(t, err)
 
-	root, err := rfc822.Parse(b)
-	require.NoError(t, err)
+	root := rfc822.Parse(b)
 
 	header, err := root.ParseHeader()
 	require.NoError(t, err)

@@ -1,10 +1,7 @@
 package rfc822
 
 import (
-	"bufio"
 	"bytes"
-	"errors"
-	"io"
 	"strings"
 )
 
@@ -18,7 +15,7 @@ type Section struct {
 	children     []*Section
 }
 
-func Parse(literal []byte) (*Section, error) {
+func Parse(literal []byte) *Section {
 	return parse(literal, []int{}, 0, len(literal))
 }
 
@@ -93,15 +90,12 @@ func (section *Section) load() error {
 	}
 
 	if MIMEType(contentType) == MessageRFC822 {
-		child, err := parse(
+		child := parse(
 			section.literal[section.body:section.end],
 			section.identifier,
 			0,
 			section.end-section.body,
 		)
-		if err != nil {
-			return err
-		}
 
 		if err := child.load(); err != nil {
 			return err
@@ -120,15 +114,12 @@ func (section *Section) load() error {
 		}
 
 		for idx, res := range res {
-			child, err := parse(
+			child := parse(
 				section.literal,
 				append(section.identifier, idx+1),
 				section.body+res.Offset,
 				section.body+res.Offset+len(res.Data),
 			)
-			if err != nil {
-				return err
-			}
 
 			section.children = append(section.children, child)
 		}
@@ -137,45 +128,32 @@ func (section *Section) load() error {
 	return nil
 }
 
-func Split(b []byte) ([]byte, []byte, error) {
-	br := bufio.NewReader(bytes.NewReader(b))
+func Split(b []byte) ([]byte, []byte) {
+	remaining := b
+	splitIndex := int(0)
+	separator := []byte{'\n'}
 
-	var header []byte
-
-	for {
-		b, err := br.ReadBytes('\n')
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				panic(err)
-			}
-
-			if len(b) > 0 {
-				header = append(header, b...)
-			}
-
+	for len(remaining) != 0 {
+		index := bytes.Index(remaining, separator)
+		if index < 0 {
+			splitIndex += len(remaining)
 			break
 		}
 
-		header = append(header, b...)
+		splitIndex += index + 1
 
-		if len(bytes.Trim(b, "\r\n")) == 0 {
+		if len(bytes.Trim(remaining[0:index], "\r\n")) == 0 {
 			break
 		}
+
+		remaining = remaining[index+1:]
 	}
 
-	body, err := io.ReadAll(br)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return header, body, nil
+	return b[0:splitIndex], b[splitIndex:]
 }
 
-func parse(literal []byte, identifier []int, begin, end int) (*Section, error) {
-	header, _, err := Split(literal[begin:end])
-	if err != nil {
-		return nil, err
-	}
+func parse(literal []byte, identifier []int, begin, end int) *Section {
+	header, _ := Split(literal[begin:end])
 
 	return &Section{
 		identifier: identifier,
@@ -183,5 +161,5 @@ func parse(literal []byte, identifier []int, begin, end int) (*Section, error) {
 		header:     begin,
 		body:       begin + len(header),
 		end:        end,
-	}, nil
+	}
 }

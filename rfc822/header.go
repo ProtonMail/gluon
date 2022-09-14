@@ -174,10 +174,7 @@ func (h *Header) Entries(fn func(key, val string)) {
 
 // SetHeaderValue is a helper method that sets a header value in a message literal.
 func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
-	rawHeader, body, err := Split(literal)
-	if err != nil {
-		return nil, err
-	}
+	rawHeader, body := Split(literal)
 
 	header, err := ParseHeader(rawHeader)
 	if err != nil {
@@ -191,10 +188,7 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 
 // GetHeaderValue is a helper method that queries a header value in a message literal.
 func GetHeaderValue(literal []byte, key string) (string, error) {
-	rawHeader, _, err := Split(literal)
-	if err != nil {
-		return "", err
-	}
+	rawHeader, _ := Split(literal)
 
 	header, err := ParseHeader(rawHeader)
 	if err != nil {

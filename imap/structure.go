@@ -79,10 +79,7 @@ func singlePartStructure(section *rfc822.Section, ext bool) (fmt.Stringer, error
 		add(len(section.Body()))
 
 	if mimeType == "message" && mimeSubType == "rfc822" {
-		child, err := rfc822.Parse(section.Body())
-		if err != nil {
-			return nil, err
-		}
+		child := rfc822.Parse(section.Body())
 
 		header, err := child.ParseHeader()
 		if err != nil {

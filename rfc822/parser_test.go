@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestParseNestedMultipartMixed(t *testing.T) {
@@ -42,8 +41,7 @@ This part does end with a linebreak.
 This is the epilogue.  It is also to be ignored.
 `
 
-	section, err := Parse([]byte(literal))
-	require.NoError(t, err)
+	section := Parse([]byte(literal))
 
 	assert.Equal(t, literal, string(section.Literal()))
 
@@ -118,8 +116,7 @@ This part is also embedded
 This is the epilogue.  It is also to be ignored.
 `
 
-	section, err := Parse([]byte(literal))
-	require.NoError(t, err)
+	section := Parse([]byte(literal))
 
 	assert.Equal(t, literal, string(section.Literal()))
 
@@ -176,8 +173,7 @@ So when they com back to port they can
 Scandinavian
 `
 
-	section, err := Parse([]byte(literal))
-	require.NoError(t, err)
+	section := Parse([]byte(literal))
 
 	assert.Equal(t, literal, string(section.Literal()))
 
