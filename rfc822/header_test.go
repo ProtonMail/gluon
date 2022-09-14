@@ -209,13 +209,13 @@ func TestParseHeaderMultilineFilenameWithColonAndNewline(t *testing.T) {
 }
 
 func TestParseHeaderMultilineIndent(t *testing.T) {
-	const literal = "Subject: a very\r\n\tlong: line with a colon and indent\r\n \r\nand space line\r\nFrom: sender\r\n"
+	const literal = "Subject: a very\r\n\tlong: line with a colon and indent\r\n \r\n and space line\r\nFrom: sender\r\n"
 
 	header, err := ParseHeader([]byte(literal))
 	require.NoError(t, err)
 
 	assert.Equal(t, [][]byte{
-		[]byte("Subject: a very\r\n\tlong: line with a colon and indent\r\n \r\nand space line\r\n"),
+		[]byte("Subject: a very\r\n\tlong: line with a colon and indent\r\n \r\n and space line\r\n"),
 		[]byte("From: sender\r\n"),
 	}, header.lines)
 }
@@ -274,4 +274,12 @@ func TestSplitHeaderBodyOnlyHeaderNoNewline(t *testing.T) {
 
 	assert.Equal(t, []byte("To: user@pm.me"), header)
 	assert.Equal(t, []byte(""), body)
+}
+
+func TestParseHeaderWithPrelude(t *testing.T) {
+	const literal = "From cras@irccrew.org  Tue Aug  6 13:34:34 2002\r\nTo: user@pm.me"
+	header, err := ParseHeader([]byte(literal))
+	require.NoError(t, err)
+
+	assert.Equal(t, header.Get("to"), "user@pm.me")
 }

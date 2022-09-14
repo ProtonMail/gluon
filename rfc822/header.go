@@ -2,6 +2,9 @@ package rfc822
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
+	"io"
 	"net/textproto"
 	"regexp"
 	"strings"
@@ -190,64 +193,166 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 func GetHeaderValue(literal []byte, key string) (string, error) {
 	rawHeader, _ := Split(literal)
 
-	header, err := ParseHeader(rawHeader)
-	if err != nil {
-		return "", err
-	}
-
-	return header.Get(key), nil
-}
-
-// TODO: This is shitty -- should use a real generated parser like the IMAP parser or the RFC5322 parser.
-func ParseHeader(header []byte) (*Header, error) {
-	var (
-		lines [][]byte
-		quote int
-	)
-
-	forLines(header, func(line []byte) {
-		split := splitLine(line)
-
-		switch {
-		case len(bytes.Trim(line, "\r\n")) == 0:
-			lines = append(lines, line)
-
-		case quote%2 != 0, rxWhitespace.Match(split[0]), len(split) != 2:
-			if len(lines) > 0 {
-				lines[len(lines)-1] = append(lines[len(lines)-1], line...)
-			} else {
-				lines = append(lines, line)
-			}
-
-		default:
-			lines = append(lines, line)
-		}
-
-		quote += bytes.Count(line, []byte(`"`))
-	})
-
-	return &Header{lines: lines}, nil
-}
-
-func forLines(lines []byte, fn func(line []byte)) {
-	remaining := lines
-	separator := []byte{'\n'}
+	parser := NewHeaderParser(rawHeader)
 
 	for {
-		index := bytes.Index(remaining, separator)
-		if index < 0 {
-			if len(remaining) > 0 {
-				fn(remaining)
+		entry, err := parser.Next()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			} else {
+				return "", err
 			}
-
-			return
 		}
 
-		line := remaining[0 : index+1]
-		remaining = remaining[index+1:]
+		if !entry.HasKey() {
+			continue
+		}
 
-		fn(line)
+		if !strings.EqualFold(key, string(entry.GetKey(rawHeader))) {
+			continue
+		}
+
+		return mergeMultiline(entry.GetValue(rawHeader)), nil
 	}
+
+	return "", nil
+}
+
+var (
+	errNonASCIIHeaderKey = fmt.Errorf("header key contains invalid characters")
+	errKeyNotFound       = fmt.Errorf("invalid header key")
+)
+
+type ParsedHeaderEntry struct {
+	keyStart   int
+	keyEnd     int
+	valueStart int
+	valueEnd   int
+}
+
+func (p ParsedHeaderEntry) HasKey() bool {
+	return p.keyStart != p.keyEnd
+}
+
+func (p ParsedHeaderEntry) GetKey(header []byte) []byte {
+	return header[p.keyStart:p.keyEnd]
+}
+
+func (p ParsedHeaderEntry) GetValue(header []byte) []byte {
+	return header[p.valueStart:p.valueEnd]
+}
+
+type HeaderParser struct {
+	header []byte
+	offset int
+}
+
+func (hp *HeaderParser) Next() (ParsedHeaderEntry, error) {
+	headerLen := len(hp.header)
+
+	if hp.offset >= headerLen {
+		return ParsedHeaderEntry{}, io.EOF
+	}
+
+	result := ParsedHeaderEntry{
+		keyStart:   hp.offset,
+		keyEnd:     -1,
+		valueStart: -1,
+		valueEnd:   -1,
+	}
+
+	// Detect key, have to handle prelude case where there is no header information or last empty new line.
+	{
+		for hp.offset < headerLen {
+			if hp.header[hp.offset] == ':' {
+				prevOffset := hp.offset
+				hp.offset++
+				if hp.offset < headerLen && (hp.header[hp.offset] == ' ' || hp.header[hp.offset] == '\r' || hp.header[hp.offset] == '\n') {
+					result.keyEnd = prevOffset
+
+					// Validate the header key.
+					for i := result.keyStart; i < result.keyEnd; i++ {
+						v := hp.header[i]
+						if v < 33 || v > 126 {
+							return ParsedHeaderEntry{}, errNonASCIIHeaderKey
+						}
+					}
+
+					break
+				}
+			} else if hp.header[hp.offset] == '\n' {
+				hp.offset++
+				result.keyEnd = result.keyStart
+				result.valueStart = result.keyStart
+				result.valueEnd = hp.offset
+				return result, nil
+			} else {
+				hp.offset++
+			}
+		}
+
+	}
+
+	// collect value.
+	searchOffset := result.keyEnd + 1
+	result.valueStart = searchOffset
+
+	for searchOffset < headerLen {
+		// consume all content in between two quotes.
+		if hp.header[searchOffset] == '"' {
+			searchOffset++
+			for searchOffset < headerLen && hp.header[searchOffset] != '"' {
+				searchOffset++
+			}
+			searchOffset++
+
+			continue
+		} else if hp.header[searchOffset] == '\n' {
+			searchOffset++
+			// if folding the next line has to start with space or tab.
+			if searchOffset < headerLen && (hp.header[searchOffset] != ' ' && hp.header[searchOffset] != '\t') {
+				result.valueEnd = searchOffset
+				break
+			}
+		} else {
+			searchOffset++
+		}
+	}
+
+	hp.offset = searchOffset
+
+	// handle case where we may have reached EOF without concluding any previous processing.
+	if result.valueEnd == -1 && searchOffset >= headerLen {
+		result.valueEnd = headerLen
+	}
+
+	return result, nil
+}
+
+func NewHeaderParser(header []byte) HeaderParser {
+	return HeaderParser{header: header}
+}
+
+func ParseHeader(header []byte) (*Header, error) {
+	parser := NewHeaderParser(header)
+
+	var lines [][]byte
+
+	for {
+		entry, err := parser.Next()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			} else {
+				return nil, err
+			}
+		}
+
+		lines = append(lines, header[entry.keyStart:entry.valueEnd])
+	}
+
+	return &Header{lines: lines}, nil
 }
 
 func mergeMultiline(line []byte) string {
