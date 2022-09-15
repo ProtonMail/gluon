@@ -1,73 +1,77 @@
 package imap
 
 import (
-	"fmt"
 	"net/mail"
+	"strings"
 
 	"github.com/ProtonMail/gluon/rfc822"
 )
 
 func Envelope(header *rfc822.Header) (string, error) {
-	res, err := envelope(header)
-	if err != nil {
+	builder := strings.Builder{}
+	writer := singleParListWriter{b: &builder}
+	paramList := newParamListWithoutGroup()
+
+	if err := envelope(header, &paramList, &writer); err != nil {
 		return "", err
 	}
 
-	return res.String(), nil
+	return builder.String(), nil
 }
 
-func envelope(header *rfc822.Header) (fmt.Stringer, error) {
-	var fields parList
+func envelope(header *rfc822.Header, c *paramList, writer parListWriter) error {
+	fields := c.newChildList(writer)
+	defer fields.finish(writer)
 
 	fields.
-		addString(header.Get("Date")).
-		addString(header.Get("Subject"))
+		addString(writer, header.Get("Date")).
+		addString(writer, header.Get("Subject"))
 
 	if v, ok := header.GetChecked("From"); !ok {
-		fields.addString("")
+		fields.addString(writer, "")
 	} else {
-		fields.addAddresses(tryParseAddressList(v))
+		fields.addAddresses(writer, tryParseAddressList(v))
 	}
 
 	if v, ok := header.GetChecked("Sender"); ok {
-		fields.addAddresses(tryParseAddressList(v))
+		fields.addAddresses(writer, tryParseAddressList(v))
 	} else if v, ok := header.GetChecked("From"); ok {
-		fields.addAddresses(tryParseAddressList(v))
+		fields.addAddresses(writer, tryParseAddressList(v))
 	} else {
-		fields.addString("")
+		fields.addString(writer, "")
 	}
 
 	if v, ok := header.GetChecked("Reply-To"); ok {
-		fields.addAddresses(tryParseAddressList(v))
+		fields.addAddresses(writer, tryParseAddressList(v))
 	} else if v, ok := header.GetChecked("From"); ok {
-		fields.addAddresses(tryParseAddressList(v))
+		fields.addAddresses(writer, tryParseAddressList(v))
 	} else {
-		fields.addString("")
+		fields.addString(writer, "")
 	}
 
 	if v, ok := header.GetChecked("To"); !ok {
-		fields.addString("")
+		fields.addString(writer, "")
 	} else {
-		fields.addAddresses(tryParseAddressList(v))
+		fields.addAddresses(writer, tryParseAddressList(v))
 	}
 
 	if v, ok := header.GetChecked("Cc"); !ok {
-		fields.addString("")
+		fields.addString(writer, "")
 	} else {
-		fields.addAddresses(tryParseAddressList(v))
+		fields.addAddresses(writer, tryParseAddressList(v))
 	}
 
 	if v, ok := header.GetChecked("Bcc"); !ok {
-		fields.addString("")
+		fields.addString(writer, "")
 	} else {
-		fields.addAddresses(tryParseAddressList(v))
+		fields.addAddresses(writer, tryParseAddressList(v))
 	}
 
-	fields.addString(header.Get("In-Reply-To"))
+	fields.addString(writer, header.Get("In-Reply-To"))
 
-	fields.addString(header.Get("Message-Id"))
+	fields.addString(writer, header.Get("Message-Id"))
 
-	return fields, nil
+	return nil
 }
 
 // TODO: Should use RFC5322 package here but it's too slow... sad.
