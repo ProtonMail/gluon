@@ -90,6 +90,15 @@ func (h *Header) Has(key string) bool {
 	return ok
 }
 
+func (h *Header) GetChecked(key string) (string, bool) {
+	v, ok := h.keys[strings.ToLower(key)]
+	if !ok {
+		return "", false
+	}
+
+	return v[0].getMerged(h.data), true
+}
+
 func (h *Header) Get(key string) string {
 	v, ok := h.keys[strings.ToLower(key)]
 	if !ok {
