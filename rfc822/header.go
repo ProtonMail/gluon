@@ -6,105 +6,208 @@ import (
 	"fmt"
 	"io"
 	"net/textproto"
-	"regexp"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
-var rxWhitespace = regexp.MustCompile(`^\s+`)
+type headerEntry struct {
+	ParsedHeaderEntry
+	mapKey string
+	merged string
+	prev   *headerEntry
+	next   *headerEntry
+}
+
+func (he *headerEntry) getMerged(data []byte) string {
+	if len(he.merged) == 0 {
+		he.merged = mergeMultiline(he.GetValue(data))
+	}
+
+	return he.merged
+}
 
 type Header struct {
-	lines [][]byte
+	keys       map[string][]*headerEntry
+	firstEntry *headerEntry
+	lastEntry  *headerEntry
+	data       []byte
+}
+
+func NewHeader(data []byte) (*Header, error) {
+	h := &Header{
+		keys: make(map[string][]*headerEntry),
+		data: data,
+	}
+
+	parser := NewHeaderParser(data)
+
+	for {
+		entry, err := parser.Next()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			} else {
+				return nil, err
+			}
+		}
+
+		hentry := &headerEntry{
+			ParsedHeaderEntry: entry,
+			merged:            "",
+			next:              nil,
+		}
+
+		if entry.HasKey() {
+			hashKey := strings.ToLower(string(entry.GetKey(data)))
+			hentry.mapKey = hashKey
+
+			if v, ok := h.keys[hashKey]; !ok {
+				h.keys[hashKey] = []*headerEntry{hentry}
+			} else {
+				h.keys[hashKey] = append(v, hentry)
+			}
+		}
+
+		if h.firstEntry == nil {
+			h.firstEntry = hentry
+			h.lastEntry = hentry
+		} else {
+			h.lastEntry.next = hentry
+			hentry.prev = h.lastEntry
+			h.lastEntry = hentry
+		}
+	}
+
+	return h, nil
 }
 
 func (h *Header) Raw() []byte {
-	return bytes.Join(h.lines, nil)
+	return h.data
 }
 
 func (h *Header) Has(key string) bool {
-	for _, line := range h.lines {
-		split := splitLine(line)
+	_, ok := h.keys[strings.ToLower(key)]
 
-		if len(split) != 2 {
-			continue
-		}
-
-		if !strings.EqualFold(string(split[0]), key) {
-			continue
-		}
-
-		return true
-	}
-
-	return false
+	return ok
 }
 
 func (h *Header) Get(key string) string {
-	return mergeMultiline(h.GetRaw(key))
-}
-
-func (h *Header) GetRaw(key string) []byte {
-	split := splitLine(h.GetLine(key))
-
-	if len(split) != 2 {
-		return nil
+	v, ok := h.keys[strings.ToLower(key)]
+	if !ok {
+		return ""
 	}
 
-	return split[1]
+	return v[0].getMerged(h.data)
 }
 
 func (h *Header) GetLine(key string) []byte {
-	for _, line := range h.lines {
-		split := splitLine(line)
-
-		if len(split) != 2 {
-			continue
-		}
-
-		if !strings.EqualFold(string(split[0]), key) {
-			continue
-		}
-
-		return line
+	v, ok := h.keys[strings.ToLower(key)]
+	if !ok {
+		return nil
 	}
 
-	return nil
+	return v[0].GetAll(h.data)
 }
 
-// TODO: Is it okay to add new entries to the front? Probably not, would break sigs or something.
-func (h *Header) Set(key, val string) {
-	for index, line := range h.lines {
-		if split := splitLine(line); len(split) == 2 {
-			if strings.EqualFold(string(split[0]), key) {
-				// Override the existing key.
-				h.lines[index] = joinLine([]byte(textproto.CanonicalMIMEHeaderKey(key)), []byte(val))
-
-				// TODO: How to handle duplicate header values?
-				return
-			}
-		}
+func (h *Header) getLines() [][]byte {
+	var res [][]byte
+	for e := h.firstEntry; e != nil; e = e.next {
+		res = append(res, h.data[e.keyStart:e.valueEnd])
 	}
 
-	h.lines = slices.Insert(h.lines, 0, joinLine([]byte(key), []byte(val)))
+	return res
+}
+
+func (h *Header) GetRaw(key string) []byte {
+	v, ok := h.keys[strings.ToLower(key)]
+	if !ok {
+		return nil
+	}
+
+	return v[0].GetValue(h.data)
+}
+
+func (h *Header) Set(key, val string) {
+	// We can only add entries to the front of the header.
+	key = textproto.CanonicalMIMEHeaderKey(key)
+	mapKey := strings.ToLower(key)
+
+	keyBytes := []byte(key)
+
+	entryBytes := joinLine([]byte(key), []byte(val))
+	newHeaderEntry := &headerEntry{
+		ParsedHeaderEntry: ParsedHeaderEntry{
+			keyStart:   0,
+			keyEnd:     len(keyBytes),
+			valueStart: len(keyBytes) + 2,
+			valueEnd:   len(entryBytes),
+		},
+		mapKey: mapKey,
+	}
+
+	if v, ok := h.keys[mapKey]; !ok {
+		h.keys[mapKey] = []*headerEntry{newHeaderEntry}
+	} else {
+		h.keys[mapKey] = append([]*headerEntry{newHeaderEntry}, v...)
+	}
+
+	if h.firstEntry == nil {
+		h.data = entryBytes
+		h.firstEntry = newHeaderEntry
+	} else {
+		insertOffset := h.firstEntry.keyStart
+		newHeaderEntry.next = h.firstEntry
+		h.firstEntry.prev = newHeaderEntry
+		h.firstEntry = newHeaderEntry
+
+		buffer := bytes.Buffer{}
+		if insertOffset != 0 {
+			if _, err := buffer.Write(h.data[0:insertOffset]); err != nil {
+				panic("failed to write to byte buffer")
+			}
+		}
+
+		if _, err := buffer.Write(entryBytes); err != nil {
+			panic("failed to write to byte buffer")
+		}
+
+		if _, err := buffer.Write(h.data[insertOffset:]); err != nil {
+			panic("failed to write to byte buffer")
+		}
+
+		h.data = buffer.Bytes()
+		h.applyOffset(newHeaderEntry.next, len(entryBytes))
+	}
 }
 
 func (h *Header) Del(key string) {
-	for index, line := range h.lines {
-		split := splitLine(line)
+	mapKey := strings.ToLower(key)
 
-		if len(split) != 2 {
-			continue
-		}
-
-		if !strings.EqualFold(string(split[0]), key) {
-			continue
-		}
-
-		h.lines = append(h.lines[:index], h.lines[index+1:]...)
-
+	v, ok := h.keys[mapKey]
+	if !ok {
 		return
 	}
+
+	he := v[0]
+
+	if len(v) == 1 {
+		delete(h.keys, mapKey)
+	} else {
+		h.keys[mapKey] = v[1:]
+	}
+
+	if he.prev != nil {
+		he.prev.next = he.next
+	}
+
+	if he.next != nil {
+		he.next.prev = he.prev
+	}
+
+	dataLen := he.valueEnd - he.keyStart
+
+	h.data = append(h.data[0:he.keyStart], h.data[he.valueEnd:]...)
+
+	h.applyOffset(he.next, -dataLen)
 }
 
 func (h *Header) Fields(fields []string) []byte {
@@ -116,20 +219,22 @@ func (h *Header) Fields(fields []string) []byte {
 
 	var res []byte
 
-	for _, line := range h.lines {
-		if len(bytes.TrimSpace(line)) == 0 {
-			res = append(res, line...)
-		} else {
-			split := splitLine(line)
-
-			if len(split) != 2 {
-				continue
-			}
-
-			if _, ok := wantFields[string(bytes.ToLower(split[0]))]; ok {
-				res = append(res, line...)
-			}
+	for e := h.firstEntry; e != nil; e = e.next {
+		if len(bytes.TrimSpace(e.GetAll(h.data))) == 0 {
+			res = append(res, e.GetAll(h.data)...)
+			continue
 		}
+
+		if !e.HasKey() {
+			continue
+		}
+
+		_, ok := wantFields[e.mapKey]
+		if !ok {
+			continue
+		}
+
+		res = append(res, e.GetAll(h.data)...)
 	}
 
 	return res
@@ -144,49 +249,82 @@ func (h *Header) FieldsNot(fields []string) []byte {
 
 	var res []byte
 
-	for _, line := range h.lines {
-		if len(bytes.TrimSpace(line)) == 0 {
-			res = append(res, line...)
-		} else {
-			split := splitLine(line)
-
-			if len(split) != 2 {
-				continue
-			}
-
-			if _, ok := wantFieldsNot[string(bytes.ToLower(split[0]))]; !ok {
-				res = append(res, line...)
-			}
+	for e := h.firstEntry; e != nil; e = e.next {
+		if len(bytes.TrimSpace(e.GetAll(h.data))) == 0 {
+			res = append(res, e.GetAll(h.data)...)
+			continue
 		}
+
+		if !e.HasKey() {
+			continue
+		}
+
+		_, ok := wantFieldsNot[e.mapKey]
+		if ok {
+			continue
+		}
+
+		res = append(res, e.GetAll(h.data)...)
 	}
 
+	// Since we are only applying the entries that have a key, we need to add a new line at the end.
 	return res
 }
 
 func (h *Header) Entries(fn func(key, val string)) {
-	for _, line := range h.lines {
-		split := splitLine(line)
-
-		if len(split) != 2 {
+	for e := h.firstEntry; e != nil; e = e.next {
+		if !e.HasKey() {
 			continue
 		}
 
-		fn(string(split[0]), mergeMultiline(split[1]))
+		fn(string(e.GetKey(h.data)), e.getMerged(h.data))
+	}
+}
+
+func (h *Header) applyOffset(start *headerEntry, offset int) {
+	for e := start; e != nil; e = e.next {
+		e.applyOffset(offset)
 	}
 }
 
 // SetHeaderValue is a helper method that sets a header value in a message literal.
+// It does not check whether the existing value already exists.
 func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 	rawHeader, body := Split(literal)
 
-	header, err := ParseHeader(rawHeader)
-	if err != nil {
-		return nil, err
+	parser := NewHeaderParser(rawHeader)
+
+	var foundFirstEntry bool
+
+	var parsedHeaderEntry ParsedHeaderEntry
+
+	// find first header entry.
+	for {
+		entry, err := parser.Next()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			} else {
+				return nil, err
+			}
+		}
+
+		if entry.HasKey() {
+			foundFirstEntry = true
+			parsedHeaderEntry = entry
+
+			break
+		}
 	}
 
-	header.Set(key, val)
+	key = textproto.CanonicalMIMEHeaderKey(key)
+	data := joinLine([]byte(key), []byte(val))
 
-	return append(header.Raw(), body...), nil
+	if !foundFirstEntry {
+		return append(rawHeader, append(data, body...)...), nil
+	} else {
+		return append(literal[0:parsedHeaderEntry.keyStart], append(data, literal[parsedHeaderEntry.keyStart:]...)...), nil
+	}
 }
 
 // GetHeaderValue is a helper method that queries a header value in a message literal.
@@ -243,11 +381,23 @@ func (p ParsedHeaderEntry) GetValue(header []byte) []byte {
 	return header[p.valueStart:p.valueEnd]
 }
 
+func (p ParsedHeaderEntry) GetAll(header []byte) []byte {
+	return header[p.keyStart:p.valueEnd]
+}
+
+func (p *ParsedHeaderEntry) applyOffset(offset int) {
+	p.keyStart += offset
+	p.keyEnd += offset
+	p.valueStart += offset
+	p.valueEnd += offset
+}
+
 type HeaderParser struct {
 	header []byte
 	offset int
 }
 
+// Next will keep parsing until it collects a new entry. io.EOF is returned when there is nothing left to parse.
 func (hp *HeaderParser) Next() (ParsedHeaderEntry, error) {
 	headerLen := len(hp.header)
 
@@ -295,7 +445,7 @@ func (hp *HeaderParser) Next() (ParsedHeaderEntry, error) {
 	}
 
 	// collect value.
-	searchOffset := result.keyEnd + 1
+	searchOffset := result.keyEnd + 2
 	result.valueStart = searchOffset
 
 	for searchOffset < headerLen {
@@ -332,27 +482,6 @@ func (hp *HeaderParser) Next() (ParsedHeaderEntry, error) {
 
 func NewHeaderParser(header []byte) HeaderParser {
 	return HeaderParser{header: header}
-}
-
-func ParseHeader(header []byte) (*Header, error) {
-	parser := NewHeaderParser(header)
-
-	var lines [][]byte
-
-	for {
-		entry, err := parser.Next()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			} else {
-				return nil, err
-			}
-		}
-
-		lines = append(lines, header[entry.keyStart:entry.valueEnd])
-	}
-
-	return &Header{lines: lines}, nil
 }
 
 func mergeMultiline(line []byte) string {
