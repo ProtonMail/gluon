@@ -20,62 +20,52 @@ func envelope(header *rfc822.Header) (fmt.Stringer, error) {
 	var fields parList
 
 	fields.
-		add(header.Get("Date")).
-		add(header.Get("Subject"))
+		addString(header.Get("Date")).
+		addString(header.Get("Subject"))
 
-	if !header.Has("From") {
-		fields.add("")
+	if v, ok := header.GetChecked("From"); !ok {
+		fields.addString("")
 	} else {
-		fields.add(tryParseAddressList(header.Get("From")))
+		fields.addAddresses(tryParseAddressList(v))
 	}
 
-	switch {
-	case header.Has("Sender"):
-		fields.add(tryParseAddressList(header.Get("Sender")))
-
-	case header.Has("From"):
-		fields.add(tryParseAddressList(header.Get("From")))
-
-	default:
-		fields.add("")
-	}
-
-	switch {
-	case header.Has("Reply-To"):
-		fields.add(tryParseAddressList(header.Get("Reply-To")))
-
-	case header.Has("From"):
-		fields.add(tryParseAddressList(header.Get("From")))
-
-	default:
-		fields.add("")
-	}
-
-	if !header.Has("To") {
-		fields.add("")
+	if v, ok := header.GetChecked("Sender"); ok {
+		fields.addAddresses(tryParseAddressList(v))
+	} else if v, ok := header.GetChecked("From"); ok {
+		fields.addAddresses(tryParseAddressList(v))
 	} else {
-		fields.add(tryParseAddressList(header.Get("To")))
+		fields.addString("")
 	}
 
-	if !header.Has("Cc") {
-		fields.add("")
+	if v, ok := header.GetChecked("Reply-To"); ok {
+		fields.addAddresses(tryParseAddressList(v))
+	} else if v, ok := header.GetChecked("From"); ok {
+		fields.addAddresses(tryParseAddressList(v))
 	} else {
-		fields.add(tryParseAddressList(header.Get("Cc")))
+		fields.addString("")
 	}
 
-	if !header.Has("Bcc") {
-		fields.add("")
+	if v, ok := header.GetChecked("To"); !ok {
+		fields.addString("")
 	} else {
-		fields.add(tryParseAddressList(header.Get("Bcc")))
+		fields.addAddresses(tryParseAddressList(v))
 	}
 
-	if !header.Has("In-Reply-To") {
-		fields.add("")
+	if v, ok := header.GetChecked("Cc"); !ok {
+		fields.addString("")
 	} else {
-		fields.add(header.Get("In-Reply-To"))
+		fields.addAddresses(tryParseAddressList(v))
 	}
 
-	fields.add(header.Get("Message-Id"))
+	if v, ok := header.GetChecked("Bcc"); !ok {
+		fields.addString("")
+	} else {
+		fields.addAddresses(tryParseAddressList(v))
+	}
+
+	fields.addString(header.Get("In-Reply-To"))
+
+	fields.addString(header.Get("Message-Id"))
 
 	return fields, nil
 }

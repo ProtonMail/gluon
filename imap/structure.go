@@ -31,7 +31,7 @@ func structure(section *rfc822.Section, ext bool) (fmt.Stringer, error) {
 		return nil, err
 	}
 
-	fields.add(children)
+	fields.addStringers(children)
 
 	header, err := section.ParseHeader()
 	if err != nil {
@@ -43,14 +43,14 @@ func structure(section *rfc822.Section, ext bool) (fmt.Stringer, error) {
 		return nil, err
 	}
 
-	fields.add(mimeSubType)
+	fields.addString(mimeSubType)
 
 	if ext {
 		fields.
-			add(mimeParams).
-			add(getDispInfo(header)).
-			add(header.Get("Content-Language")).
-			add(header.Get("Content-Location"))
+			addMap(mimeParams).
+			addStringer(getDispInfo(header)).
+			addString(header.Get("Content-Language")).
+			addString(header.Get("Content-Location"))
 	}
 
 	return fields, nil
@@ -70,13 +70,13 @@ func singlePartStructure(section *rfc822.Section, ext bool) (fmt.Stringer, error
 	}
 
 	fields.
-		add(mimeType).
-		add(mimeSubType).
-		add(mimeParams).
-		add(header.Get("Content-Id")).
-		add(header.Get("Content-Description")).
-		add(header.Get("Content-Transfer-Encoding")).
-		add(len(section.Body()))
+		addString(mimeType).
+		addString(mimeSubType).
+		addMap(mimeParams).
+		addString(header.Get("Content-Id")).
+		addString(header.Get("Content-Description")).
+		addString(header.Get("Content-Transfer-Encoding")).
+		addNumber(len(section.Body()))
 
 	if mimeType == "message" && mimeSubType == "rfc822" {
 		child := rfc822.Parse(section.Body())
@@ -96,19 +96,19 @@ func singlePartStructure(section *rfc822.Section, ext bool) (fmt.Stringer, error
 			return nil, err
 		}
 
-		fields.add(envelope).add(body)
+		fields.addStringer(envelope).addStringer(body)
 	}
 
 	if mimeType == "text" || (mimeType == "message" && mimeSubType == "rfc822") {
-		fields.add(countLines(section.Body()))
+		fields.addNumber(countLines(section.Body()))
 	}
 
 	if ext {
 		fields.
-			add(header.Get("Content-MD5")).
-			add(getDispInfo(header)).
-			add(header.Get("Content-Language")).
-			add(header.Get("Content-Location"))
+			addString(header.Get("Content-MD5")).
+			addStringer(getDispInfo(header)).
+			addString(header.Get("Content-Language")).
+			addString(header.Get("Content-Location"))
 	}
 
 	return fields, nil
@@ -147,7 +147,7 @@ func getDispInfo(header *rfc822.Header) fmt.Stringer {
 	var fields parList
 
 	if contentDisp, contentDispParams, err := mime.ParseMediaType(header.Get("Content-Disposition")); err == nil {
-		fields.add(contentDisp).add(contentDispParams)
+		fields.addString(contentDisp).addMap(contentDispParams)
 	}
 
 	return fields
