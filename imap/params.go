@@ -2,83 +2,98 @@ package imap
 
 import (
 	"fmt"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"net/mail"
 	"strconv"
 	"strings"
-
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 type parList []fmt.Stringer
 
 func (l parList) String() string {
-	if len(l) == 0 {
+	itemsLen := len(l)
+	if itemsLen == 0 {
 		return "NIL"
 	}
 
-	var res []string
+	builder := strings.Builder{}
+	builder.WriteRune('(')
 
-	for _, item := range l {
-		res = append(res, item.String())
+	builder.WriteString(l[0].String())
+
+	for _, item := range l[1:] {
+		builder.WriteRune(' ')
+		builder.WriteString(item.String())
 	}
 
-	return fmt.Sprintf("(%v)", strings.Join(res, " "))
+	builder.WriteRune(')')
+
+	return builder.String()
 }
 
-func (l *parList) add(v any) *parList {
-	switch v := v.(type) {
-	case string:
-		*l = append(*l, nilString(v))
+func (l *parList) addString(v string) *parList {
+	*l = append(*l, nilString(v))
 
-	case int:
-		*l = append(*l, numString(v))
+	return l
+}
 
-	case fmt.Stringer:
-		*l = append(*l, v)
+func (l *parList) addNumber(v int) *parList {
+	*l = append(*l, numString(v))
 
-	case []fmt.Stringer:
-		*l = append(*l, concatList(v))
+	return l
+}
 
-	case map[string]string:
-		keys := maps.Keys(v)
+func (l *parList) addStringer(v fmt.Stringer) *parList {
+	*l = append(*l, v)
 
-		slices.Sort(keys)
+	return l
+}
 
-		var params parList
+func (l *parList) addStringers(v []fmt.Stringer) *parList {
+	*l = append(*l, concatList(v))
 
-		for _, key := range keys {
-			params = append(params, nilString(key), nilString(v[key]))
-		}
+	return l
+}
 
-		*l = append(*l, params)
+func (l *parList) addMap(v map[string]string) *parList {
+	keys := maps.Keys(v)
 
-	case []*mail.Address:
-		var addrList parList
+	slices.Sort(keys)
 
-		for _, addr := range v {
-			var user, domain string
+	params := make(parList, 0, len(keys))
 
-			if split := strings.Split(addr.Address, "@"); len(split) == 2 {
-				user, domain = split[0], split[1]
-			}
-
-			var fields parList
-
-			fields.
-				add(addr.Name).
-				add("").
-				add(user).
-				add(domain)
-
-			addrList.add(fields)
-		}
-
-		*l = append(*l, addrList)
-
-	default:
-		panic(v)
+	for _, key := range keys {
+		params = append(params, nilString(key), nilString(v[key]))
 	}
+
+	*l = append(*l, params)
+
+	return l
+}
+
+func (l *parList) addAddresses(v []*mail.Address) *parList {
+	var addrList parList
+
+	for _, addr := range v {
+		var user, domain string
+
+		if split := strings.Split(addr.Address, "@"); len(split) == 2 {
+			user, domain = split[0], split[1]
+		}
+
+		fields := make(parList, 0, 4)
+
+		fields.
+			addString(addr.Name).
+			addString("").
+			addString(user).
+			addString(domain)
+
+		addrList.addStringer(fields)
+	}
+
+	*l = append(*l, addrList)
 
 	return l
 }
@@ -86,7 +101,7 @@ func (l *parList) add(v any) *parList {
 type nilString string
 
 func (s nilString) String() string {
-	if s == "" {
+	if len(s) == 0 {
 		return "NIL"
 	}
 
@@ -102,11 +117,10 @@ func (n numString) String() string {
 type concatList []fmt.Stringer
 
 func (l concatList) String() string {
-	var res string
-
+	builder := strings.Builder{}
 	for _, item := range l {
-		res += item.String()
+		builder.WriteString(item.String())
 	}
 
-	return res
+	return builder.String()
 }
