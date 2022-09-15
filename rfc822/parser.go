@@ -38,7 +38,7 @@ func (section *Section) Header() []byte {
 
 func (section *Section) ParseHeader() (*Header, error) {
 	if section.parsedHeader == nil {
-		h, err := ParseHeader(section.Header())
+		h, err := NewHeader(section.Header())
 		if err != nil {
 			return nil, err
 		}

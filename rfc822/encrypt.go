@@ -25,7 +25,7 @@ func Encrypt(kr *crypto.KeyRing, r io.Reader) ([]byte, error) {
 
 	buf := new(bytes.Buffer)
 
-	headerParsed, err := ParseHeader(header)
+	headerParsed, err := NewHeader(header)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func writeEncryptedMultiPart(kr *crypto.KeyRing, w io.Writer, header *Header, r 
 	for _, part := range parts {
 		header, body := Split(part.Data)
 
-		headerParsed, err := ParseHeader(header)
+		headerParsed, err := NewHeader(header)
 		if err != nil {
 			return err
 		}
