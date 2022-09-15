@@ -5,6 +5,8 @@ import (
 )
 
 type MessageFlagsUpdated struct {
+	updateBase
+
 	*updateWaiter
 
 	MessageID     MessageID
@@ -28,5 +30,3 @@ func (u *MessageFlagsUpdated) String() string {
 		u.Flagged,
 	)
 }
-
-func (*MessageFlagsUpdated) _isUpdate() {}

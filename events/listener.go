@@ -3,13 +3,13 @@ package events
 import "net"
 
 type EventListenerAdded struct {
+	eventBase
+
 	Addr net.Addr
 }
-
-func (EventListenerAdded) _isEvent() {}
 
 type EventListenerRemoved struct {
+	eventBase
+
 	Addr net.Addr
 }
-
-func (EventListenerRemoved) _isEvent() {}

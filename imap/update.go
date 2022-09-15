@@ -7,3 +7,7 @@ type Update interface {
 
 	_isUpdate()
 }
+
+type updateBase struct{}
+
+func (updateBase) _isUpdate() {}

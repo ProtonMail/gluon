@@ -5,6 +5,8 @@ import (
 )
 
 type MailboxDeleted struct {
+	updateBase
+
 	*updateWaiter
 
 	MailboxID LabelID
@@ -20,5 +22,3 @@ func NewMailboxDeleted(mailboxID LabelID) *MailboxDeleted {
 func (u *MailboxDeleted) String() string {
 	return fmt.Sprintf("MailboxDeleted: MailboxID = %v", u.MailboxID.ShortID())
 }
-
-func (*MailboxDeleted) _isUpdate() {}

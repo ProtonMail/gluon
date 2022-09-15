@@ -1,13 +1,13 @@
 package events
 
 type EventUserAdded struct {
+	eventBase
+
 	UserID string
 }
-
-func (EventUserAdded) _isEvent() {}
 
 type EventUserRemoved struct {
+	eventBase
+
 	UserID string
 }
-
-func (EventUserRemoved) _isEvent() {}
