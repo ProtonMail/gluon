@@ -1,7 +1,6 @@
 package imap
 
 import (
-	"fmt"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"net/mail"
@@ -9,71 +8,129 @@ import (
 	"strings"
 )
 
-type parList []fmt.Stringer
+type parListWriter interface {
+	writeString(string)
+	writeByte(byte)
+}
 
-func (l parList) String() string {
-	itemsLen := len(l)
-	if itemsLen == 0 {
-		return "NIL"
+type singleParListWriter struct {
+	b *strings.Builder
+}
+
+func (s *singleParListWriter) writeString(v string) {
+	s.b.WriteString(v)
+}
+
+func (s *singleParListWriter) writeByte(v byte) {
+	s.b.WriteByte(v)
+}
+
+type dualParListWriter struct {
+	b1 *strings.Builder
+	b2 *strings.Builder
+}
+
+func (d *dualParListWriter) writeString(v string) {
+	d.b1.WriteString(v)
+	d.b2.WriteString(v)
+}
+
+func (d *dualParListWriter) writeByte(v byte) {
+	d.b1.WriteByte(v)
+	d.b2.WriteByte(v)
+}
+
+func (d *dualParListWriter) toSingleWriterFrom1st() parListWriter {
+	return &singleParListWriter{b: d.b1}
+}
+
+func (d *dualParListWriter) toSingleWriterFrom2nd() parListWriter {
+	return &singleParListWriter{b: d.b2}
+}
+
+type paramList struct {
+	firstItem bool
+}
+
+func newParamListWithGroup(writer parListWriter) paramList {
+	writer.writeByte('(')
+
+	return paramList{
+		firstItem: true,
+	}
+}
+
+func newParamListWithoutGroup() paramList {
+	return paramList{
+		firstItem: true,
+	}
+}
+
+func (c *paramList) newChildList(writer parListWriter) paramList {
+	c.firstItem = false
+	return newParamListWithGroup(writer)
+}
+
+func (c *paramList) finish(writer parListWriter) {
+	writer.writeByte(')')
+}
+
+func (c *paramList) onWrite(writer parListWriter) {
+	if !c.firstItem {
+		writer.writeByte(' ')
 	}
 
-	builder := strings.Builder{}
-	builder.WriteRune('(')
+	c.firstItem = false
+}
 
-	builder.WriteString(l[0].String())
+func (c *paramList) addString(writer parListWriter, v string) *paramList {
+	c.onWrite(writer)
 
-	for _, item := range l[1:] {
-		builder.WriteRune(' ')
-		builder.WriteString(item.String())
+	var str string
+
+	if len(v) == 0 {
+		str = "NIL"
+	} else {
+		str = strconv.Quote(v)
 	}
 
-	builder.WriteRune(')')
+	writer.writeString(str)
 
-	return builder.String()
+	return c
 }
 
-func (l *parList) addString(v string) *parList {
-	*l = append(*l, nilString(v))
+func (c *paramList) addNumber(writer parListWriter, v int) *paramList {
+	c.onWrite(writer)
 
-	return l
+	str := strconv.Itoa(v)
+
+	writer.writeString(str)
+
+	return c
 }
 
-func (l *parList) addNumber(v int) *parList {
-	*l = append(*l, numString(v))
+func (c *paramList) addMap(writer parListWriter, v map[string]string) *paramList {
+	c.onWrite(writer)
 
-	return l
-}
-
-func (l *parList) addStringer(v fmt.Stringer) *parList {
-	*l = append(*l, v)
-
-	return l
-}
-
-func (l *parList) addStringers(v []fmt.Stringer) *parList {
-	*l = append(*l, concatList(v))
-
-	return l
-}
-
-func (l *parList) addMap(v map[string]string) *parList {
 	keys := maps.Keys(v)
 
 	slices.Sort(keys)
 
-	params := make(parList, 0, len(keys))
+	child := c.newChildList(writer)
 
 	for _, key := range keys {
-		params = append(params, nilString(key), nilString(v[key]))
+		child.addString(writer, key).addString(writer, v[key])
 	}
 
-	*l = append(*l, params)
+	child.finish(writer)
 
-	return l
+	return c
 }
 
-func (l *parList) addAddresses(v []*mail.Address) *parList {
-	var addrList parList
+func (c *paramList) addAddresses(writer parListWriter, v []*mail.Address) *paramList {
+	c.onWrite(writer)
+
+	child := c.newChildList(writer)
 
 	for _, addr := range v {
 		var user, domain string
@@ -82,45 +139,18 @@ func (l *parList) addAddresses(v []*mail.Address) *parList {
 			user, domain = split[0], split[1]
 		}
 
-		fields := make(parList, 0, 4)
+		fields := child.newChildList(writer)
 
 		fields.
-			addString(addr.Name).
-			addString("").
-			addString(user).
-			addString(domain)
+			addString(writer, addr.Name).
+			addString(writer, "").
+			addString(writer, user).
+			addString(writer, domain)
 
-		addrList.addStringer(fields)
+		fields.finish(writer)
 	}
 
-	*l = append(*l, addrList)
+	child.finish(writer)
 
-	return l
-}
-
-type nilString string
-
-func (s nilString) String() string {
-	if len(s) == 0 {
-		return "NIL"
-	}
-
-	return strconv.Quote(string(s))
-}
-
-type numString int
-
-func (n numString) String() string {
-	return strconv.Itoa(int(n))
-}
-
-type concatList []fmt.Stringer
-
-func (l concatList) String() string {
-	builder := strings.Builder{}
-	for _, item := range l {
-		builder.WriteString(item.String())
-	}
-
-	return builder.String()
+	return c
 }
