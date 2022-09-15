@@ -8,6 +8,8 @@ import (
 )
 
 type MailboxUpdated struct {
+	updateBase
+
 	*updateWaiter
 
 	MailboxID   LabelID
@@ -29,5 +31,3 @@ func (u *MailboxUpdated) String() string {
 		utils.ShortID(strings.Join(u.MailboxName, "/")),
 	)
 }
-
-func (*MailboxUpdated) _isUpdate() {}

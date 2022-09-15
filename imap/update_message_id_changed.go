@@ -5,6 +5,8 @@ import (
 )
 
 type MessageIDChanged struct {
+	updateBase
+
 	*updateWaiter
 
 	InternalID InternalMessageID
@@ -22,5 +24,3 @@ func NewMessageIDChanged(internalID InternalMessageID, remoteID MessageID) *Mess
 func (u *MessageIDChanged) String() string {
 	return fmt.Sprintf("MessageID changed: InternalID = %v, RemoteID = %v", u.InternalID.ShortID(), u.RemoteID.ShortID())
 }
-
-func (*MessageIDChanged) _isUpdate() {}

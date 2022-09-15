@@ -5,6 +5,8 @@ import (
 )
 
 type MailboxIDChanged struct {
+	updateBase
+
 	*updateWaiter
 
 	InternalID InternalMailboxID
@@ -22,5 +24,3 @@ func NewMailboxIDChanged(internalID InternalMailboxID, remoteID LabelID) *Mailbo
 func (u *MailboxIDChanged) String() string {
 	return fmt.Sprintf("MailboxIDChanged: InternalID = %v, RemoteID = %v", u.InternalID.ShortID(), u.RemoteID.ShortID())
 }
-
-func (*MailboxIDChanged) _isUpdate() {}

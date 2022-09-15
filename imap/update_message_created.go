@@ -46,6 +46,8 @@ func NewParsedMessage(literal []byte) (*ParsedMessage, error) {
 }
 
 type MessagesCreated struct {
+	updateBase
+
 	*updateWaiter
 
 	Messages []*MessageCreated
@@ -77,5 +79,3 @@ func (u *MessagesCreated) Add(message Message, literal []byte, parsedMessage *Pa
 func (u *MessagesCreated) String() string {
 	return fmt.Sprintf("MessagesCreated (length = %v)", len(u.Messages))
 }
-
-func (*MessagesCreated) _isUpdate() {}

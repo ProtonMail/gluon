@@ -1,8 +1,8 @@
 package events
 
 type EventLogin struct {
+	eventBase
+
 	SessionID int
 	UserID    string
 }
-
-func (EventLogin) _isEvent() {}
