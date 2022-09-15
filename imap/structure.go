@@ -3,130 +3,127 @@ package imap
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"mime"
 	"strings"
 
 	"github.com/ProtonMail/gluon/rfc822"
 )
 
-func Structure(section *rfc822.Section, ext bool) (string, error) {
-	res, err := structure(section, ext)
-	if err != nil {
-		return "", err
+func Structure(section *rfc822.Section) (string, string, error) {
+	bodyBuilder := strings.Builder{}
+	structureBuilder := strings.Builder{}
+
+	writer := dualParListWriter{b1: &bodyBuilder, b2: &structureBuilder}
+
+	c := newParamListWithGroup(&writer)
+	if err := structure(section, &c, &writer); err != nil {
+		return "", "", err
 	}
 
-	return res.String(), nil
+	c.finish(&writer)
+
+	body := bodyBuilder.String()
+	structure := structureBuilder.String()
+
+	return body, structure, nil
 }
 
-func structure(section *rfc822.Section, ext bool) (fmt.Stringer, error) {
+func structure(section *rfc822.Section, fields *paramList, writer *dualParListWriter) error {
 	if len(section.Children()) == 0 {
-		return singlePartStructure(section, ext)
+		return singlePartStructure(section, fields, writer)
 	}
 
-	var fields parList
-
-	children, err := childStructures(section, ext)
-	if err != nil {
-		return nil, err
+	if err := childStructures(section, fields, writer); err != nil {
+		return err
 	}
-
-	fields.addStringers(children)
 
 	header, err := section.ParseHeader()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	_, mimeSubType, mimeParams, err := getMIMEInfo(header)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	fields.addString(mimeSubType)
+	fields.addString(writer, mimeSubType)
 
-	if ext {
-		fields.
-			addMap(mimeParams).
-			addStringer(getDispInfo(header)).
-			addString(header.Get("Content-Language")).
-			addString(header.Get("Content-Location"))
-	}
+	extWriter := writer.toSingleWriterFrom2nd()
+	fields.addMap(extWriter, mimeParams)
+	addDispInfo(fields, extWriter, header)
+	fields.addString(extWriter, header.Get("Content-Language")).
+		addString(extWriter, header.Get("Content-Location"))
 
-	return fields, nil
+	return nil
 }
 
-func singlePartStructure(section *rfc822.Section, ext bool) (fmt.Stringer, error) {
+func singlePartStructure(section *rfc822.Section, fields *paramList, writer *dualParListWriter) error {
 	header, err := section.ParseHeader()
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	var fields parList
 
 	mimeType, mimeSubType, mimeParams, err := getMIMEInfo(header)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	fields.
-		addString(mimeType).
-		addString(mimeSubType).
-		addMap(mimeParams).
-		addString(header.Get("Content-Id")).
-		addString(header.Get("Content-Description")).
-		addString(header.Get("Content-Transfer-Encoding")).
-		addNumber(len(section.Body()))
+		addString(writer, mimeType).
+		addString(writer, mimeSubType).
+		addMap(writer, mimeParams).
+		addString(writer, header.Get("Content-Id")).
+		addString(writer, header.Get("Content-Description")).
+		addString(writer, header.Get("Content-Transfer-Encoding")).
+		addNumber(writer, len(section.Body()))
 
 	if mimeType == "message" && mimeSubType == "rfc822" {
 		child := rfc822.Parse(section.Body())
 
 		header, err := child.ParseHeader()
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		envelope, err := envelope(header)
-		if err != nil {
-			return nil, err
+		if err := envelope(header, fields, writer); err != nil {
+			return err
 		}
 
-		body, err := structure(child, ext)
-		if err != nil {
-			return nil, err
+		cstruct := fields.newChildList(writer)
+
+		if err := structure(child, &cstruct, writer); err != nil {
+			return err
 		}
 
-		fields.addStringer(envelope).addStringer(body)
+		cstruct.finish(writer)
 	}
 
 	if mimeType == "text" || (mimeType == "message" && mimeSubType == "rfc822") {
-		fields.addNumber(countLines(section.Body()))
+		fields.addNumber(writer, countLines(section.Body()))
 	}
 
-	if ext {
-		fields.
-			addString(header.Get("Content-MD5")).
-			addStringer(getDispInfo(header)).
-			addString(header.Get("Content-Language")).
-			addString(header.Get("Content-Location"))
-	}
+	extWriter := writer.toSingleWriterFrom2nd()
+	fields.addString(extWriter, header.Get("Content-MD5"))
+	addDispInfo(fields, extWriter, header)
+	fields.addString(extWriter, header.Get("Content-Language")).
+		addString(extWriter, header.Get("Content-Location"))
 
-	return fields, nil
+	return nil
 }
 
-func childStructures(section *rfc822.Section, ext bool) ([]fmt.Stringer, error) {
-	var children []fmt.Stringer
-
+func childStructures(section *rfc822.Section, c *paramList, writer *dualParListWriter) error {
 	for _, child := range section.Children() {
-		structure, err := structure(child, ext)
-		if err != nil {
-			return nil, err
+		cl := c.newChildList(writer)
+
+		if err := structure(child, &cl, writer); err != nil {
+			return err
 		}
 
-		children = append(children, structure)
+		cl.finish(writer)
 	}
 
-	return children, nil
+	return nil
 }
 
 func getMIMEInfo(header *rfc822.Header) (string, string, map[string]string, error) {
@@ -143,14 +140,15 @@ func getMIMEInfo(header *rfc822.Header) (string, string, map[string]string, erro
 	return split[0], split[1], contentTypeParams, nil
 }
 
-func getDispInfo(header *rfc822.Header) fmt.Stringer {
-	var fields parList
-
+func addDispInfo(c *paramList, writer parListWriter, header *rfc822.Header) {
 	if contentDisp, contentDispParams, err := mime.ParseMediaType(header.Get("Content-Disposition")); err == nil {
-		fields.addString(contentDisp).addMap(contentDispParams)
+		writer.writeByte(' ')
+		fields := c.newChildList(writer)
+		fields.addString(writer, contentDisp).addMap(writer, contentDispParams)
+		fields.finish(writer)
+	} else {
+		c.addString(writer, "")
 	}
-
-	return fields
 }
 
 func countLines(b []byte) int {

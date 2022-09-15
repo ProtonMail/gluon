@@ -15,14 +15,9 @@ type ParsedMessage struct {
 func NewParsedMessage(literal []byte) (*ParsedMessage, error) {
 	root := rfc822.Parse(literal)
 
-	body, err := Structure(root, false)
+	body, structure, err := Structure(root)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build message body: %w", err)
-	}
-
-	structure, err := Structure(root, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build message body structure: %w", err)
+		return nil, fmt.Errorf("failed to build message body and structure: %w", err)
 	}
 
 	header, err := root.ParseHeader()
