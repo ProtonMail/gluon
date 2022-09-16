@@ -226,7 +226,12 @@ func (m *Mailbox) fetchBodySection(section *proto.BodySection, literal []byte) (
 	root := rfc822.Parse(literal)
 
 	if parts := intParts(section.Parts); len(parts) > 0 {
-		root = root.Part(parts...)
+		p, err := root.Part(parts...)
+		if err != nil {
+			return nil, err
+		}
+
+		root = p
 	}
 
 	if root == nil {

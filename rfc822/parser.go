@@ -2,6 +2,7 @@ package rfc822
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 )
 
@@ -57,22 +58,25 @@ func (section *Section) Literal() []byte {
 	return section.literal[section.header:section.end]
 }
 
-func (section *Section) Children() []*Section {
+func (section *Section) Children() ([]*Section, error) {
 	if len(section.children) == 0 {
 		if err := section.load(); err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
 
-	return section.children
+	return section.children, nil
 }
 
-func (section *Section) Part(identifier ...int) *Section {
+func (section *Section) Part(identifier ...int) (*Section, error) {
 	if len(identifier) > 0 {
-		children := section.Children()
+		children, err := section.Children()
+		if err != nil {
+			return nil, err
+		}
 
 		if identifier[0] <= 0 || identifier[0]-1 > len(children) {
-			return nil
+			return nil, fmt.Errorf("no such part exists")
 		}
 
 		if len(children) != 0 {
@@ -80,7 +84,7 @@ func (section *Section) Part(identifier ...int) *Section {
 		}
 	}
 
-	return section
+	return section, nil
 }
 
 func (section *Section) load() error {
@@ -103,15 +107,12 @@ func (section *Section) load() error {
 
 		section.children = append(section.children, child.children...)
 	} else if strings.HasPrefix(contentType, "multipart/") {
-		scanner, err := NewScanner(bytes.NewReader(section.literal[section.body:section.end]), contentParams["boundary"])
+		scanner, err := NewByteScanner(section.literal[section.body:section.end], []byte(contentParams["boundary"]))
 		if err != nil {
 			return err
 		}
 
-		res, err := scanner.ScanAll()
-		if err != nil {
-			return err
-		}
+		res := scanner.ScanAll()
 
 		for idx, res := range res {
 			child := parse(
