@@ -9,6 +9,17 @@ import (
 
 const literal = "To: somebody\r\nFrom: somebody else\r\nSubject: this is\r\n\ta multiline field\r\nFrom: duplicate entry\r\n\r\n"
 
+func TestHeader_New(t *testing.T) {
+	// Empty headers are empty.
+	header, err := NewHeader(nil)
+	require.NoError(t, err)
+	assert.Equal(t, "", string(header.Raw()))
+
+	// But empty headers can be added to.
+	header.Set("To", "someone@pm.me")
+	assert.Equal(t, "To: someone@pm.me\r\n", string(header.Raw()))
+}
+
 func TestHeader_Raw(t *testing.T) {
 	header, err := NewHeader([]byte(literal))
 	require.NoError(t, err)
