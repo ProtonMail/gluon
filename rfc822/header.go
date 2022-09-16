@@ -38,7 +38,7 @@ func NewHeader(data []byte) (*Header, error) {
 		data: data,
 	}
 
-	parser := NewHeaderParser(data)
+	parser := newHeaderParser(data)
 
 	for {
 		entry, err := parser.Next()
@@ -292,7 +292,7 @@ func (h *Header) applyOffset(start *headerEntry, offset int) {
 func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 	rawHeader, body := Split(literal)
 
-	parser := NewHeaderParser(rawHeader)
+	parser := newHeaderParser(rawHeader)
 
 	var foundFirstEntry bool
 
@@ -331,7 +331,7 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 func GetHeaderValue(literal []byte, key string) (string, error) {
 	rawHeader, _ := Split(literal)
 
-	parser := NewHeaderParser(rawHeader)
+	parser := newHeaderParser(rawHeader)
 
 	for {
 		entry, err := parser.Next()
@@ -392,13 +392,13 @@ func (p *ParsedHeaderEntry) applyOffset(offset int) {
 	p.valueEnd += offset
 }
 
-type HeaderParser struct {
+type headerParser struct {
 	header []byte
 	offset int
 }
 
 // Next will keep parsing until it collects a new entry. io.EOF is returned when there is nothing left to parse.
-func (hp *HeaderParser) Next() (ParsedHeaderEntry, error) {
+func (hp *headerParser) Next() (ParsedHeaderEntry, error) {
 	headerLen := len(hp.header)
 
 	if hp.offset >= headerLen {
@@ -480,8 +480,8 @@ func (hp *HeaderParser) Next() (ParsedHeaderEntry, error) {
 	return result, nil
 }
 
-func NewHeaderParser(header []byte) HeaderParser {
-	return HeaderParser{header: header}
+func newHeaderParser(header []byte) headerParser {
+	return headerParser{header: header}
 }
 
 func mergeMultiline(line []byte) string {
