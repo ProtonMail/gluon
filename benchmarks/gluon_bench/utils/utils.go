@@ -2,7 +2,10 @@ package utils
 
 import (
 	"bufio"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 func ReadLinesFromFile(path string) ([]string, error) {
@@ -23,4 +26,37 @@ func ReadLinesFromFile(path string) ([]string, error) {
 	}
 
 	return lines, nil
+}
+
+func LoadFilesFromDirectory(path string, filter func(string, fs.FileInfo) bool) ([]string, error) {
+	var files []string
+
+	if err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !filter(path, info) {
+			return nil
+		}
+
+		bytes, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		files = append(files, string(bytes))
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return files, nil
+}
+
+func LoadEMLFilesFromDirectory(path string) ([]string, error) {
+	return LoadFilesFromDirectory(path, func(s string, info fs.FileInfo) bool {
+		return !info.IsDir() && strings.HasSuffix(s, ".eml")
+	})
 }
