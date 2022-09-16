@@ -91,7 +91,7 @@ func BumpMailboxUIDNext(ctx context.Context, tx *ent.Tx, mbox *ent.Mailbox, with
 		n = 1
 	}
 
-	if _, err := mbox.Update().
+	if _, err := tx.Mailbox.Update().Where(mailbox.ID(mbox.ID)).
 		SetUIDNext(mbox.UIDNext.Add(uint32(n))).
 		Save(ctx); err != nil {
 		return err
