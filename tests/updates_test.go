@@ -286,7 +286,7 @@ func TestMessageAddWithSameID(t *testing.T) {
 		c.C("A001 SELECT mbox").OK("A001")
 
 		c.C("A003 FETCH 1 (FLAGS)")
-		c.S(`* 1 FETCH (FLAGS (\Draft \Flagged \Marked \Recent \bar \foo)`)
+		c.S(`* 1 FETCH (FLAGS (\Draft \Flagged \Marked \Recent \bar \foo))`)
 		c.OK("A003")
 	})
 }

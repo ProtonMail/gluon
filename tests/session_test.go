@@ -175,12 +175,12 @@ func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, pe
 func (s *testSession) messageCreated(user string, mailboxID imap.LabelID, literal []byte, internalDate time.Time, flags ...string) imap.MessageID {
 	messageID := imap.MessageID(utils.NewRandomMessageID())
 
-	s.messageCreatedWithID(user, messageID, mailboxID, literal, flags...)
+	s.messageCreatedWithID(user, messageID, mailboxID, literal, internalDate, flags...)
 
 	return messageID
 }
 
-func (s *testSession) messageCreatedWithID(user string, messageID imap.MessageID, mailboxID imap.LabelID, literal []byte, flags ...string) {
+func (s *testSession) messageCreatedWithID(user string, messageID imap.MessageID, mailboxID imap.LabelID, literal []byte, internalDate time.Time, flags ...string) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageCreated(
 		imap.Message{
 			ID:    messageID,
