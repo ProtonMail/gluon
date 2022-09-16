@@ -29,7 +29,12 @@ func Structure(section *rfc822.Section) (string, string, error) {
 }
 
 func structure(section *rfc822.Section, fields *paramList, writer *dualParListWriter) error {
-	if len(section.Children()) == 0 {
+	children, err := section.Children()
+	if err != nil {
+		return err
+	}
+
+	if len(children) == 0 {
 		return singlePartStructure(section, fields, writer)
 	}
 
@@ -113,7 +118,12 @@ func singlePartStructure(section *rfc822.Section, fields *paramList, writer *dua
 }
 
 func childStructures(section *rfc822.Section, c *paramList, writer *dualParListWriter) error {
-	for _, child := range section.Children() {
+	children, err := section.Children()
+	if err != nil {
+		return err
+	}
+
+	for _, child := range children {
 		cl := c.newChildList(writer)
 
 		if err := structure(child, &cl, writer); err != nil {

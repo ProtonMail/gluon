@@ -1,6 +1,7 @@
 package rfc822
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,28 +17,28 @@ Content-type: multipart/mixed; boundary="simple boundary"
 This is the preamble.  It is to be ignored, though it 
 is a handy place for mail composers to include an 
 explanatory note to non-MIME compliant readers. 
---simple boundary 
+--simple boundary
 Content-type: multipart/mixed; boundary="nested boundary" 
 
 This is the preamble.  It is to be ignored, though it 
 is a handy place for mail composers to include an 
 explanatory note to non-MIME compliant readers. 
---nested boundary 
+--nested boundary
 Content-type: text/plain; charset=us-ascii
 
 This part does not end with a linebreak.
---nested boundary 
+--nested boundary
 Content-type: text/plain; charset=us-ascii
 
 This part does end with a linebreak.
 
 --nested boundary--
---simple boundary 
+--simple boundary
 Content-type: text/plain; charset=us-ascii
 
 This part does end with a linebreak.
 
---simple boundary-- 
+--simple boundary--
 This is the epilogue.  It is also to be ignored.
 `
 
@@ -45,36 +46,52 @@ This is the epilogue.  It is also to be ignored.
 
 	assert.Equal(t, literal, string(section.Literal()))
 
-	assert.Equal(t, `Content-type: multipart/mixed; boundary="nested boundary" 
+	{
+		part, err := section.Part(1)
+		require.NoError(t, err)
+		assert.Equal(t, `Content-type: multipart/mixed; boundary="nested boundary" 
 
 This is the preamble.  It is to be ignored, though it 
 is a handy place for mail composers to include an 
 explanatory note to non-MIME compliant readers. 
---nested boundary 
+--nested boundary
 Content-type: text/plain; charset=us-ascii
 
 This part does not end with a linebreak.
---nested boundary 
+--nested boundary
 Content-type: text/plain; charset=us-ascii
 
 This part does end with a linebreak.
 
---nested boundary--`, string(section.Part(1).Literal()))
+--nested boundary--`, string(part.Literal()))
+	}
 
-	assert.Equal(t, `Content-type: text/plain; charset=us-ascii
-
-This part does end with a linebreak.
-`, string(section.Part(2).Literal()))
-
-	assert.Equal(t, `Content-type: text/plain; charset=us-ascii
-
-This part does not end with a linebreak.`, string(section.Part(1, 1).Literal()))
-
-	assert.Equal(t,
-		`Content-type: text/plain; charset=us-ascii
+	{
+		part, err := section.Part(2)
+		require.NoError(t, err)
+		assert.Equal(t, `Content-type: text/plain; charset=us-ascii
 
 This part does end with a linebreak.
-`, string(section.Part(1, 2).Literal()))
+`, string(part.Literal()))
+	}
+
+	{
+		part, err := section.Part(1, 1)
+		require.NoError(t, err)
+		assert.Equal(t, `Content-type: text/plain; charset=us-ascii
+
+This part does not end with a linebreak.`, string(part.Literal()))
+	}
+
+	{
+		part, err := section.Part(1, 2)
+		require.NoError(t, err)
+		assert.Equal(t,
+			`Content-type: text/plain; charset=us-ascii
+
+This part does end with a linebreak.
+`, string(part.Literal()))
+	}
 }
 
 func TestParseEmbeddedMessage(t *testing.T) {
@@ -87,11 +104,11 @@ Content-type: multipart/mixed; boundary="simple boundary"
 This is the preamble.  It is to be ignored, though it 
 is a handy place for mail composers to include an 
 explanatory note to non-MIME compliant readers. 
---simple boundary 
+--simple boundary
 Content-type: text/plain; charset=us-ascii
 
 This part does not end with a linebreak.
---simple boundary 
+--simple boundary
 Content-Disposition: attachment; filename=test.eml
 Content-Type: message/rfc822; name=test.eml
 X-Pm-Content-Encryption: on-import
@@ -112,7 +129,7 @@ Content-type: text/plain; charset=us-ascii
 
 This part is also embedded
 --embedded-boundary--
---simple boundary-- 
+--simple boundary--
 This is the epilogue.  It is also to be ignored.
 `
 
@@ -120,11 +137,18 @@ This is the epilogue.  It is also to be ignored.
 
 	assert.Equal(t, literal, string(section.Literal()))
 
-	assert.Equal(t, `Content-type: text/plain; charset=us-ascii
+	{
+		part, err := section.Part(1)
+		require.NoError(t, err)
+		assert.Equal(t, `Content-type: text/plain; charset=us-ascii
 
-This part does not end with a linebreak.`, string(section.Part(1).Literal()))
+This part does not end with a linebreak.`, string(part.Literal()))
+	}
 
-	assert.Equal(t, `Content-Disposition: attachment; filename=test.eml
+	{
+		part, err := section.Part(2)
+		require.NoError(t, err)
+		assert.Equal(t, `Content-Disposition: attachment; filename=test.eml
 Content-Type: message/rfc822; name=test.eml
 X-Pm-Content-Encryption: on-import
 
@@ -143,18 +167,27 @@ From me
 Content-type: text/plain; charset=us-ascii
 
 This part is also embedded
---embedded-boundary--`, string(section.Part(2).Literal()))
+--embedded-boundary--`, string(part.Literal()))
+	}
 
-	assert.Equal(t, `Content-type: text/plain; charset=us-ascii
+	{
+		part, err := section.Part(2, 1)
+		require.NoError(t, err)
+		assert.Equal(t, `Content-type: text/plain; charset=us-ascii
 
 This part is embedded
 
 --
-From me`, string(section.Part(2, 1).Literal()))
+From me`, string(part.Literal()))
+	}
 
-	assert.Equal(t, `Content-type: text/plain; charset=us-ascii
+	{
+		part, err := section.Part(2, 2)
+		require.NoError(t, err)
+		assert.Equal(t, `Content-type: text/plain; charset=us-ascii
 
-This part is also embedded`, string(section.Part(2, 2).Literal()))
+This part is also embedded`, string(part.Literal()))
+	}
 }
 
 func TestParseSpaceLineHeaderMessage(t *testing.T) {
@@ -197,4 +230,21 @@ Scandinavian
 `,
 		string(section.Body()),
 	)
+}
+
+func TestCarriageReturnHandling(t *testing.T) {
+	const literal = "Content-Type: multipart/alternative; boundary=\"------------62DCF50B21CF279F489F0184\"\r\n\r\n\r\n" +
+		"--------------62DCF50B21CF279F489F0184\r\nContent-Type: text/plain; charset=utf-8; format=flowed\r\n" +
+		"Content-Transfer-Encoding: 7bit\r\n\r\n*this */is**/_html_\r\n**\r\n\r\n--------------62DCF50B21CF279F489F0184\r\n" +
+		"Content-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: 7bit\r\n<foo></foo>\r\n--------------62DCF50B21CF279F489F0184--\r\n"
+
+	section := Parse([]byte(literal))
+
+	assert.Equal(t, literal, string(section.Literal()))
+	{
+		part, err := section.Part(1)
+		require.NoError(t, err)
+		assert.Equal(t, "Content-Type: text/plain; charset=utf-8; format=flowed\r\nContent-Transfer-Encoding: 7bit\r\n\r\n*this */is**/_html_\r\n**\r\n", string(part.Literal()))
+
+	}
 }
