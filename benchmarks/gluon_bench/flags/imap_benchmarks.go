@@ -8,4 +8,5 @@ var (
 	IMAPRandomSeqSetIntervals = flag.Bool("imap-random-seqset-intervals", false, "When set, generate random sequence intervals rather than single numbers.")
 	IMAPUIDMode               = flag.Bool("imap-uid-mode", false, "When set, will run benchmarks in UID mode if available.")
 	IMAPParallelClients       = flag.Uint("imap-parallel-clients", 1, "Set the number of clients to be run in parallel during the benchmark.")
+	IMAPMailboxMessageDir     = flag.String("imap-mbox-file-dir", "", "Folder path to load *.eml messages instead of builtin selection.")
 )
