@@ -19,3 +19,15 @@ func BenchmarkParsedMessage(b *testing.B) {
 		require.NoError(b, err)
 	}
 }
+
+func BenchmarkParsedMessageLarge(b *testing.B) {
+	literal, err := os.ReadFile("testdata/large_message.eml")
+	require.NoError(b, err)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, err := imap.NewParsedMessage(literal)
+		require.NoError(b, err)
+	}
+}
