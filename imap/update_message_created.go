@@ -46,26 +46,17 @@ type MessagesCreated struct {
 }
 
 type MessageCreated struct {
-	Message    Message
-	Literal    []byte
-	MailboxIDs []LabelID
-
+	Message       Message
+	Literal       []byte
+	LabelIDs      []LabelID
 	ParsedMessage *ParsedMessage
 }
 
-func NewMessagesCreated() *MessagesCreated {
+func NewMessagesCreated(updates ...*MessageCreated) *MessagesCreated {
 	return &MessagesCreated{
 		updateWaiter: newUpdateWaiter(),
+		Messages:     updates,
 	}
-}
-
-func (u *MessagesCreated) Add(message Message, literal []byte, parsedMessage *ParsedMessage, mailboxIDs ...LabelID) {
-	u.Messages = append(u.Messages, &MessageCreated{
-		Message:       message,
-		Literal:       literal,
-		MailboxIDs:    mailboxIDs,
-		ParsedMessage: parsedMessage,
-	})
 }
 
 func (u *MessagesCreated) String() string {

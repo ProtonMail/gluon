@@ -79,9 +79,12 @@ func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs 
 		labelIDs:      labelIDs,
 	}
 
-	update := imap.NewMessagesCreated()
-
-	update.Add(message, literal, parsedMessage, mboxIDs...)
+	update := imap.NewMessagesCreated(&imap.MessageCreated{
+		Message:       message,
+		Literal:       literal,
+		LabelIDs:      mboxIDs,
+		ParsedMessage: parsedMessage,
+	})
 
 	conn.pushUpdate(update)
 
@@ -92,7 +95,7 @@ func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, m
 	conn.state.lock.Lock()
 	defer conn.state.lock.Unlock()
 
-	update := imap.NewMessagesCreated()
+	var updates []*imap.MessageCreated
 
 	for i := 0; i < len(messages); i++ {
 		parsedMessage, err := imap.NewParsedMessage(literals[i])
@@ -115,10 +118,15 @@ func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, m
 			labelIDs:      labelIDs,
 		}
 
-		update.Add(messages[i], literals[i], parsedMessage, mboxIDs[i]...)
+		updates = append(updates, &imap.MessageCreated{
+			Message:       messages[i],
+			Literal:       literals[i],
+			LabelIDs:      mboxIDs[i],
+			ParsedMessage: parsedMessage,
+		})
 	}
 
-	conn.pushUpdate(update)
+	conn.pushUpdate(imap.NewMessagesCreated(updates...))
 
 	return nil
 }

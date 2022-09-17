@@ -160,9 +160,12 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, liter
 		date,
 	)
 
-	update := imap.NewMessagesCreated()
-
-	update.Add(message, literal, parsedMessage, mboxID)
+	update := imap.NewMessagesCreated(&imap.MessageCreated{
+		Message:       message,
+		Literal:       literal,
+		LabelIDs:      []imap.LabelID{mboxID},
+		ParsedMessage: parsedMessage,
+	})
 
 	conn.pushUpdate(update)
 
@@ -251,14 +254,19 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 		conn.updateCh <- update
 	}
 
-	update := imap.NewMessagesCreated()
-	defer update.Wait()
+	var updates []*imap.MessageCreated
 
 	for _, message := range conn.state.getMessages() {
-		if err := conn.state.fillCreateMessageUpdate(update, message.ID); err != nil {
+		update, err := conn.state.getMessageCreatedUpdate(message.ID)
+		if err != nil {
 			return err
 		}
+
+		updates = append(updates, update)
 	}
+
+	update := imap.NewMessagesCreated(updates...)
+	defer update.Wait()
 
 	conn.updateCh <- update
 
