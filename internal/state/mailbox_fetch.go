@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -14,8 +15,14 @@ import (
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/rfc822"
+	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
 )
+
+type fetchRes struct {
+	seqID imap.SeqID
+	items []response.Item
+}
 
 func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes []*proto.FetchAttribute, ch chan response.Response) error {
 	msg, err := m.snap.getMessagesInRange(ctx, seq)
@@ -23,14 +30,26 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 		return err
 	}
 
-	for _, msg := range msg {
-		seq, items, err := m.fetchItems(ctx, msg, attributes)
-		if err != nil {
-			return err
-		}
+	res, err := parallel.MapContext(
+		ctx,
+		runtime.NumCPU(),
+		msg,
+		func(ctx context.Context, msg *snapMsg) (fetchRes, error) {
+			seq, items, err := m.fetchItems(ctx, msg, attributes)
+			if err != nil {
+				return fetchRes{}, err
+			}
 
+			return fetchRes{seq, items}, nil
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	for _, res := range res {
 		select {
-		case ch <- response.Fetch(seq).WithItems(items...):
+		case ch <- response.Fetch(res.seqID).WithItems(res.items...):
 
 		case <-ctx.Done():
 			return ctx.Err()
