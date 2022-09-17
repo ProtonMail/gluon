@@ -178,7 +178,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 				messagesToCreateFilter[message.Message.ID] = internalID
 			}
 
-			for _, mboxID := range message.MailboxIDs {
+			for _, mboxID := range message.LabelIDs {
 				v, ok := mboxInternalIDMap[mboxID]
 				if !ok {
 					internalMBoxID, err := db.GetMailboxIDWithRemoteID(ctx, client, mboxID)

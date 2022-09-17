@@ -129,18 +129,21 @@ func (state *dummyState) getMessages() []imap.Message {
 	})
 }
 
-func (state *dummyState) fillCreateMessageUpdate(update *imap.MessagesCreated, id imap.MessageID) error {
+func (state *dummyState) getMessageCreatedUpdate(id imap.MessageID) (*imap.MessageCreated, error) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
 	msg, ok := state.messages[id]
 	if !ok {
-		return ErrNoSuchMessage
+		return nil, ErrNoSuchMessage
 	}
 
-	update.Add(state.toMessage(id), msg.literal, msg.parsedMessage, maps.Keys(msg.labelIDs)...)
-
-	return nil
+	return &imap.MessageCreated{
+		Message:       state.toMessage(id),
+		Literal:       msg.literal,
+		LabelIDs:      maps.Keys(msg.labelIDs),
+		ParsedMessage: msg.parsedMessage,
+	}, nil
 }
 
 func (state *dummyState) getMessage(messageID imap.MessageID) (imap.Message, error) {
