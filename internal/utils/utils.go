@@ -1,6 +1,8 @@
 package utils
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 // NewRandomUserID return a new random user ID. For debugging purposes, the ID starts with the 'user-' prefix.
 func NewRandomUserID() string {

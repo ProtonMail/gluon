@@ -1,13 +1,13 @@
 package store
 
 import (
-	"crypto/sha256"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/hash"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/sirupsen/logrus"
 )
@@ -22,22 +22,23 @@ type badgerTransaction struct {
 	tx *badger.Txn
 }
 
-func NewBadgerStore(path string, userID string, encryptionPassphrase []byte) (*BadgerStore, error) {
-	encryptionKey := sha256.Sum256(encryptionPassphrase)
-
+func NewBadgerStore(path string, userID string, passphrase []byte) (*BadgerStore, error) {
 	db, err := badger.Open(badger.DefaultOptions(filepath.Join(path, userID)).
 		WithLogger(logrus.StandardLogger()).
 		WithLoggingLevel(badger.ERROR).
-		WithEncryptionKey(encryptionKey[:]).
+		WithEncryptionKey(hash.SHA256(passphrase)).
 		WithIndexCacheSize(128 * 1024 * 1024),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	store := &BadgerStore{db: db, gcExitCh: make(chan struct{})}
+	store := &BadgerStore{
+		db:       db,
+		gcExitCh: make(chan struct{}),
+	}
 
-	store.startGCCollector()
+	go store.startGCCollector()
 
 	return store, nil
 }
@@ -46,25 +47,25 @@ func (b *BadgerStore) startGCCollector() {
 	// Garbage collection needs to be run manually by us at some point.
 	// See https://dgraph.io/docs/badger/get-started/#garbage-collection for more details.
 	b.wg.Add(1)
+	defer b.wg.Done()
 
-	go func() {
-		defer b.wg.Done()
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
 
-		gcRun := time.After(5 * time.Minute)
-
+	for {
 		select {
-		case <-gcRun:
+		case <-ticker.C:
 			{
 			again:
-				err := b.db.RunValueLogGC(0.7)
-				if err == nil {
+				if err := b.db.RunValueLogGC(0.5); err == nil {
 					goto again
 				}
 			}
+
 		case <-b.gcExitCh:
 			return
 		}
-	}()
+	}
 }
 
 func (b *BadgerStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
