@@ -410,12 +410,6 @@ func mergeMultiline(line []byte) string {
 	return builder.String()
 }
 
-func isHeader(b []byte) bool {
-	_, err := NewHeader(b)
-
-	return err == nil
-}
-
 func splitLine(line []byte) [][]byte {
 	result := bytes.SplitN(line, []byte(`:`), 2)
 

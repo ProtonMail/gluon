@@ -155,15 +155,18 @@ func Split(b []byte) ([]byte, []byte) {
 func parse(literal []byte, identifier []int, begin, end int) *Section {
 	header, _ := Split(literal[begin:end])
 
-	if !isHeader(header) {
+	parsedHeader, err := NewHeader(header)
+	if err != nil {
 		header = nil
+		parsedHeader = nil
 	}
 
 	return &Section{
-		identifier: identifier,
-		literal:    literal,
-		header:     begin,
-		body:       begin + len(header),
-		end:        end,
+		identifier:   identifier,
+		literal:      literal,
+		parsedHeader: parsedHeader,
+		header:       begin,
+		body:         begin + len(header),
+		end:          end,
 	}
 }
