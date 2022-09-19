@@ -13,9 +13,9 @@ import (
 )
 
 type BadgerStore struct {
-	db       *badger.DB
-	gcExitCh chan struct{}
-	wg       sync.WaitGroup
+	db     *badger.DB
+	stopCh chan struct{}
+	stopWG sync.WaitGroup
 }
 
 type badgerTransaction struct {
@@ -34,11 +34,11 @@ func NewBadgerStore(path string, userID string, passphrase []byte) (*BadgerStore
 	}
 
 	store := &BadgerStore{
-		db:       db,
-		gcExitCh: make(chan struct{}),
+		db:     db,
+		stopCh: make(chan struct{}),
 	}
 
-	go store.startGCCollector()
+	store.startGCCollector()
 
 	return store, nil
 }
@@ -46,26 +46,29 @@ func NewBadgerStore(path string, userID string, passphrase []byte) (*BadgerStore
 func (b *BadgerStore) startGCCollector() {
 	// Garbage collection needs to be run manually by us at some point.
 	// See https://dgraph.io/docs/badger/get-started/#garbage-collection for more details.
-	b.wg.Add(1)
-	defer b.wg.Done()
+	b.stopWG.Add(1)
 
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
+	go func() {
+		defer b.stopWG.Done()
 
-	for {
-		select {
-		case <-ticker.C:
-			{
-			again:
-				if err := b.db.RunValueLogGC(0.5); err == nil {
-					goto again
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				{
+				again:
+					if err := b.db.RunValueLogGC(0.5); err == nil {
+						goto again
+					}
 				}
-			}
 
-		case <-b.gcExitCh:
-			return
+			case <-b.stopCh:
+				return
+			}
 		}
-	}
+	}()
 }
 
 func (b *BadgerStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
@@ -119,8 +122,9 @@ func (b *badgerTransaction) Rollback() error {
 }
 
 func (b *BadgerStore) Close() error {
-	close(b.gcExitCh)
-	b.wg.Wait()
+	close(b.stopCh)
+
+	b.stopWG.Wait()
 
 	return b.db.Close()
 }
