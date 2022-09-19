@@ -2,9 +2,11 @@ package db
 
 import (
 	"context"
+	"entgo.io/ent/dialect/sql"
+	"fmt"
+	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"strings"
 
-	"entgo.io/ent/dialect/sql"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
@@ -170,35 +172,53 @@ func GetMailboxRecentCount(ctx context.Context, client *ent.Client, mbox *ent.Ma
 	return mbox.QueryUIDs().Where(uid.Recent(true)).Count(ctx)
 }
 
-func GetMailboxMessagesForNewSnapshot(ctx context.Context, client *ent.Client, mbox *ent.Mailbox) ([]*ent.UID, error) {
-	var msgUIDs []*ent.UID
+type SnapshotMessageResult struct {
+	InternalID imap.InternalMessageID `json:"uid_message"`
+	RemoteID   imap.MessageID         `json:"remote_id"`
+	UID        imap.UID               `json:"uid"`
+	Recent     bool                   `json:"recent"`
+	Deleted    bool                   `json:"deleted"`
+	Flags      string                 `json:"flags"`
+}
 
-	const QueryLimit = 16000
+func (msg *SnapshotMessageResult) GetFlagSet() imap.FlagSet {
+	var flagSet imap.FlagSet
 
-	queryOffset := 0
-
-	for i := 0; ; i += QueryLimit {
-		result, err := mbox.QueryUIDs().
-			Where(uid.IDGT(queryOffset)).
-			WithMessage(func(query *ent.MessageQuery) { query.WithFlags().Select(message.FieldID, message.FieldRemoteID) }).
-			Select(uid.FieldID, uid.FieldUID, uid.FieldRecent, uid.FieldDeleted).Order(func(selector *sql.Selector) {
-			selector.OrderBy(uid.FieldID)
-		}).Limit(QueryLimit).All(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		resultLen := len(result)
-
-		if resultLen == 0 {
-			break
-		}
-
-		queryOffset = result[resultLen-1].ID
-		msgUIDs = append(msgUIDs, result...)
+	if len(msg.Flags) > 0 {
+		flags := strings.Split(msg.Flags, ",")
+		flagSet = imap.NewFlagSetFromSlice(flags)
+	} else {
+		flagSet = imap.NewFlagSet()
 	}
 
-	return msgUIDs, nil
+	if msg.Deleted {
+		flagSet = flagSet.Add(imap.FlagDeleted)
+	}
+
+	if msg.Recent {
+		flagSet = flagSet.Add(imap.FlagRecent)
+	}
+
+	return flagSet
+}
+
+func GetMailboxMessagesForNewSnapshot(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) ([]SnapshotMessageResult, error) {
+	messages := make([]SnapshotMessageResult, 0, 32)
+
+	if err := client.UID.Query().Where(func(s *sql.Selector) {
+		msgTable := sql.Table(message.Table)
+		flagTable := sql.Table(messageflag.Table)
+		s.Join(msgTable).On(s.C(uid.MessageColumn), msgTable.C(message.FieldID))
+		s.LeftJoin(flagTable).On(s.C(uid.MessageColumn), flagTable.C(messageflag.MessagesColumn))
+		s.Where(sql.EQ(uid.MailboxColumn, string(mboxID)))
+		s.Select(msgTable.C(message.FieldRemoteID), sql.As(fmt.Sprintf("GROUP_CONCAT(%v)", flagTable.C(messageflag.FieldValue)), "flags"), s.C(uid.FieldRecent), s.C(uid.FieldDeleted), s.C(uid.FieldUID), s.C(uid.MessageColumn))
+		s.GroupBy(s.C(uid.MessageColumn))
+		s.OrderBy(s.C(uid.FieldUID))
+	}).Select().Scan(ctx, &messages); err != nil {
+		return nil, err
+	}
+
+	return messages, nil
 }
 
 func GetMailboxIDWithRemoteID(ctx context.Context, client *ent.Client, labelID imap.LabelID) (imap.InternalMailboxID, error) {
