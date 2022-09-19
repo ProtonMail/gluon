@@ -9,7 +9,7 @@ import (
 )
 
 func TestMessages(t *testing.T) {
-	msg := newMsgList()
+	msg := newMsgList(8)
 
 	msg.insert(ids.NewMessageIDPairWithoutRemote("msgID1"), 10, imap.NewFlagSet(imap.FlagSeen))
 	msg.insert(ids.NewMessageIDPairWithoutRemote("msgID2"), 20, imap.NewFlagSet(imap.FlagSeen))

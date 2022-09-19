@@ -30,7 +30,7 @@ func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *en
 	snap := &snapshot{
 		mboxID:   ids.NewMailboxIDPair(mbox),
 		state:    state,
-		messages: newMsgList(),
+		messages: newMsgList(len(msgUIDs)),
 	}
 
 	for _, msgUID := range msgUIDs {
@@ -48,7 +48,7 @@ func newEmptySnapshot(state *State, mbox *ent.Mailbox) *snapshot {
 	return &snapshot{
 		mboxID:   ids.NewMailboxIDPair(mbox),
 		state:    state,
-		messages: newMsgList(),
+		messages: newMsgList(0),
 	}
 }
 

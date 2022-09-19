@@ -20,9 +20,10 @@ type snapMsgList struct {
 	idx map[imap.InternalMessageID]int
 }
 
-func newMsgList() *snapMsgList {
+func newMsgList(capacity int) *snapMsgList {
 	return &snapMsgList{
-		idx: make(map[imap.InternalMessageID]int),
+		idx: make(map[imap.InternalMessageID]int, capacity),
+		msg: make([]*snapMsg, 0, capacity),
 	}
 }
 
