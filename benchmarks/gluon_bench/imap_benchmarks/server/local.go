@@ -2,13 +2,13 @@ package server
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"net"
 
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
+	"github.com/ProtonMail/gluon/internal/hash"
 	"github.com/ProtonMail/gluon/profiling"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -80,14 +80,16 @@ func addUser(ctx context.Context, server *gluon.Server) error {
 		return err
 	}
 
-	encryptionBytes := sha256.Sum256([]byte(*flags.UserPassword))
-
-	if userID, err := server.AddUser(
+	userID, err := server.AddUser(
 		ctx,
 		c.Connector(),
-		encryptionBytes[:]); err != nil {
+		hash.SHA256([]byte(*flags.UserPassword)),
+	)
+	if err != nil {
 		return err
-	} else if *flags.Verbose {
+	}
+
+	if *flags.Verbose {
 		fmt.Printf("Adding user ID=%v\n", userID)
 	}
 

@@ -1,41 +1,42 @@
 package store
 
 import (
-	"crypto/sha256"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/hash"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/sirupsen/logrus"
 )
 
 type BadgerStore struct {
-	db       *badger.DB
-	gcExitCh chan struct{}
-	wg       sync.WaitGroup
+	db     *badger.DB
+	stopCh chan struct{}
+	stopWG sync.WaitGroup
 }
 
 type badgerTransaction struct {
 	tx *badger.Txn
 }
 
-func NewBadgerStore(path string, userID string, encryptionPassphrase []byte) (*BadgerStore, error) {
-	encryptionKey := sha256.Sum256(encryptionPassphrase)
-
+func NewBadgerStore(path string, userID string, passphrase []byte) (*BadgerStore, error) {
 	db, err := badger.Open(badger.DefaultOptions(filepath.Join(path, userID)).
 		WithLogger(logrus.StandardLogger()).
 		WithLoggingLevel(badger.ERROR).
-		WithEncryptionKey(encryptionKey[:]).
+		WithEncryptionKey(hash.SHA256(passphrase)).
 		WithIndexCacheSize(128 * 1024 * 1024),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	store := &BadgerStore{db: db, gcExitCh: make(chan struct{})}
+	store := &BadgerStore{
+		db:     db,
+		stopCh: make(chan struct{}),
+	}
 
 	store.startGCCollector()
 
@@ -45,24 +46,27 @@ func NewBadgerStore(path string, userID string, encryptionPassphrase []byte) (*B
 func (b *BadgerStore) startGCCollector() {
 	// Garbage collection needs to be run manually by us at some point.
 	// See https://dgraph.io/docs/badger/get-started/#garbage-collection for more details.
-	b.wg.Add(1)
+	b.stopWG.Add(1)
 
 	go func() {
-		defer b.wg.Done()
+		defer b.stopWG.Done()
 
-		gcRun := time.After(5 * time.Minute)
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
 
-		select {
-		case <-gcRun:
-			{
-			again:
-				err := b.db.RunValueLogGC(0.7)
-				if err == nil {
-					goto again
+		for {
+			select {
+			case <-ticker.C:
+				{
+				again:
+					if err := b.db.RunValueLogGC(0.5); err == nil {
+						goto again
+					}
 				}
+
+			case <-b.stopCh:
+				return
 			}
-		case <-b.gcExitCh:
-			return
 		}
 	}()
 }
@@ -118,8 +122,9 @@ func (b *badgerTransaction) Rollback() error {
 }
 
 func (b *BadgerStore) Close() error {
-	close(b.gcExitCh)
-	b.wg.Wait()
+	close(b.stopCh)
+
+	b.stopWG.Wait()
 
 	return b.db.Close()
 }

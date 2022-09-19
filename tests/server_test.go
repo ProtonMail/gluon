@@ -2,7 +2,6 @@ package tests
 
 import (
 	"context"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal"
+	"github.com/ProtonMail/gluon/internal/hash"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
@@ -168,8 +168,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		)
 
 		// Force USER ID to be consistent.
-		hash := sha256.Sum256([]byte(creds.usernames[0]))
-		userID := hex.EncodeToString(hash[:])
+		userID := hex.EncodeToString(hash.SHA256([]byte(creds.usernames[0])))
 
 		err := server.LoadUser(ctx, conn, userID, []byte(creds.password))
 		require.NoError(tb, err)

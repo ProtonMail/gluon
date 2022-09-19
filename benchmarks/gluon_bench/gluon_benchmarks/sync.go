@@ -2,7 +2,6 @@ package gluon_benchmarks
 
 import (
 	"context"
-	"crypto/sha256"
 	"flag"
 	"math/rand"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/timing"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/hash"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -113,12 +113,11 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 		s.mailboxes = append(s.mailboxes, mboxID)
 	}
 
-	encryptionBytes := sha256.Sum256([]byte(*flags.UserPassword))
-
 	if _, err = s.server.AddUser(
 		ctx,
 		c.Connector(),
-		encryptionBytes[:]); err != nil {
+		hash.SHA256([]byte(*flags.UserPassword)),
+	); err != nil {
 		return nil, err
 	}
 
