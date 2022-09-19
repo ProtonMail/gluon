@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
@@ -52,7 +53,7 @@ func NewMessageIDAndMailboxIDResponderStateUpdate(messageID imap.InternalMessage
 
 type Responder interface {
 	// handle generates responses in the context of the given snapshot.
-	handle(snap *snapshot, stateID StateID) ([]response.Response, responderDBUpdate, error)
+	handle(ctx context.Context, snap *snapshot, stateID StateID) ([]response.Response, responderDBUpdate, error)
 
 	// getMessageID returns the message ID that this Responder targets.
 	getMessageID() imap.InternalMessageID
@@ -90,7 +91,7 @@ type targetedExists struct {
 	targetStateID StateID
 }
 
-func (u *targetedExists) handle(snap *snapshot, stateID StateID) ([]response.Response, responderDBUpdate, error) {
+func (u *targetedExists) handle(_ context.Context, snap *snapshot, stateID StateID) ([]response.Response, responderDBUpdate, error) {
 	if snap.hasMessage(u.resp.messageID.InternalID) {
 		return nil, nil, nil
 	}
@@ -229,17 +230,15 @@ func (e *ExistsStateUpdate) String() string {
 
 type expunge struct {
 	messageID imap.InternalMessageID
-	asClose   bool
 }
 
-func NewExpunge(messageID imap.InternalMessageID, asClose bool) *expunge {
+func NewExpunge(messageID imap.InternalMessageID) *expunge {
 	return &expunge{
 		messageID: messageID,
-		asClose:   asClose,
 	}
 }
 
-func (u *expunge) handle(snap *snapshot, _ StateID) ([]response.Response, responderDBUpdate, error) {
+func (u *expunge) handle(ctx context.Context, snap *snapshot, _ StateID) ([]response.Response, responderDBUpdate, error) {
 	if !snap.hasMessage(u.messageID) {
 		return nil, nil, nil
 	}
@@ -254,7 +253,7 @@ func (u *expunge) handle(snap *snapshot, _ StateID) ([]response.Response, respon
 	}
 
 	// When handling a CLOSE command, EXPUNGE responses are not sent.
-	if u.asClose {
+	if contexts.IsClose(ctx) {
 		return nil, nil, nil
 	}
 
@@ -266,9 +265,8 @@ func (u *expunge) getMessageID() imap.InternalMessageID {
 }
 
 func (u *expunge) String() string {
-	return fmt.Sprintf("Expung: message = %v closed = %v",
+	return fmt.Sprintf("Expung: message = %v",
 		u.messageID.ShortID(),
-		u.asClose,
 	)
 }
 
@@ -299,7 +297,7 @@ func NewFetch(messageID imap.InternalMessageID, flags imap.FlagSet, asUID, asSil
 	}
 }
 
-func (u *fetch) handle(snap *snapshot, _ StateID) ([]response.Response, responderDBUpdate, error) {
+func (u *fetch) handle(_ context.Context, snap *snapshot, _ StateID) ([]response.Response, responderDBUpdate, error) {
 	if !snap.hasMessage(u.messageID) {
 		return nil, nil, nil
 	}

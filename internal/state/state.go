@@ -532,7 +532,7 @@ func (state *State) flushResponses(ctx context.Context, permitExpunge bool) ([]r
 	for _, responder := range state.popResponders(permitExpunge) {
 		logrus.WithField("state", state.StateID).WithField("Origin", "Flush").Tracef("Applying responder: %v", responder.String())
 
-		res, dbUpdate, err := responder.handle(state.snap, state.StateID)
+		res, dbUpdate, err := responder.handle(ctx, state.snap, state.StateID)
 		if err != nil {
 			return nil, err
 		}
@@ -567,7 +567,7 @@ func (state *State) PushResponder(ctx context.Context, tx *ent.Tx, responder ...
 	for _, responder := range responder {
 		logrus.WithField("state", state.StateID).WithField("Origin", "Push").Tracef("Applying responder: %v", responder.String())
 
-		res, dbUpdate, err := responder.handle(state.snap, state.StateID)
+		res, dbUpdate, err := responder.handle(ctx, state.snap, state.StateID)
 		if err != nil {
 			return err
 		}
