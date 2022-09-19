@@ -10,6 +10,7 @@ import (
 )
 
 var selectReadOnlyFlag = flag.Bool("imap-select-readonly", false, "If set to true, perform a read only select (examine).")
+var selectCallCountFlag = flag.Uint("imap-select-count", 1000, "Number of times to call select.")
 
 type Select struct {
 	*stateTracker
@@ -39,9 +40,15 @@ func (s *Select) TearDown(ctx context.Context, addr net.Addr) error {
 
 func (s *Select) Run(ctx context.Context, addr net.Addr) error {
 	RunParallelClientsWithMailbox(addr, s.MBoxes[0], *fetchReadOnly, func(cl *client.Client, index uint) {
-		_, err := cl.Select(s.MBoxes[0], *selectReadOnlyFlag)
-		if err != nil {
-			panic(err)
+		for i := uint(0); i < *selectCallCountFlag; i++ {
+			_, err := cl.Select(s.MBoxes[0], *selectReadOnlyFlag)
+			if err != nil {
+				panic(err)
+			}
+
+			if err := cl.Unselect(); err != nil {
+				panic(err)
+			}
 		}
 	})
 
