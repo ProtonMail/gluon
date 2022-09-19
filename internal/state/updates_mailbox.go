@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
@@ -46,7 +45,7 @@ func MoveMessagesFromMailbox(
 	}
 
 	for _, messageID := range messageIDs {
-		stateUpdates = append(stateUpdates, NewMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxFromID, NewExpunge(messageID, contexts.IsClose(ctx))))
+		stateUpdates = append(stateUpdates, NewMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxFromID, NewExpunge(messageID)))
 	}
 
 	return messageUIDs, stateUpdates, nil
@@ -80,7 +79,7 @@ func RemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.Inte
 	}
 
 	stateUpdates := xslices.Map(messageIDs, func(id imap.InternalMessageID) Update {
-		return NewMessageIDAndMailboxIDResponderStateUpdate(id, mboxID, NewExpunge(id, contexts.IsClose(ctx)))
+		return NewMessageIDAndMailboxIDResponderStateUpdate(id, mboxID, NewExpunge(id))
 	})
 
 	return stateUpdates, nil
