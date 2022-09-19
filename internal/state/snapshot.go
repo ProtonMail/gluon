@@ -22,7 +22,7 @@ type snapshot struct {
 }
 
 func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *ent.Mailbox) (*snapshot, error) {
-	msgUIDs, err := db.GetMailboxMessagesForNewSnapshot(ctx, client, mbox)
+	snapshotMessages, err := db.GetMailboxMessagesForNewSnapshot(ctx, client, mbox.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -30,14 +30,14 @@ func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *en
 	snap := &snapshot{
 		mboxID:   ids.NewMailboxIDPair(mbox),
 		state:    state,
-		messages: newMsgList(len(msgUIDs)),
+		messages: newMsgList(len(snapshotMessages)),
 	}
 
-	for _, msgUID := range msgUIDs {
+	for _, snapshotMessage := range snapshotMessages {
 		snap.messages.insert(
-			ids.NewMessageIDPair(msgUID.Edges.Message),
-			msgUID.UID,
-			db.NewFlagSet(msgUID, msgUID.Edges.Message.Edges.Flags),
+			ids.MessageIDPair{InternalID: snapshotMessage.InternalID, RemoteID: snapshotMessage.RemoteID},
+			snapshotMessage.UID,
+			snapshotMessage.GetFlagSet(),
 		)
 	}
 
