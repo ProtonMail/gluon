@@ -1,0 +1,32 @@
+Content-Type: multipart/mixed;
+ boundary=eccb619eb8cb1994c1375b3b013a7c995dcc7ab05f9cfec486ffeb18d6f8ca65
+To: <someone@pm.me>
+From: <someone@gmail.com>
+Subject: empty header test
+Date: Tue, 17 Aug 2021 07:33:19 -0700 (PDT)
+Mime-Version: 1.0
+
+--eccb619eb8cb1994c1375b3b013a7c995dcc7ab05f9cfec486ffeb18d6f8ca65
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=utf-8
+
+No valid message body or attachments were found in this email. Please check=
+ with the sender to ensure that they are sending valid emails. The raw mess=
+age is attached.\n\n
+--eccb619eb8cb1994c1375b3b013a7c995dcc7ab05f9cfec486ffeb18d6f8ca65
+Content-Disposition: attachment; filename=message.eml
+Content-Type: message/rfc822; name=message.eml
+
+Return-Path: <someone@gmail.com>
+X-Original-To: someone@pm.me
+Date: Tue, 17 Aug 2021 07:33:19 -0700 (PDT)
+To: someone@pm.me
+From: someone@gmail.com
+Subject: empty header test
+Content-type: multipart/mixed; boundary=whatever
+
+--whatever
+Body
+--whatever
+
+--eccb619eb8cb1994c1375b3b013a7c995dcc7ab05f9cfec486ffeb18d6f8ca65--

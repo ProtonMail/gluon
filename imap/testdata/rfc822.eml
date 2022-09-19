@@ -1,0 +1,20 @@
+Content-Type: multipart/mixed;
+ boundary=b55536263d91d87d90bcd1f3249becaa7fc9105ddfbd96d7c058e1589725
+Date: Thu, 21 Nov 2013 16:33:01 +0100
+From: "Some Body" <someone@pm.me>
+Subject: Empty header again
+To: "Some Body Else" <someoneelse@pm.me>
+Mime-Version: 1.0
+
+--b55536263d91d87d90bcd1f3249becaa7fc9105ddfbd96d7c058e1589725
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/html; charset=utf-8
+
+<html><head></head><body><p>Test</p></body></html>
+--b55536263d91d87d90bcd1f3249becaa7fc9105ddfbd96d7c058e1589725
+Content-Disposition: attachment; filename=filename.mail
+Content-Type: message/rfc822; name=filename.mail
+
+# The command is:
+rm -rf /
+--b55536263d91d87d90bcd1f3249becaa7fc9105ddfbd96d7c058e1589725--

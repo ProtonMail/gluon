@@ -10,7 +10,8 @@ import (
 )
 
 type headerEntry struct {
-	ParsedHeaderEntry
+	parsedHeaderEntry
+
 	mapKey string
 	merged string
 	prev   *headerEntry
@@ -19,7 +20,7 @@ type headerEntry struct {
 
 func (he *headerEntry) getMerged(data []byte) string {
 	if len(he.merged) == 0 {
-		he.merged = mergeMultiline(he.GetValue(data))
+		he.merged = mergeMultiline(he.getValue(data))
 	}
 
 	return he.merged
@@ -41,7 +42,7 @@ func NewHeader(data []byte) (*Header, error) {
 	parser := newHeaderParser(data)
 
 	for {
-		entry, err := parser.Next()
+		entry, err := parser.next()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -51,13 +52,13 @@ func NewHeader(data []byte) (*Header, error) {
 		}
 
 		hentry := &headerEntry{
-			ParsedHeaderEntry: entry,
+			parsedHeaderEntry: entry,
 			merged:            "",
 			next:              nil,
 		}
 
-		if entry.HasKey() {
-			hashKey := strings.ToLower(string(entry.GetKey(data)))
+		if entry.hasKey() {
+			hashKey := strings.ToLower(string(entry.getKey(data)))
 			hentry.mapKey = hashKey
 
 			if v, ok := h.keys[hashKey]; !ok {
@@ -114,7 +115,7 @@ func (h *Header) GetLine(key string) []byte {
 		return nil
 	}
 
-	return v[0].GetAll(h.data)
+	return v[0].getAll(h.data)
 }
 
 func (h *Header) getLines() [][]byte {
@@ -132,7 +133,7 @@ func (h *Header) GetRaw(key string) []byte {
 		return nil
 	}
 
-	return v[0].GetValue(h.data)
+	return v[0].getValue(h.data)
 }
 
 func (h *Header) Set(key, val string) {
@@ -144,7 +145,7 @@ func (h *Header) Set(key, val string) {
 
 	entryBytes := joinLine([]byte(key), []byte(val))
 	newHeaderEntry := &headerEntry{
-		ParsedHeaderEntry: ParsedHeaderEntry{
+		parsedHeaderEntry: parsedHeaderEntry{
 			keyStart:   0,
 			keyEnd:     len(keyBytes),
 			valueStart: len(keyBytes) + 2,
@@ -168,7 +169,8 @@ func (h *Header) Set(key, val string) {
 		h.firstEntry.prev = newHeaderEntry
 		h.firstEntry = newHeaderEntry
 
-		buffer := bytes.Buffer{}
+		var buffer bytes.Buffer
+
 		if insertOffset != 0 {
 			if _, err := buffer.Write(h.data[0:insertOffset]); err != nil {
 				panic("failed to write to byte buffer")
@@ -229,12 +231,12 @@ func (h *Header) Fields(fields []string) []byte {
 	var res []byte
 
 	for e := h.firstEntry; e != nil; e = e.next {
-		if len(bytes.TrimSpace(e.GetAll(h.data))) == 0 {
-			res = append(res, e.GetAll(h.data)...)
+		if len(bytes.TrimSpace(e.getAll(h.data))) == 0 {
+			res = append(res, e.getAll(h.data)...)
 			continue
 		}
 
-		if !e.HasKey() {
+		if !e.hasKey() {
 			continue
 		}
 
@@ -243,7 +245,7 @@ func (h *Header) Fields(fields []string) []byte {
 			continue
 		}
 
-		res = append(res, e.GetAll(h.data)...)
+		res = append(res, e.getAll(h.data)...)
 	}
 
 	return res
@@ -259,12 +261,12 @@ func (h *Header) FieldsNot(fields []string) []byte {
 	var res []byte
 
 	for e := h.firstEntry; e != nil; e = e.next {
-		if len(bytes.TrimSpace(e.GetAll(h.data))) == 0 {
-			res = append(res, e.GetAll(h.data)...)
+		if len(bytes.TrimSpace(e.getAll(h.data))) == 0 {
+			res = append(res, e.getAll(h.data)...)
 			continue
 		}
 
-		if !e.HasKey() {
+		if !e.hasKey() {
 			continue
 		}
 
@@ -273,20 +275,19 @@ func (h *Header) FieldsNot(fields []string) []byte {
 			continue
 		}
 
-		res = append(res, e.GetAll(h.data)...)
+		res = append(res, e.getAll(h.data)...)
 	}
 
-	// Since we are only applying the entries that have a key, we need to add a new line at the end.
 	return res
 }
 
 func (h *Header) Entries(fn func(key, val string)) {
 	for e := h.firstEntry; e != nil; e = e.next {
-		if !e.HasKey() {
+		if !e.hasKey() {
 			continue
 		}
 
-		fn(string(e.GetKey(h.data)), e.getMerged(h.data))
+		fn(string(e.getKey(h.data)), e.getMerged(h.data))
 	}
 }
 
@@ -303,13 +304,14 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 
 	parser := newHeaderParser(rawHeader)
 
-	var foundFirstEntry bool
-
-	var parsedHeaderEntry ParsedHeaderEntry
+	var (
+		foundFirstEntry   bool
+		parsedHeaderEntry parsedHeaderEntry
+	)
 
 	// find first header entry.
 	for {
-		entry, err := parser.Next()
+		entry, err := parser.next()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -318,7 +320,7 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 			}
 		}
 
-		if entry.HasKey() {
+		if entry.hasKey() {
 			foundFirstEntry = true
 			parsedHeaderEntry = entry
 
@@ -332,7 +334,10 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 	if !foundFirstEntry {
 		return append(rawHeader, append(data, body...)...), nil
 	} else {
-		return append(literal[0:parsedHeaderEntry.keyStart], append(data, literal[parsedHeaderEntry.keyStart:]...)...), nil
+		return append(
+			literal[0:parsedHeaderEntry.keyStart],
+			append(data, literal[parsedHeaderEntry.keyStart:]...)...,
+		), nil
 	}
 }
 
@@ -343,7 +348,7 @@ func GetHeaderValue(literal []byte, key string) (string, error) {
 	parser := newHeaderParser(rawHeader)
 
 	for {
-		entry, err := parser.Next()
+		entry, err := parser.next()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -352,161 +357,39 @@ func GetHeaderValue(literal []byte, key string) (string, error) {
 			}
 		}
 
-		if !entry.HasKey() {
+		if !entry.hasKey() {
 			continue
 		}
 
-		if !strings.EqualFold(key, string(entry.GetKey(rawHeader))) {
+		if !strings.EqualFold(key, string(entry.getKey(rawHeader))) {
 			continue
 		}
 
-		return mergeMultiline(entry.GetValue(rawHeader)), nil
+		return mergeMultiline(entry.getValue(rawHeader)), nil
 	}
 
 	return "", nil
 }
 
 var (
-	errNonASCIIHeaderKey = fmt.Errorf("header key contains invalid characters")
-	errKeyNotFound       = fmt.Errorf("invalid header key")
+	ErrNonASCIIHeaderKey = fmt.Errorf("header key contains invalid characters")
+	ErrKeyNotFound       = fmt.Errorf("invalid header key")
 )
-
-type ParsedHeaderEntry struct {
-	keyStart   int
-	keyEnd     int
-	valueStart int
-	valueEnd   int
-}
-
-func (p ParsedHeaderEntry) HasKey() bool {
-	return p.keyStart != p.keyEnd
-}
-
-func (p ParsedHeaderEntry) GetKey(header []byte) []byte {
-	return header[p.keyStart:p.keyEnd]
-}
-
-func (p ParsedHeaderEntry) GetValue(header []byte) []byte {
-	return header[p.valueStart:p.valueEnd]
-}
-
-func (p ParsedHeaderEntry) GetAll(header []byte) []byte {
-	return header[p.keyStart:p.valueEnd]
-}
-
-func (p *ParsedHeaderEntry) applyOffset(offset int) {
-	p.keyStart += offset
-	p.keyEnd += offset
-	p.valueStart += offset
-	p.valueEnd += offset
-}
-
-type headerParser struct {
-	header []byte
-	offset int
-}
-
-// Next will keep parsing until it collects a new entry. io.EOF is returned when there is nothing left to parse.
-func (hp *headerParser) Next() (ParsedHeaderEntry, error) {
-	headerLen := len(hp.header)
-
-	if hp.offset >= headerLen {
-		return ParsedHeaderEntry{}, io.EOF
-	}
-
-	result := ParsedHeaderEntry{
-		keyStart:   hp.offset,
-		keyEnd:     -1,
-		valueStart: -1,
-		valueEnd:   -1,
-	}
-
-	// Detect key, have to handle prelude case where there is no header information or last empty new line.
-	{
-		for hp.offset < headerLen {
-			if hp.header[hp.offset] == ':' {
-				prevOffset := hp.offset
-				hp.offset++
-				if hp.offset < headerLen && (hp.header[hp.offset] == ' ' || hp.header[hp.offset] == '\r' || hp.header[hp.offset] == '\n') {
-					result.keyEnd = prevOffset
-
-					// Validate the header key.
-					for i := result.keyStart; i < result.keyEnd; i++ {
-						v := hp.header[i]
-						if v < 33 || v > 126 {
-							return ParsedHeaderEntry{}, errNonASCIIHeaderKey
-						}
-					}
-
-					break
-				}
-			} else if hp.header[hp.offset] == '\n' {
-				hp.offset++
-				result.keyEnd = result.keyStart
-				result.valueStart = result.keyStart
-				result.valueEnd = hp.offset
-				return result, nil
-			} else {
-				hp.offset++
-			}
-		}
-
-	}
-
-	// collect value.
-	searchOffset := result.keyEnd + 2
-	result.valueStart = searchOffset
-
-	for searchOffset < headerLen {
-		// consume all content in between two quotes.
-		if hp.header[searchOffset] == '"' {
-			searchOffset++
-			for searchOffset < headerLen && hp.header[searchOffset] != '"' {
-				searchOffset++
-			}
-			searchOffset++
-
-			continue
-		} else if hp.header[searchOffset] == '\n' {
-			searchOffset++
-			// if folding the next line has to start with space or tab.
-			if searchOffset < headerLen && (hp.header[searchOffset] != ' ' && hp.header[searchOffset] != '\t') {
-				result.valueEnd = searchOffset
-				break
-			}
-		} else {
-			searchOffset++
-		}
-	}
-
-	hp.offset = searchOffset
-
-	// handle case where we may have reached EOF without concluding any previous processing.
-	if result.valueEnd == -1 && searchOffset >= headerLen {
-		result.valueEnd = headerLen
-	}
-
-	return result, nil
-}
-
-func newHeaderParser(header []byte) headerParser {
-	return headerParser{header: header}
-}
 
 func mergeMultiline(line []byte) string {
 	remaining := line
 
-	builder := strings.Builder{}
-	separator := []byte{'\n'}
+	var builder strings.Builder
 
 	for len(remaining) != 0 {
-		index := bytes.Index(remaining, separator)
+		index := bytes.Index(remaining, []byte{'\n'})
 		if index < 0 {
 			builder.Write(bytes.TrimSpace(remaining))
 			break
 		}
 
 		var section []byte
+
 		if index >= 1 && remaining[index-1] == '\r' {
 			section = remaining[0 : index-1]
 		} else {
