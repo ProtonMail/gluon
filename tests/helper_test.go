@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -936,4 +937,61 @@ func (b *bodyStructureValidatorBuilder) wantMD5(md5 string) {
 	b.validateMD5 = func(tb testing.TB, s string) {
 		require.Equal(tb, md5, s)
 	}
+}
+
+// anyOrderRegexp returns regexp group with all permutations of given strings.
+// Go's regexp package don't support lookbehind, see:
+// https://github.com/google/re2/wiki/Syntax
+// Permutation algo is taken from https://www.quickperm.org/.
+func anyOrderRegexp(items ...string) string {
+	size := len(items)
+	safeItems := make([]string, size)
+	a := make([]int, size)
+	p := make([]int, size+1)
+	SEP := []byte("( |)")
+	out := []byte{SEP[0]}
+
+	for i := 0; i < size; i++ {
+		a[i] = i
+		safeItems[i] = regexp.QuoteMeta(items[i])
+		p[i] = i
+	}
+
+	p[size] = size
+
+	for i := 0; i < size; {
+		p[i]--
+
+		j := 0
+
+		if i%2 == 1 {
+			j = p[i]
+		}
+
+		// swap(a, i, j)
+		tmp := a[i]
+		a[i] = a[j]
+		a[j] = tmp
+
+		for _, iPerm := range a {
+			out = append(out, safeItems[iPerm]...)
+			out = append(out, SEP[1])
+		}
+
+		out[len(out)-1] = SEP[2]
+
+		for i = 1; p[i] == 0; i++ {
+			p[i] = i
+		}
+	}
+
+	out[len(out)-1] = SEP[3]
+
+	return string(out)
+}
+
+func TestAnyOrderRegexp(t *testing.T) {
+	require.Equal(t, "(aaa bb|bb aaa)", anyOrderRegexp("aaa", "bb"))
+	require.Equal(t, "(1 2 3|2 1 3|3 1 2|1 3 2|2 3 1|3 2 1)", anyOrderRegexp("1", "2", "3"))
+	require.Equal(t, "(1 2 3 4|2 1 3 4|3 1 2 4|1 3 2 4|2 3 1 4|3 2 1 4|3 2 4 1|2 3 4 1|4 3 2 1|3 4 2 1|2 4 3 1|4 2 3 1|4 1 3 2|1 4 3 2|3 4 1 2|4 3 1 2|1 3 4 2|3 1 4 2|2 1 4 3|1 2 4 3|4 2 1 3|2 4 1 3|1 4 2 3|4 1 2 3)", anyOrderRegexp("1", "2", "3", "4"))
 }

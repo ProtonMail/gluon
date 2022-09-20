@@ -20,11 +20,12 @@ func TestStore(t *testing.T) {
 		c.C(`A002 SELECT saved-messages`)
 		c.Se(`A002 OK [READ-WRITE] SELECT`)
 
-		// TODO: Match flags in any order.
 		c.C(`A005 FETCH 1:* (FLAGS)`)
-		c.S(`* 1 FETCH (FLAGS (\Recent \Seen))`,
-			`* 2 FETCH (FLAGS (\Recent))`,
-			`* 3 FETCH (FLAGS (\Recent \Seen))`)
+		c.Sx(
+			`^\* 1 FETCH \(FLAGS \(`+anyOrderRegexp(`\Recent`, `\Seen`)+`\)\)$`,
+			`^\* 2 FETCH \(FLAGS \(\\Recent\)\)$`,
+			`^\* 3 FETCH \(FLAGS \(`+anyOrderRegexp(`\Recent`, `\Seen`)+`\)\)$`,
+		)
 		c.OK(`A005`)
 
 		// Add \Deleted and \Draft to the first message.
@@ -128,11 +129,12 @@ func TestUIDStore(t *testing.T) {
 		c.C(`A002 SELECT saved-messages`)
 		c.Se(`A002 OK [READ-WRITE] SELECT`)
 
-		// TODO: Match flags in any order.
 		c.C(`A005 FETCH 1:* (FLAGS)`)
-		c.S(`* 1 FETCH (FLAGS (\Recent \Seen))`,
-			`* 2 FETCH (FLAGS (\Recent))`,
-			`* 3 FETCH (FLAGS (\Recent \Seen))`)
+		c.Sx(
+			`^\* 1 FETCH \(FLAGS \(`+anyOrderRegexp(`\Recent`, `\Seen`)+`\)\)$`,
+			`^\* 2 FETCH \(FLAGS \(\\Recent\)\)$`,
+			`^\* 3 FETCH \(FLAGS \(`+anyOrderRegexp(`\Recent`, `\Seen`)+`\)\)$`,
+		)
 		c.OK(`A005`)
 
 		// Add \Deleted and \Draft to the first message.

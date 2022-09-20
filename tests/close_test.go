@@ -39,9 +39,8 @@ func TestClose(t *testing.T) {
 		)
 		c[2].OK("B002")
 
-		// TODO: Match flags in any order.
 		c[1].C(`A003 STORE 1 +FLAGS (\Deleted)`)
-		c[1].S(`* 1 FETCH (FLAGS (\Deleted \Recent \Seen))`)
+		c[1].Sx(`^\* 1 FETCH \(FLAGS \(` + anyOrderRegexp(`\Deleted`, `\Recent`, `\Seen`) + `\)\)$`)
 		c[1].Sx("A003 OK.*")
 
 		c[1].C(`A004 STORE 2 +FLAGS (\Deleted)`)
