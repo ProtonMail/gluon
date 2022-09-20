@@ -109,7 +109,7 @@ func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID 
 		return err
 	}
 
-	s.publish(events.EventUserAdded{
+	s.publish(events.UserAdded{
 		UserID: userID,
 	})
 
@@ -124,7 +124,7 @@ func (s *Server) RemoveUser(ctx context.Context, userID string, removeFiles bool
 		return err
 	}
 
-	s.publish(events.EventUserRemoved{
+	s.publish(events.UserRemoved{
 		UserID: userID,
 	})
 
@@ -149,12 +149,12 @@ func (s *Server) AddWatcher(ofType ...events.Event) <-chan events.Event {
 func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 
-	s.publish(events.EventListenerAdded{
+	s.publish(events.ListenerAdded{
 		Addr: l.Addr(),
 	})
 
 	s.serveWG.Go(func() {
-		defer s.publish(events.EventListenerRemoved{
+		defer s.publish(events.ListenerRemoved{
 			Addr: l.Addr(),
 		})
 
@@ -265,7 +265,7 @@ func (s *Server) addSession(ctx context.Context, conn net.Conn) (*session.Sessio
 		s.sessions[nextID].SetOutgoingLogger(s.outLogger)
 	}
 
-	s.publish(events.EventSessionAdded{
+	s.publish(events.SessionAdded{
 		SessionID:  nextID,
 		LocalAddr:  conn.LocalAddr(),
 		RemoteAddr: conn.RemoteAddr(),
@@ -280,7 +280,7 @@ func (s *Server) removeSession(sessionID int) {
 
 	delete(s.sessions, sessionID)
 
-	s.publish(events.EventSessionRemoved{
+	s.publish(events.SessionRemoved{
 		SessionID: sessionID,
 	})
 }

@@ -46,7 +46,7 @@ func (s *Session) handleSelect(ctx context.Context, tag string, cmd *proto.Selec
 
 	ch <- response.Ok(tag).WithItems(response.ItemReadWrite()).WithMessage("SELECT")
 
-	s.eventCh <- events.EventSelect{
+	s.eventCh <- events.Select{
 		SessionID: s.sessionID,
 		Mailbox:   nameUTF8,
 	}

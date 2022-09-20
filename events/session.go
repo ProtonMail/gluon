@@ -2,7 +2,7 @@ package events
 
 import "net"
 
-type EventSessionAdded struct {
+type SessionAdded struct {
 	eventBase
 
 	SessionID  int
@@ -10,7 +10,7 @@ type EventSessionAdded struct {
 	RemoteAddr net.Addr
 }
 
-type EventSessionRemoved struct {
+type SessionRemoved struct {
 	eventBase
 
 	SessionID int
