@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+
 	"entgo.io/ent/dialect/sql"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent"

@@ -2,9 +2,9 @@ package imap_benchmarks
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"time"
 
+	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/emersion/go-imap/client"
 )

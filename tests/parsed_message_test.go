@@ -1,10 +1,10 @@
 package tests
 
 import (
-	"github.com/ProtonMail/gluon/imap"
 	"os"
 	"testing"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/stretchr/testify/require"
 )
 
