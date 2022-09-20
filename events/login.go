@@ -1,6 +1,6 @@
 package events
 
-type EventLogin struct {
+type Login struct {
 	eventBase
 
 	SessionID int

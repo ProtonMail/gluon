@@ -391,7 +391,7 @@ func TestMessageErasedFromDB(t *testing.T) {
 		s.messageDeleted("user", messageID2)
 
 		// Add a watcher that waits for end of session.
-		eventCh := s.server.AddWatcher(events.EventSessionRemoved{})
+		eventCh := s.server.AddWatcher(events.SessionRemoved{})
 
 		// Noop should process their deletion.
 		c.C(`A002 LOGOUT`)
@@ -419,7 +419,7 @@ func TestMessageErasedFromDBOnStartup(t *testing.T) {
 		messageID1 := s.messageCreatedFromFile("user", mailboxID, "testdata/multipart-mixed.eml")
 
 		// Add a watcher that waits for end of session.
-		eventCh := s.server.AddWatcher(events.EventSessionRemoved{})
+		eventCh := s.server.AddWatcher(events.SessionRemoved{})
 
 		// Noop should process their deletion.
 		c.C(`A002 LOGOUT`)
@@ -464,7 +464,7 @@ func TestMessageErasedFromDBWithMany(t *testing.T) {
 		s.messageDeleted("user", messageID1)
 
 		// Add a watcher that waits for end of session.
-		eventCh := s.server.AddWatcher(events.EventSessionRemoved{})
+		eventCh := s.server.AddWatcher(events.SessionRemoved{})
 
 		// Logout client 1.
 		c[1].C(`A002 LOGOUT`)

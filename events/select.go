@@ -1,6 +1,6 @@
 package events
 
-type EventSelect struct {
+type Select struct {
 	eventBase
 
 	SessionID int

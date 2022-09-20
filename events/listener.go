@@ -2,13 +2,13 @@ package events
 
 import "net"
 
-type EventListenerAdded struct {
+type ListenerAdded struct {
 	eventBase
 
 	Addr net.Addr
 }
 
-type EventListenerRemoved struct {
+type ListenerRemoved struct {
 	eventBase
 
 	Addr net.Addr

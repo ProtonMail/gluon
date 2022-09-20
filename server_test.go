@@ -17,7 +17,7 @@ func TestServer(t *testing.T) {
 	defer cancel()
 
 	// Get an event channel.
-	eventCh := server.AddWatcher(events.EventListenerAdded{}, events.EventListenerRemoved{})
+	eventCh := server.AddWatcher(events.ListenerAdded{}, events.ListenerRemoved{})
 
 	// Create a listener.
 	l, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))
@@ -25,9 +25,9 @@ func TestServer(t *testing.T) {
 
 	// The first listen is successful.
 	require.NoError(t, server.Serve(ctx, l))
-	require.Equal(t, events.EventListenerAdded{Addr: l.Addr()}, <-eventCh)
+	require.Equal(t, events.ListenerAdded{Addr: l.Addr()}, <-eventCh)
 
 	// The server closes successfully.
 	require.NoError(t, server.Close(ctx))
-	require.Equal(t, events.EventListenerRemoved{Addr: l.Addr()}, <-eventCh)
+	require.Equal(t, events.ListenerRemoved{Addr: l.Addr()}, <-eventCh)
 }

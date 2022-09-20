@@ -31,13 +31,13 @@ func (s *Session) handleLogin(ctx context.Context, tag string, cmd *proto.Login,
 
 	ch <- response.Ok(tag).WithItems(response.ItemCapability(s.caps...)).WithMessage("Logged in")
 
-	s.eventCh <- events.EventLogin{
+	s.eventCh <- events.Login{
 		SessionID: s.sessionID,
 		UserID:    state.UserID(),
 	}
 
-	// We set the IMAP id extension value after login, since it's possible that the client may have sent it before. This
-	// ensures that the ID is correctly set for the connection.
+	// We set the IMAP ID extension value after login, since it's possible that the client may have sent it before.
+	// This ensures that the ID is correctly set for the connection.
 	state.SetConnMetadataKeyValue(imap.IMAPIDConnMetadataKey, s.imapID)
 
 	return nil

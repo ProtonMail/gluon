@@ -1,12 +1,12 @@
 package events
 
-type EventUserAdded struct {
+type UserAdded struct {
 	eventBase
 
 	UserID string
 }
 
-type EventUserRemoved struct {
+type UserRemoved struct {
 	eventBase
 
 	UserID string
