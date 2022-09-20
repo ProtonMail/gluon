@@ -8,21 +8,19 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"path/filepath"
 	"runtime/pprof"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
-	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
+	"github.com/ProtonMail/gluon/version"
 	"github.com/ProtonMail/gluon/watcher"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -70,7 +68,7 @@ type Server struct {
 	cmdExecProfBuilder profiling.CmdProfilerBuilder
 
 	// versionInfo holds info about the Gluon version.
-	versionInfo internal.VersionInfo
+	versionInfo version.Info
 
 	// reporter is used to report errors to things like Sentry.
 	reporter reporter.Reporter
@@ -90,8 +88,8 @@ func New(withOpt ...Option) (*Server, error) {
 	return builder.build()
 }
 
-// AddUser creates a new user and generates new unique ID for this user. If you have an existing userID, please use
-// LoadUser instead.
+// AddUser creates a new user and generates new unique ID for this user.
+// If you have an existing userID, please use LoadUser instead.
 func (s *Server) AddUser(ctx context.Context, conn connector.Connector, encryptionPassphrase []byte) (string, error) {
 	userID := s.backend.NewUserID()
 
@@ -102,8 +100,8 @@ func (s *Server) AddUser(ctx context.Context, conn connector.Connector, encrypti
 	return userID, nil
 }
 
-// LoadUser loads an existing user's data from disk. This function can also be used to assign a custom userID to a mail
-// server user.
+// LoadUser adds an existing user using a previously crated unique user ID.
+// If you don't have an existing userID, please use AddUser instead.
 func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, passphrase []byte) error {
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 
@@ -211,20 +209,14 @@ func (s *Server) GetErrorCh() <-chan error {
 	return s.serveErrCh.GetChannel()
 }
 
-func (s *Server) GetVersionInfo() internal.VersionInfo {
+// GetVersionInfo returns the version info.
+func (s *Server) GetVersionInfo() version.Info {
 	return s.versionInfo
 }
 
+// GetDataPath returns the path in which gluon stores its data.
 func (s *Server) GetDataPath() string {
 	return s.dir
-}
-
-func (s *Server) GetUserDataPath(userID string) (string, error) {
-	if strings.ContainsAny(userID, "./\\") {
-		return "", fmt.Errorf("not a valid user id")
-	}
-
-	return filepath.Join(s.dir, userID), nil
 }
 
 // Close closes the server.
@@ -259,7 +251,7 @@ func (s *Server) addSession(ctx context.Context, conn net.Conn) (*session.Sessio
 
 	nextID := s.getNextID()
 
-	s.sessions[nextID] = session.New(conn, s.backend, nextID, &s.versionInfo, s.cmdExecProfBuilder, s.newEventCh(ctx))
+	s.sessions[nextID] = session.New(conn, s.backend, nextID, s.versionInfo, s.cmdExecProfBuilder, s.newEventCh(ctx))
 
 	if s.tlsConfig != nil {
 		s.sessions[nextID].SetTLSConfig(s.tlsConfig)

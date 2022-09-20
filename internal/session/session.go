@@ -15,13 +15,13 @@ import (
 
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/liner"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
+	"github.com/ProtonMail/gluon/version"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
@@ -62,14 +62,14 @@ type Session struct {
 
 	// imapID holds the IMAP ID extension data for this client. This is necessary, since this information may arrive
 	// before the client logs in or selects a mailbox.
-	imapID imap.ID
+	imapID imap.IMAPID
 
-	version *internal.VersionInfo
+	version version.Info
 
 	cmdProfilerBuilder profiling.CmdProfilerBuilder
 }
 
-func New(conn net.Conn, backend *backend.Backend, sessionID int, versionInfo *internal.VersionInfo, profiler profiling.CmdProfilerBuilder, eventCh chan<- events.Event) *Session {
+func New(conn net.Conn, backend *backend.Backend, sessionID int, versionInfo version.Info, profiler profiling.CmdProfilerBuilder, eventCh chan<- events.Event) *Session {
 	return &Session{
 		conn:               conn,
 		liner:              liner.New(conn),

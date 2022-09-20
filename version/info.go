@@ -1,4 +1,4 @@
-package internal
+package version
 
 import "fmt"
 
@@ -10,7 +10,7 @@ func (v *Version) String() string {
 	return fmt.Sprintf("%02v.%02v.%02v", v.Major, v.Minor, v.Patch)
 }
 
-type VersionInfo struct {
+type Info struct {
 	Name       string
 	Version    Version
 	Vendor     string

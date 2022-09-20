@@ -5,17 +5,17 @@ import (
 )
 
 type idResponse struct {
-	imap.ID
+	imap.IMAPID
 }
 
-func ID(id imap.ID) *idResponse {
+func ID(id imap.IMAPID) *idResponse {
 	return &idResponse{
-		ID: id,
+		IMAPID: id,
 	}
 }
 
 func (id *idResponse) String() string {
-	return "* ID " + id.ID.String()
+	return "* ID " + id.IMAPID.String()
 }
 
 func (r *idResponse) Send(session Session) error {

@@ -151,7 +151,7 @@ func (sc *stateConnectorImpl) getMetadataValue(key string) any {
 func (sc *stateConnectorImpl) newContextWithMetadata(ctx context.Context) context.Context {
 	if v := sc.getMetadataValue(imap.IMAPIDConnMetadataKey); v != nil {
 		switch x := v.(type) {
-		case imap.ID:
+		case imap.IMAPID:
 			ctx = imap.NewContextWithIMAPID(ctx, x)
 		}
 	}
