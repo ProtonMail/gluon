@@ -1,9 +1,10 @@
 package tests
 
 import (
+	"testing"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/utils"
-	"testing"
 )
 
 func TestMessageCreatedUpdate(t *testing.T) {

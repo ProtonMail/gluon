@@ -3,8 +3,9 @@ package imap
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/ProtonMail/gluon/internal/utils"
 	"strconv"
+
+	"github.com/ProtonMail/gluon/internal/utils"
 )
 
 type LabelID string

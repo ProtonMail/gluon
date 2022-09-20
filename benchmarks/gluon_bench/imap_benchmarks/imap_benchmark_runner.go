@@ -3,6 +3,7 @@ package imap_benchmarks
 import (
 	"context"
 	"fmt"
+
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/imap_benchmarks/server"

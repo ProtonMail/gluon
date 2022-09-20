@@ -1,11 +1,12 @@
 package imap
 
 import (
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 	"net/mail"
 	"strconv"
 	"strings"
+
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 type parListWriter interface {

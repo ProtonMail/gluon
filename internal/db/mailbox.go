@@ -2,15 +2,15 @@ package db
 
 import (
 	"context"
-	"entgo.io/ent/dialect/sql"
 	"fmt"
-	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"strings"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
+	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/db/ent/uid"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
