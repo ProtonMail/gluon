@@ -17,7 +17,7 @@ type Message struct {
 // Fields of the Message.
 func (Message) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("id").GoType(imap.InternalMessageID("")).NotEmpty().Unique().Immutable(),
+		field.Uint64("id").GoType(imap.InternalMessageID(0)).Unique().Immutable(),
 		field.String("RemoteID").Optional().Unique().GoType(imap.MessageID("")),
 		field.Time("Date"),
 		field.Int("Size"),

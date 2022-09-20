@@ -10,7 +10,6 @@ import (
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/timing"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/store"
-	"github.com/google/uuid"
 )
 
 func CreateRandomState(st store.Store, count uint) ([]imap.InternalMessageID, error) {
@@ -18,7 +17,7 @@ func CreateRandomState(st store.Store, count uint) ([]imap.InternalMessageID, er
 	data := make([]byte, *flags.StoreItemSize)
 
 	for i := uint(0); i < count; i++ {
-		uuid := imap.InternalMessageID(uuid.NewString())
+		uuid := imap.InternalMessageID(uint64(i))
 
 		if err := store.Tx(st, func(transaction store.Transaction) error {
 			return transaction.Set(uuid, data)

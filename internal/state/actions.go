@@ -17,12 +17,12 @@ import (
 )
 
 func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, name string) (*ent.Mailbox, error) {
-	internalID, res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
+	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
 	if err != nil {
 		return nil, err
 	}
 
-	exists, err := db.MailboxExistsWithID(ctx, tx.Client(), internalID)
+	exists, err := db.MailboxExistsWithRemoteID(ctx, tx.Client(), res.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,6 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 		mbox, err := db.CreateMailbox(
 			ctx,
 			tx,
-			internalID,
 			res.ID,
 			strings.Join(res.Name, state.user.GetDelimiter()),
 			res.Flags,
@@ -45,16 +44,16 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 		return mbox, nil
 	}
 
-	return db.GetMailboxByID(ctx, tx.Client(), internalID)
+	return db.GetMailboxByRemoteID(ctx, tx.Client(), res.ID)
 }
 
 func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name string) error {
-	internalID, res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
+	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
 	if err != nil {
 		return err
 	}
 
-	return db.CreateMailboxIfNotExists(ctx, tx, internalID, res, state.delimiter)
+	return db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter)
 }
 
 func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID ids.MailboxIDPair) error {
@@ -102,7 +101,7 @@ func (state *State) actionCreateMessage(
 		return 0, err
 	}
 
-	literalWithHeader, err := rfc822.SetHeaderValue(literal, ids.InternalIDKey, string(internalID))
+	literalWithHeader, err := rfc822.SetHeaderValue(literal, ids.InternalIDKey, internalID.String())
 
 	if err != nil {
 		return 0, fmt.Errorf("failed to set internal ID: %w", err)

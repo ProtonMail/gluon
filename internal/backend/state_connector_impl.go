@@ -7,7 +7,6 @@ import (
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/state"
-	"github.com/google/uuid"
 )
 
 type stateConnectorImpl struct {
@@ -36,17 +35,15 @@ func (sc *stateConnectorImpl) ClearAllConnMetadata() {
 	sc.metadata = make(map[string]any)
 }
 
-func (sc *stateConnectorImpl) CreateMailbox(ctx context.Context, name []string) (imap.InternalMailboxID, imap.Mailbox, error) {
+func (sc *stateConnectorImpl) CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error) {
 	ctx = sc.newContextWithMetadata(ctx)
-
-	internalID := imap.InternalMailboxID(uuid.NewString())
 
 	mbox, err := sc.connector.CreateLabel(ctx, name)
 	if err != nil {
-		return "", imap.Mailbox{}, err
+		return imap.Mailbox{}, err
 	}
 
-	return internalID, mbox, nil
+	return mbox, nil
 }
 
 func (sc *stateConnectorImpl) UpdateMailbox(ctx context.Context, mboxID imap.LabelID, oldName, newName []string) error {
@@ -73,12 +70,10 @@ func (sc *stateConnectorImpl) CreateMessage(
 
 	msg, err := sc.connector.CreateMessage(ctx, mboxID, literal, parsedMessage, flags, date)
 	if err != nil {
-		return "", imap.Message{}, err
+		return 0, imap.Message{}, err
 	}
 
-	internalID := imap.InternalMessageID(uuid.NewString())
-
-	return internalID, msg, nil
+	return sc.user.nextMessageID(), msg, nil
 }
 
 func (sc *stateConnectorImpl) AddMessagesToMailbox(

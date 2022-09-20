@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"runtime/pprof"
 	"sync"
+	"sync/atomic"
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
@@ -37,22 +38,33 @@ type user struct {
 
 	// statesWG is
 	statesWG sync.WaitGroup
+
+	messageIDCounter uint64
 }
 
-func newUser(ctx context.Context, userID string, db *db.DB, conn connector.Connector, store store.Store, delimiter string) (*user, error) {
-	if err := db.Init(ctx); err != nil {
+func newUser(ctx context.Context, userID string, database *db.DB, conn connector.Connector, store store.Store, delimiter string) (*user, error) {
+	if err := database.Init(ctx); err != nil {
+		return nil, err
+	}
+
+	// Get the last message ID from the database so we can resume our counter properly.
+	highestMessageID, err := db.ReadResult(ctx, database, func(ctx context.Context, client *ent.Client) (imap.InternalMessageID, error) {
+		return db.GetHighestMessageID(ctx, client)
+	})
+	if err != nil {
 		return nil, err
 	}
 
 	user := &user{
-		userID:         userID,
-		connector:      conn,
-		updateInjector: newUpdateInjector(ctx, conn, userID),
-		store:          store,
-		delimiter:      delimiter,
-		db:             db,
-		states:         make(map[state.StateID]*state.State),
-		updateQuitCh:   make(chan struct{}),
+		userID:           userID,
+		connector:        conn,
+		updateInjector:   newUpdateInjector(ctx, conn, userID),
+		store:            store,
+		delimiter:        delimiter,
+		db:               database,
+		states:           make(map[state.StateID]*state.State),
+		updateQuitCh:     make(chan struct{}),
+		messageIDCounter: uint64(highestMessageID),
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
@@ -244,4 +256,8 @@ func (user *user) closeStates() {
 	for _, state := range user.states {
 		state.SignalClose()
 	}
+}
+
+func (user *user) nextMessageID() imap.InternalMessageID {
+	return imap.InternalMessageID(atomic.AddUint64(&user.messageIDCounter, 1))
 }

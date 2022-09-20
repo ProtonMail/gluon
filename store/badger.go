@@ -75,7 +75,7 @@ func (b *BadgerStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 	var data []byte
 
 	if err := b.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(messageID))
+		item, err := txn.Get(messageID.ToBytes())
 		if err != nil {
 			return err
 		}
@@ -98,12 +98,12 @@ func (b *BadgerStore) NewTransaction() Transaction {
 }
 
 func (b *badgerTransaction) Set(messageID imap.InternalMessageID, literal []byte) error {
-	return b.tx.Set([]byte(messageID), literal)
+	return b.tx.Set(messageID.ToBytes(), literal)
 }
 
 func (b *badgerTransaction) Delete(messageID ...imap.InternalMessageID) error {
 	for _, v := range messageID {
-		if err := b.tx.Delete([]byte(v)); err != nil {
+		if err := b.tx.Delete(v.ToBytes()); err != nil {
 			return err
 		}
 	}

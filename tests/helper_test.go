@@ -491,7 +491,12 @@ func getBodySection(message *goimap.Message, section *goimap.BodySectionName) go
 
 func skipGLUONHeader(message string) string {
 	if keyIndex := strings.Index(message, ids.InternalIDKey); keyIndex != -1 {
-		message = message[0:keyIndex] + message[keyIndex+ids.InternalIDHeaderLengthWithNewLine:]
+		newLineIndex := strings.Index(message[keyIndex:], "\n")
+		if newLineIndex < 0 {
+			panic("Could not find terminating new line")
+		}
+
+		message = message[0:keyIndex] + message[keyIndex+newLineIndex+1:]
 	}
 
 	return message

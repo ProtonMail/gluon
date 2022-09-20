@@ -89,9 +89,9 @@ func (*Mailbox) scanValues(columns []string) ([]interface{}, error) {
 		switch columns[i] {
 		case mailbox.FieldSubscribed:
 			values[i] = new(sql.NullBool)
-		case mailbox.FieldUIDNext, mailbox.FieldUIDValidity:
+		case mailbox.FieldID, mailbox.FieldUIDNext, mailbox.FieldUIDValidity:
 			values[i] = new(sql.NullInt64)
-		case mailbox.FieldID, mailbox.FieldRemoteID, mailbox.FieldName:
+		case mailbox.FieldRemoteID, mailbox.FieldName:
 			values[i] = new(sql.NullString)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Mailbox", columns[i])
@@ -109,10 +109,10 @@ func (m *Mailbox) assignValues(columns []string, values []interface{}) error {
 	for i := range columns {
 		switch columns[i] {
 		case mailbox.FieldID:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value.Valid {
-				m.ID = imap.InternalMailboxID(value.String)
+				m.ID = imap.InternalMailboxID(value.Int64)
 			}
 		case mailbox.FieldRemoteID:
 			if value, ok := values[i].(*sql.NullString); !ok {

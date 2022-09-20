@@ -24,7 +24,7 @@ type Connector interface {
 	ClearAllConnMetadata()
 
 	// CreateMailbox creates a new mailbox with the given name.
-	CreateMailbox(ctx context.Context, name []string) (imap.InternalMailboxID, imap.Mailbox, error)
+	CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error)
 
 	// UpdateMailbox sets the name of the mailbox with the given ID to the given new name.
 	UpdateMailbox(ctx context.Context, mboxID imap.LabelID, oldName, newName []string) error

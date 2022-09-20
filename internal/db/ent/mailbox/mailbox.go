@@ -88,6 +88,4 @@ var (
 	DefaultUIDValidity imap.UID
 	// DefaultSubscribed holds the default value on creation for the "Subscribed" field.
 	DefaultSubscribed bool
-	// IDValidator is a validator for the "id" field. It is called by the builders before save.
-	IDValidator func(string) error
 )

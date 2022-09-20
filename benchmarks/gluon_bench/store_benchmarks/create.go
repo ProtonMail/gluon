@@ -9,7 +9,6 @@ import (
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/timing"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/store"
-	"github.com/google/uuid"
 )
 
 type Create struct{}
@@ -33,7 +32,7 @@ func (*Create) Run(ctx context.Context, st store.Store) (*reporter.BenchmarkRun,
 		for i := uint(0); i < *flags.StoreItemCount; i++ {
 			dc.Start()
 			err := store.Tx(st, func(transaction store.Transaction) error {
-				return transaction.Set(imap.InternalMessageID(uuid.NewString()), data)
+				return transaction.Set(imap.InternalMessageID(uint64(i)), data)
 			})
 			dc.Stop()
 

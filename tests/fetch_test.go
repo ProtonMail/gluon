@@ -553,7 +553,7 @@ func afternoonMeetingMessageDataSize() uint32 {
 }
 
 func afternoonMeetingMessageDataSizeWithExtraHeader() uint32 {
-	return afternoonMeetingMessageDataSize() + ids.InternalIDHeaderLengthWithNewLine
+	return afternoonMeetingMessageDataSize() + uint32(len(ids.InternalIDKey)) + 5
 }
 
 func fillAndSelectMailboxWithMultipleEntries(t *testing.T, client *client.Client) {

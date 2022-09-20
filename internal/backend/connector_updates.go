@@ -13,7 +13,6 @@ import (
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
@@ -67,13 +66,10 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 		return nil
 	}
 
-	internalMailboxID := imap.InternalMailboxID(uuid.NewString())
-
 	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		if _, err := db.CreateMailbox(
 			ctx,
 			tx,
-			internalMailboxID,
 			update.Mailbox.ID,
 			strings.Join(update.Mailbox.Name, user.delimiter),
 			update.Mailbox.Flags,
@@ -155,12 +151,12 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 			if !ok {
 				_, err := db.GetMessageIDFromRemoteID(ctx, client, message.Message.ID)
 				if ent.IsNotFound(err) {
-					internalID = imap.InternalMessageID(uuid.NewString())
+					internalID = user.nextMessageID()
 				} else {
 					return err
 				}
 
-				literal, err := rfc822.SetHeaderValue(message.Literal, ids.InternalIDKey, string(internalID))
+				literal, err := rfc822.SetHeaderValue(message.Literal, ids.InternalIDKey, internalID.String())
 				if err != nil {
 					return fmt.Errorf("failed to set internal ID: %w", err)
 				}
@@ -219,7 +215,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 		if err := db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, storeTx store.Transaction) error {
 			// Create messages in the store
 			for _, msg := range chunk {
-				literalWithHeader, err := rfc822.SetHeaderValue(msg.Literal, ids.InternalIDKey, string(msg.InternalID))
+				literalWithHeader, err := rfc822.SetHeaderValue(msg.Literal, ids.InternalIDKey, msg.InternalID.String())
 				if err != nil {
 					return fmt.Errorf("failed to set internal ID: %w", err)
 				}

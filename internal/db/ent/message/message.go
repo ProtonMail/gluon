@@ -68,6 +68,4 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultDeleted holds the default value on creation for the "Deleted" field.
 	DefaultDeleted bool
-	// IDValidator is a validator for the "id" field. It is called by the builders before save.
-	IDValidator func(string) error
 )
