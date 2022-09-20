@@ -6,13 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
+	"github.com/ProtonMail/gluon/version"
 )
 
 type serverBuilder struct {
@@ -21,7 +21,7 @@ type serverBuilder struct {
 	tlsConfig          *tls.Config
 	inLogger           io.Writer
 	outLogger          io.Writer
-	versionInfo        internal.VersionInfo
+	versionInfo        version.Info
 	cmdExecProfBuilder profiling.CmdProfilerBuilder
 	storeBuilder       store.Builder
 	reporter           reporter.Reporter

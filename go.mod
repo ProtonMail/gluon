@@ -5,7 +5,6 @@ go 1.18
 require (
 	entgo.io/ent v0.11.2
 	github.com/ProtonMail/go-mbox v1.1.0
-	github.com/ProtonMail/gopenpgp/v2 v2.4.7
 	github.com/bradenaw/juniper v0.6.0
 	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/emersion/go-imap v1.2.1-0.20220429085312-746087b7a317
@@ -24,8 +23,6 @@ require (
 
 require (
 	ariga.io/atlas v0.5.1-0.20220717122844-8593d7eb1a8e // indirect
-	github.com/ProtonMail/go-crypto v0.0.0-20220113124808-70ae35bab23f // indirect
-	github.com/ProtonMail/go-mime v0.0.0-20220302105931-303f85f7fe0f // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
@@ -51,7 +48,6 @@ require (
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/zclconf/go-cty v1.8.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect

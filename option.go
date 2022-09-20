@@ -4,10 +4,10 @@ import (
 	"crypto/tls"
 	"io"
 
-	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
+	"github.com/ProtonMail/gluon/version"
 )
 
 // Option represents a type that can be used to configure the server.
@@ -63,18 +63,21 @@ func (opt withLogger) config(builder *serverBuilder) {
 }
 
 type withVersionInfo struct {
-	versionInfo internal.VersionInfo
+	versionInfo version.Info
 }
 
 func (vi *withVersionInfo) config(builder *serverBuilder) {
 	builder.versionInfo = vi.versionInfo
 }
 
-func WithVersionInfo(vmajor, vminor, vpatch int, name, vendor, supportURL string) Option {
+func WithVersionInfo(
+	vmajor, vminor, vpatch int,
+	name, vendor, supportURL string,
+) Option {
 	return &withVersionInfo{
-		versionInfo: internal.VersionInfo{
+		versionInfo: version.Info{
 			Name: name,
-			Version: internal.Version{
+			Version: version.Version{
 				Major: vmajor,
 				Minor: vminor,
 				Patch: vpatch,

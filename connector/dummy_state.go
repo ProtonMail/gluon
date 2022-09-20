@@ -16,7 +16,7 @@ type dummyState struct {
 
 	messages   map[imap.MessageID]*dummyMessage
 	labels     map[imap.LabelID]*dummyLabel
-	lastIMAPID imap.ID
+	lastIMAPID imap.IMAPID
 
 	lock sync.RWMutex
 }
@@ -44,7 +44,7 @@ func newDummyState(flags, permFlags, attrs imap.FlagSet) *dummyState {
 		attrs:      attrs,
 		messages:   make(map[imap.MessageID]*dummyMessage),
 		labels:     make(map[imap.LabelID]*dummyLabel),
-		lastIMAPID: imap.NewID(),
+		lastIMAPID: imap.NewIMAPID(),
 	}
 }
 

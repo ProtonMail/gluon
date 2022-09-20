@@ -10,19 +10,19 @@ import (
 
 func TestIdNilNoData(t *testing.T) {
 	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
-		idResponse := response.ID(imap.NewIMAPIDFromVersionInfo(&TestServerVersionInfo))
+		wantResponse := response.ID(imap.NewIMAPIDFromVersionInfo(testServerVersionInfo))
 		c.C(`A001 ID NIL`)
-		c.S(idResponse.String())
+		c.S(wantResponse.String())
 		c.OK(`A001`)
 	})
 }
 
 func TestIdContextLookup(t *testing.T) {
 	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
-		idResponse := response.ID(imap.NewIMAPIDFromVersionInfo(&TestServerVersionInfo))
+		wantResponse := response.ID(imap.NewIMAPIDFromVersionInfo(testServerVersionInfo))
 		// Store new ID
 		c.C(`A001 ID ("foo" "bar")`)
-		c.S(idResponse.String())
+		c.S(wantResponse.String())
 		c.OK(`A001`)
 
 		c.C("A003 LOGIN user pass").OK("A003")
@@ -35,9 +35,8 @@ func TestIdContextLookup(t *testing.T) {
 
 		s.flush("user")
 
-		expectedID := imap.NewID()
-		expectedID.Other["foo"] = "bar"
+		wantID := imap.NewIMAPIDFromKeyMap(map[string]string{"foo": "bar"})
 
-		require.Equal(t, expectedID, s.conns[s.userIDs["user"]].GetLastRecordedIMAPID())
+		require.Equal(t, wantID, s.conns[s.userIDs["user"]].GetLastRecordedIMAPID())
 	})
 }

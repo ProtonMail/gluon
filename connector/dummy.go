@@ -281,7 +281,7 @@ func (conn *Dummy) Close(ctx context.Context) error {
 	return nil
 }
 
-func (conn *Dummy) GetLastRecordedIMAPID() imap.ID {
+func (conn *Dummy) GetLastRecordedIMAPID() imap.IMAPID {
 	return conn.state.lastIMAPID
 }
 

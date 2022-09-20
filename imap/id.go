@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/ProtonMail/gluon/internal"
+	"github.com/ProtonMail/gluon/version"
 )
 
 const (
@@ -25,9 +25,9 @@ const (
 	IMAPIDConnMetadataKey = "rfc2971-id"
 )
 
-// ID represents the RFC 2971 IMAP ID Extension. This information can be retrieved by the connector at the context
+// IMAPID represents the RFC 2971 IMAP IMAPID Extension. This information can be retrieved by the connector at the context
 // level. To do so please use the provided GetIMAPIDFromContext() function.
-type ID struct {
+type IMAPID struct {
 	Name        string
 	Version     string
 	OS          string
@@ -42,8 +42,8 @@ type ID struct {
 	Other       map[string]string
 }
 
-func NewID() ID {
-	return ID{
+func NewIMAPID() IMAPID {
+	return IMAPID{
 		Name:        "Unknown",
 		Version:     "Unknown",
 		OS:          "Unknown",
@@ -59,7 +59,7 @@ func NewID() ID {
 	}
 }
 
-func (id *ID) String() string {
+func (id *IMAPID) String() string {
 	var values []string
 
 	writeIfNotEmpty := func(key string, value string) {
@@ -87,8 +87,9 @@ func (id *ID) String() string {
 	return fmt.Sprintf("(%v)", strings.Join(values, " "))
 }
 
-func NewIMAPIDFromKeyMap(m map[string]string) ID {
-	id := NewID()
+func NewIMAPIDFromKeyMap(m map[string]string) IMAPID {
+	id := NewIMAPID()
+
 	paramMap := map[string]*string{
 		IDKeyName:        &id.Name,
 		IDKeyVersion:     &id.Version,
@@ -113,8 +114,8 @@ func NewIMAPIDFromKeyMap(m map[string]string) ID {
 	return id
 }
 
-func NewIMAPIDFromVersionInfo(info *internal.VersionInfo) ID {
-	return ID{
+func NewIMAPIDFromVersionInfo(info version.Info) IMAPID {
+	return IMAPID{
 		Name:       info.Name,
 		Version:    info.Version.String(),
 		Vendor:     info.Vendor,
@@ -123,17 +124,17 @@ func NewIMAPIDFromVersionInfo(info *internal.VersionInfo) ID {
 	}
 }
 
-func GetIMAPIDFromContext(ctx context.Context) (ID, bool) {
+func GetIMAPIDFromContext(ctx context.Context) (IMAPID, bool) {
 	if v := ctx.Value(imapIDContextKey); v != nil {
-		if id, ok := v.(ID); ok {
+		if id, ok := v.(IMAPID); ok {
 			return id, true
 		}
 	}
 
-	return ID{}, false
+	return IMAPID{}, false
 }
 
-func NewContextWithIMAPID(ctx context.Context, id ID) context.Context {
+func NewContextWithIMAPID(ctx context.Context, id IMAPID) context.Context {
 	return context.WithValue(ctx, imapIDContextKey, id)
 }
 
@@ -142,5 +143,5 @@ type imapIDContextType struct{}
 var imapIDContextKey imapIDContextType
 
 func init() {
-	gob.Register(&ID{})
+	gob.Register(&IMAPID{})
 }

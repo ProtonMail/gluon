@@ -14,9 +14,9 @@ import (
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal"
 	"github.com/ProtonMail/gluon/internal/hash"
 	"github.com/ProtonMail/gluon/store"
+	"github.com/ProtonMail/gluon/version"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -37,9 +37,9 @@ type credentials struct {
 	password  string
 }
 
-var TestServerVersionInfo = internal.VersionInfo{
+var testServerVersionInfo = version.Info{
 	Name:       "gluon-test-server",
-	Version:    internal.Version{Major: 1, Minor: 1, Patch: 1},
+	Version:    version.Version{Major: 1, Minor: 1, Patch: 1},
 	Vendor:     "Proton",
 	SupportURL: "",
 }
@@ -139,12 +139,12 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 			loggerOut,
 		),
 		gluon.WithVersionInfo(
-			TestServerVersionInfo.Version.Major,
-			TestServerVersionInfo.Version.Minor,
-			TestServerVersionInfo.Version.Patch,
-			TestServerVersionInfo.Name,
-			TestServerVersionInfo.Vendor,
-			TestServerVersionInfo.SupportURL,
+			testServerVersionInfo.Version.Major,
+			testServerVersionInfo.Version.Minor,
+			testServerVersionInfo.Version.Patch,
+			testServerVersionInfo.Name,
+			testServerVersionInfo.Vendor,
+			testServerVersionInfo.SupportURL,
 		),
 		gluon.WithStoreBuilder(&store.BadgerStoreBuilder{}),
 	)

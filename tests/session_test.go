@@ -42,7 +42,7 @@ type Connector interface {
 	Sync(context.Context) error
 	Flush()
 
-	GetLastRecordedIMAPID() imap.ID
+	GetLastRecordedIMAPID() imap.IMAPID
 }
 
 type testSession struct {
