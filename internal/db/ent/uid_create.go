@@ -252,7 +252,7 @@ func (uc *UIDCreate) createSpec() (*UID, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: message.FieldID,
 				},
 			},
@@ -272,7 +272,7 @@ func (uc *UIDCreate) createSpec() (*UID, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: mailbox.FieldID,
 				},
 			},

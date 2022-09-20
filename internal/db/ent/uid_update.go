@@ -235,7 +235,7 @@ func (uu *UIDUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: message.FieldID,
 				},
 			},
@@ -251,7 +251,7 @@ func (uu *UIDUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: message.FieldID,
 				},
 			},
@@ -270,7 +270,7 @@ func (uu *UIDUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: mailbox.FieldID,
 				},
 			},
@@ -286,7 +286,7 @@ func (uu *UIDUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: mailbox.FieldID,
 				},
 			},
@@ -550,7 +550,7 @@ func (uuo *UIDUpdateOne) sqlSave(ctx context.Context) (_node *UID, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: message.FieldID,
 				},
 			},
@@ -566,7 +566,7 @@ func (uuo *UIDUpdateOne) sqlSave(ctx context.Context) (_node *UID, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: message.FieldID,
 				},
 			},
@@ -585,7 +585,7 @@ func (uuo *UIDUpdateOne) sqlSave(ctx context.Context) (_node *UID, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: mailbox.FieldID,
 				},
 			},
@@ -601,7 +601,7 @@ func (uuo *UIDUpdateOne) sqlSave(ctx context.Context) (_node *UID, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: mailbox.FieldID,
 				},
 			},

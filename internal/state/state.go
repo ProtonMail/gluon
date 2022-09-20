@@ -252,12 +252,12 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, m := range result.MBoxesToCreate {
-			internalID, res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(m, state.delimiter))
+			res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(m, state.delimiter))
 			if err != nil {
 				return err
 			}
 
-			if err := db.CreateMailboxIfNotExists(ctx, tx, internalID, res, state.delimiter); err != nil {
+			if err := db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter); err != nil {
 				return err
 			}
 		}

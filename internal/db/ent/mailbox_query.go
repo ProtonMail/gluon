@@ -667,7 +667,7 @@ func (mq *MailboxQuery) querySpec() *sqlgraph.QuerySpec {
 			Table:   mailbox.Table,
 			Columns: mailbox.Columns,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeString,
+				Type:   field.TypeUint64,
 				Column: mailbox.FieldID,
 			},
 		},

@@ -169,7 +169,7 @@ func (mfc *MessageFlagCreate) createSpec() (*MessageFlag, *sqlgraph.CreateSpec) 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeString,
+					Type:   field.TypeUint64,
 					Column: message.FieldID,
 				},
 			},

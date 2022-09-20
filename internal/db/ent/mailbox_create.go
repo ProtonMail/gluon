@@ -257,11 +257,6 @@ func (mc *MailboxCreate) check() error {
 	if _, ok := mc.mutation.Subscribed(); !ok {
 		return &ValidationError{Name: "Subscribed", err: errors.New(`ent: missing required field "Mailbox.Subscribed"`)}
 	}
-	if v, ok := mc.mutation.ID(); ok {
-		if err := mailbox.IDValidator(string(v)); err != nil {
-			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Mailbox.id": %w`, err)}
-		}
-	}
 	return nil
 }
 
@@ -273,12 +268,9 @@ func (mc *MailboxCreate) sqlSave(ctx context.Context) (*Mailbox, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(imap.InternalMailboxID); ok {
-			_node.ID = id
-		} else {
-			return nil, fmt.Errorf("unexpected Mailbox.ID type: %T", _spec.ID.Value)
-		}
+	if _spec.ID.Value != _node.ID {
+		id := _spec.ID.Value.(int64)
+		_node.ID = imap.InternalMailboxID(id)
 	}
 	return _node, nil
 }
@@ -289,7 +281,7 @@ func (mc *MailboxCreate) createSpec() (*Mailbox, *sqlgraph.CreateSpec) {
 		_spec = &sqlgraph.CreateSpec{
 			Table: mailbox.Table,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeString,
+				Type:   field.TypeUint64,
 				Column: mailbox.FieldID,
 			},
 		}
@@ -458,6 +450,10 @@ func (mcb *MailboxCreateBulk) Save(ctx context.Context) ([]*Mailbox, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
+				if specs[i].ID.Value != nil && nodes[i].ID == 0 {
+					id := specs[i].ID.Value.(int64)
+					nodes[i].ID = imap.InternalMailboxID(id)
+				}
 				mutation.done = true
 				return nodes[i], nil
 			})

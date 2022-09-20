@@ -31,7 +31,7 @@ func (*MailboxPermFlag) scanValues(columns []string) ([]interface{}, error) {
 		case mailboxpermflag.FieldValue:
 			values[i] = new(sql.NullString)
 		case mailboxpermflag.ForeignKeys[0]: // mailbox_permanent_flags
-			values[i] = new(sql.NullString)
+			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type MailboxPermFlag", columns[i])
 		}
@@ -60,11 +60,11 @@ func (mpf *MailboxPermFlag) assignValues(columns []string, values []interface{})
 				mpf.Value = value.String
 			}
 		case mailboxpermflag.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field mailbox_permanent_flags", values[i])
 			} else if value.Valid {
 				mpf.mailbox_permanent_flags = new(imap.InternalMailboxID)
-				*mpf.mailbox_permanent_flags = imap.InternalMailboxID(value.String)
+				*mpf.mailbox_permanent_flags = imap.InternalMailboxID(value.Int64)
 			}
 		}
 	}

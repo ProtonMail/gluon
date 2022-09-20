@@ -132,13 +132,16 @@ func (m *Mailbox) GetMessagesWithoutFlag(flag string) []imap.SeqID {
 }
 
 func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
-	internalID, err := rfc822.GetHeaderValue(literal, ids.InternalIDKey)
+	internalIDString, err := rfc822.GetHeaderValue(literal, ids.InternalIDKey)
 	if err != nil {
 		return 0, err
 	}
 
-	if len(internalID) > 0 {
-		msgID := imap.InternalMessageID(internalID)
+	if len(internalIDString) > 0 {
+		msgID, err := imap.InternalMessageIDFromString(internalIDString)
+		if err != nil {
+			return 0, err
+		}
 
 		if exists, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (bool, error) {
 			return db.HasMessageWithID(ctx, client, msgID)

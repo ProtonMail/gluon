@@ -517,7 +517,7 @@ func (mq *MessageQuery) querySpec() *sqlgraph.QuerySpec {
 			Table:   message.Table,
 			Columns: message.Columns,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeString,
+				Type:   field.TypeUint64,
 				Column: message.FieldID,
 			},
 		},

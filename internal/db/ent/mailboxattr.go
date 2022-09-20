@@ -31,7 +31,7 @@ func (*MailboxAttr) scanValues(columns []string) ([]interface{}, error) {
 		case mailboxattr.FieldValue:
 			values[i] = new(sql.NullString)
 		case mailboxattr.ForeignKeys[0]: // mailbox_attributes
-			values[i] = new(sql.NullString)
+			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type MailboxAttr", columns[i])
 		}
@@ -60,11 +60,11 @@ func (ma *MailboxAttr) assignValues(columns []string, values []interface{}) erro
 				ma.Value = value.String
 			}
 		case mailboxattr.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field mailbox_attributes", values[i])
 			} else if value.Valid {
 				ma.mailbox_attributes = new(imap.InternalMailboxID)
-				*ma.mailbox_attributes = imap.InternalMailboxID(value.String)
+				*ma.mailbox_attributes = imap.InternalMailboxID(value.Int64)
 			}
 		}
 	}

@@ -16,9 +16,8 @@ import (
 	"github.com/bradenaw/juniper/xslices"
 )
 
-func CreateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, labelID imap.LabelID, name string, flags, permFlags, attrs imap.FlagSet) (*ent.Mailbox, error) {
+func CreateMailbox(ctx context.Context, tx *ent.Tx, labelID imap.LabelID, name string, flags, permFlags, attrs imap.FlagSet) (*ent.Mailbox, error) {
 	create := tx.Mailbox.Create().
-		SetID(mboxID).
 		SetName(name)
 
 	for _, flag := range flags.ToSlice() {
@@ -168,6 +167,10 @@ func GetMailboxByID(ctx context.Context, client *ent.Client, id imap.InternalMai
 	return client.Mailbox.Query().Where(mailbox.ID(id)).Only(ctx)
 }
 
+func GetMailboxByRemoteID(ctx context.Context, client *ent.Client, id imap.LabelID) (*ent.Mailbox, error) {
+	return client.Mailbox.Query().Where(mailbox.RemoteID(id)).Only(ctx)
+}
+
 func GetMailboxRecentCount(ctx context.Context, client *ent.Client, mbox *ent.Mailbox) (int, error) {
 	return mbox.QueryUIDs().Where(uid.Recent(true)).Count(ctx)
 }
@@ -210,7 +213,7 @@ func GetMailboxMessagesForNewSnapshot(ctx context.Context, client *ent.Client, m
 		flagTable := sql.Table(messageflag.Table)
 		s.Join(msgTable).On(s.C(uid.MessageColumn), msgTable.C(message.FieldID))
 		s.LeftJoin(flagTable).On(s.C(uid.MessageColumn), flagTable.C(messageflag.MessagesColumn))
-		s.Where(sql.EQ(uid.MailboxColumn, string(mboxID)))
+		s.Where(sql.EQ(uid.MailboxColumn, mboxID))
 		s.Select(msgTable.C(message.FieldRemoteID), sql.As(fmt.Sprintf("GROUP_CONCAT(%v)", flagTable.C(messageflag.FieldValue)), "flags"), s.C(uid.FieldRecent), s.C(uid.FieldDeleted), s.C(uid.FieldUID), s.C(uid.MessageColumn))
 		s.GroupBy(s.C(uid.MessageColumn))
 		s.OrderBy(s.C(uid.FieldUID))
@@ -224,7 +227,7 @@ func GetMailboxMessagesForNewSnapshot(ctx context.Context, client *ent.Client, m
 func GetMailboxIDWithRemoteID(ctx context.Context, client *ent.Client, labelID imap.LabelID) (imap.InternalMailboxID, error) {
 	mbox, err := client.Mailbox.Query().Where(mailbox.RemoteID(labelID)).Select(mailbox.FieldID).Only(ctx)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	return mbox.ID, nil
@@ -241,8 +244,8 @@ func TranslateRemoteMailboxIDs(ctx context.Context, client *ent.Client, mboxIDs 
 	}), nil
 }
 
-func CreateMailboxIfNotExists(ctx context.Context, tx *ent.Tx, internalID imap.InternalMailboxID, mbox imap.Mailbox, delimiter string) error {
-	exists, err := MailboxExistsWithID(ctx, tx.Client(), internalID)
+func CreateMailboxIfNotExists(ctx context.Context, tx *ent.Tx, mbox imap.Mailbox, delimiter string) error {
+	exists, err := MailboxExistsWithRemoteID(ctx, tx.Client(), mbox.ID)
 	if err != nil {
 		return err
 	}
@@ -251,7 +254,6 @@ func CreateMailboxIfNotExists(ctx context.Context, tx *ent.Tx, internalID imap.I
 		if _, err := CreateMailbox(
 			ctx,
 			tx,
-			internalID,
 			mbox.ID,
 			strings.Join(mbox.Name, delimiter),
 			mbox.Flags,

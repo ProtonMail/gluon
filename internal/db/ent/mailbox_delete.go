@@ -72,7 +72,7 @@ func (md *MailboxDelete) sqlExec(ctx context.Context) (int, error) {
 		Node: &sqlgraph.NodeSpec{
 			Table: mailbox.Table,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeString,
+				Type:   field.TypeUint64,
 				Column: mailbox.FieldID,
 			},
 		},

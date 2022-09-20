@@ -487,7 +487,7 @@ func HasMessageWithRemoteID(ctx context.Context, client *ent.Client, id imap.Mes
 func GetMessageIDFromRemoteID(ctx context.Context, client *ent.Client, id imap.MessageID) (imap.InternalMessageID, error) {
 	message, err := client.Message.Query().Where(message.RemoteID(id)).Select(message.FieldID).Only(ctx)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	return message.ID, nil
@@ -507,4 +507,17 @@ func NewFlagSet(msgUID *ent.UID, flags []*ent.MessageFlag) imap.FlagSet {
 	}
 
 	return flagSet
+}
+
+func GetHighestMessageID(ctx context.Context, client *ent.Client) (imap.InternalMessageID, error) {
+	message, err := client.Message.Query().Select(message.FieldID).Order(ent.Desc(message.FieldID)).Limit(1).All(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(message) == 0 {
+		return 0, nil
+	}
+
+	return message[0].ID, nil
 }
