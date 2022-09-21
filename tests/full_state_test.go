@@ -33,15 +33,16 @@ func TestSimpleMailCopy(t *testing.T) {
 
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("Archive"))
+
 		// list mailbox
-		{
-			expectedMailboxNames := []string{
-				"INBOX",
-				mailboxName,
-			}
-			expectedAttributes := []string{goimap.UnmarkedAttr}
-			checkMailboxesMatchNamesAndAttributes(t, client, "", "*", expectedMailboxNames, expectedAttributes)
-		}
+		checkMailboxesMatchNamesAndAttributes(
+			t, client, "", "*",
+			map[string][]string{
+				"INBOX":     {goimap.UnmarkedAttr},
+				mailboxName: {goimap.UnmarkedAttr},
+			},
+		)
+
 		// select Archive
 		status, err := client.Select(mailboxName, false)
 		require.NoError(t, err)
@@ -88,13 +89,13 @@ func TestReceptionOnIdle(t *testing.T) {
 
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(c *client.Client, sess *testSession) {
 		// list mailbox
-		{
-			expectedMailboxNames := []string{
-				mailboxName,
-			}
-			expectedAttributes := []string{goimap.UnmarkedAttr}
-			checkMailboxesMatchNamesAndAttributes(t, c, "", "*", expectedMailboxNames, expectedAttributes)
-		}
+		checkMailboxesMatchNamesAndAttributes(
+			t, c, "", "*",
+			map[string][]string{
+				mailboxName: {goimap.UnmarkedAttr},
+			},
+		)
+
 		status, err := c.Select(mailboxName, false)
 		require.NoError(t, err)
 		require.Equal(t, uint32(0), status.Messages, "Expected message count does not match")
@@ -186,16 +187,16 @@ func TestMorningFiltering(t *testing.T) {
 		require.NoError(t, client.Create("Archive"))
 
 		// list mailbox
-		{
-			expectedMailboxNames := []string{
-				"ReadLater",
-				"Archive",
-				"INBOX",
-				mbox,
-			}
-			expectedAttributes := []string{goimap.UnmarkedAttr}
-			checkMailboxesMatchNamesAndAttributes(t, client, "", "*", expectedMailboxNames, expectedAttributes)
-		}
+		checkMailboxesMatchNamesAndAttributes(
+			t, client, "", "*",
+			map[string][]string{
+				"INBOX":     {goimap.UnmarkedAttr},
+				"Archive":   {goimap.UnmarkedAttr},
+				"ReadLater": {goimap.UnmarkedAttr},
+				mbox:        {goimap.UnmarkedAttr},
+			},
+		)
+
 		{
 			// There are 100 messages in the origin and no messages in the destination.
 			mailboxStatus, err := client.Status(mbox, []goimap.StatusItem{goimap.StatusMessages})
