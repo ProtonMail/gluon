@@ -68,6 +68,59 @@ func TestMessages(t *testing.T) {
 	}
 }
 
+func TestMessageUIDRange(t *testing.T) {
+	msg := newMsgList(8)
+
+	msg.insert(ids.NewMessageIDPairWithoutRemote(1), 10, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.NewMessageIDPairWithoutRemote(2), 20, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.NewMessageIDPairWithoutRemote(3), 30, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.NewMessageIDPairWithoutRemote(4), 40, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.NewMessageIDPairWithoutRemote(5), 50, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.NewMessageIDPairWithoutRemote(6), 60, imap.NewFlagSet(imap.FlagSeen))
+
+	// UIDRange Higher than maximum
+	{
+		result := msg.uidRange(imap.UID(40), imap.UID(80))
+		require.Equal(t, 3, len(result))
+		require.Equal(t, result[0].UID, imap.UID(40))
+		require.Equal(t, result[1].UID, imap.UID(50))
+		require.Equal(t, result[2].UID, imap.UID(60))
+	}
+
+	// UIDRange Lower than minimum
+	{
+		result := msg.uidRange(imap.UID(1), imap.UID(10))
+		require.Equal(t, 1, len(result))
+		require.Equal(t, result[0].UID, imap.UID(10))
+	}
+
+	// UIDRange lower than all values
+	{
+		result := msg.uidRange(imap.UID(1), imap.UID(5))
+		require.Empty(t, result)
+	}
+
+	// UIDRange higher than all values
+	{
+		result := msg.uidRange(imap.UID(100), imap.UID(120))
+		require.Empty(t, result)
+	}
+
+	// UIDRange higher that doesn't exist in between
+	{
+		result := msg.uidRange(imap.UID(21), imap.UID(29))
+		require.Empty(t, result)
+	}
+
+	// UIDRange for interval that is valid, but not all values exist
+	{
+		result := msg.uidRange(imap.UID(25), imap.UID(42))
+		require.Equal(t, 2, len(result))
+		require.Equal(t, result[0].UID, imap.UID(30))
+		require.Equal(t, result[1].UID, imap.UID(40))
+	}
+}
+
 func must[T any](val T, ok bool) T {
 	if !ok {
 		panic("not ok")
