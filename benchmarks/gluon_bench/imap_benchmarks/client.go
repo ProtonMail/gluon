@@ -141,8 +141,10 @@ func RandomSequenceSetRange(max uint32) *imap.SeqSet {
 	}
 
 	stop := start
-	for stop <= start {
-		stop = rand.Uint32() % max
+	if start != max-1 {
+		for stop <= start {
+			stop = rand.Uint32() % max
+		}
 	}
 
 	r := &imap.SeqSet{}
