@@ -10,4 +10,5 @@ var (
 	Connector     = flag.String("connector", "dummy", "Key of the connector implementation registered with ConnectorFactory.")
 	UserName      = flag.String("user-name", "user", "Username for the connector user, defaults to 'user'.")
 	UserPassword  = flag.String("user-pwd", "password", "Password for the connector user, defaults to 'password'.")
+	SkipClean     = flag.Bool("skip-clean", false, "Do not cleanup benchmark data directory.")
 )

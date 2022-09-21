@@ -139,5 +139,13 @@ func measureBenchmark(dirConfig BenchDirConfig, iteration uint, bench Benchmark)
 		panic(fmt.Sprintf("Failed to teardown benchmark %v: %v", bench.Name(), err))
 	}
 
+	if !*flags.SkipClean {
+		fmt.Printf("Cleaning benchmark dir: %v\n", benchPath)
+
+		if err := os.RemoveAll(benchPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to remote benchmark data dir '%v': %v\n", benchPath, err)
+		}
+	}
+
 	return reporter.NewBenchmarkStatistics(benchRun.Extra, benchRun.Durations...)
 }
