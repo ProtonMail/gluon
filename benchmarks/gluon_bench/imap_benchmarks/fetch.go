@@ -63,15 +63,26 @@ func (f *Fetch) TearDown(ctx context.Context, addr net.Addr) error {
 }
 
 func (f *Fetch) Run(ctx context.Context, addr net.Addr) error {
+	attributes := []imap.FetchItem{
+		imap.FetchFlags,
+		imap.FetchRFC822Size,
+		imap.FetchRFC822Header,
+		imap.FetchInternalDate,
+		imap.FetchRFC822,
+		imap.FetchRFC822Text,
+		imap.FetchBody,
+		"BODY[]",
+	}
+
 	RunParallelClientsWithMailbox(addr, f.MBoxes[0], *fetchReadOnly, func(cl *client.Client, index uint) {
 		var fetchFn func(*client.Client, *imap.SeqSet) error
 		if *flags.IMAPUIDMode {
 			fetchFn = func(cl *client.Client, set *imap.SeqSet) error {
-				return UIDFetchMessage(cl, set, imap.FetchAll)
+				return UIDFetchMessage(cl, set, attributes...)
 			}
 		} else {
 			fetchFn = func(cl *client.Client, set *imap.SeqSet) error {
-				return FetchMessage(cl, set, imap.FetchAll)
+				return FetchMessage(cl, set, attributes...)
 			}
 		}
 
