@@ -4,6 +4,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
+	"golang.org/x/exp/slices"
 )
 
 // snapMsg is a single message inside a snapshot.
@@ -16,14 +17,16 @@ type snapMsg struct {
 
 // snapMsgList is an ordered list of messages inside a snapshot.
 type snapMsgList struct {
-	msg []*snapMsg
-	idx map[imap.InternalMessageID]int
+	msg      []*snapMsg
+	idx      map[imap.InternalMessageID]int
+	uidToMsg map[imap.UID]*snapMsg
 }
 
 func newMsgList(capacity int) *snapMsgList {
 	return &snapMsgList{
-		idx: make(map[imap.InternalMessageID]int, capacity),
-		msg: make([]*snapMsg, 0, capacity),
+		idx:      make(map[imap.InternalMessageID]int, capacity),
+		msg:      make([]*snapMsg, 0, capacity),
+		uidToMsg: make(map[imap.UID]*snapMsg, capacity),
 	}
 }
 
@@ -32,14 +35,17 @@ func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags 
 		panic("UIDs must be strictly ascending")
 	}
 
-	list.msg = append(list.msg, &snapMsg{
+	snapMsg := &snapMsg{
 		ID:    msgID,
 		UID:   msgUID,
 		Seq:   imap.SeqID(len(list.msg) + 1),
 		flags: flags,
-	})
+	}
+
+	list.msg = append(list.msg, snapMsg)
 
 	list.idx[msgID.InternalID] = len(list.idx)
+	list.uidToMsg[msgUID] = snapMsg
 }
 
 func (list *snapMsgList) remove(msgID imap.InternalMessageID) bool {
@@ -48,6 +54,7 @@ func (list *snapMsgList) remove(msgID imap.InternalMessageID) bool {
 		return false
 	}
 
+	delete(list.uidToMsg, list.msg[idx].UID)
 	delete(list.idx, msgID)
 
 	list.msg = append(
@@ -125,35 +132,36 @@ func (list *snapMsgList) seqRange(seqLo, seqHi imap.SeqID) []*snapMsg {
 }
 
 func (list *snapMsgList) uidRange(uidLo, uidHi imap.UID) []*snapMsg {
-	var index int
+	listLen := len(list.msg)
 
-	len := len(list.msg)
-
-	// find first UID
-	for ; index < len && list.msg[index].UID < uidLo; index++ {
+	cmpFunc := func(s1 *snapMsg, s2 *snapMsg) int {
+		return int(s1.UID) - int(s2.UID)
 	}
 
-	start := index
+	targetSnapLo := snapMsg{UID: uidLo}
 
-	// find last UID
-	for ; index < len && list.msg[index].UID <= uidHi; index++ {
+	indexLo, _ := slices.BinarySearchFunc(list.msg, &targetSnapLo, cmpFunc)
+
+	if indexLo >= listLen {
+		return nil
 	}
 
-	return list.msg[start:index]
+	targetSnapHi := snapMsg{UID: uidHi}
+
+	indexHi, ok := slices.BinarySearchFunc(list.msg[indexLo:], &targetSnapHi, cmpFunc)
+	if ok {
+		indexHi++
+	}
+
+	if indexHi >= listLen {
+		indexHi = listLen
+	}
+
+	return list.msg[indexLo : indexLo+indexHi]
 }
 
 func (list *snapMsgList) getWithUID(uid imap.UID) (*snapMsg, bool) {
-	var index int
+	msg, ok := list.uidToMsg[uid]
 
-	len := len(list.msg)
-
-	// find first UID
-	for ; index < len && list.msg[index].UID < uid; index++ {
-	}
-
-	if index >= len || list.msg[index].UID > uid {
-		return nil, false
-	}
-
-	return list.msg[index], true
+	return msg, ok
 }
