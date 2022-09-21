@@ -129,12 +129,12 @@ func (snap *snapshot) getMessagesInSeqRange(seq *proto.SequenceSet) ([]*snapMsg,
 	for _, seqRange := range seqSet {
 		switch len(seqRange) {
 		case 1:
-			seq, err := snap.resolveSeq(seqRange[0])
+			msg, err := snap.resolveSeq(seqRange[0])
 			if err != nil {
 				return nil, err
 			}
 
-			res = append(res, snap.seqRange(seq, seq)...)
+			res = append(res, msg)
 
 		case 2:
 			begin, err := snap.resolveSeq(seqRange[0])
@@ -147,11 +147,11 @@ func (snap *snapshot) getMessagesInSeqRange(seq *proto.SequenceSet) ([]*snapMsg,
 				return nil, err
 			}
 
-			if begin > end {
+			if begin.Seq > end.Seq {
 				begin, end = end, begin
 			}
 
-			res = append(res, snap.seqRange(begin, end)...)
+			res = append(res, snap.messages.seqRange(begin.Seq, end.Seq)...)
 
 		default:
 			return nil, fmt.Errorf("bad sequence range")
@@ -182,7 +182,12 @@ func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]*snapMsg,
 				return nil, err
 			}
 
-			res = append(res, snap.uidRange(uid, uid)...)
+			msg, ok := snap.messages.getWithUID(uid)
+			if !ok {
+				continue
+			}
+
+			res = append(res, msg)
 
 		case 2:
 			begin, err := snap.resolveUID(uidRange[0])
@@ -199,7 +204,7 @@ func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]*snapMsg,
 				begin, end = end, begin
 			}
 
-			res = append(res, snap.uidRange(begin, end)...)
+			res = append(res, snap.messages.uidRange(begin, end)...)
 
 		default:
 			return nil, fmt.Errorf("bad sequence range")
@@ -257,45 +262,31 @@ func (snap *snapshot) updateMessageRemoteID(internalID imap.InternalMessageID, r
 	return nil
 }
 
-// TODO: How serious is the performance impact of this?
-func (snap *snapshot) seqRange(seqLo, seqHi imap.SeqID) []*snapMsg {
-	return snap.messages.where(func(msg *snapMsg) bool {
-		return seqLo <= msg.Seq && msg.Seq <= seqHi
-	})
-}
-
-// TODO: How serious is the performance impact of this?
-func (snap *snapshot) uidRange(uidLo, uidHi imap.UID) []*snapMsg {
-	return snap.messages.where(func(msg *snapMsg) bool {
-		return uidLo <= msg.UID && msg.UID <= uidHi
-	})
-}
-
 // resolveSeq converts a textual sequence number into an integer.
 // According to RFC 3501, the definition of seq-number, page 89, for message sequence numbers
 // - No sequence number is valid if mailbox is empty, not even "*"
 // - "*" is converted to the number of messages in the mailbox
 // - when used in a range, the order of the indexes in irrelevant.
-func (snap *snapshot) resolveSeq(number string) (imap.SeqID, error) {
+func (snap *snapshot) resolveSeq(number string) (*snapMsg, error) {
 	if snap.messages.len() == 0 {
-		return 0, ErrNoSuchMessage
+		return nil, ErrNoSuchMessage
 	}
 
 	if number == "*" {
-		return snap.messages.last().Seq, nil
+		return snap.messages.last(), nil
 	}
 
 	num, err := strconv.ParseUint(number, 10, 32)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse sequence number: %w", err)
+		return nil, fmt.Errorf("failed to parse sequence number: %w", err)
 	}
 
 	msg, ok := snap.messages.seq(imap.SeqID(num))
 	if !ok {
-		return 0, ErrNoSuchMessage
+		return nil, ErrNoSuchMessage
 	}
 
-	return msg.Seq, nil
+	return msg, nil
 }
 
 // resolveUID converts a textual message UID into an integer.
