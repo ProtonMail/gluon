@@ -119,3 +119,41 @@ func (list *snapMsgList) seq(seq imap.SeqID) (*snapMsg, bool) {
 func (list *snapMsgList) last() *snapMsg {
 	return list.msg[len(list.msg)-1]
 }
+
+func (list *snapMsgList) seqRange(seqLo, seqHi imap.SeqID) []*snapMsg {
+	return list.msg[seqLo-1 : seqHi]
+}
+
+func (list *snapMsgList) uidRange(uidLo, uidHi imap.UID) []*snapMsg {
+	var index int
+
+	len := len(list.msg)
+
+	// find first UID
+	for ; index < len && list.msg[index].UID < uidLo; index++ {
+	}
+
+	start := index
+
+	// find last UID
+	for ; index < len && list.msg[index].UID <= uidHi; index++ {
+	}
+
+	return list.msg[start:index]
+}
+
+func (list *snapMsgList) getWithUID(uid imap.UID) (*snapMsg, bool) {
+	var index int
+
+	len := len(list.msg)
+
+	// find first UID
+	for ; index < len && list.msg[index].UID < uid; index++ {
+	}
+
+	if index >= len || list.msg[index].UID > uid {
+		return nil, false
+	}
+
+	return list.msg[index], true
+}
