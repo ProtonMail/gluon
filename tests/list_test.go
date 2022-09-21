@@ -25,6 +25,7 @@ func TestList(t *testing.T) {
 		c.C("A005 DELETE ~/Mail/foo")
 		c.OK("A005")
 
+		// Test
 		c.C(`A101 LIST "" ""`)
 		c.S(`* LIST (\Noselect) "/" ""`)
 		c.OK("A101")
@@ -38,7 +39,8 @@ func TestList(t *testing.T) {
 		c.OK("A103")
 
 		c.C(`A202 LIST ~/Mail/ %`)
-		c.S(`* LIST (\Noselect) "/" "~/Mail/foo"`,
+		c.S(
+			`* LIST (\Noselect) "/" "~/Mail/foo"`,
 			`* LIST (\Unmarked) "/" "~/Mail/meetings"`)
 		c.OK("A202")
 	})
@@ -70,9 +72,6 @@ func TestListFlagsAndAttributes(t *testing.T) {
 
 func TestListRef(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
-		c.C(`tag create some`).OK(`tag`)
-		c.C(`tag create some.thing`).OK(`tag`)
-		c.C(`tag create some.thing.else`).OK(`tag`)
 		c.C(`tag create some.thing.else.entirely`).OK(`tag`)
 
 		// No ref - names interpreted like SELECT
@@ -156,9 +155,8 @@ func TestListRemoved(t *testing.T) {
 		c.C(`tag delete blurdybloop`).OK(`tag`)
 		c.C(`tag delete foo`).OK(`tag`)
 
-		// TODO(GODT-1612): Should also return foo here!
 		c.C(`tag list "" "*"`).S(
-			// `* LIST (\Noselect) "." "foo"`,
+			`* LIST (\Noselect) "." "foo"`,
 			`* LIST (\Unmarked) "." "foo.bar"`,
 			`* LIST (\Unmarked) "." "INBOX"`,
 		).OK(`tag`)
@@ -170,17 +168,50 @@ func TestListRemoved(t *testing.T) {
 	})
 }
 
-func TestListPercent(t *testing.T) {
+func TestListWildcards(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
-		c.C(`tag create some`).OK(`tag`)
-		c.C(`tag create some.thing`).OK(`tag`)
-		c.C(`tag create some.thing.else`).OK(`tag`)
 		c.C(`tag create some.thing.else.entirely`).OK(`tag`)
+		c.C(`tag delete some`).OK(`tag`)
 
-		// TODO(GODT-1612): "some" should be selectable!
-		c.C(`tag list "" "%"`).S(
+		c.C(`tag list "" "*"`)
+		c.S(
 			`* LIST (\Unmarked) "." "INBOX"`,
 			`* LIST (\Noselect) "." "some"`,
-		).OK(`tag`)
+			`* LIST (\Unmarked) "." "some.thing"`,
+			`* LIST (\Unmarked) "." "some.thing.else"`,
+			`* LIST (\Unmarked) "." "some.thing.else.entirely"`,
+		)
+		c.OK(`tag`)
+
+		c.C(`tag list "" "%"`)
+		c.S(
+			`* LIST (\Unmarked) "." "INBOX"`,
+			`* LIST (\Noselect) "." "some"`,
+		)
+		c.OK(`tag`)
+
+		c.C(`tag list "some.thing" "*"`)
+		c.S(
+			`* LIST (\Unmarked) "." "some.thing"`,
+			`* LIST (\Unmarked) "." "some.thing.else"`,
+			`* LIST (\Unmarked) "." "some.thing.else.entirely"`,
+		)
+		c.OK(`tag`)
+
+		c.C(`tag list "some.thing" "%"`)
+		c.S(`* LIST (\Unmarked) "." "some.thing"`)
+		c.OK(`tag`)
+
+		c.C(`tag list "some.thing." "*"`)
+		c.S(
+			`* LIST (\Unmarked) "." "some.thing.else"`,
+			`* LIST (\Unmarked) "." "some.thing.else.entirely"`,
+		)
+		c.OK(`tag`)
+
+		c.C(`tag list "some.thing." "%"`)
+		c.S(`* LIST (\Unmarked) "." "some.thing.else"`)
+		c.OK(`tag`)
+
 	})
 }
