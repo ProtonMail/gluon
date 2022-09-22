@@ -45,6 +45,7 @@ func (Mailbox) Edges() []ent.Edge {
 
 func (Mailbox) Indexes() []ent.Index {
 	return []ent.Index{
+		index.Fields("id"),
 		index.Fields("RemoteID"),
 		index.Fields("Name"),
 	}
