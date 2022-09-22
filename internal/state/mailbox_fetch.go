@@ -71,17 +71,16 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 		}
 	}
 
-	const minCountForParallelism = 16
+	const minCountForParallelism = 4
 
 	var parallelism int
 
 	activeFetchRequests := atomic.AddInt32(&totalActiveFetchRequest, 1)
 	defer atomic.AddInt32(&totalActiveFetchRequest, -1)
 
-	// Only run in parallel if we have to fetch more than minCountForParallelism messages
-	if len(snapMessages) < minCountForParallelism {
-		parallelism = 1
-	} else {
+	// Only run in parallel if we have to fetch more than minCountForParallelism messages or if we have more than one
+	// message and we need to access the literal.
+	if len(snapMessages) > minCountForParallelism || (len(snapMessages) > 1 && needsLiteral) {
 		// If multiple fetch request are happening in parallel, reduce the number of goroutines in proportion to that
 		// to avoid overloading the user's machine.
 		parallelism = runtime.NumCPU() / int(activeFetchRequests)
@@ -90,6 +89,8 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 		if parallelism < 1 {
 			parallelism = 1
 		}
+	} else {
+		parallelism = 1
 	}
 
 	if err := parallel.DoContext(ctx, parallelism, len(snapMessages), func(ctx context.Context, i int) error {
