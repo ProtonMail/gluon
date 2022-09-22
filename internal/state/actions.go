@@ -299,153 +299,175 @@ func (state *State) actionMoveMessages(
 func (state *State) actionAddMessageFlags(
 	ctx context.Context,
 	tx *ent.Tx,
-	messageIDs []ids.MessageIDPair,
+	messages []*snapMsg,
 	addFlags imap.FlagSet,
-) (map[imap.InternalMessageID]imap.FlagSet, error) {
-	curFlags := make(map[imap.MessageID]imap.FlagSet)
-
-	// Get the current flags that each message has.
-	for _, messageID := range messageIDs {
-		flags, err := state.snap.getMessageFlags(messageID.InternalID)
-		if err != nil {
-			return nil, err
-		}
-
-		curFlags[messageID.RemoteID] = flags
-	}
-
-	internalMsgIDs, remoteMsgIDs := ids.SplitMessageIDPairSlice(messageIDs)
+) error {
+	internalMessageIDs := xslices.Map(messages, func(sm *snapMsg) imap.InternalMessageID {
+		return sm.ID.InternalID
+	})
 
 	// If setting messages as seen, only set those messages that aren't currently seen.
 	if addFlags.Contains(imap.FlagSeen) {
-		if err := state.user.GetRemote().SetMessagesSeen(ctx, xslices.Filter(remoteMsgIDs, func(messageID imap.MessageID) bool {
-			return !curFlags[messageID].Contains(imap.FlagSeen)
-		}), true); err != nil {
-			return nil, err
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range messages {
+			if !msg.flags.Contains(imap.FlagSeen) {
+				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, true); err != nil {
+				return err
+			}
 		}
 	}
 
 	// If setting messages as flagged, only set those messages that aren't currently flagged.
 	if addFlags.Contains(imap.FlagFlagged) {
-		if err := state.user.GetRemote().SetMessagesFlagged(ctx, xslices.Filter(remoteMsgIDs, func(messageID imap.MessageID) bool {
-			return !curFlags[messageID].Contains(imap.FlagFlagged)
-		}), true); err != nil {
-			return nil, err
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range messages {
+			if !msg.flags.Contains(imap.FlagFlagged) {
+				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesFlagged(ctx, messagesToApply, true); err != nil {
+				return err
+			}
 		}
 	}
 
-	if err := state.applyMessageFlagsAdded(ctx, tx, internalMsgIDs, addFlags); err != nil {
-		return nil, err
+	if err := state.applyMessageFlagsAdded(ctx, tx, internalMessageIDs, addFlags); err != nil {
+		return err
 	}
 
-	res := make(map[imap.InternalMessageID]imap.FlagSet)
-
-	for _, messageID := range messageIDs {
-		res[messageID.InternalID] = curFlags[messageID.RemoteID].AddFlagSet(addFlags)
-	}
-
-	return res, nil
+	return nil
 }
 
 func (state *State) actionRemoveMessageFlags(
 	ctx context.Context,
 	tx *ent.Tx,
-	messageIDs []ids.MessageIDPair,
+	messages []*snapMsg,
 	remFlags imap.FlagSet,
-) (map[imap.InternalMessageID]imap.FlagSet, error) {
-	curFlags := make(map[imap.MessageID]imap.FlagSet)
-
-	// Get the current flags that each message has.
-	for _, messageID := range messageIDs {
-		flags, err := state.snap.getMessageFlags(messageID.InternalID)
-		if err != nil {
-			return nil, err
-		}
-
-		curFlags[messageID.RemoteID] = flags
-	}
-
-	internalMsgIDs, remoteMsgIDs := ids.SplitMessageIDPairSlice(messageIDs)
+) error {
+	internalMessageIDs := xslices.Map(messages, func(sm *snapMsg) imap.InternalMessageID {
+		return sm.ID.InternalID
+	})
 
 	// If setting messages as unseen, only set those messages that are currently seen.
 	if remFlags.Contains(imap.FlagSeen) {
-		if err := state.user.GetRemote().SetMessagesSeen(ctx, xslices.Filter(remoteMsgIDs, func(messageID imap.MessageID) bool {
-			return curFlags[messageID].Contains(imap.FlagSeen)
-		}), false); err != nil {
-			return nil, err
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range messages {
+			if msg.flags.Contains(imap.FlagSeen) {
+				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, false); err != nil {
+				return err
+			}
 		}
 	}
 
 	// If setting messages as unflagged, only set those messages that are currently flagged.
 	if remFlags.Contains(imap.FlagFlagged) {
-		if err := state.user.GetRemote().SetMessagesFlagged(ctx, xslices.Filter(remoteMsgIDs, func(messageID imap.MessageID) bool {
-			return curFlags[messageID].Contains(imap.FlagFlagged)
-		}), false); err != nil {
-			return nil, err
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range messages {
+			if msg.flags.Contains(imap.FlagFlagged) {
+				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesFlagged(ctx, messagesToApply, false); err != nil {
+				return err
+			}
 		}
 	}
 
-	if err := state.applyMessageFlagsRemoved(ctx, tx, internalMsgIDs, remFlags); err != nil {
-		return nil, err
+	if err := state.applyMessageFlagsRemoved(ctx, tx, internalMessageIDs, remFlags); err != nil {
+		return err
 	}
 
-	res := make(map[imap.InternalMessageID]imap.FlagSet)
-
-	for _, messageID := range messageIDs {
-		res[messageID.InternalID] = curFlags[messageID.RemoteID].RemoveFlagSet(remFlags)
-	}
-
-	return res, nil
+	return nil
 }
 
-func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []ids.MessageIDPair, setFlags imap.FlagSet) error {
+func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messages []*snapMsg, setFlags imap.FlagSet) error {
 	if setFlags.Contains(imap.FlagRecent) {
 		return fmt.Errorf("recent flag is read-only")
 	}
 
-	curFlags := make(map[imap.MessageID]imap.FlagSet)
-
-	// Get the current flags that each message has.
-	for _, messageID := range messageIDs {
-		flags, err := state.snap.getMessageFlags(messageID.InternalID)
-		if err != nil {
-			return err
-		}
-
-		curFlags[messageID.RemoteID] = flags
-	}
-
-	internalMsgIDs, remoteMessageIDs := ids.SplitMessageIDPairSlice(messageIDs)
+	internalMessageIDs := xslices.Map(messages, func(sm *snapMsg) imap.InternalMessageID {
+		return sm.ID.InternalID
+	})
 
 	// If setting messages as seen, only set those messages that aren't currently seen.
 	if setFlags.Contains(imap.FlagSeen) {
-		if err := state.user.GetRemote().SetMessagesSeen(ctx, xslices.Filter(remoteMessageIDs, func(messageID imap.MessageID) bool {
-			return !curFlags[messageID].Contains(imap.FlagSeen)
-		}), true); err != nil {
-			return err
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range messages {
+			if !msg.flags.Contains(imap.FlagSeen) {
+				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, true); err != nil {
+				return err
+			}
 		}
 	} else {
-		if err := state.user.GetRemote().SetMessagesSeen(ctx, xslices.Filter(remoteMessageIDs, func(messageID imap.MessageID) bool {
-			return curFlags[messageID].Contains(imap.FlagSeen)
-		}), false); err != nil {
-			return err
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range messages {
+			if msg.flags.Contains(imap.FlagSeen) {
+				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, false); err != nil {
+				return err
+			}
 		}
 	}
 
 	// If setting messages as flagged, only set those messages that aren't currently flagged.
 	if setFlags.Contains(imap.FlagFlagged) {
-		if err := state.user.GetRemote().SetMessagesFlagged(ctx, xslices.Filter(remoteMessageIDs, func(messageID imap.MessageID) bool {
-			return !curFlags[messageID].Contains(imap.FlagFlagged)
-		}), true); err != nil {
-			return err
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range messages {
+			if !msg.flags.Contains(imap.FlagFlagged) {
+				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesFlagged(ctx, messagesToApply, true); err != nil {
+				return err
+			}
 		}
 	} else {
-		if err := state.user.GetRemote().SetMessagesFlagged(ctx, xslices.Filter(remoteMessageIDs, func(messageID imap.MessageID) bool {
-			return curFlags[messageID].Contains(imap.FlagFlagged)
-		}), false); err != nil {
-			return err
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range messages {
+			if msg.flags.Contains(imap.FlagFlagged) {
+				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesFlagged(ctx, messagesToApply, false); err != nil {
+				return err
+			}
 		}
 	}
 
-	return state.applyMessageFlagsSet(ctx, tx, internalMsgIDs, setFlags)
+	return state.applyMessageFlagsSet(ctx, tx, internalMessageIDs, setFlags)
 }
