@@ -3,8 +3,10 @@ package state
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/contexts"
@@ -13,8 +15,11 @@ import (
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/rfc822"
+	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
 )
+
+var totalActiveFetchRequest int32
 
 func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes []*proto.FetchAttribute, ch chan response.Response) error {
 	snapMessages, err := m.snap.getMessagesInRange(ctx, seq)
@@ -66,19 +71,29 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 		}
 	}
 
-	var msgsToBeMarkedSeen []*snapMsg
-	if setSeen {
-		msgsToBeMarkedSeen = make([]*snapMsg, 0, len(snapMessages))
+	const minCountForParallelism = 16
+
+	var parallelism int
+
+	activeFetchRequests := atomic.AddInt32(&totalActiveFetchRequest, 1)
+	defer atomic.AddInt32(&totalActiveFetchRequest, -1)
+
+	// Only run in parallel if we have to fetch more than minCountForParallelism messages
+	if len(snapMessages) < minCountForParallelism {
+		parallelism = 1
+	} else {
+		// If multiple fetch request are happening in parallel, reduce the number of goroutines in proportion to that
+		// to avoid overloading the user's machine.
+		parallelism = runtime.NumCPU() / int(activeFetchRequests)
+
+		// make sure that if division hits 0, we run single threaded rather than use MAXGOPROCS
+		if parallelism < 1 {
+			parallelism = 1
+		}
 	}
 
-	for _, msg := range snapMessages {
-		// early exit if context is cancelled.
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
+	if err := parallel.DoContext(ctx, parallelism, len(snapMessages), func(ctx context.Context, i int) error {
+		msg := snapMessages[i]
 		message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
 			return db.GetMessage(ctx, client, msg.ID.InternalID)
 		})
@@ -118,12 +133,22 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 
 				items = append(items, response.ItemFlags(msg.flags))
 
-				msgsToBeMarkedSeen = append(msgsToBeMarkedSeen, msg)
 			}
+		} else {
+			// remove message from the list to avoid being processed for seen flag changes later.
+			snapMessages[i] = nil
 		}
 
 		ch <- response.Fetch(msg.Seq).WithItems(items...)
+
+		return nil
+	}); err != nil {
+		return err
 	}
+
+	msgsToBeMarkedSeen := xslices.Filter(snapMessages, func(s *snapMsg) bool {
+		return s != nil
+	})
 
 	if len(msgsToBeMarkedSeen) != 0 {
 		if err := m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
