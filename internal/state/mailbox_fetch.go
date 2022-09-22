@@ -10,7 +10,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -67,9 +66,9 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 		}
 	}
 
-	var msgsToBeMarkedSeen []ids.MessageIDPair
+	var msgsToBeMarkedSeen []*snapMsg
 	if setSeen {
-		msgsToBeMarkedSeen = make([]ids.MessageIDPair, 0, len(snapMessages))
+		msgsToBeMarkedSeen = make([]*snapMsg, 0, len(snapMessages))
 	}
 
 	for _, msg := range snapMessages {
@@ -119,7 +118,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 
 				items = append(items, response.ItemFlags(msg.flags))
 
-				msgsToBeMarkedSeen = append(msgsToBeMarkedSeen, msg.ID)
+				msgsToBeMarkedSeen = append(msgsToBeMarkedSeen, msg)
 			}
 		}
 
@@ -128,9 +127,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 
 	if len(msgsToBeMarkedSeen) != 0 {
 		if err := m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-			_, err := m.state.actionAddMessageFlags(ctx, tx, msgsToBeMarkedSeen, imap.NewFlagSet(imap.FlagSeen))
-
-			return err
+			return m.state.actionAddMessageFlags(ctx, tx, msgsToBeMarkedSeen, imap.NewFlagSet(imap.FlagSeen))
 		}); err != nil {
 			return err
 		}

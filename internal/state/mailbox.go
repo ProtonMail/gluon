@@ -251,24 +251,20 @@ func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation p
 		return err
 	}
 
-	msgIDs := xslices.Map(messages, func(msg *snapMsg) ids.MessageIDPair {
-		return msg.ID
-	})
-
 	return m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		switch operation {
 		case proto.Operation_Add:
-			if _, err := m.state.actionAddMessageFlags(ctx, tx, msgIDs, flags); err != nil {
+			if err := m.state.actionAddMessageFlags(ctx, tx, messages, flags); err != nil {
 				return err
 			}
 
 		case proto.Operation_Remove:
-			if _, err := m.state.actionRemoveMessageFlags(ctx, tx, msgIDs, flags); err != nil {
+			if err := m.state.actionRemoveMessageFlags(ctx, tx, messages, flags); err != nil {
 				return err
 			}
 
 		case proto.Operation_Replace:
-			if err := m.state.actionSetMessageFlags(ctx, tx, msgIDs, flags); err != nil {
+			if err := m.state.actionSetMessageFlags(ctx, tx, messages, flags); err != nil {
 				return err
 			}
 		}
