@@ -72,6 +72,7 @@ func (f *Fetch) Run(ctx context.Context, addr net.Addr) error {
 		imap.FetchRFC822Text,
 		imap.FetchBody,
 		"BODY[]",
+		"BODY[HEADER]",
 	}
 
 	RunParallelClientsWithMailbox(addr, f.MBoxes[0], *fetchReadOnly, func(cl *client.Client, index uint) {

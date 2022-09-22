@@ -18,104 +18,125 @@ import (
 )
 
 func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes []*proto.FetchAttribute, ch chan response.Response) error {
-	msg, err := m.snap.getMessagesInRange(ctx, seq)
+	snapMessages, err := m.snap.getMessagesInRange(ctx, seq)
 	if err != nil {
 		return err
 	}
 
-	for _, msg := range msg {
-		seq, items, err := m.fetchItems(ctx, msg, attributes)
-		if err != nil {
-			return err
-		}
+	operations := make([]func(*snapMsg, *ent.Message, []byte) (response.Item, error), 0, len(attributes))
 
-		select {
-		case ch <- response.Fetch(seq).WithItems(items...):
-
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-
-	return nil
-}
-
-func (m *Mailbox) fetchItems(ctx context.Context, msg *snapMsg, attributes []*proto.FetchAttribute) (imap.SeqID, []response.Item, error) {
 	var (
-		items []response.Item
-
-		wantUID bool
-		setSeen bool
+		needsLiteral bool
+		wantUID      bool
+		setSeen      bool
 	)
-
-	message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
-		return db.GetMessage(ctx, client, msg.ID.InternalID)
-	})
-	if err != nil {
-		return 0, nil, err
-	}
 
 	for _, attribute := range attributes {
 		switch attribute := attribute.Attribute.(type) {
 		case *proto.FetchAttribute_Keyword:
-			item, err := m.fetchKeyword(msg, message, attribute.Keyword)
-			if err != nil {
-				return 0, nil, err
+			{
+				if attribute.Keyword == proto.FetchKeyword_FetchKWUID {
+					wantUID = true
+				}
+
+				if attribute.Keyword == proto.FetchKeyword_FetchKWRFC822 || attribute.Keyword == proto.FetchKeyword_FetchKWRFC822Text {
+					setSeen = true
+				}
+
+				op := func(snapMessage *snapMsg, message *ent.Message, literal []byte) (response.Item, error) {
+					return m.fetchKeyword(snapMessage, message, attribute.Keyword)
+				}
+
+				operations = append(operations, op)
 			}
-
-			if attribute.Keyword == proto.FetchKeyword_FetchKWUID {
-				wantUID = true
-			}
-
-			if attribute.Keyword == proto.FetchKeyword_FetchKWRFC822 || attribute.Keyword == proto.FetchKeyword_FetchKWRFC822Text {
-				setSeen = true
-			}
-
-			items = append(items, item)
-
 		case *proto.FetchAttribute_Body:
-			literal, err := m.state.getLiteral(msg.ID.InternalID)
-			if err != nil {
-				return 0, nil, err
-			}
+			{
+				needsLiteral = true
 
-			item, err := m.fetchBody(attribute.Body, literal)
-			if err != nil {
-				return 0, nil, err
-			}
+				if !attribute.Body.Peek {
+					setSeen = true
+				}
 
-			items = append(items, item)
+				op := func(snapMessage *snapMsg, message *ent.Message, literal []byte) (response.Item, error) {
+					return m.fetchBody(attribute.Body, literal)
+				}
 
-			if !attribute.Body.Peek {
-				setSeen = true
+				operations = append(operations, op)
+
 			}
 		}
 	}
 
-	if contexts.IsUID(ctx) && !wantUID {
-		items = append(items, response.ItemUID(msg.UID))
+	var msgsToBeMarkedSeen []ids.MessageIDPair
+	if setSeen {
+		msgsToBeMarkedSeen = make([]ids.MessageIDPair, 0, len(snapMessages))
 	}
 
-	if setSeen {
-		newFlags, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]imap.FlagSet, error) {
-			return m.state.actionAddMessageFlags(ctx, tx, []ids.MessageIDPair{msg.ID}, imap.NewFlagSet(imap.FlagSeen))
+	for _, msg := range snapMessages {
+		// early exit if context is cancelled.
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
+			return db.GetMessage(ctx, client, msg.ID.InternalID)
 		})
 		if err != nil {
-			return 0, nil, err
+			return err
 		}
 
-		newMessageFlags := newFlags[msg.ID.InternalID]
+		var literal []byte
 
-		if !msg.flags.Equals(newMessageFlags) {
-			if err := m.snap.setMessageFlags(msg.ID.InternalID, newMessageFlags); err != nil {
-				return 0, nil, err
+		if needsLiteral {
+			l, err := m.state.getLiteral(msg.ID.InternalID)
+			if err != nil {
+				return err
 			}
 
-			items = append(items, response.ItemFlags(newMessageFlags))
+			literal = l
+		}
+
+		items := make([]response.Item, 0, len(operations))
+
+		for _, op := range operations {
+			item, err := op(msg, message, literal)
+			if err != nil {
+				return err
+			}
+
+			items = append(items, item)
+		}
+
+		if contexts.IsUID(ctx) && !wantUID {
+			items = append(items, response.ItemUID(msg.UID))
+		}
+
+		if setSeen {
+			if !msg.flags.Contains(imap.FlagSeen) {
+				msg.flags = msg.flags.Add(imap.FlagSeen)
+
+				items = append(items, response.ItemFlags(msg.flags))
+
+				msgsToBeMarkedSeen = append(msgsToBeMarkedSeen, msg.ID)
+			}
+		}
+
+		ch <- response.Fetch(msg.Seq).WithItems(items...)
+	}
+
+	if len(msgsToBeMarkedSeen) != 0 {
+		if err := m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+			_, err := m.state.actionAddMessageFlags(ctx, tx, msgsToBeMarkedSeen, imap.NewFlagSet(imap.FlagSeen))
+
+			return err
+		}); err != nil {
+			return err
 		}
 	}
 
-	return msg.Seq, items, nil
+	return nil
 }
 
 func (m *Mailbox) fetchKeyword(msg *snapMsg, message *ent.Message, keyword proto.FetchKeyword) (response.Item, error) {
