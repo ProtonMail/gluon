@@ -41,6 +41,7 @@ func (Message) Edges() []ent.Edge {
 
 func (Message) Indexes() []ent.Index {
 	return []ent.Index{
+		index.Fields("id"),
 		index.Fields("RemoteID"),
 	}
 }

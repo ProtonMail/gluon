@@ -24,6 +24,11 @@ var (
 		PrimaryKey: []*schema.Column{MailboxesColumns[0]},
 		Indexes: []*schema.Index{
 			{
+				Name:    "mailbox_id",
+				Unique:  false,
+				Columns: []*schema.Column{MailboxesColumns[0]},
+			},
+			{
 				Name:    "mailbox_remote_id",
 				Unique:  false,
 				Columns: []*schema.Column{MailboxesColumns[1]},
@@ -112,6 +117,11 @@ var (
 		Columns:    MessagesColumns,
 		PrimaryKey: []*schema.Column{MessagesColumns[0]},
 		Indexes: []*schema.Index{
+			{
+				Name:    "message_id",
+				Unique:  false,
+				Columns: []*schema.Column{MessagesColumns[0]},
+			},
 			{
 				Name:    "message_remote_id",
 				Unique:  false,

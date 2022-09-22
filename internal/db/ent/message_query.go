@@ -335,6 +335,7 @@ func (mq *MessageQuery) WithUIDs(opts ...func(*UIDQuery)) *MessageQuery {
 //		GroupBy(message.FieldRemoteID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
+//
 func (mq *MessageQuery) GroupBy(field string, fields ...string) *MessageGroupBy {
 	grbuild := &MessageGroupBy{config: mq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -361,6 +362,7 @@ func (mq *MessageQuery) GroupBy(field string, fields ...string) *MessageGroupBy 
 //	client.Message.Query().
 //		Select(message.FieldRemoteID).
 //		Scan(ctx, &v)
+//
 func (mq *MessageQuery) Select(fields ...string) *MessageSelect {
 	mq.fields = append(mq.fields, fields...)
 	selbuild := &MessageSelect{MessageQuery: mq}

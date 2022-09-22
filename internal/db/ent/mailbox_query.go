@@ -407,6 +407,7 @@ func (mq *MailboxQuery) WithAttributes(opts ...func(*MailboxAttrQuery)) *Mailbox
 //		GroupBy(mailbox.FieldRemoteID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
+//
 func (mq *MailboxQuery) GroupBy(field string, fields ...string) *MailboxGroupBy {
 	grbuild := &MailboxGroupBy{config: mq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -433,6 +434,7 @@ func (mq *MailboxQuery) GroupBy(field string, fields ...string) *MailboxGroupBy 
 //	client.Mailbox.Query().
 //		Select(mailbox.FieldRemoteID).
 //		Scan(ctx, &v)
+//
 func (mq *MailboxQuery) Select(fields ...string) *MailboxSelect {
 	mq.fields = append(mq.fields, fields...)
 	selbuild := &MailboxSelect{MailboxQuery: mq}
