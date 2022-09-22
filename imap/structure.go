@@ -91,6 +91,8 @@ func singlePartStructure(section *rfc822.Section, fields *paramList, writer *dua
 			return err
 		}
 
+		writer.writeByte(' ')
+
 		if err := envelope(header, fields, writer); err != nil {
 			return err
 		}
