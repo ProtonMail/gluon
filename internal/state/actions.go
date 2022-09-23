@@ -152,7 +152,7 @@ func (state *State) actionAddMessagesToMailbox(
 	messageIDs []ids.MessageIDPair,
 	mboxID ids.MailboxIDPair,
 	isMailboxSelected bool,
-) (map[imap.InternalMessageID]*ent.UID, error) {
+) ([]db.UIDWithFlags, error) {
 	{
 		haveMessageIDs, err := db.FilterMailboxContains(ctx, tx.Client(), mboxID.InternalID, messageIDs)
 		if err != nil {
@@ -248,7 +248,7 @@ func (state *State) actionMoveMessages(
 	tx *ent.Tx,
 	messageIDs []ids.MessageIDPair,
 	mboxFromID, mboxToID ids.MailboxIDPair,
-) (map[imap.InternalMessageID]*ent.UID, error) {
+) ([]db.UIDWithFlags, error) {
 	if mboxFromID.InternalID == mboxToID.InternalID {
 		internalIDs, _ := ids.SplitMessageIDPairSlice(messageIDs)
 

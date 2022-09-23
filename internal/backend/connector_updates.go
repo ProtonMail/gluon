@@ -364,7 +364,7 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx *ent.Tx, messageID
 }
 
 // applyMessagesAddedToMailbox adds the messages to the given mailbox.
-func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]*ent.UID, error) {
+func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]db.UIDWithFlags, error) {
 	messageUIDs, update, err := state.AddMessagesToMailbox(ctx, tx, mboxID, messageIDs, nil)
 	if err != nil {
 		return nil, err

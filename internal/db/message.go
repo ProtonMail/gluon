@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/ProtonMail/gluon/imap"
@@ -57,7 +59,7 @@ func CreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*CreateMessageReq) 
 	})...).Save(ctx)
 }
 
-func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) (map[imap.InternalMessageID]*ent.UID, error) {
+func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) ([]UIDWithFlags, error) {
 	messageUIDs := make(map[imap.InternalMessageID]imap.UID)
 
 	mbox, err := tx.Mailbox.Query().Where(mailbox.ID(mboxID)).Select(mailbox.FieldUIDNext).Only(ctx)
@@ -86,7 +88,7 @@ func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.Int
 		return nil, err
 	}
 
-	return GetMessageUIDsWithFlags(ctx, tx.Client(), mboxID, messageIDs)
+	return GetMessageUIDsWithFlagsAfterAddOrUIDBump(ctx, tx.Client(), mboxID, messageIDs)
 }
 
 func CreateAndAddMessageToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, req *CreateMessageReq) (imap.UID, imap.FlagSet, error) {
@@ -151,7 +153,7 @@ type CreateAndAddMessagesResult struct {
 	MessageID ids.MessageIDPair
 }
 
-func BumpMailboxUIDsForMessage(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) (map[imap.InternalMessageID]*ent.UID, error) {
+func BumpMailboxUIDsForMessage(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) ([]UIDWithFlags, error) {
 	messageUIDs := make(map[imap.InternalMessageID]imap.UID)
 
 	mbox, err := tx.Mailbox.Query().Where(mailbox.ID(mboxID)).Only(ctx)
@@ -181,7 +183,7 @@ func BumpMailboxUIDsForMessage(ctx context.Context, tx *ent.Tx, messageIDs []ima
 		return nil, err
 	}
 
-	return GetMessageUIDsWithFlags(ctx, tx.Client(), mboxID, messageIDs)
+	return GetMessageUIDsWithFlagsAfterAddOrUIDBump(ctx, tx.Client(), mboxID, messageIDs)
 }
 
 func RemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) error {
@@ -229,30 +231,58 @@ func GetMessageMailboxIDs(ctx context.Context, client *ent.Client, messageID ima
 	}), nil
 }
 
-func GetMessageUIDsWithFlags(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]*ent.UID, error) {
-	messageUIDs, err := client.UID.Query().
-		Where(
-			uid.HasMailboxWith(mailbox.ID(mboxID)),
-			uid.HasMessageWith(message.IDIn(messageIDs...)),
-		).
-		WithMessage(func(query *ent.MessageQuery) {
-			query.Select(message.FieldID, message.FieldRemoteID)
-			query.WithFlags(func(query *ent.MessageFlagQuery) {
-				query.Select(messageflag.FieldValue)
-			})
-		}).
-		All(ctx)
-	if err != nil {
+type UIDWithFlags struct {
+	InternalID imap.InternalMessageID `json:"uid_message"`
+	RemoteID   imap.MessageID         `json:"remote_id"`
+	UID        imap.UID               `json:"uid"`
+	Recent     bool                   `json:"recent"`
+	Deleted    bool                   `json:"deleted"`
+	Flags      string                 `json:"flags"`
+}
+
+func (u *UIDWithFlags) GetFlagSet() imap.FlagSet {
+	var flagSet imap.FlagSet
+
+	if len(u.Flags) > 0 {
+		flags := strings.Split(u.Flags, ",")
+		flagSet = imap.NewFlagSetFromSlice(flags)
+	} else {
+		flagSet = imap.NewFlagSet()
+	}
+
+	if u.Deleted {
+		flagSet = flagSet.Add(imap.FlagDeleted)
+	}
+
+	if u.Recent {
+		flagSet = flagSet.Add(imap.FlagRecent)
+	}
+
+	return flagSet
+}
+
+// GetMessageUIDsWithFlagsAfterAddOrUIDBump exploits a property of adding a message to or bumping the UIDs of existing message in mailbox. It can only be
+// used if you can guarantee that the messageID list contains only IDs that have recently added or bumped in the mailbox.
+func GetMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]UIDWithFlags, error) {
+	var result []UIDWithFlags
+
+	// We can just sort the by UID as every addition and bump will be a new UID in ascending order.
+	if err := client.UID.Query().Where(func(s *sql.Selector) {
+		msgTable := sql.Table(message.Table)
+		flagTable := sql.Table(messageflag.Table)
+		s.Join(msgTable).On(s.C(uid.MessageColumn), msgTable.C(message.FieldID))
+		s.LeftJoin(flagTable).On(s.C(uid.MessageColumn), flagTable.C(messageflag.MessagesColumn))
+		s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.In(s.C(uid.MessageColumn), xslices.Map(messageIDs, func(id imap.InternalMessageID) interface{} {
+			return uint64(id)
+		})...)))
+		s.Select(msgTable.C(message.FieldRemoteID), sql.As(fmt.Sprintf("GROUP_CONCAT(%v)", flagTable.C(messageflag.FieldValue)), "flags"), s.C(uid.FieldRecent), s.C(uid.FieldDeleted), s.C(uid.FieldUID), s.C(uid.MessageColumn))
+		s.GroupBy(s.C(uid.MessageColumn))
+		s.OrderBy(s.C(uid.FieldUID))
+	}).Select().Scan(ctx, &result); err != nil {
 		return nil, err
 	}
 
-	res := make(map[imap.InternalMessageID]*ent.UID)
-
-	for _, messageUID := range messageUIDs {
-		res[messageUID.Edges.Message.ID] = messageUID
-	}
-
-	return res, nil
+	return result, nil
 }
 
 // GetMessageFlags returns the flags of the given messages.
