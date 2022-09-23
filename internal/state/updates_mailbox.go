@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
@@ -19,7 +18,7 @@ func MoveMessagesFromMailbox(
 	mboxFromID, mboxToID imap.InternalMailboxID,
 	messageIDs []imap.InternalMessageID,
 	s *State,
-) (map[imap.InternalMessageID]*ent.UID, []Update, error) {
+) ([]db.UIDWithFlags, []Update, error) {
 	if mboxFromID != mboxToID {
 		if err := db.RemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxFromID); err != nil {
 			return nil, nil, err
@@ -33,9 +32,11 @@ func MoveMessagesFromMailbox(
 
 	stateUpdates := make([]Update, 0, len(messageIDs)+1)
 	{
-		responders := xslices.Map(messageIDs, func(id imap.InternalMessageID) *exists {
-			uid := messageUIDs[id]
-			return newExists(ids.NewMessageIDPair(uid.Edges.Message), uid.UID, db.NewFlagSet(uid, uid.Edges.Message.Edges.Flags))
+		responders := xslices.Map(messageUIDs, func(uid db.UIDWithFlags) *exists {
+			return newExists(ids.MessageIDPair{
+				InternalID: uid.InternalID,
+				RemoteID:   uid.RemoteID,
+			}, uid.UID, uid.GetFlagSet())
 		})
 		stateUpdates = append(stateUpdates, newExistsStateUpdateWithExists(mboxToID, responders, s))
 	}
@@ -48,15 +49,17 @@ func MoveMessagesFromMailbox(
 }
 
 // AddMessagesToMailbox adds the messages to the given mailbox.
-func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, s *State) (map[imap.InternalMessageID]*ent.UID, Update, error) {
+func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, s *State) ([]db.UIDWithFlags, Update, error) {
 	messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	responders := xslices.Map(messageIDs, func(id imap.InternalMessageID) *exists {
-		uid := messageUIDs[id]
-		return newExists(ids.NewMessageIDPair(uid.Edges.Message), uid.UID, db.NewFlagSet(uid, uid.Edges.Message.Edges.Flags))
+	responders := xslices.Map(messageUIDs, func(uid db.UIDWithFlags) *exists {
+		return newExists(ids.MessageIDPair{
+			InternalID: uid.InternalID,
+			RemoteID:   uid.RemoteID,
+		}, uid.UID, uid.GetFlagSet())
 	})
 
 	return messageUIDs, newExistsStateUpdateWithExists(mboxID, responders, s), nil
