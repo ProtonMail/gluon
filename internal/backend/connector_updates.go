@@ -207,11 +207,10 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 		return nil
 	}
 
-	const maxUpdateChunk = 1000
 	// We sadly have to split this up into two separate transactions where we create the messages and one where we
 	// assign them to the mailbox. There's an upper limit to the number of items badger can track in one transaction.
 	// This way we can keep the database consistent.
-	for _, chunk := range xslices.Chunk(messagesToCreate, maxUpdateChunk) {
+	for _, chunk := range xslices.Chunk(messagesToCreate, db.ChunkLimit) {
 		if err := db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, storeTx store.Transaction) error {
 			// Create messages in the store
 			for _, msg := range chunk {
@@ -239,12 +238,9 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		// Assign all the messages to the mailbox
 		for mboxID, msgList := range messageForMBox {
-			for _, chunk := range xslices.Chunk(msgList, maxUpdateChunk) {
-				if _, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, chunk); err != nil {
-					return err
-				}
+			if _, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, msgList); err != nil {
+				return err
 			}
-
 		}
 
 		return nil

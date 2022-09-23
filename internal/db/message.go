@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
@@ -15,6 +16,8 @@ import (
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
 )
+
+const ChunkLimit = 1000
 
 type CreateMessageReq struct {
 	Message    imap.Message
@@ -41,7 +44,7 @@ func CreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*CreateMessageReq) 
 		flags[req.InternalID] = entFlags
 	}
 
-	return tx.Message.CreateBulk(xslices.Map(reqs, func(req *CreateMessageReq) *ent.MessageCreate {
+	builders := xslices.Map(reqs, func(req *CreateMessageReq) *ent.MessageCreate {
 		msgCreate := tx.Message.Create().
 			SetID(req.InternalID).
 			SetDate(req.Message.Date).
@@ -56,7 +59,21 @@ func CreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*CreateMessageReq) 
 		}
 
 		return msgCreate
-	})...).Save(ctx)
+	})
+
+	messages := make([]*ent.Message, 0, len(builders))
+
+	// Avoid too many SQL variables error.
+	for _, chunk := range xslices.Chunk(builders, ChunkLimit) {
+		msgs, err := tx.Message.CreateBulk(chunk...).Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		messages = append(messages, msgs...)
+	}
+
+	return messages, nil
 }
 
 func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) ([]UIDWithFlags, error) {
@@ -80,8 +97,11 @@ func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.Int
 		)
 	}
 
-	if _, err := tx.UID.CreateBulk(builders...).Save(ctx); err != nil {
-		return nil, err
+	// Avoid too many SQL variables error.
+	for _, chunk := range xslices.Chunk(builders, ChunkLimit) {
+		if _, err := tx.UID.CreateBulk(chunk...).Save(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := BumpMailboxUIDNext(ctx, tx, mbox, len(messageIDs)); err != nil {
@@ -187,14 +207,17 @@ func BumpMailboxUIDsForMessage(ctx context.Context, tx *ent.Tx, messageIDs []ima
 }
 
 func RemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) error {
-	if _, err := tx.UID.Delete().
-		Where(func(s *sql.Selector) {
-			s.Where(sql.And(sql.In(uid.MessageColumn, xslices.Map(messageIDs, func(t imap.InternalMessageID) interface{} {
-				return interface{}(t)
-			})...), sql.EQ(uid.MailboxColumn, mboxID)))
-		}).
-		Exec(ctx); err != nil {
-		return err
+	// Avoid too many SQL variables error.
+	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
+		if _, err := tx.UID.Delete().
+			Where(func(s *sql.Selector) {
+				s.Where(sql.And(sql.In(uid.MessageColumn, xslices.Map(chunk, func(t imap.InternalMessageID) interface{} {
+					return interface{}(t)
+				})...), sql.EQ(uid.MailboxColumn, mboxID)))
+			}).
+			Exec(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -264,23 +287,29 @@ func (u *UIDWithFlags) GetFlagSet() imap.FlagSet {
 // GetMessageUIDsWithFlagsAfterAddOrUIDBump exploits a property of adding a message to or bumping the UIDs of existing message in mailbox. It can only be
 // used if you can guarantee that the messageID list contains only IDs that have recently added or bumped in the mailbox.
 func GetMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]UIDWithFlags, error) {
-	var result []UIDWithFlags
+	result := make([]UIDWithFlags, 0, len(messageIDs))
 
-	// We can just sort the by UID as every addition and bump will be a new UID in ascending order.
-	if err := client.UID.Query().Where(func(s *sql.Selector) {
-		msgTable := sql.Table(message.Table)
-		flagTable := sql.Table(messageflag.Table)
-		s.Join(msgTable).On(s.C(uid.MessageColumn), msgTable.C(message.FieldID))
-		s.LeftJoin(flagTable).On(s.C(uid.MessageColumn), flagTable.C(messageflag.MessagesColumn))
-		s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.In(s.C(uid.MessageColumn), xslices.Map(messageIDs, func(id imap.InternalMessageID) interface{} {
-			return uint64(id)
-		})...)))
-		s.Select(msgTable.C(message.FieldRemoteID), sql.As(fmt.Sprintf("GROUP_CONCAT(%v)", flagTable.C(messageflag.FieldValue)), "flags"), s.C(uid.FieldRecent), s.C(uid.FieldDeleted), s.C(uid.FieldUID), s.C(uid.MessageColumn))
-		s.GroupBy(s.C(uid.MessageColumn))
-		s.OrderBy(s.C(uid.FieldUID))
-	}).Select().Scan(ctx, &result); err != nil {
-		return nil, err
+	// Hav to split this in chunks as this can trigger too many SQL Variables.
+	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
+		// We can just sort the by UID as every addition and bump will be a new UID in ascending order.
+		if err := client.UID.Query().Where(func(s *sql.Selector) {
+			msgTable := sql.Table(message.Table)
+			flagTable := sql.Table(messageflag.Table)
+			s.Join(msgTable).On(s.C(uid.MessageColumn), msgTable.C(message.FieldID))
+			s.LeftJoin(flagTable).On(s.C(uid.MessageColumn), flagTable.C(messageflag.MessagesColumn))
+			s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.In(s.C(uid.MessageColumn), xslices.Map(chunk, func(id imap.InternalMessageID) interface{} {
+				return uint64(id)
+			})...)))
+			s.Select(msgTable.C(message.FieldRemoteID), sql.As(fmt.Sprintf("GROUP_CONCAT(%v)", flagTable.C(messageflag.FieldValue)), "flags"), s.C(uid.FieldRecent), s.C(uid.FieldDeleted), s.C(uid.FieldUID), s.C(uid.MessageColumn))
+			s.GroupBy(s.C(uid.MessageColumn))
+		}).Select().Scan(ctx, &result); err != nil {
+			return nil, err
+		}
 	}
+
+	slices.SortFunc(result, func(v1 UIDWithFlags, v2 UIDWithFlags) bool {
+		return v1.UID < v2.UID
+	})
 
 	return result, nil
 }
@@ -288,18 +317,24 @@ func GetMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Context, client *ent.C
 // GetMessageFlags returns the flags of the given messages.
 // It does not include per-mailbox flags (\Deleted, \Recent)!
 func GetMessageFlags(ctx context.Context, client *ent.Client, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]imap.FlagSet, error) {
-	messages, err := client.Message.Query().
-		Where(message.IDIn(messageIDs...)).
-		WithFlags(func(query *ent.MessageFlagQuery) {
-			query.Select(messageflag.FieldValue)
-		}).
-		Select(message.FieldID).
-		All(ctx)
-	if err != nil {
-		return nil, err
+	messages := make([]*ent.Message, 0, len(messageIDs))
+
+	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
+		chunkMessages, err := client.Message.Query().
+			Where(message.IDIn(chunk...)).
+			WithFlags(func(query *ent.MessageFlagQuery) {
+				query.Select(messageflag.FieldValue)
+			}).
+			Select(message.FieldID).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		messages = append(messages, chunkMessages...)
 	}
 
-	curFlags := make(map[imap.InternalMessageID]imap.FlagSet)
+	curFlags := make(map[imap.InternalMessageID]imap.FlagSet, len(messageIDs))
 
 	for _, message := range messages {
 		curFlags[message.ID] = imap.NewFlagSetFromSlice(xslices.Map(message.Edges.Flags, func(flag *ent.MessageFlag) string {
@@ -318,15 +353,17 @@ func GetMessageDeleted(ctx context.Context, client *ent.Client, mboxID imap.Inte
 
 	var result []tmp
 
-	if err := client.UID.Query().Where(
-		func(s *sql.Selector) {
-			s.Where(sql.And(sql.In(uid.MessageColumn, xslices.Map(messageIDs, func(t imap.InternalMessageID) interface{} {
-				return interface{}(t)
-			})...), sql.EQ(uid.MailboxColumn, mboxID)))
-		}).
-		Select(uid.MessageColumn, uid.FieldDeleted).
-		Scan(ctx, &result); err != nil {
-		return nil, err
+	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
+		if err := client.UID.Query().Where(
+			func(s *sql.Selector) {
+				s.Where(sql.And(sql.In(uid.MessageColumn, xslices.Map(chunk, func(t imap.InternalMessageID) interface{} {
+					return interface{}(t)
+				})...), sql.EQ(uid.MailboxColumn, mboxID)))
+			}).
+			Select(uid.MessageColumn, uid.FieldDeleted).
+			Scan(ctx, &result); err != nil {
+			return nil, err
+		}
 	}
 
 	res := make(map[imap.InternalMessageID]bool)
@@ -339,18 +376,20 @@ func GetMessageDeleted(ctx context.Context, client *ent.Client, mboxID imap.Inte
 }
 
 func AddMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, addFlag string) error {
-	builders := xslices.Map(messageIDs, func(imap.InternalMessageID) *ent.MessageFlagCreate {
-		return tx.MessageFlag.Create().SetValue(addFlag)
-	})
+	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
+		builders := xslices.Map(chunk, func(imap.InternalMessageID) *ent.MessageFlagCreate {
+			return tx.MessageFlag.Create().SetValue(addFlag)
+		})
 
-	flags, err := tx.MessageFlag.CreateBulk(builders...).Save(ctx)
-	if err != nil {
-		return err
-	}
-
-	for idx, msg := range messageIDs {
-		if _, err := tx.Message.Update().Where(message.ID(msg)).AddFlags(flags[idx]).Save(ctx); err != nil {
+		flags, err := tx.MessageFlag.CreateBulk(builders...).Save(ctx)
+		if err != nil {
 			return err
+		}
+
+		for idx, msg := range chunk {
+			if _, err := tx.Message.Update().Where(message.ID(msg)).AddFlags(flags[idx]).Save(ctx); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -358,24 +397,26 @@ func AddMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalM
 }
 
 func RemoveMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, remFlag string) error {
-	messages, err := tx.Message.Query().
-		Where(message.IDIn(messageIDs...)).
-		Select(message.FieldID).
-		WithFlags().
-		All(ctx)
-	if err != nil {
-		return err
-	}
-
-	flags := xslices.Map(messages, func(message *ent.Message) *ent.MessageFlag {
-		return message.Edges.Flags[xslices.IndexFunc(message.Edges.Flags, func(flag *ent.MessageFlag) bool {
-			return imap.NewFlagSet(remFlag).Contains(flag.Value)
-		})]
-	})
-
-	for idx, message := range messages {
-		if _, err := message.Update().RemoveFlags(flags[idx]).Save(ctx); err != nil {
+	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
+		messages, err := tx.Message.Query().
+			Where(message.IDIn(chunk...)).
+			Select(message.FieldID).
+			WithFlags().
+			All(ctx)
+		if err != nil {
 			return err
+		}
+
+		flags := xslices.Map(messages, func(message *ent.Message) *ent.MessageFlag {
+			return message.Edges.Flags[xslices.IndexFunc(message.Edges.Flags, func(flag *ent.MessageFlag) bool {
+				return imap.NewFlagSet(remFlag).Contains(flag.Value)
+			})]
+		})
+
+		for idx, message := range messages {
+			if _, err := message.Update().RemoveFlags(flags[idx]).Save(ctx); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -383,42 +424,44 @@ func RemoveMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.Intern
 }
 
 func SetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, setFlags imap.FlagSet) error {
-	messages, err := tx.Message.Query().
-		Where(message.IDIn(messageIDs...)).
-		Select(message.FieldID).
-		WithFlags().
-		All(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, message := range messages {
-		curFlagSet := imap.NewFlagSetFromSlice(xslices.Map(message.Edges.Flags, func(flag *ent.MessageFlag) string {
-			return flag.Value
-		}))
-
-		addFlags := xslices.Filter(setFlags.ToSlice(), func(flag string) bool {
-			return !curFlagSet.Contains(flag)
-		})
-
-		builders := xslices.Map(addFlags, func(flag string) *ent.MessageFlagCreate {
-			return tx.MessageFlag.Create().SetValue(flag)
-		})
-
-		addEntFlags, err := tx.MessageFlag.CreateBulk(builders...).Save(ctx)
+	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
+		messages, err := tx.Message.Query().
+			Where(message.IDIn(chunk...)).
+			Select(message.FieldID).
+			WithFlags().
+			All(ctx)
 		if err != nil {
 			return err
 		}
 
-		remEntFlags := xslices.Filter(message.Edges.Flags, func(flag *ent.MessageFlag) bool {
-			return !setFlags.Contains(flag.Value)
-		})
+		for _, message := range messages {
+			curFlagSet := imap.NewFlagSetFromSlice(xslices.Map(message.Edges.Flags, func(flag *ent.MessageFlag) string {
+				return flag.Value
+			}))
 
-		if _, err := message.Update().
-			AddFlags(addEntFlags...).
-			RemoveFlags(remEntFlags...).
-			Save(ctx); err != nil {
-			return err
+			addFlags := xslices.Filter(setFlags.ToSlice(), func(flag string) bool {
+				return !curFlagSet.Contains(flag)
+			})
+
+			builders := xslices.Map(addFlags, func(flag string) *ent.MessageFlagCreate {
+				return tx.MessageFlag.Create().SetValue(flag)
+			})
+
+			addEntFlags, err := tx.MessageFlag.CreateBulk(builders...).Save(ctx)
+			if err != nil {
+				return err
+			}
+
+			remEntFlags := xslices.Filter(message.Edges.Flags, func(flag *ent.MessageFlag) bool {
+				return !setFlags.Contains(flag.Value)
+			})
+
+			if _, err := message.Update().
+				AddFlags(addEntFlags...).
+				RemoveFlags(remEntFlags...).
+				Save(ctx); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -426,16 +469,18 @@ func SetMessageFlags(ctx context.Context, tx *ent.Tx, messageIDs []imap.Internal
 }
 
 func SetDeletedFlag(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, deleted bool) error {
-	if _, err := tx.UID.Update().
-		Where(
-			func(s *sql.Selector) {
-				s.Where(sql.And(sql.In(uid.MessageColumn, xslices.Map(messageIDs, func(t imap.InternalMessageID) interface{} {
-					return interface{}(t)
-				})...), sql.EQ(uid.MailboxColumn, mboxID)))
-			}).
-		SetDeleted(deleted).
-		Save(ctx); err != nil {
-		return err
+	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
+		if _, err := tx.UID.Update().
+			Where(
+				func(s *sql.Selector) {
+					s.Where(sql.And(sql.In(uid.MessageColumn, xslices.Map(chunk, func(t imap.InternalMessageID) interface{} {
+						return interface{}(t)
+					})...), sql.EQ(uid.MailboxColumn, mboxID)))
+				}).
+			SetDeleted(deleted).
+			Save(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -489,8 +534,10 @@ func MarkMessageAsDeletedWithRemoteID(ctx context.Context, tx *ent.Tx, messageID
 }
 
 func DeleteMessages(ctx context.Context, tx *ent.Tx, messageIDs ...imap.InternalMessageID) error {
-	if _, err := tx.Message.Delete().Where(message.IDIn(messageIDs...)).Exec(ctx); err != nil {
-		return err
+	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
+		if _, err := tx.Message.Delete().Where(message.IDIn(chunk...)).Exec(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
