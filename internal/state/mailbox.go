@@ -177,13 +177,14 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 		return nil, err
 	}
 
-	msgIDs := xslices.Map(messages, func(msg *snapMsg) ids.MessageIDPair {
-		return msg.ID
-	})
+	msgIDs := make([]ids.MessageIDPair, len(messages))
+	msgUIDs := make([]imap.UID, len(messages))
 
-	msgUIDs := xslices.Map(messages, func(msg *snapMsg) imap.UID {
-		return msg.UID
-	})
+	for i := 0; i < len(messages); i++ {
+		snapMsg := messages[i]
+		msgUIDs[i] = snapMsg.UID
+		msgIDs[i] = snapMsg.ID
+	}
 
 	destUIDs, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]*ent.UID, error) {
 		return m.state.actionAddMessagesToMailbox(ctx, tx, msgIDs, ids.NewMailboxIDPair(mbox), m.snap == m.state.snap)
@@ -219,13 +220,14 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 		return nil, err
 	}
 
-	msgIDs := xslices.Map(messages, func(msg *snapMsg) ids.MessageIDPair {
-		return msg.ID
-	})
+	msgIDs := make([]ids.MessageIDPair, len(messages))
+	msgUIDs := make([]imap.UID, len(messages))
 
-	msgUIDs := xslices.Map(messages, func(msg *snapMsg) imap.UID {
-		return msg.UID
-	})
+	for i := 0; i < len(messages); i++ {
+		snapMsg := messages[i]
+		msgUIDs[i] = snapMsg.UID
+		msgIDs[i] = snapMsg.ID
+	}
 
 	destUIDs, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (map[imap.InternalMessageID]*ent.UID, error) {
 		return m.state.actionMoveMessages(ctx, tx, msgIDs, m.snap.mboxID, ids.NewMailboxIDPair(mbox))

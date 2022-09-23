@@ -266,3 +266,18 @@ func CreateMailboxIfNotExists(ctx context.Context, tx *ent.Tx, mbox imap.Mailbox
 
 	return nil
 }
+
+func FilterMailboxContains(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []ids.MessageIDPair) ([]imap.InternalMessageID, error) {
+	var result []imap.InternalMessageID
+
+	if err := client.UID.Query().Where(func(s *sql.Selector) {
+		s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.In(uid.MessageColumn, xslices.Map(messageIDs, func(id ids.MessageIDPair) interface{} {
+			return uint64(id.InternalID)
+		})...)))
+		s.Select(uid.MessageColumn)
+	}).Select().Scan(ctx, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}

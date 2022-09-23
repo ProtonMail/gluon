@@ -153,23 +153,18 @@ func (state *State) actionAddMessagesToMailbox(
 	mboxID ids.MailboxIDPair,
 	isMailboxSelected bool,
 ) (map[imap.InternalMessageID]*ent.UID, error) {
-	var haveMessageIDs []ids.MessageIDPair
-	if state.snap != nil && state.snap.mboxID.InternalID == mboxID.InternalID {
-		haveMessageIDs = state.snap.getAllMessageIDs()
-	} else {
-		msgs, err := db.GetMailboxMessageIDPairs(ctx, tx.Client(), mboxID.InternalID)
+	{
+		haveMessageIDs, err := db.FilterMailboxContains(ctx, tx.Client(), mboxID.InternalID, messageIDs)
 		if err != nil {
 			return nil, err
 		}
 
-		haveMessageIDs = msgs
-	}
-
-	if remMessageIDs := xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
-		return slices.Contains(haveMessageIDs, messageID)
-	}); len(remMessageIDs) > 0 {
-		if err := state.actionRemoveMessagesFromMailbox(ctx, tx, remMessageIDs, mboxID); err != nil {
-			return nil, err
+		if remMessageIDs := xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
+			return slices.Contains(haveMessageIDs, messageID.InternalID)
+		}); len(remMessageIDs) > 0 {
+			if err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxID); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -197,21 +192,15 @@ func (state *State) actionAddMessagesToMailbox(
 	return messageUIDs, nil
 }
 
-func (state *State) actionRemoveMessagesFromMailbox(
+// actionRemoveMessagesFromMailboxUnchecked is similar to actionRemoveMessagesFromMailbox, but it does not validate
+// the input for whether messages actually exist in the database or if the message set is empty. use this when you
+// have already validated the input beforehand (e.g.: actionAddMessagesToMailbox and actionRemoveMessagesFromMailbox).
+func (state *State) actionRemoveMessagesFromMailboxUnchecked(
 	ctx context.Context,
 	tx *ent.Tx,
 	messageIDs []ids.MessageIDPair,
 	mboxID ids.MailboxIDPair,
 ) error {
-	haveMessageIDs, err := db.GetMailboxMessageIDPairs(ctx, tx.Client(), mboxID.InternalID)
-	if err != nil {
-		return err
-	}
-
-	messageIDs = xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
-		return slices.Contains(haveMessageIDs, messageID)
-	})
-
 	internalIDs, remoteIDs := ids.SplitMessageIDPairSlice(messageIDs)
 
 	if err := state.user.GetRemote().RemoveMessagesFromMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
@@ -232,6 +221,28 @@ func (state *State) actionRemoveMessagesFromMailbox(
 	return nil
 }
 
+func (state *State) actionRemoveMessagesFromMailbox(
+	ctx context.Context,
+	tx *ent.Tx,
+	messageIDs []ids.MessageIDPair,
+	mboxID ids.MailboxIDPair,
+) error {
+	haveMessageIDs, err := db.FilterMailboxContains(ctx, tx.Client(), mboxID.InternalID, messageIDs)
+	if err != nil {
+		return err
+	}
+
+	messageIDs = xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
+		return slices.Contains(haveMessageIDs, messageID.InternalID)
+	})
+
+	if len(messageIDs) == 0 {
+		return nil
+	}
+
+	return state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, messageIDs, mboxID)
+}
+
 func (state *State) actionMoveMessages(
 	ctx context.Context,
 	tx *ent.Tx,
@@ -245,35 +256,27 @@ func (state *State) actionMoveMessages(
 	}
 
 	{
-		var messageIDsToAdd []ids.MessageIDPair
-
-		if state.snap != nil && state.snap.mboxID.InternalID == mboxToID.InternalID {
-			messageIDsToAdd = state.snap.getAllMessageIDs()
-		} else {
-			msgs, err := db.GetMailboxMessageIDPairs(ctx, tx.Client(), mboxToID.InternalID)
-			if err != nil {
-				return nil, err
-			}
-
-			messageIDsToAdd = msgs
+		messageIDsToAdd, err := db.FilterMailboxContains(ctx, tx.Client(), mboxToID.InternalID, messageIDs)
+		if err != nil {
+			return nil, err
 		}
 
 		if remMessageIDs := xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
-			return slices.Contains(messageIDsToAdd, messageID)
+			return slices.Contains(messageIDsToAdd, messageID.InternalID)
 		}); len(remMessageIDs) > 0 {
-			if err := state.actionRemoveMessagesFromMailbox(ctx, tx, remMessageIDs, mboxToID); err != nil {
+			if err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxToID); err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	messagesIDsToMove, err := db.GetMailboxMessageIDPairs(ctx, tx.Client(), mboxFromID.InternalID)
+	messageInFromMBox, err := db.FilterMailboxContains(ctx, tx.Client(), mboxFromID.InternalID, messageIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	messagesIDsToMove = xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
-		return slices.Contains(messagesIDsToMove, messageID)
+	messagesIDsToMove := xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
+		return slices.Contains(messageInFromMBox, messageID.InternalID)
 	})
 
 	internalIDs, remoteIDs := ids.SplitMessageIDPairSlice(messagesIDsToMove)
