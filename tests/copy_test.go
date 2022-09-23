@@ -61,6 +61,36 @@ func TestCopy(t *testing.T) {
 	})
 }
 
+func TestCopySameMBox(t *testing.T) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, s *testSession, mbox string, mboxID imap.LabelID) {
+		{
+			// There are 100 messages in the origin and no messages in the destination.
+			mailboxStatus, err := client.Status(mbox, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(100), mailboxStatus.Messages)
+		}
+		uidClient := uidplus.NewClient(client)
+		{
+			// Copy half the messages to the same mailbox. Since we don't allow duplicate, the original message must
+			// be deleted and re-added.
+			sequenceSet, seqErr := goimap.ParseSeqSet("1:50")
+			require.NoError(t, seqErr)
+			validity, srcUids, dstUids, err := uidClient.UidCopy(sequenceSet, mbox)
+			require.NoError(t, err)
+			require.Equal(t, uint32(1), validity)
+			require.Equal(t, uint32(1), srcUids.Set[0].Start)
+			require.Equal(t, uint32(50), srcUids.Set[0].Stop)
+			require.Equal(t, uint32(101), dstUids.Set[0].Start)
+			require.Equal(t, uint32(150), dstUids.Set[0].Stop)
+
+			// Check that there are still 100 messages are in the new mailbox
+			mailboxStatus, err := client.Status(mbox, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(100), mailboxStatus.Messages)
+		}
+	})
+}
+
 func TestCopyTryCreate(t *testing.T) {
 	// Test can't be remove since there is no way to check the TRYCREATE response from the server
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
