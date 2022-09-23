@@ -26,11 +26,7 @@ func MoveMessagesFromMailbox(
 		}
 	}
 
-	if _, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxToID); err != nil {
-		return nil, nil, err
-	}
-
-	messageUIDs, err := db.GetMessageUIDsWithFlags(ctx, tx.Client(), mboxToID, messageIDs)
+	messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxToID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -53,11 +49,7 @@ func MoveMessagesFromMailbox(
 
 // AddMessagesToMailbox adds the messages to the given mailbox.
 func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, s *State) (map[imap.InternalMessageID]*ent.UID, Update, error) {
-	if _, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxID); err != nil {
-		return nil, nil, err
-	}
-
-	messageUIDs, err := db.GetMessageUIDsWithFlags(ctx, tx.Client(), mboxID, messageIDs)
+	messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxID)
 	if err != nil {
 		return nil, nil, err
 	}
