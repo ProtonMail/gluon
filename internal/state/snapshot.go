@@ -52,6 +52,10 @@ func newEmptySnapshot(state *State, mbox *ent.Mailbox) *snapshot {
 	}
 }
 
+func (snap *snapshot) len() int {
+	return snap.messages.len()
+}
+
 func (snap *snapshot) hasMessage(messageID imap.InternalMessageID) bool {
 	return snap.messages.has(messageID)
 }
@@ -224,14 +228,46 @@ func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]snapMsgWi
 	return res, nil
 }
 
+func (snap *snapshot) firstMessageWithFlag(flag string) (snapMsgWithSeq, bool) {
+	for i, msg := range snap.messages.msg {
+		if msg.flags.Contains(flag) {
+			return snapMsgWithSeq{Seq: imap.SeqID(i + 1), snapMsg: msg}, true
+		}
+	}
+
+	return snapMsgWithSeq{}, false
+}
+
+func (snap *snapshot) firstMessageWithoutFlag(flag string) (snapMsgWithSeq, bool) {
+	for i, msg := range snap.messages.msg {
+		if !msg.flags.Contains(flag) {
+			return snapMsgWithSeq{Seq: imap.SeqID(i + 1), snapMsg: msg}, true
+		}
+	}
+
+	return snapMsgWithSeq{}, false
+}
+
 func (snap *snapshot) getMessagesWithFlag(flag string) []snapMsgWithSeq {
 	return snap.messages.where(func(msg snapMsgWithSeq) bool {
 		return msg.flags.Contains(flag)
 	})
 }
 
+func (snap *snapshot) getMessagesWithFlagCount(flag string) int {
+	return snap.messages.whereCount(func(msg snapMsgWithSeq) bool {
+		return msg.flags.Contains(flag)
+	})
+}
+
 func (snap *snapshot) getMessagesWithoutFlag(flag string) []snapMsgWithSeq {
 	return snap.messages.where(func(msg snapMsgWithSeq) bool {
+		return !msg.flags.Contains(flag)
+	})
+}
+
+func (snap *snapshot) getMessagesWithoutFlagCount(flag string) int {
+	return snap.messages.whereCount(func(msg snapMsgWithSeq) bool {
 		return !msg.flags.Contains(flag)
 	})
 }

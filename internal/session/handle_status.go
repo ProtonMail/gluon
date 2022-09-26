@@ -32,7 +32,7 @@ func (s *Session) handleStatus(ctx context.Context, tag string, cmd *proto.Statu
 				items = append(items, response.ItemMessages(mailbox.Count()))
 
 			case strings.EqualFold(att, imap.StatusRecent):
-				items = append(items, response.ItemRecent(len(mailbox.GetMessagesWithFlag(imap.FlagRecent))))
+				items = append(items, response.ItemRecent(mailbox.GetMessagesWithFlagCount(imap.FlagRecent)))
 
 			case strings.EqualFold(att, imap.StatusUIDNext):
 				items = append(items, response.ItemUIDNext(mailbox.UIDNext()))
@@ -41,7 +41,7 @@ func (s *Session) handleStatus(ctx context.Context, tag string, cmd *proto.Statu
 				items = append(items, response.ItemUIDValidity(mailbox.UIDValidity()))
 
 			case strings.EqualFold(att, imap.StatusUnseen):
-				items = append(items, response.ItemUnseen(uint32(len(mailbox.GetMessagesWithoutFlag(imap.FlagSeen)))))
+				items = append(items, response.ItemUnseen(uint32(mailbox.GetMessagesWithoutFlagCount(imap.FlagSeen))))
 			}
 		}
 

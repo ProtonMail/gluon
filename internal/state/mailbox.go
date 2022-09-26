@@ -70,7 +70,7 @@ func (m *Mailbox) ExpungeIssued() bool {
 }
 
 func (m *Mailbox) Count() int {
-	return len(m.snap.getAllMessages())
+	return m.snap.len()
 }
 
 func (m *Mailbox) Flags(ctx context.Context) (imap.FlagSet, error) {
@@ -124,10 +124,30 @@ func (m *Mailbox) GetMessagesWithFlag(flag string) []imap.SeqID {
 	})
 }
 
+func (m *Mailbox) GetFirstMessageWithFlag(flag string) (snapMsgWithSeq, bool) {
+	msg, ok := m.snap.firstMessageWithFlag(flag)
+
+	return msg, ok
+}
+
+func (m *Mailbox) GetFirstMessageWithoutFlag(flag string) (snapMsgWithSeq, bool) {
+	msg, ok := m.snap.firstMessageWithoutFlag(flag)
+
+	return msg, ok
+}
+
+func (m *Mailbox) GetMessagesWithFlagCount(flag string) int {
+	return m.snap.getMessagesWithFlagCount(flag)
+}
+
 func (m *Mailbox) GetMessagesWithoutFlag(flag string) []imap.SeqID {
 	return xslices.Map(m.snap.getMessagesWithoutFlag(flag), func(msg snapMsgWithSeq) imap.SeqID {
 		return msg.Seq
 	})
+}
+
+func (m *Mailbox) GetMessagesWithoutFlagCount(flag string) int {
+	return m.snap.getMessagesWithoutFlagCount(flag)
 }
 
 func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {

@@ -29,13 +29,13 @@ func (s *Session) handleExamine(ctx context.Context, tag string, cmd *proto.Exam
 
 		ch <- response.Flags().WithFlags(flags)
 		ch <- response.Exists().WithCount(imap.SeqID(mailbox.Count()))
-		ch <- response.Recent().WithCount(uint32(len(mailbox.GetMessagesWithFlag(imap.FlagRecent))))
+		ch <- response.Recent().WithCount(uint32(mailbox.GetMessagesWithFlagCount(imap.FlagRecent)))
 		ch <- response.Ok().WithItems(response.ItemPermanentFlags(permFlags))
 		ch <- response.Ok().WithItems(response.ItemUIDNext(mailbox.UIDNext()))
 		ch <- response.Ok().WithItems(response.ItemUIDValidity(mailbox.UIDValidity()))
 
-		if unseen := mailbox.GetMessagesWithoutFlag(imap.FlagSeen); len(unseen) > 0 {
-			ch <- response.Ok().WithItems(response.ItemUnseen(uint32(unseen[0])))
+		if unseen, ok := mailbox.GetFirstMessageWithoutFlag(imap.FlagSeen); ok {
+			ch <- response.Ok().WithItems(response.ItemUnseen(uint32(unseen.Seq)))
 		}
 
 		return nil
