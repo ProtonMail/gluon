@@ -312,13 +312,13 @@ func (m *Mailbox) Expunge(ctx context.Context, seq *proto.SequenceSet) error {
 }
 
 func (m *Mailbox) expunge(ctx context.Context, messages []snapMsgWithSeq) error {
-	messages = xslices.Filter(messages, func(msg snapMsgWithSeq) bool {
-		return msg.flags.Contains(imap.FlagDeleted)
-	})
+	var msgIDs []ids.MessageIDPair
 
-	msgIDs := xslices.Map(messages, func(msg snapMsgWithSeq) ids.MessageIDPair {
-		return msg.ID
-	})
+	for _, msg := range messages {
+		if msg.flags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
+			msgIDs = append(msgIDs, msg.ID)
+		}
+	}
 
 	return m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return m.state.actionRemoveMessagesFromMailbox(ctx, tx, msgIDs, m.snap.mboxID)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/contexts"
@@ -93,7 +94,7 @@ func (snap *snapshot) setMessageFlags(messageID imap.InternalMessageID, flags im
 		return ErrNoSuchMessage
 	}
 
-	if recent := msg.flags.Contains(imap.FlagRecent); recent {
+	if recent := msg.flags.ContainsUnchecked(imap.FlagRecentLowerCase); recent {
 		flags = flags.Add(imap.FlagRecent)
 	}
 
@@ -229,8 +230,10 @@ func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]snapMsgWi
 }
 
 func (snap *snapshot) firstMessageWithFlag(flag string) (snapMsgWithSeq, bool) {
+	flagLower := strings.ToLower(flag)
+
 	for i, msg := range snap.messages.msg {
-		if msg.flags.Contains(flag) {
+		if msg.flags.ContainsUnchecked(flagLower) {
 			return snapMsgWithSeq{Seq: imap.SeqID(i + 1), snapMsg: msg}, true
 		}
 	}
@@ -239,8 +242,10 @@ func (snap *snapshot) firstMessageWithFlag(flag string) (snapMsgWithSeq, bool) {
 }
 
 func (snap *snapshot) firstMessageWithoutFlag(flag string) (snapMsgWithSeq, bool) {
+	flagLower := strings.ToLower(flag)
+
 	for i, msg := range snap.messages.msg {
-		if !msg.flags.Contains(flag) {
+		if !msg.flags.ContainsUnchecked(flagLower) {
 			return snapMsgWithSeq{Seq: imap.SeqID(i + 1), snapMsg: msg}, true
 		}
 	}
@@ -249,26 +254,34 @@ func (snap *snapshot) firstMessageWithoutFlag(flag string) (snapMsgWithSeq, bool
 }
 
 func (snap *snapshot) getMessagesWithFlag(flag string) []snapMsgWithSeq {
+	flagLower := strings.ToLower(flag)
+
 	return snap.messages.where(func(msg snapMsgWithSeq) bool {
-		return msg.flags.Contains(flag)
+		return msg.flags.ContainsUnchecked(flagLower)
 	})
 }
 
 func (snap *snapshot) getMessagesWithFlagCount(flag string) int {
+	flagLower := strings.ToLower(flag)
+
 	return snap.messages.whereCount(func(msg snapMsgWithSeq) bool {
-		return msg.flags.Contains(flag)
+		return msg.flags.ContainsUnchecked(flagLower)
 	})
 }
 
 func (snap *snapshot) getMessagesWithoutFlag(flag string) []snapMsgWithSeq {
+	flagLower := strings.ToLower(flag)
+
 	return snap.messages.where(func(msg snapMsgWithSeq) bool {
-		return !msg.flags.Contains(flag)
+		return !msg.flags.ContainsUnchecked(flagLower)
 	})
 }
 
 func (snap *snapshot) getMessagesWithoutFlagCount(flag string) int {
+	flagLower := strings.ToLower(flag)
+
 	return snap.messages.whereCount(func(msg snapMsgWithSeq) bool {
-		return !msg.flags.Contains(flag)
+		return !msg.flags.ContainsUnchecked(flagLower)
 	})
 }
 

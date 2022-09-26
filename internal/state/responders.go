@@ -116,8 +116,8 @@ func (u *targetedExists) handle(_ context.Context, snap *snapshot, stateID State
 
 	var dbUpdate responderDBUpdate
 
-	if recent := len(snap.getMessagesWithFlag(imap.FlagRecent)); recent > 0 {
-		if flags.Contains(imap.FlagRecent) {
+	if recent := snap.getMessagesWithFlagCount(imap.FlagRecent); recent > 0 {
+		if flags.ContainsUnchecked(imap.FlagRecentLowerCase) {
 			dbUpdate = &clearRecentFlagRespUpdate{
 				mboxID:    snap.mboxID.InternalID,
 				messageID: u.resp.messageID.InternalID,
@@ -321,7 +321,7 @@ func (u *fetch) handle(_ context.Context, snap *snapshot, _ StateID) ([]response
 	}
 
 	if u.cameFromDifferentMailbox {
-		newMessageFlags = newMessageFlags.Set(imap.FlagDeleted, curFlags.Contains(imap.FlagDeleted))
+		newMessageFlags = newMessageFlags.Set(imap.FlagDeleted, curFlags.ContainsUnchecked(imap.FlagDeletedLowerCase))
 	}
 
 	if err := snap.setMessageFlags(u.messageID, newMessageFlags); err != nil {

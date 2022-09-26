@@ -17,6 +17,15 @@ const (
 	FlagRecent   = `\Recent` // Read-only!.
 )
 
+const (
+	FlagSeenLowerCase     = `\seen`
+	FlagAnsweredLowerCase = `\answered`
+	FlagFlaggedLowerCase  = `\flagged`
+	FlagDeletedLowerCase  = `\deleted`
+	FlagDraftLowerCase    = `\draft`
+	FlagRecentLowerCase   = `\recent` // Read-only!.
+)
+
 // FlagSet represents a set of IMAP flags. Flags are case-insensitive and no duplicates are allowed.
 type FlagSet map[string]string
 
@@ -54,6 +63,13 @@ func (fs FlagSet) ToSlice() []string {
 // Contains returns true if and only if the flag is in the set.
 func (fs FlagSet) Contains(flag string) bool {
 	_, ok := fs[strings.ToLower(flag)]
+	return ok
+}
+
+// ContainsUnchecked returns true if and only if the flag is in the set. The flag is not converted to lower case. This
+// is useful for cases where we need to check flags in bulk.
+func (fs FlagSet) ContainsUnchecked(flag string) bool {
+	_, ok := fs[flag]
 	return ok
 }
 
@@ -98,11 +114,13 @@ func (fs FlagSet) AddFlagSet(set FlagSet) FlagSet {
 
 func (fs FlagSet) add(flags ...string) FlagSet {
 	for _, flag := range flags {
-		if fs.Contains(flag) {
+		flagLower := strings.ToLower(flag)
+
+		if fs.ContainsUnchecked(flagLower) {
 			continue
 		}
 
-		fs[strings.ToLower(flag)] = flag
+		fs[flagLower] = flag
 	}
 
 	return fs
@@ -128,11 +146,13 @@ func (fs FlagSet) RemoveFlagSet(set FlagSet) FlagSet {
 
 func (fs FlagSet) remove(flags ...string) FlagSet {
 	for _, flag := range flags {
-		if !fs.Contains(flag) {
+		flagLower := strings.ToLower(flag)
+
+		if !fs.ContainsUnchecked(flagLower) {
 			continue
 		}
 
-		delete(fs, strings.ToLower(flag))
+		delete(fs, flagLower)
 	}
 
 	return fs
