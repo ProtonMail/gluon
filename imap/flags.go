@@ -40,6 +40,10 @@ func NewFlagSet(flags ...string) FlagSet {
 	return fs
 }
 
+func NewFlagSetWithCapacity(capacity int) FlagSet {
+	return make(FlagSet, capacity)
+}
+
 // NewFlagSetFromSlice creates a flag set containing the flags from a slice.
 func NewFlagSetFromSlice(flags []string) FlagSet {
 	return NewFlagSet(flags...)
@@ -106,6 +110,10 @@ func (fs FlagSet) Equals(otherFs FlagSet) bool {
 // The case of existing elements is preserved.
 func (fs FlagSet) Add(flags ...string) FlagSet {
 	return fs.clone().add(flags...)
+}
+
+func (fs FlagSet) AddToSelf(flags ...string) FlagSet {
+	return fs.add(flags...)
 }
 
 func (fs FlagSet) AddFlagSet(set FlagSet) FlagSet {
