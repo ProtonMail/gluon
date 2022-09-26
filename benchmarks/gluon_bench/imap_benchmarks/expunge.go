@@ -43,7 +43,7 @@ func (e *Expunge) Setup(ctx context.Context, addr net.Addr) error {
 
 			expungeCount := uint32(*expungeCountFlag)
 			if expungeCount == 0 {
-				expungeCount = uint32(*flags.IMAPMessageCount) / 2
+				expungeCount = uint32(*flags.IMAPMessageCount)
 			}
 
 			e.seqSets = NewParallelSeqSetExpunge(expungeCount,

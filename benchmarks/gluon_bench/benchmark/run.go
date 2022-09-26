@@ -140,7 +140,9 @@ func measureBenchmark(dirConfig BenchDirConfig, iteration uint, bench Benchmark)
 	}
 
 	if !*flags.SkipClean {
-		fmt.Printf("Cleaning benchmark dir: %v\n", benchPath)
+		if *flags.Verbose {
+			fmt.Printf("Cleaning benchmark dir: %v\n", benchPath)
+		}
 
 		if err := os.RemoveAll(benchPath); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to remote benchmark data dir '%v': %v\n", benchPath, err)

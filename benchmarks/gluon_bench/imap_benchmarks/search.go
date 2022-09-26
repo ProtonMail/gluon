@@ -51,7 +51,7 @@ func (s *Search) Setup(ctx context.Context, addr net.Addr) error {
 
 		searchCount := uint32(*searchCountFlag)
 		if searchCount == 0 {
-			searchCount = uint32(*flags.IMAPMessageCount) / 2
+			searchCount = uint32(*flags.IMAPMessageCount)
 		}
 
 		if err := s.query.Setup(ctx, cl, searchCount); err != nil {

@@ -44,7 +44,7 @@ func (c *Copy) Setup(ctx context.Context, addr net.Addr) error {
 
 		copyCount := uint32(*copyCountFlag)
 		if copyCount == 0 {
-			copyCount = uint32(*flags.IMAPMessageCount / 2)
+			copyCount = uint32(*flags.IMAPMessageCount)
 		}
 
 		seqSets, err := NewParallelSeqSet(copyCount,
