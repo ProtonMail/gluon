@@ -314,10 +314,15 @@ func GetMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Context, client *ent.C
 	return result, nil
 }
 
+type MessageFlagSet struct {
+	ID      imap.InternalMessageID
+	FlagSet imap.FlagSet
+}
+
 // GetMessageFlags returns the flags of the given messages.
 // It does not include per-mailbox flags (\Deleted, \Recent)!
-func GetMessageFlags(ctx context.Context, client *ent.Client, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]imap.FlagSet, error) {
-	messages := make([]*ent.Message, 0, len(messageIDs))
+func GetMessageFlags(ctx context.Context, client *ent.Client, messageIDs []imap.InternalMessageID) ([]MessageFlagSet, error) {
+	result := make([]MessageFlagSet, 0, len(messageIDs))
 
 	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
 		chunkMessages, err := client.Message.Query().
@@ -331,18 +336,21 @@ func GetMessageFlags(ctx context.Context, client *ent.Client, messageIDs []imap.
 			return nil, err
 		}
 
-		messages = append(messages, chunkMessages...)
+		for _, msg := range chunkMessages {
+			mfs := MessageFlagSet{
+				ID:      msg.ID,
+				FlagSet: imap.NewFlagSetWithCapacity(len(msg.Edges.Flags)),
+			}
+
+			for _, v := range msg.Edges.Flags {
+				mfs.FlagSet.AddToSelf(v.Value)
+			}
+
+			result = append(result, mfs)
+		}
 	}
 
-	curFlags := make(map[imap.InternalMessageID]imap.FlagSet, len(messageIDs))
-
-	for _, message := range messages {
-		curFlags[message.ID] = imap.NewFlagSetFromSlice(xslices.Map(message.Edges.Flags, func(flag *ent.MessageFlag) string {
-			return flag.Value
-		}))
-	}
-
-	return curFlags, nil
+	return result, nil
 }
 
 func GetMessageDeleted(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) (map[imap.InternalMessageID]bool, error) {

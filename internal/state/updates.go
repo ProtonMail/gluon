@@ -80,15 +80,8 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 		return err
 	}
 
-	delFlags, err := db.GetMessageDeleted(ctx, client, state.snap.mboxID.InternalID, messageIDs)
-	if err != nil {
-		return err
-	}
-
 	if addFlags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
-		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
-			return !delFlags[messageID]
-		}), true); err != nil {
+		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, true); err != nil {
 			return err
 		}
 	}
@@ -96,9 +89,15 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 	for _, flag := range addFlags.Remove(imap.FlagDeleted).ToSlice() {
 		flagLowerCase := strings.ToLower(flag)
 
-		if err := db.AddMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
-			return !curFlags[messageID].ContainsUnchecked(flagLowerCase)
-		}), flag); err != nil {
+		var messagesToFlag []imap.InternalMessageID
+
+		for _, v := range curFlags {
+			if !v.FlagSet.ContainsUnchecked(flagLowerCase) {
+				messagesToFlag = append(messagesToFlag, v.ID)
+			}
+		}
+
+		if err := db.AddMessageFlag(ctx, tx, messagesToFlag, flag); err != nil {
 			return err
 		}
 	}
@@ -168,15 +167,8 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 		return err
 	}
 
-	delFlags, err := db.GetMessageDeleted(ctx, client, state.snap.mboxID.InternalID, messageIDs)
-	if err != nil {
-		return err
-	}
-
 	if remFlags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
-		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
-			return delFlags[messageID]
-		}), false); err != nil {
+		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, false); err != nil {
 			return err
 		}
 	}
@@ -184,21 +176,21 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 	for _, flag := range remFlags.Remove(imap.FlagDeleted).ToSlice() {
 		flagLowerCase := strings.ToLower(flag)
 
-		if err := db.RemoveMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
-			return curFlags[messageID].ContainsUnchecked(flagLowerCase)
-		}), flag); err != nil {
+		var messagesToFlag []imap.InternalMessageID
+
+		for _, v := range curFlags {
+			if v.FlagSet.ContainsUnchecked(flagLowerCase) {
+				messagesToFlag = append(messagesToFlag, v.ID)
+			}
+		}
+
+		if err := db.RemoveMessageFlag(ctx, tx, messagesToFlag, flag); err != nil {
 			return err
 		}
 	}
 
 	if err := state.user.QueueOrApplyStateUpdate(ctx, tx, NewMessageFlagsRemovedStateUpdate(remFlags, state.snap.mboxID, messageIDs, state.StateID)); err != nil {
 		return err
-	}
-
-	res := make(map[imap.InternalMessageID]imap.FlagSet)
-
-	for _, messageID := range messageIDs {
-		res[messageID] = curFlags[messageID].RemoveFlagSet(remFlags)
 	}
 
 	return nil

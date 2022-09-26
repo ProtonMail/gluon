@@ -391,21 +391,23 @@ func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID ima
 		return err
 	}
 
-	if seen && !curFlags[messageID].ContainsUnchecked(imap.FlagSeenLowerCase) {
+	flagSet := curFlags[0].FlagSet
+
+	if seen && !flagSet.ContainsUnchecked(imap.FlagSeenLowerCase) {
 		if err := user.addMessageFlags(ctx, tx, messageID, imap.FlagSeen); err != nil {
 			return err
 		}
-	} else if !seen && curFlags[messageID].ContainsUnchecked(imap.FlagSeenLowerCase) {
+	} else if !seen && flagSet.ContainsUnchecked(imap.FlagSeenLowerCase) {
 		if err := user.removeMessageFlags(ctx, tx, messageID, imap.FlagSeen); err != nil {
 			return err
 		}
 	}
 
-	if flagged && !curFlags[messageID].ContainsUnchecked(imap.FlagFlaggedLowerCase) {
+	if flagged && !flagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 		if err := user.addMessageFlags(ctx, tx, messageID, imap.FlagFlagged); err != nil {
 			return err
 		}
-	} else if !flagged && curFlags[messageID].ContainsUnchecked(imap.FlagFlaggedLowerCase) {
+	} else if !flagged && flagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 		if err := user.removeMessageFlags(ctx, tx, messageID, imap.FlagFlagged); err != nil {
 			return err
 		}
