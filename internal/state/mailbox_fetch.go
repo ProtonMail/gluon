@@ -27,7 +27,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 		return err
 	}
 
-	operations := make([]func(*snapMsg, *ent.Message, []byte) (response.Item, error), 0, len(attributes))
+	operations := make([]func(snapMsgWithSeq, *ent.Message, []byte) (response.Item, error), 0, len(attributes))
 
 	var (
 		needsLiteral bool
@@ -47,7 +47,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 					setSeen = true
 				}
 
-				op := func(snapMessage *snapMsg, message *ent.Message, literal []byte) (response.Item, error) {
+				op := func(snapMessage snapMsgWithSeq, message *ent.Message, literal []byte) (response.Item, error) {
 					return m.fetchKeyword(snapMessage, message, attribute.Keyword)
 				}
 
@@ -61,7 +61,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 					setSeen = true
 				}
 
-				op := func(snapMessage *snapMsg, message *ent.Message, literal []byte) (response.Item, error) {
+				op := func(snapMessage snapMsgWithSeq, message *ent.Message, literal []byte) (response.Item, error) {
 					return m.fetchBody(attribute.Body, literal)
 				}
 
@@ -137,7 +137,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 			}
 		} else {
 			// remove message from the list to avoid being processed for seen flag changes later.
-			snapMessages[i] = nil
+			snapMessages[i].snapMsg = nil
 		}
 
 		ch <- response.Fetch(msg.Seq).WithItems(items...)
@@ -147,8 +147,8 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 		return err
 	}
 
-	msgsToBeMarkedSeen := xslices.Filter(snapMessages, func(s *snapMsg) bool {
-		return s != nil
+	msgsToBeMarkedSeen := xslices.Filter(snapMessages, func(s snapMsgWithSeq) bool {
+		return s.snapMsg != nil
 	})
 
 	if len(msgsToBeMarkedSeen) != 0 {
@@ -162,7 +162,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 	return nil
 }
 
-func (m *Mailbox) fetchKeyword(msg *snapMsg, message *ent.Message, keyword proto.FetchKeyword) (response.Item, error) {
+func (m *Mailbox) fetchKeyword(msg snapMsgWithSeq, message *ent.Message, keyword proto.FetchKeyword) (response.Item, error) {
 	switch keyword {
 	case proto.FetchKeyword_FetchKWEnvelope:
 		return response.ItemEnvelope(message.Envelope), nil

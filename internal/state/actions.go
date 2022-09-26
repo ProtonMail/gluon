@@ -302,10 +302,10 @@ func (state *State) actionMoveMessages(
 func (state *State) actionAddMessageFlags(
 	ctx context.Context,
 	tx *ent.Tx,
-	messages []*snapMsg,
+	messages []snapMsgWithSeq,
 	addFlags imap.FlagSet,
 ) error {
-	internalMessageIDs := xslices.Map(messages, func(sm *snapMsg) imap.InternalMessageID {
+	internalMessageIDs := xslices.Map(messages, func(sm snapMsgWithSeq) imap.InternalMessageID {
 		return sm.ID.InternalID
 	})
 
@@ -353,10 +353,10 @@ func (state *State) actionAddMessageFlags(
 func (state *State) actionRemoveMessageFlags(
 	ctx context.Context,
 	tx *ent.Tx,
-	messages []*snapMsg,
+	messages []snapMsgWithSeq,
 	remFlags imap.FlagSet,
 ) error {
-	internalMessageIDs := xslices.Map(messages, func(sm *snapMsg) imap.InternalMessageID {
+	internalMessageIDs := xslices.Map(messages, func(sm snapMsgWithSeq) imap.InternalMessageID {
 		return sm.ID.InternalID
 	})
 
@@ -401,12 +401,12 @@ func (state *State) actionRemoveMessageFlags(
 	return nil
 }
 
-func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messages []*snapMsg, setFlags imap.FlagSet) error {
+func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messages []snapMsgWithSeq, setFlags imap.FlagSet) error {
 	if setFlags.Contains(imap.FlagRecent) {
 		return fmt.Errorf("recent flag is read-only")
 	}
 
-	internalMessageIDs := xslices.Map(messages, func(sm *snapMsg) imap.InternalMessageID {
+	internalMessageIDs := xslices.Map(messages, func(sm snapMsgWithSeq) imap.InternalMessageID {
 		return sm.ID.InternalID
 	})
 

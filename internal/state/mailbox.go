@@ -119,13 +119,13 @@ func (m *Mailbox) Subscribed() bool {
 }
 
 func (m *Mailbox) GetMessagesWithFlag(flag string) []imap.SeqID {
-	return xslices.Map(m.snap.getMessagesWithFlag(flag), func(msg *snapMsg) imap.SeqID {
+	return xslices.Map(m.snap.getMessagesWithFlag(flag), func(msg snapMsgWithSeq) imap.SeqID {
 		return msg.Seq
 	})
 }
 
 func (m *Mailbox) GetMessagesWithoutFlag(flag string) []imap.SeqID {
-	return xslices.Map(m.snap.getMessagesWithoutFlag(flag), func(msg *snapMsg) imap.SeqID {
+	return xslices.Map(m.snap.getMessagesWithoutFlag(flag), func(msg snapMsgWithSeq) imap.SeqID {
 		return msg.Seq
 	})
 }
@@ -275,7 +275,7 @@ func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation p
 }
 
 func (m *Mailbox) Expunge(ctx context.Context, seq *proto.SequenceSet) error {
-	var msg []*snapMsg
+	var msg []snapMsgWithSeq
 
 	if seq != nil {
 		snapMsgs, err := m.snap.getMessagesInRange(ctx, seq)
@@ -291,12 +291,12 @@ func (m *Mailbox) Expunge(ctx context.Context, seq *proto.SequenceSet) error {
 	return m.expunge(ctx, msg)
 }
 
-func (m *Mailbox) expunge(ctx context.Context, messages []*snapMsg) error {
-	messages = xslices.Filter(messages, func(msg *snapMsg) bool {
+func (m *Mailbox) expunge(ctx context.Context, messages []snapMsgWithSeq) error {
+	messages = xslices.Filter(messages, func(msg snapMsgWithSeq) bool {
 		return msg.flags.Contains(imap.FlagDeleted)
 	})
 
-	msgIDs := xslices.Map(messages, func(msg *snapMsg) ids.MessageIDPair {
+	msgIDs := xslices.Map(messages, func(msg snapMsgWithSeq) ids.MessageIDPair {
 		return msg.ID
 	})
 
