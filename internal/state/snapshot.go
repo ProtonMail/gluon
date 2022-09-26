@@ -98,8 +98,18 @@ func (snap *snapshot) setMessageFlags(messageID imap.InternalMessageID, flags im
 	return nil
 }
 
-func (snap *snapshot) getAllMessages() []*snapMsg {
-	return snap.messages.all()
+func (snap *snapshot) getAllMessages() []snapMsgWithSeq {
+	allMessages := snap.messages.all()
+	result := make([]snapMsgWithSeq, len(allMessages))
+
+	for i, v := range allMessages {
+		result[i] = snapMsgWithSeq{
+			Seq:     imap.SeqID(i + 1),
+			snapMsg: v,
+		}
+	}
+
+	return result
 }
 
 func (snap *snapshot) getAllMessageIDs() []ids.MessageIDPair {
@@ -108,7 +118,7 @@ func (snap *snapshot) getAllMessageIDs() []ids.MessageIDPair {
 	})
 }
 
-func (snap *snapshot) getMessagesInRange(ctx context.Context, seq *proto.SequenceSet) ([]*snapMsg, error) {
+func (snap *snapshot) getMessagesInRange(ctx context.Context, seq *proto.SequenceSet) ([]snapMsgWithSeq, error) {
 	switch {
 	case contexts.IsUID(ctx):
 		return snap.getMessagesInUIDRange(seq)
@@ -118,8 +128,8 @@ func (snap *snapshot) getMessagesInRange(ctx context.Context, seq *proto.Sequenc
 	}
 }
 
-func (snap *snapshot) getMessagesInSeqRange(seq *proto.SequenceSet) ([]*snapMsg, error) {
-	var res []*snapMsg
+func (snap *snapshot) getMessagesInSeqRange(seq *proto.SequenceSet) ([]snapMsgWithSeq, error) {
+	var res []snapMsgWithSeq
 
 	seqSet, err := toSeqSet(seq)
 	if err != nil {
@@ -161,8 +171,8 @@ func (snap *snapshot) getMessagesInSeqRange(seq *proto.SequenceSet) ([]*snapMsg,
 	return res, nil
 }
 
-func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]*snapMsg, error) {
-	var res []*snapMsg
+func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]snapMsgWithSeq, error) {
+	var res []snapMsgWithSeq
 
 	// If there are no messages in the mailbox, we still resolve without error.
 	if snap.messages.len() == 0 {
@@ -214,14 +224,14 @@ func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]*snapMsg,
 	return res, nil
 }
 
-func (snap *snapshot) getMessagesWithFlag(flag string) []*snapMsg {
-	return snap.messages.where(func(msg *snapMsg) bool {
+func (snap *snapshot) getMessagesWithFlag(flag string) []snapMsgWithSeq {
+	return snap.messages.where(func(msg snapMsgWithSeq) bool {
 		return msg.flags.Contains(flag)
 	})
 }
 
-func (snap *snapshot) getMessagesWithoutFlag(flag string) []*snapMsg {
-	return snap.messages.where(func(msg *snapMsg) bool {
+func (snap *snapshot) getMessagesWithoutFlag(flag string) []snapMsgWithSeq {
+	return snap.messages.where(func(msg snapMsgWithSeq) bool {
 		return !msg.flags.Contains(flag)
 	})
 }
@@ -267,9 +277,9 @@ func (snap *snapshot) updateMessageRemoteID(internalID imap.InternalMessageID, r
 // - No sequence number is valid if mailbox is empty, not even "*"
 // - "*" is converted to the number of messages in the mailbox
 // - when used in a range, the order of the indexes in irrelevant.
-func (snap *snapshot) resolveSeq(number string) (*snapMsg, error) {
+func (snap *snapshot) resolveSeq(number string) (snapMsgWithSeq, error) {
 	if snap.messages.len() == 0 {
-		return nil, ErrNoSuchMessage
+		return snapMsgWithSeq{}, ErrNoSuchMessage
 	}
 
 	if number == "*" {
@@ -278,12 +288,12 @@ func (snap *snapshot) resolveSeq(number string) (*snapMsg, error) {
 
 	num, err := strconv.ParseUint(number, 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse sequence number: %w", err)
+		return snapMsgWithSeq{}, fmt.Errorf("failed to parse sequence number: %w", err)
 	}
 
 	msg, ok := snap.messages.seq(imap.SeqID(num))
 	if !ok {
-		return nil, ErrNoSuchMessage
+		return snapMsgWithSeq{}, ErrNoSuchMessage
 	}
 
 	return msg, nil

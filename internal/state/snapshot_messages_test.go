@@ -42,18 +42,16 @@ func TestMessages(t *testing.T) {
 		require.Equal(t, imap.SeqID(1), msg1.Seq)
 		require.Equal(t, imap.UID(10), msg1.UID)
 
-		msg2, ok := msg.get(2)
+		_, ok = msg.get(2)
 		require.False(t, ok)
-		require.Nil(t, msg2)
 
 		msg3, ok := msg.get(3)
 		require.True(t, ok)
 		require.Equal(t, imap.SeqID(2), msg3.Seq)
 		require.Equal(t, imap.UID(30), msg3.UID)
 
-		msg4, ok := msg.get(4)
+		_, ok = msg.get(4)
 		require.False(t, ok)
-		require.Nil(t, msg4)
 
 		msg5, ok := msg.get(5)
 		require.True(t, ok)

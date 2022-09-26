@@ -3,7 +3,6 @@ package state
 import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
-	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
 
@@ -11,23 +10,35 @@ import (
 type snapMsg struct {
 	ID    ids.MessageIDPair
 	UID   imap.UID
-	Seq   imap.SeqID
 	flags imap.FlagSet
+}
+
+type snapMsgWithSeq struct {
+	Seq imap.SeqID
+	*snapMsg
 }
 
 // snapMsgList is an ordered list of messages inside a snapshot.
 type snapMsgList struct {
-	msg      []*snapMsg
-	idx      map[imap.InternalMessageID]int
-	uidToMsg map[imap.UID]*snapMsg
+	msg []*snapMsg
+	idx map[imap.InternalMessageID]*snapMsg
 }
 
 func newMsgList(capacity int) *snapMsgList {
 	return &snapMsgList{
-		idx:      make(map[imap.InternalMessageID]int, capacity),
-		msg:      make([]*snapMsg, 0, capacity),
-		uidToMsg: make(map[imap.UID]*snapMsg, capacity),
+		msg: make([]*snapMsg, 0, capacity),
+		idx: make(map[imap.InternalMessageID]*snapMsg),
 	}
+}
+
+func (list *snapMsgList) binarySearchByUID(uid imap.UID) (int, bool) {
+	msg := snapMsg{UID: uid}
+
+	index, ok := slices.BinarySearchFunc(list.msg, &msg, func(s1 *snapMsg, s2 *snapMsg) int {
+		return int(s1.UID) - int(s2.UID)
+	})
+
+	return index, ok
 }
 
 func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
@@ -38,52 +49,42 @@ func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags 
 	snapMsg := &snapMsg{
 		ID:    msgID,
 		UID:   msgUID,
-		Seq:   imap.SeqID(len(list.msg) + 1),
 		flags: flags,
 	}
 
 	list.msg = append(list.msg, snapMsg)
 
-	list.idx[msgID.InternalID] = len(list.idx)
-	list.uidToMsg[msgUID] = snapMsg
+	list.idx[msgID.InternalID] = snapMsg
 }
 
 func (list *snapMsgList) remove(msgID imap.InternalMessageID) bool {
-	idx, ok := list.idx[msgID]
+	snapshotMsg, ok := list.idx[msgID]
 	if !ok {
 		return false
 	}
 
-	delete(list.uidToMsg, list.msg[idx].UID)
+	index, ok := list.binarySearchByUID(snapshotMsg.UID)
+	if !ok {
+		return false
+	}
+
 	delete(list.idx, msgID)
 
 	list.msg = append(
-		list.msg[:idx],
-		list.msg[idx+1:]...,
+		list.msg[:index],
+		list.msg[index+1:]...,
 	)
-
-	if len(list.msg) > 0 {
-		for _, message := range list.msg[idx:] {
-			if message.Seq -= 1; message.Seq < 1 {
-				panic("sequence number must be positive")
-			}
-
-			if list.idx[message.ID.InternalID] -= 1; list.idx[message.ID.InternalID] < 0 {
-				panic("index must be non-negative")
-			}
-		}
-	}
 
 	return true
 }
 
 func (list *snapMsgList) update(internalID imap.InternalMessageID, remoteID imap.MessageID) bool {
-	idx, ok := list.idx[internalID]
+	snapMsg, ok := list.idx[internalID]
 	if !ok {
 		return false
 	}
 
-	list.msg[idx].ID.RemoteID = remoteID
+	snapMsg.ID.RemoteID = remoteID
 
 	return true
 }
@@ -96,8 +97,21 @@ func (list *snapMsgList) len() int {
 	return len(list.msg)
 }
 
-func (list *snapMsgList) where(fn func(*snapMsg) bool) []*snapMsg {
-	return xslices.Filter(list.msg, fn)
+func (list *snapMsgList) where(fn func(seq snapMsgWithSeq) bool) []snapMsgWithSeq {
+	var result []snapMsgWithSeq
+
+	for idx, i := range list.msg {
+		snapWithSeq := snapMsgWithSeq{
+			snapMsg: i,
+			Seq:     imap.SeqID(idx + 1),
+		}
+
+		if fn(snapWithSeq) {
+			result = append(result, snapWithSeq)
+		}
+	}
+
+	return result
 }
 
 func (list *snapMsgList) has(msgID imap.InternalMessageID) bool {
@@ -106,49 +120,63 @@ func (list *snapMsgList) has(msgID imap.InternalMessageID) bool {
 	return ok
 }
 
-func (list *snapMsgList) get(msgID imap.InternalMessageID) (*snapMsg, bool) {
-	idx, ok := list.idx[msgID]
+func (list *snapMsgList) get(msgID imap.InternalMessageID) (snapMsgWithSeq, bool) {
+	snapshotMsg, ok := list.idx[msgID]
 	if !ok {
-		return nil, false
+		return snapMsgWithSeq{}, false
 	}
 
-	return list.msg[idx], true
+	index, ok := list.binarySearchByUID(snapshotMsg.UID)
+	if !ok {
+		return snapMsgWithSeq{}, false
+	}
+
+	return snapMsgWithSeq{
+		Seq:     imap.SeqID(index + 1),
+		snapMsg: list.msg[index],
+	}, ok
 }
 
-func (list *snapMsgList) seq(seq imap.SeqID) (*snapMsg, bool) {
+func (list *snapMsgList) seq(seq imap.SeqID) (snapMsgWithSeq, bool) {
 	if imap.SeqID(len(list.msg)) < seq {
-		return nil, false
+		return snapMsgWithSeq{}, false
 	}
 
-	return list.msg[seq-1], true
+	return snapMsgWithSeq{
+		Seq:     seq,
+		snapMsg: list.msg[seq-1],
+	}, true
 }
 
-func (list *snapMsgList) last() *snapMsg {
-	return list.msg[len(list.msg)-1]
+func (list *snapMsgList) last() snapMsgWithSeq {
+	return snapMsgWithSeq{
+		Seq:     imap.SeqID(len(list.msg)),
+		snapMsg: list.msg[len(list.msg)-1],
+	}
 }
 
-func (list *snapMsgList) seqRange(seqLo, seqHi imap.SeqID) []*snapMsg {
-	return list.msg[seqLo-1 : seqHi]
+func (list *snapMsgList) seqRange(seqLo, seqHi imap.SeqID) []snapMsgWithSeq {
+	interval := list.msg[seqLo-1 : seqHi]
+	result := make([]snapMsgWithSeq, len(interval))
+
+	for i, v := range interval {
+		result[i].Seq = imap.SeqID(int(seqLo) + i)
+		result[i].snapMsg = v
+	}
+
+	return result
 }
 
-func (list *snapMsgList) uidRange(uidLo, uidHi imap.UID) []*snapMsg {
+func (list *snapMsgList) uidRange(uidLo, uidHi imap.UID) []snapMsgWithSeq {
 	listLen := len(list.msg)
 
-	cmpFunc := func(s1 *snapMsg, s2 *snapMsg) int {
-		return int(s1.UID) - int(s2.UID)
-	}
-
-	targetSnapLo := snapMsg{UID: uidLo}
-
-	indexLo, _ := slices.BinarySearchFunc(list.msg, &targetSnapLo, cmpFunc)
+	indexLo, _ := list.binarySearchByUID(uidLo)
 
 	if indexLo >= listLen {
 		return nil
 	}
 
-	targetSnapHi := snapMsg{UID: uidHi}
-
-	indexHi, ok := slices.BinarySearchFunc(list.msg[indexLo:], &targetSnapHi, cmpFunc)
+	indexHi, ok := list.binarySearchByUID(uidHi)
 	if ok {
 		indexHi++
 	}
@@ -157,11 +185,25 @@ func (list *snapMsgList) uidRange(uidLo, uidHi imap.UID) []*snapMsg {
 		indexHi = listLen
 	}
 
-	return list.msg[indexLo : indexLo+indexHi]
+	interval := list.msg[indexLo:indexHi]
+	result := make([]snapMsgWithSeq, len(interval))
+
+	for i, v := range interval {
+		result[i].Seq = imap.SeqID(indexLo + i + 1)
+		result[i].snapMsg = v
+	}
+
+	return result
 }
 
-func (list *snapMsgList) getWithUID(uid imap.UID) (*snapMsg, bool) {
-	msg, ok := list.uidToMsg[uid]
+func (list *snapMsgList) getWithUID(uid imap.UID) (snapMsgWithSeq, bool) {
+	index, ok := list.binarySearchByUID(uid)
+	if !ok {
+		return snapMsgWithSeq{}, false
+	}
 
-	return msg, ok
+	return snapMsgWithSeq{
+		Seq:     imap.SeqID(index + 1),
+		snapMsg: list.msg[index],
+	}, ok
 }
