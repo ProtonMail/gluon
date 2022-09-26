@@ -12,6 +12,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/db/ent/uid"
+	"github.com/ProtonMail/gluon/internal/db/ent/uidvalidity"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
 )
@@ -35,6 +36,13 @@ func CreateMailbox(ctx context.Context, tx *ent.Tx, labelID imap.LabelID, name s
 	if len(labelID) != 0 {
 		create = create.SetRemoteID(labelID)
 	}
+
+	globalUIDValidity, err := getGlobalUIDValidity(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	create.SetUIDValidity(globalUIDValidity)
 
 	return create.Save(ctx)
 }
@@ -63,6 +71,19 @@ func RenameMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.Labe
 }
 
 func DeleteMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.LabelID) error {
+	// get uid validity
+	mbox, err := tx.Mailbox.Query().
+		Where(mailbox.RemoteID(mboxID)).
+		Select(mailbox.FieldUIDValidity).
+		Only(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := updateGlobalUIDValidity(ctx, tx, mbox.UIDValidity); err != nil {
+		return err
+	}
+
 	if _, err := tx.Mailbox.Delete().
 		Where(mailbox.RemoteID(mboxID)).
 		Exec(ctx); err != nil {
@@ -280,4 +301,44 @@ func FilterMailboxContains(ctx context.Context, client *ent.Client, mboxID imap.
 	}
 
 	return result, nil
+}
+
+func getGlobalUIDValidity(ctx context.Context, tx *ent.Tx) (imap.UID, error) {
+	globalUIDValidity, err := tx.UIDValidity.Query().
+		Select(uidvalidity.FieldUIDValidity).
+		Only(ctx)
+
+	if ent.IsNotFound(err) {
+		_, err := tx.UIDValidity.Create().
+			SetUIDValidity(mailbox.DefaultUIDValidity).
+			Save(ctx)
+		if err != nil {
+			return 0, err
+		}
+
+		return mailbox.DefaultUIDValidity, nil
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	return globalUIDValidity.UIDValidity, nil
+}
+
+func updateGlobalUIDValidity(ctx context.Context, tx *ent.Tx, deletedUIDValidity imap.UID) error {
+	globalUIDValidity, err := getGlobalUIDValidity(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	if deletedUIDValidity < globalUIDValidity {
+		return nil
+	}
+
+	_, err = tx.UIDValidity.Update().
+		SetUIDValidity(deletedUIDValidity.Add(1)).
+		Save(ctx)
+
+	return err
 }

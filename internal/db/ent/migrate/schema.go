@@ -185,6 +185,17 @@ var (
 			},
 		},
 	}
+	// UIDValiditiesColumns holds the columns for the "uid_validities" table.
+	UIDValiditiesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid_validity", Type: field.TypeUint32},
+	}
+	// UIDValiditiesTable holds the schema information for the "uid_validities" table.
+	UIDValiditiesTable = &schema.Table{
+		Name:       "uid_validities",
+		Columns:    UIDValiditiesColumns,
+		PrimaryKey: []*schema.Column{UIDValiditiesColumns[0]},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		MailboxesTable,
@@ -194,6 +205,7 @@ var (
 		MessagesTable,
 		MessageFlagsTable,
 		UIDsTable,
+		UIDValiditiesTable,
 	}
 )
 
