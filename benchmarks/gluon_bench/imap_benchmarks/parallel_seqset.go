@@ -122,9 +122,7 @@ func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, r
 					itemsLeft := uint32(len(available))
 					index := rand.Uint32() % itemsLeft
 
-					if index > intervalRange {
-						index -= intervalRange
-					} else {
+					if index >= itemsLeft {
 						index = 0
 					}
 
@@ -136,11 +134,23 @@ func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, r
 					if uid {
 						seqSet.AddRange(available[index], available[index+intervalRange-1])
 					} else {
-						seqSet.AddRange(index+1, index+intervalRange)
+						endSeq := index + intervalRange + 1
+
+						if endSeq > itemsLeft {
+							endSeq = itemsLeft
+						}
+
+						seqSet.AddRange(index+1, endSeq)
 					}
 
 					list = append(list, seqSet)
-					available = append(available[:index], available[index+intervalRange:]...)
+
+					cutIndex := index
+					if index > 0 {
+						cutIndex--
+					}
+
+					available = append(available[:cutIndex], available[index+intervalRange:]...)
 				}
 			} else {
 				for r := uint32(0); r < count; r++ {

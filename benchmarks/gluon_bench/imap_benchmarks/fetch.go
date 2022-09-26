@@ -39,7 +39,7 @@ func (f *Fetch) Setup(ctx context.Context, addr net.Addr) error {
 
 		fetchCount := uint32(*fetchCountFlag)
 		if fetchCount == 0 {
-			fetchCount = uint32(*flags.IMAPMessageCount) / 2
+			fetchCount = uint32(*flags.IMAPMessageCount)
 		}
 
 		seqSets, err := NewParallelSeqSet(fetchCount,

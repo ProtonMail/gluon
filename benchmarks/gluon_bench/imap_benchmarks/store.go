@@ -39,7 +39,7 @@ func (s *StoreBench) Setup(ctx context.Context, addr net.Addr) error {
 
 		storeCount := uint32(*storeCountFlag)
 		if storeCount == 0 {
-			storeCount = uint32(*flags.IMAPMessageCount) / 2
+			storeCount = uint32(*flags.IMAPMessageCount)
 		}
 
 		seqSets, err := NewParallelSeqSet(storeCount,
