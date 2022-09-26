@@ -391,21 +391,21 @@ func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID ima
 		return err
 	}
 
-	if seen && !curFlags[messageID].Contains(imap.FlagSeen) {
+	if seen && !curFlags[messageID].ContainsUnchecked(imap.FlagSeenLowerCase) {
 		if err := user.addMessageFlags(ctx, tx, messageID, imap.FlagSeen); err != nil {
 			return err
 		}
-	} else if !seen && curFlags[messageID].Contains(imap.FlagSeen) {
+	} else if !seen && curFlags[messageID].ContainsUnchecked(imap.FlagSeenLowerCase) {
 		if err := user.removeMessageFlags(ctx, tx, messageID, imap.FlagSeen); err != nil {
 			return err
 		}
 	}
 
-	if flagged && !curFlags[messageID].Contains(imap.FlagFlagged) {
+	if flagged && !curFlags[messageID].ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 		if err := user.addMessageFlags(ctx, tx, messageID, imap.FlagFlagged); err != nil {
 			return err
 		}
-	} else if !flagged && curFlags[messageID].Contains(imap.FlagFlagged) {
+	} else if !flagged && curFlags[messageID].ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 		if err := user.removeMessageFlags(ctx, tx, messageID, imap.FlagFlagged); err != nil {
 			return err
 		}

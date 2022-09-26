@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/contexts"
@@ -68,7 +69,7 @@ func (u *messageFlagsAddedStateUpdate) String() string {
 
 // applyMessageFlagsAdded adds the flags to the given messages.
 func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, addFlags imap.FlagSet) error {
-	if addFlags.Contains(imap.FlagRecent) {
+	if addFlags.ContainsUnchecked(imap.FlagRecentLowerCase) {
 		return fmt.Errorf("the recent flag is read-only")
 	}
 
@@ -84,7 +85,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 		return err
 	}
 
-	if addFlags.Contains(imap.FlagDeleted) {
+	if addFlags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
 		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return !delFlags[messageID]
 		}), true); err != nil {
@@ -93,8 +94,10 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 	}
 
 	for _, flag := range addFlags.Remove(imap.FlagDeleted).ToSlice() {
+		flagLowerCase := strings.ToLower(flag)
+
 		if err := db.AddMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
-			return !curFlags[messageID].Contains(flag)
+			return !curFlags[messageID].ContainsUnchecked(flagLowerCase)
 		}), flag); err != nil {
 			return err
 		}
@@ -154,7 +157,7 @@ func (u *messageFlagsRemovedStateUpdate) String() string {
 
 // applyMessageFlagsRemoved removes the flags from the given messages.
 func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, remFlags imap.FlagSet) error {
-	if remFlags.Contains(imap.FlagRecent) {
+	if remFlags.ContainsUnchecked(imap.FlagRecentLowerCase) {
 		return fmt.Errorf("the recent flag is read-only")
 	}
 
@@ -170,7 +173,7 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 		return err
 	}
 
-	if remFlags.Contains(imap.FlagDeleted) {
+	if remFlags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
 		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return delFlags[messageID]
 		}), false); err != nil {
@@ -179,8 +182,10 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 	}
 
 	for _, flag := range remFlags.Remove(imap.FlagDeleted).ToSlice() {
+		flagLowerCase := strings.ToLower(flag)
+
 		if err := db.RemoveMessageFlag(ctx, tx, xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
-			return curFlags[messageID].Contains(flag)
+			return curFlags[messageID].ContainsUnchecked(flagLowerCase)
 		}), flag); err != nil {
 			return err
 		}
@@ -246,7 +251,7 @@ func (u *messageFlagsSetStateUpdate) String() string {
 
 // applyMessageFlagsSet sets the flags of the given messages.
 func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, setFlags imap.FlagSet) error {
-	if setFlags.Contains(imap.FlagRecent) {
+	if setFlags.ContainsUnchecked(imap.FlagRecentLowerCase) {
 		return fmt.Errorf("the recent flag is read-only")
 	}
 

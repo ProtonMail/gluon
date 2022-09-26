@@ -169,8 +169,8 @@ func (sc *stateConnectorImpl) refresh(ctx context.Context, messageIDs []imap.Mes
 		sc.user.updateInjector.send(imap.NewMessageLabelsUpdated(
 			message.ID,
 			mboxIDs,
-			message.Flags.Contains(imap.FlagSeen),
-			message.Flags.Contains(imap.FlagFlagged),
+			message.Flags.ContainsUnchecked(imap.FlagSeenLowerCase),
+			message.Flags.ContainsUnchecked(imap.FlagFlaggedLowerCase),
 		), true)
 	}
 

@@ -154,8 +154,8 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, liter
 		mboxID,
 		literal,
 		parsedMessage,
-		flags.Contains(imap.FlagSeen),
-		flags.Contains(imap.FlagFlagged),
+		flags.ContainsUnchecked(imap.FlagSeenLowerCase),
+		flags.ContainsUnchecked(imap.FlagFlaggedLowerCase),
 		flags,
 		date,
 	)

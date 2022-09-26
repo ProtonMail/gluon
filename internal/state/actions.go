@@ -310,11 +310,11 @@ func (state *State) actionAddMessageFlags(
 	})
 
 	// If setting messages as seen, only set those messages that aren't currently seen.
-	if addFlags.Contains(imap.FlagSeen) {
+	if addFlags.ContainsUnchecked(imap.FlagSeenLowerCase) {
 		var messagesToApply []imap.MessageID
 
 		for _, msg := range messages {
-			if !msg.flags.Contains(imap.FlagSeen) {
+			if !msg.flags.ContainsUnchecked(imap.FlagSeenLowerCase) {
 				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
 			}
 		}
@@ -327,11 +327,11 @@ func (state *State) actionAddMessageFlags(
 	}
 
 	// If setting messages as flagged, only set those messages that aren't currently flagged.
-	if addFlags.Contains(imap.FlagFlagged) {
+	if addFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 		var messagesToApply []imap.MessageID
 
 		for _, msg := range messages {
-			if !msg.flags.Contains(imap.FlagFlagged) {
+			if !msg.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
 			}
 		}
@@ -361,11 +361,11 @@ func (state *State) actionRemoveMessageFlags(
 	})
 
 	// If setting messages as unseen, only set those messages that are currently seen.
-	if remFlags.Contains(imap.FlagSeen) {
+	if remFlags.ContainsUnchecked(imap.FlagSeenLowerCase) {
 		var messagesToApply []imap.MessageID
 
 		for _, msg := range messages {
-			if msg.flags.Contains(imap.FlagSeen) {
+			if msg.flags.ContainsUnchecked(imap.FlagSeenLowerCase) {
 				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
 			}
 		}
@@ -378,11 +378,11 @@ func (state *State) actionRemoveMessageFlags(
 	}
 
 	// If setting messages as unflagged, only set those messages that are currently flagged.
-	if remFlags.Contains(imap.FlagFlagged) {
+	if remFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 		var messagesToApply []imap.MessageID
 
 		for _, msg := range messages {
-			if msg.flags.Contains(imap.FlagFlagged) {
+			if msg.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
 			}
 		}
@@ -402,7 +402,7 @@ func (state *State) actionRemoveMessageFlags(
 }
 
 func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messages []snapMsgWithSeq, setFlags imap.FlagSet) error {
-	if setFlags.Contains(imap.FlagRecent) {
+	if setFlags.ContainsUnchecked(imap.FlagSeenLowerCase) {
 		return fmt.Errorf("recent flag is read-only")
 	}
 
@@ -411,42 +411,26 @@ func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messa
 	})
 
 	// If setting messages as seen, only set those messages that aren't currently seen.
-	if setFlags.Contains(imap.FlagSeen) {
-		var messagesToApply []imap.MessageID
+	var messagesToApply []imap.MessageID
 
-		for _, msg := range messages {
-			if !msg.flags.Contains(imap.FlagSeen) {
-				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
-			}
+	for _, msg := range messages {
+		if msg.flags.ContainsUnchecked(imap.FlagSeenLowerCase) {
+			messagesToApply = append(messagesToApply, msg.ID.RemoteID)
 		}
+	}
 
-		if len(messagesToApply) != 0 {
-			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, true); err != nil {
-				return err
-			}
-		}
-	} else {
-		var messagesToApply []imap.MessageID
-
-		for _, msg := range messages {
-			if msg.flags.Contains(imap.FlagSeen) {
-				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
-			}
-		}
-
-		if len(messagesToApply) != 0 {
-			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, false); err != nil {
-				return err
-			}
+	if len(messagesToApply) != 0 {
+		if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, false); err != nil {
+			return err
 		}
 	}
 
 	// If setting messages as flagged, only set those messages that aren't currently flagged.
-	if setFlags.Contains(imap.FlagFlagged) {
+	if setFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 		var messagesToApply []imap.MessageID
 
 		for _, msg := range messages {
-			if !msg.flags.Contains(imap.FlagFlagged) {
+			if !msg.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
 			}
 		}
@@ -460,7 +444,7 @@ func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messa
 		var messagesToApply []imap.MessageID
 
 		for _, msg := range messages {
-			if msg.flags.Contains(imap.FlagFlagged) {
+			if msg.flags.ContainsUnchecked(imap.FlagFlagged) {
 				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
 			}
 		}

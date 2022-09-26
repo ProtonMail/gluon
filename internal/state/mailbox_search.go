@@ -172,7 +172,7 @@ func (m *Mailbox) matchSearchKeyAll(ctx context.Context, candidates []snapMsgWit
 
 func (m *Mailbox) matchSearchKeyAnswered(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.Contains(imap.FlagAnswered), nil
+		return message.flags.ContainsUnchecked(imap.FlagAnsweredLowerCase), nil
 	})
 }
 
@@ -256,19 +256,19 @@ func (m *Mailbox) matchSearchKeyCc(ctx context.Context, candidates []snapMsgWith
 
 func (m *Mailbox) matchSearchKeyDeleted(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.Contains(imap.FlagDeleted), nil
+		return message.flags.ContainsUnchecked(imap.FlagDeletedLowerCase), nil
 	})
 }
 
 func (m *Mailbox) matchSearchKeyDraft(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.Contains(imap.FlagDraft), nil
+		return message.flags.ContainsUnchecked(imap.FlagDraftLowerCase), nil
 	})
 }
 
 func (m *Mailbox) matchSearchKeyFlagged(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.Contains(imap.FlagFlagged), nil
+		return message.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase), nil
 	})
 }
 
@@ -315,8 +315,10 @@ func (m *Mailbox) matchSearchKeyHeader(ctx context.Context, candidates []snapMsg
 }
 
 func (m *Mailbox) matchSearchKeyKeyword(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
+	flagLowerCase := strings.ToLower(key.GetFlag())
+
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.Contains(key.GetFlag()), nil
+		return message.flags.ContainsUnchecked(flagLowerCase), nil
 	})
 }
 
@@ -335,7 +337,7 @@ func (m *Mailbox) matchSearchKeyLarger(ctx context.Context, candidates []snapMsg
 
 func (m *Mailbox) matchSearchKeyNew(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.Contains(imap.FlagRecent) && !message.flags.Contains(imap.FlagSeen), nil
+		return message.flags.ContainsUnchecked(imap.FlagRecentLowerCase) && !message.flags.ContainsUnchecked(imap.FlagSeenLowerCase), nil
 	})
 }
 
@@ -352,7 +354,7 @@ func (m *Mailbox) matchSearchKeyNot(ctx context.Context, candidates []snapMsgWit
 
 func (m *Mailbox) matchSearchKeyOld(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.Contains(imap.FlagRecent), nil
+		return !message.flags.ContainsUnchecked(imap.FlagRecentLowerCase), nil
 	})
 }
 
@@ -395,13 +397,13 @@ func (m *Mailbox) matchSearchKeyOr(ctx context.Context, candidates []snapMsgWith
 
 func (m *Mailbox) matchSearchKeyRecent(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.Contains(imap.FlagRecent), nil
+		return message.flags.ContainsUnchecked(imap.FlagRecentLowerCase), nil
 	})
 }
 
 func (m *Mailbox) matchSearchKeySeen(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.Contains(imap.FlagSeen), nil
+		return message.flags.ContainsUnchecked(imap.FlagSeenLowerCase), nil
 	})
 }
 
@@ -594,37 +596,39 @@ func (m *Mailbox) matchSearchKeyUID(ctx context.Context, candidates []snapMsgWit
 
 func (m *Mailbox) matchSearchKeyUnanswered(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.Contains(imap.FlagAnswered), nil
+		return !message.flags.ContainsUnchecked(imap.FlagAnsweredLowerCase), nil
 	})
 }
 
 func (m *Mailbox) matchSearchKeyUndeleted(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.Contains(imap.FlagDeleted), nil
+		return !message.flags.ContainsUnchecked(imap.FlagDeletedLowerCase), nil
 	})
 }
 
 func (m *Mailbox) matchSearchKeyUndraft(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.Contains(imap.FlagDraft), nil
+		return !message.flags.ContainsUnchecked(imap.FlagDraftLowerCase), nil
 	})
 }
 
 func (m *Mailbox) matchSearchKeyUnflagged(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.Contains(imap.FlagFlagged), nil
+		return !message.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase), nil
 	})
 }
 
 func (m *Mailbox) matchSearchKeyUnkeyword(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
+	flagLowerCase := strings.ToLower(key.GetFlag())
+
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.Contains(key.GetFlag()), nil
+		return !message.flags.ContainsUnchecked(flagLowerCase), nil
 	})
 }
 
 func (m *Mailbox) matchSearchKeyUnseen(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
 	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.Contains(imap.FlagSeen), nil
+		return !message.flags.ContainsUnchecked(imap.FlagSeenLowerCase), nil
 	})
 }
 

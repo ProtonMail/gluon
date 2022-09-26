@@ -397,6 +397,8 @@ func AddMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalM
 }
 
 func RemoveMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, remFlag string) error {
+	remFlagSet := imap.NewFlagSet(remFlag)
+
 	for _, chunk := range xslices.Chunk(messageIDs, ChunkLimit) {
 		messages, err := tx.Message.Query().
 			Where(message.IDIn(chunk...)).
@@ -409,7 +411,7 @@ func RemoveMessageFlag(ctx context.Context, tx *ent.Tx, messageIDs []imap.Intern
 
 		flags := xslices.Map(messages, func(message *ent.Message) *ent.MessageFlag {
 			return message.Edges.Flags[xslices.IndexFunc(message.Edges.Flags, func(flag *ent.MessageFlag) bool {
-				return imap.NewFlagSet(remFlag).Contains(flag.Value)
+				return remFlagSet.Contains(flag.Value)
 			})]
 		})
 
