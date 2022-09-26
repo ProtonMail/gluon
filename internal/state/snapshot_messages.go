@@ -114,6 +114,23 @@ func (list *snapMsgList) where(fn func(seq snapMsgWithSeq) bool) []snapMsgWithSe
 	return result
 }
 
+func (list *snapMsgList) whereCount(fn func(seq snapMsgWithSeq) bool) int {
+	result := 0
+
+	for idx, i := range list.msg {
+		snapWithSeq := snapMsgWithSeq{
+			snapMsg: i,
+			Seq:     imap.SeqID(idx + 1),
+		}
+
+		if fn(snapWithSeq) {
+			result++
+		}
+	}
+
+	return result
+}
+
 func (list *snapMsgList) has(msgID imap.InternalMessageID) bool {
 	_, ok := list.idx[msgID]
 
