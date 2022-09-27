@@ -10,7 +10,7 @@ import (
 // Connector connects the gluon server to a remote mail store.
 type Connector interface {
 	// Authorize returns whether the given username/password combination are valid for this connector.
-	Authorize(username, password string) bool
+	Authorize(username string, password []byte) bool
 
 	// GetLabel returns information about the label with the given ID.
 	GetLabel(ctx context.Context, labelID imap.LabelID) (imap.Mailbox, error)

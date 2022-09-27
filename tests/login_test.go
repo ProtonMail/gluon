@@ -29,8 +29,8 @@ func TestLoginLiteral(t *testing.T) {
 
 func TestLoginMultiple(t *testing.T) {
 	runTest(t, defaultServerOptions(t, withCredentials([]credentials{
-		{usernames: []string{"user1"}, password: "pass1"},
-		{usernames: []string{"user2"}, password: "pass2"},
+		{usernames: []string{"user1"}, password: []byte("pass1")},
+		{usernames: []string{"user2"}, password: []byte("pass2")},
 	})), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		// Login as the first user.
 		c[1].C("A001 login user1 pass1").OK("A001")
@@ -49,7 +49,7 @@ func TestLoginMultiple(t *testing.T) {
 func TestLoginAlias(t *testing.T) {
 	runTest(t, defaultServerOptions(t, withCredentials([]credentials{{
 		usernames: []string{"alias1", "alias2"},
-		password:  "pass",
+		password:  []byte("pass"),
 	}})), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		// Login as each alias.
 		c[1].C("tag1 login alias1 pass").OK("tag1")

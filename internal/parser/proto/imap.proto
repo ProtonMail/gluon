@@ -75,7 +75,7 @@ message Auth {
 // 6.2.3. LOGIN Command
 message Login {
   string username = 1;
-  string password = 2;
+  bytes password = 2;
 }
 
 // 6.3.1. SELECT Command

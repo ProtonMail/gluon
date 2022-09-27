@@ -34,7 +34,7 @@ var (
 
 type credentials struct {
 	usernames []string
-	password  string
+	password  []byte
 }
 
 var testServerVersionInfo = version.Info{
@@ -54,7 +54,7 @@ func (s *serverOptions) defaultUsername() string {
 	return s.credentials[0].usernames[0]
 }
 
-func (s *serverOptions) defaultUserPassword() string {
+func (s *serverOptions) defaultUserPassword() []byte {
 	return s.credentials[0].password
 }
 
@@ -102,7 +102,7 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 	options := &serverOptions{
 		credentials: []credentials{{
 			usernames: []string{"user"},
-			password:  "pass",
+			password:  []byte("pass"),
 		}},
 		delimiter: "/",
 		dataDir:   tb.TempDir(),
