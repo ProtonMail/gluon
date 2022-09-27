@@ -37,7 +37,7 @@ func (m *MockConnector) EXPECT() *MockConnectorMockRecorder {
 }
 
 // Authorize mocks base method.
-func (m *MockConnector) Authorize(arg0, arg1 string) bool {
+func (m *MockConnector) Authorize(arg0 string, arg1 []byte) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Authorize", arg0, arg1)
 	ret0, _ := ret[0].(bool)

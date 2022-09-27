@@ -55,11 +55,11 @@ func main() {
 
 	defer server.Close(ctx)
 
-	if err := addUser(ctx, server, []string{"user1@example.com", "alias1@example.com"}, "password1"); err != nil {
+	if err := addUser(ctx, server, []string{"user1@example.com", "alias1@example.com"}, []byte("password1")); err != nil {
 		logrus.WithError(err).Fatal("Failed to add user")
 	}
 
-	if err := addUser(ctx, server, []string{"user2@example.com", "alias2@example.com"}, "password2"); err != nil {
+	if err := addUser(ctx, server, []string{"user2@example.com", "alias2@example.com"}, []byte("password2")); err != nil {
 		logrus.WithError(err).Fatal("Failed to add user")
 	}
 
@@ -83,7 +83,7 @@ func main() {
 	}
 }
 
-func addUser(ctx context.Context, server *gluon.Server, addresses []string, password string) error {
+func addUser(ctx context.Context, server *gluon.Server, addresses []string, password []byte) error {
 	connector := connector.NewDummy(
 		addresses,
 		password,
@@ -96,7 +96,7 @@ func addUser(ctx context.Context, server *gluon.Server, addresses []string, pass
 	userID, err := server.AddUser(
 		ctx,
 		connector,
-		[]byte(password),
+		password,
 	)
 	if err != nil {
 		return err

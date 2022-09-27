@@ -108,7 +108,7 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string, removeFiles boo
 	return nil
 }
 
-func (b *Backend) GetState(username, password string, sessionID int) (*state.State, error) {
+func (b *Backend) GetState(username string, password []byte, sessionID int) (*state.State, error) {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
@@ -167,7 +167,7 @@ func (b *Backend) Close(ctx context.Context) error {
 	return nil
 }
 
-func (b *Backend) getUserID(username, password string) (string, error) {
+func (b *Backend) getUserID(username string, password []byte) (string, error) {
 	for _, user := range b.users {
 		if user.connector.Authorize(username, password) {
 			return user.userID, nil

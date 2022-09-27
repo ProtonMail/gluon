@@ -89,7 +89,7 @@ TEST_F(ParserTest, Login) {
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
   "login": {
-    "password": "SESAME",
+    "password": "U0VTQU1F",
     "username": "SMITH"
   }
 })");
@@ -101,7 +101,7 @@ TEST_F(ParserTest, LoginQuoted) {
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
   "login": {
-    "password": "SESAME",
+    "password": "U0VTQU1F",
     "username": "SMITH"
   }
 })");
@@ -119,7 +119,7 @@ TEST_F(ParserTest, LoginLiteral) {
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
   "login": {
-    "password": "SESAME",
+    "password": "U0VTQU1F",
     "username": "SMITH"
   }
 })");

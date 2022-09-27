@@ -1,6 +1,7 @@
 package connector
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"sync"
@@ -30,7 +31,7 @@ type Dummy struct {
 	usernames []string
 
 	// password holds the password that can be used for authorization.
-	password string
+	password []byte
 
 	// These hold the default flags/attributes given to mailboxes.
 	flags, permFlags, attrs imap.FlagSet
@@ -50,7 +51,7 @@ type Dummy struct {
 	queueLock sync.Mutex
 }
 
-func NewDummy(usernames []string, password string, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
+func NewDummy(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
 	conn := &Dummy{
 		state:        newDummyState(flags, permFlags, attrs),
 		usernames:    usernames,
@@ -82,8 +83,8 @@ func NewDummy(usernames []string, password string, period time.Duration, flags, 
 	return conn
 }
 
-func (conn *Dummy) Authorize(username, password string) bool {
-	if password != conn.password {
+func (conn *Dummy) Authorize(username string, password []byte) bool {
+	if bytes.Compare(password, conn.password) != 0 {
 		return false
 	}
 
