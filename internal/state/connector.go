@@ -69,4 +69,7 @@ type Connector interface {
 
 	// SetMessagesFlagged marks the message with the given ID as seen or unseen.
 	SetMessagesFlagged(ctx context.Context, messageIDs []imap.MessageID, flagged bool) error
+
+	// SetUIDValidity sets the UID Validity for the user.
+	SetUIDValidity(imap.UID) error
 }

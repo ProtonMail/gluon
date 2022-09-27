@@ -61,8 +61,15 @@ func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 		return err
 	}
 
-	if err := db.DeleteMailboxWithRemoteID(ctx, tx, mboxID.RemoteID); err != nil {
+	uidValidity, increased, err := db.DeleteMailboxWithRemoteID(ctx, tx, mboxID.RemoteID)
+	if err != nil {
 		return err
+	}
+
+	if increased {
+		if err := state.user.GetRemote().SetUIDValidity(uidValidity); err != nil {
+			return err
+		}
 	}
 
 	return state.user.QueueOrApplyStateUpdate(ctx, tx, NewMailboxDeletedStateUpdate(mboxID.InternalID))
