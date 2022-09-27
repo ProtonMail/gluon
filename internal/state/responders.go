@@ -98,7 +98,7 @@ func (u *targetedExists) handle(_ context.Context, snap *snapshot, stateID State
 
 	var flags imap.FlagSet
 	if u.targetStateID != stateID {
-		flags = flags.Remove(imap.FlagRecent)
+		flags = u.resp.flags.Remove(imap.FlagRecent)
 	} else {
 		flags = u.resp.flags
 	}
@@ -317,11 +317,11 @@ func (u *fetch) handle(_ context.Context, snap *snapshot, _ StateID) ([]response
 	case FetchFlagOpRem:
 		newMessageFlags = curFlags.RemoveFlagSet(u.flags)
 	case FetchFlagOpSet:
-		newMessageFlags = u.flags
+		newMessageFlags = u.flags.Clone()
 	}
 
 	if u.cameFromDifferentMailbox {
-		newMessageFlags = newMessageFlags.Set(imap.FlagDeleted, curFlags.ContainsUnchecked(imap.FlagDeletedLowerCase))
+		newMessageFlags.SetOnSelf(imap.FlagDeleted, curFlags.ContainsUnchecked(imap.FlagDeletedLowerCase))
 	}
 
 	if err := snap.setMessageFlags(u.messageID, newMessageFlags); err != nil {

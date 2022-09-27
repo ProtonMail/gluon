@@ -130,7 +130,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 
 		if setSeen {
 			if !msg.flags.ContainsUnchecked(imap.FlagSeenLowerCase) {
-				msg.flags = msg.flags.Add(imap.FlagSeen)
+				msg.flags.AddToSelf(imap.FlagSeen)
 
 				items = append(items, response.ItemFlags(msg.flags))
 

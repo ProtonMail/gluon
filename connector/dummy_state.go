@@ -178,11 +178,11 @@ func (state *dummyState) createMessage(mboxID imap.LabelID, literal []byte, pars
 	messageID := imap.MessageID(uuid.NewString())
 
 	if seen {
-		otherFlags = otherFlags.Remove(imap.FlagSeen)
+		otherFlags.RemoveFromSelf(imap.FlagSeen)
 	}
 
 	if flagged {
-		otherFlags = otherFlags.Remove(imap.FlagFlagged)
+		otherFlags.RemoveFromSelf(imap.FlagFlagged)
 	}
 
 	state.messages[messageID] = &dummyMessage{
@@ -258,14 +258,14 @@ func (state *dummyState) toMessage(messageID imap.MessageID) imap.Message {
 	flags := imap.NewFlagSet()
 
 	if state.messages[messageID].seen {
-		flags = flags.Add(imap.FlagSeen)
+		flags.AddToSelf(imap.FlagSeen)
 	}
 
 	if state.messages[messageID].flagged {
-		flags = flags.Add(imap.FlagFlagged)
+		flags.AddToSelf(imap.FlagFlagged)
 	}
 
-	flags = flags.AddFlagSet(state.messages[messageID].flags)
+	flags.AddFlagSetToSelf(state.messages[messageID].flags)
 
 	return imap.Message{
 		ID:    messageID,

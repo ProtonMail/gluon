@@ -27,7 +27,7 @@ func (r *lsub) WithDelimiter(del string) *lsub {
 }
 
 func (r *lsub) WithAttributes(att imap.FlagSet) *lsub {
-	r.att = r.att.AddFlagSet(att)
+	r.att.AddFlagSetToSelf(att)
 	return r
 }
 

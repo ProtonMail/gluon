@@ -15,7 +15,7 @@ func Flags() *flags {
 }
 
 func (r *flags) WithFlags(fs imap.FlagSet) *flags {
-	r.flags = r.flags.AddFlagSet(fs)
+	r.flags.AddFlagSetToSelf(fs)
 	return r
 }
 

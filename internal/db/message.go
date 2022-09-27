@@ -274,11 +274,11 @@ func (u *UIDWithFlags) GetFlagSet() imap.FlagSet {
 	}
 
 	if u.Deleted {
-		flagSet = flagSet.Add(imap.FlagDeleted)
+		flagSet.AddToSelf(imap.FlagDeleted)
 	}
 
 	if u.Recent {
-		flagSet = flagSet.Add(imap.FlagRecent)
+		flagSet.AddToSelf(imap.FlagRecent)
 	}
 
 	return flagSet
@@ -587,11 +587,11 @@ func NewFlagSet(msgUID *ent.UID, flags []*ent.MessageFlag) imap.FlagSet {
 	}))
 
 	if msgUID.Deleted {
-		flagSet = flagSet.Add(imap.FlagDeleted)
+		flagSet.AddToSelf(imap.FlagDeleted)
 	}
 
 	if msgUID.Recent {
-		flagSet = flagSet.Add(imap.FlagRecent)
+		flagSet.AddToSelf(imap.FlagRecent)
 	}
 
 	return flagSet
