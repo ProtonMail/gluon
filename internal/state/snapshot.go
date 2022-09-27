@@ -98,6 +98,8 @@ func (snap *snapshot) setMessageFlags(messageID imap.InternalMessageID, flags im
 		flags = flags.Add(imap.FlagRecent)
 	}
 
+	msg.toExpunge = flags.ContainsUnchecked(imap.FlagDeletedLowerCase)
+
 	msg.flags = flags
 
 	return nil
@@ -121,6 +123,18 @@ func (snap *snapshot) getAllMessageIDs() []ids.MessageIDPair {
 	return xslices.Map(snap.messages.all(), func(msg *snapMsg) ids.MessageIDPair {
 		return msg.ID
 	})
+}
+
+func (snap *snapshot) getAllMessagesIDsMarkedDelete() []ids.MessageIDPair {
+	var msgs []ids.MessageIDPair
+
+	for _, v := range snap.messages.all() {
+		if v.toExpunge {
+			msgs = append(msgs, v.ID)
+		}
+	}
+
+	return msgs
 }
 
 func (snap *snapshot) getMessagesInRange(ctx context.Context, seq *proto.SequenceSet) ([]snapMsgWithSeq, error) {

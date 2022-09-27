@@ -295,7 +295,7 @@ func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation p
 }
 
 func (m *Mailbox) Expunge(ctx context.Context, seq *proto.SequenceSet) error {
-	var msg []snapMsgWithSeq
+	var msgIDs []ids.MessageIDPair
 
 	if seq != nil {
 		snapMsgs, err := m.snap.getMessagesInRange(ctx, seq)
@@ -303,21 +303,15 @@ func (m *Mailbox) Expunge(ctx context.Context, seq *proto.SequenceSet) error {
 			return err
 		}
 
-		msg = snapMsgs
-	} else {
-		msg = m.snap.getAllMessages()
-	}
+		msgIDs = make([]ids.MessageIDPair, 0, len(snapMsgs))
 
-	return m.expunge(ctx, msg)
-}
-
-func (m *Mailbox) expunge(ctx context.Context, messages []snapMsgWithSeq) error {
-	var msgIDs []ids.MessageIDPair
-
-	for _, msg := range messages {
-		if msg.flags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
-			msgIDs = append(msgIDs, msg.ID)
+		for _, v := range snapMsgs {
+			if v.toExpunge {
+				msgIDs = append(msgIDs, v.ID)
+			}
 		}
+	} else {
+		msgIDs = m.snap.getAllMessagesIDsMarkedDelete()
 	}
 
 	return m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
