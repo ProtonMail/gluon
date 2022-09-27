@@ -8,9 +8,10 @@ import (
 
 // snapMsg is a single message inside a snapshot.
 type snapMsg struct {
-	ID    ids.MessageIDPair
-	UID   imap.UID
-	flags imap.FlagSet
+	ID        ids.MessageIDPair
+	UID       imap.UID
+	flags     imap.FlagSet
+	toExpunge bool
 }
 
 type snapMsgWithSeq struct {
@@ -27,7 +28,7 @@ type snapMsgList struct {
 func newMsgList(capacity int) *snapMsgList {
 	return &snapMsgList{
 		msg: make([]*snapMsg, 0, capacity),
-		idx: make(map[imap.InternalMessageID]*snapMsg),
+		idx: make(map[imap.InternalMessageID]*snapMsg, capacity),
 	}
 }
 
@@ -47,9 +48,10 @@ func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags 
 	}
 
 	snapMsg := &snapMsg{
-		ID:    msgID,
-		UID:   msgUID,
-		flags: flags,
+		ID:        msgID,
+		UID:       msgUID,
+		flags:     flags,
+		toExpunge: flags.ContainsUnchecked(imap.FlagDeletedLowerCase),
 	}
 
 	list.msg = append(list.msg, snapMsg)
