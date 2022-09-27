@@ -556,7 +556,7 @@ func (state *State) flushResponses(ctx context.Context, permitExpunge bool) ([]r
 		return nil, err
 	}
 
-	return responses, nil
+	return response.Merge(responses), nil
 }
 
 func (state *State) PushResponder(ctx context.Context, tx *ent.Tx, responder ...Responder) error {

@@ -8,6 +8,25 @@ type recent struct {
 	count uint32
 }
 
+func isRecent(r Response) bool {
+	_, ok := r.(*recent)
+	return ok
+}
+
+func recentHasHigherID(a, b Response) bool {
+	recentA, ok := a.(*recent)
+	if !ok {
+		return false
+	}
+
+	recentB, ok := b.(*recent)
+	if !ok {
+		return false
+	}
+
+	return recentA.count > recentB.count
+}
+
 func Recent() *recent {
 	return &recent{}
 }
