@@ -402,7 +402,7 @@ func (state *State) actionRemoveMessageFlags(
 }
 
 func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messages []snapMsgWithSeq, setFlags imap.FlagSet) error {
-	if setFlags.ContainsUnchecked(imap.FlagSeenLowerCase) {
+	if setFlags.ContainsUnchecked(imap.FlagRecentLowerCase) {
 		return fmt.Errorf("recent flag is read-only")
 	}
 
