@@ -26,3 +26,6 @@ type MessageFlag func(*sql.Selector)
 
 // UID is the predicate function for uid builders.
 type UID func(*sql.Selector)
+
+// UIDValidity is the predicate function for uidvalidity builders.
+type UIDValidity func(*sql.Selector)

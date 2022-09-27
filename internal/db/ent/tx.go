@@ -26,6 +26,8 @@ type Tx struct {
 	MessageFlag *MessageFlagClient
 	// UID is the client for interacting with the UID builders.
 	UID *UIDClient
+	// UIDValidity is the client for interacting with the UIDValidity builders.
+	UIDValidity *UIDValidityClient
 
 	// lazily loaded.
 	client     *Client
@@ -168,6 +170,7 @@ func (tx *Tx) init() {
 	tx.Message = NewMessageClient(tx.config)
 	tx.MessageFlag = NewMessageFlagClient(tx.config)
 	tx.UID = NewUIDClient(tx.config)
+	tx.UIDValidity = NewUIDValidityClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

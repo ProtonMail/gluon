@@ -56,31 +56,43 @@ func TestCreatePreviousLevelHierarchyIfNonExisting(t *testing.T) {
 	})
 }
 
-// TODO: GOMSRV-51.
-func _TestEnsureNewMailboxWithDeletedNameHasGreaterId(t *testing.T) {
+func TestEnsureNewMailboxWithDeletedNameHasGreaterId(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
-		const (
-			inboxName = "Folder"
-		)
-		var firstId uint32
-		var secondId uint32
+		var oldValidity uint32
+		var newValidity uint32
+
 		{
 			// create Folder inbox, get id and delete
-			require.NoError(t, client.Create(inboxName))
-			mailboxStatus, err := client.Select(inboxName, true)
+			require.NoError(t, client.Create("mbox1"))
+			mailboxStatus, err := client.Select("mbox1", true)
 			require.NoError(t, err)
-			firstId = mailboxStatus.UidValidity
+			oldValidity = mailboxStatus.UidValidity
 			require.NoError(t, client.Unselect())
 			// Destroy Folder inbox
-			require.NoError(t, client.Delete(inboxName))
+			require.NoError(t, client.Delete("mbox1"))
+			require.NoError(t, client.Create("mbox2"))
 		}
+
 		{
 			// re-create Folder inbox
-			require.NoError(t, client.Create(inboxName))
-			mailboxStatus, err := client.Select(inboxName, true)
+			require.NoError(t, client.Create("mbox1"))
+			mailboxStatus, err := client.Select("mbox1", true)
 			require.NoError(t, err)
-			secondId = mailboxStatus.UidValidity
+			newValidity = mailboxStatus.UidValidity
+			require.Greater(t, newValidity, oldValidity)
+			oldValidity = newValidity
 		}
-		require.NotEqual(t, secondId, firstId)
+
+		{
+			require.NoError(t, client.Unselect())
+			require.NoError(t, client.Delete("mbox1"))
+			require.NoError(t, client.Delete("mbox2"))
+			require.NoError(t, client.Create("mbox2"))
+			mailboxStatus, err := client.Select("mbox2", true)
+			require.NoError(t, err)
+			newValidity = mailboxStatus.UidValidity
+			require.Greater(t, newValidity, oldValidity)
+		}
+
 	})
 }

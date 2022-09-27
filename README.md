@@ -51,3 +51,12 @@ tag OK [CAPABILITY IDLE IMAP4rev1 MOVE UIDPLUS UNSELECT] (^_^)
 
 The demo accounts contain no messages. You can connect an IMAP client (e.g. thunderbird) and use it to copy in
 messages from another mail server.
+
+
+# Changing DB schema
+
+Do not forget to re-generate ent code after changing the DB schema in `./internal/db/ent/schema`.
+
+```
+pushd ./internal/db/ent && go generate . && popd
+
