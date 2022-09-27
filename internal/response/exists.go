@@ -10,6 +10,25 @@ type exists struct {
 	count imap.SeqID
 }
 
+func isExists(r Response) bool {
+	_, ok := r.(*exists)
+	return ok
+}
+
+func existsHasHigherID(a, b Response) bool {
+	existsA, ok := a.(*exists)
+	if !ok {
+		return false
+	}
+
+	existsB, ok := b.(*exists)
+	if !ok {
+		return false
+	}
+
+	return existsA.count > existsB.count
+}
+
 func Exists() *exists {
 	return &exists{}
 }
