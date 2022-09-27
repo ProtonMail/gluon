@@ -25,7 +25,8 @@ func TestMessageCreatedUpdate(t *testing.T) {
 		s.messageCreatedFromFile("user", mboxID, "testdata/afternoon-meeting.eml")
 
 		// Expect to receive the updates.
-		c.S("* 1 EXISTS", "* 1 RECENT", "* 2 EXISTS", "* 2 RECENT")
+		//c.S("* 1 EXISTS", "* 1 RECENT", "* 2 EXISTS", "* 2 RECENT")
+		c.S("* 2 EXISTS", "* 2 RECENT")
 
 		// Stop idling.
 		c.C("DONE")
