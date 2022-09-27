@@ -139,6 +139,10 @@ func (sc *stateConnectorImpl) SetMessagesFlagged(ctx context.Context, messageIDs
 	return nil
 }
 
+func (sc *stateConnectorImpl) SetUIDValidity(uidValidity imap.UID) error {
+	return sc.connector.SetUIDValidity(uidValidity)
+}
+
 func (sc *stateConnectorImpl) getMetadataValue(key string) any {
 	v, ok := sc.metadata[key]
 	if !ok {

@@ -42,7 +42,14 @@ type user struct {
 	messageIDCounter uint64
 }
 
-func newUser(ctx context.Context, userID string, database *db.DB, conn connector.Connector, store store.Store, delimiter string) (*user, error) {
+func newUser(
+	ctx context.Context,
+	userID string,
+	database *db.DB,
+	conn connector.Connector,
+	store store.Store,
+	delimiter string,
+) (*user, error) {
 	if err := database.Init(ctx); err != nil {
 		return nil, err
 	}
@@ -52,6 +59,13 @@ func newUser(ctx context.Context, userID string, database *db.DB, conn connector
 		return db.GetHighestMessageID(ctx, client)
 	})
 	if err != nil {
+		return nil, err
+	}
+
+	// Init the global UID validity.
+	if err := database.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		return db.InitGlobalUIDValidity(ctx, tx, conn.GetUIDValidity())
+	}); err != nil {
 		return nil, err
 	}
 
@@ -79,10 +93,8 @@ func newUser(ctx context.Context, userID string, database *db.DB, conn connector
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ctx = contexts.NewRemoteUpdateCtx(ctx)
-
 		labels := pprof.Labels("go", "Connector Updates", "UserID", user.userID)
-		pprof.Do(ctx, labels, func(_ context.Context) {
+		pprof.Do(contexts.NewRemoteUpdateCtx(ctx), labels, func(_ context.Context) {
 			updateCh := user.updateInjector.GetUpdates()
 			for {
 				select {

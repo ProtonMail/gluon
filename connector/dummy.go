@@ -246,6 +246,14 @@ func (conn *Dummy) MarkMessagesFlagged(ctx context.Context, messageIDs []imap.Me
 	return nil
 }
 
+func (conn *Dummy) GetUIDValidity() imap.UID {
+	return 1
+}
+
+func (conn *Dummy) SetUIDValidity(imap.UID) error {
+	return nil
+}
+
 func (conn *Dummy) Sync(ctx context.Context) error {
 	for _, mailbox := range conn.state.getLabels() {
 		update := imap.NewMailboxCreated(mailbox)

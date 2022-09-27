@@ -94,7 +94,18 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 	}
 
 	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return db.DeleteMailboxWithRemoteID(ctx, tx, update.MailboxID)
+		uidValidity, increased, err := db.DeleteMailboxWithRemoteID(ctx, tx, update.MailboxID)
+		if err != nil {
+			return err
+		}
+
+		if increased {
+			if err := user.connector.SetUIDValidity(uidValidity); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 }
 
