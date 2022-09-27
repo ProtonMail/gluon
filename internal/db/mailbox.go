@@ -195,11 +195,11 @@ func (msg *SnapshotMessageResult) GetFlagSet() imap.FlagSet {
 	}
 
 	if msg.Deleted {
-		flagSet = flagSet.Add(imap.FlagDeleted)
+		flagSet.AddToSelf(imap.FlagDeleted)
 	}
 
 	if msg.Recent {
-		flagSet = flagSet.Add(imap.FlagRecent)
+		flagSet.AddToSelf(imap.FlagRecent)
 	}
 
 	return flagSet

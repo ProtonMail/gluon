@@ -28,7 +28,7 @@ func (r *list) WithDelimiter(del string) *list {
 }
 
 func (r *list) WithAttributes(att imap.FlagSet) *list {
-	r.att = r.att.AddFlagSet(att)
+	r.att.AddFlagSetToSelf(att)
 	return r
 }
 

@@ -31,7 +31,7 @@ type FlagSet map[string]string
 
 // NewFlagSet creates a flag set containing the specified flags.
 func NewFlagSet(flags ...string) FlagSet {
-	fs := make(FlagSet)
+	fs := NewFlagSetWithCapacity(len(flags))
 
 	for _, item := range flags {
 		fs.add(item)
@@ -109,18 +109,25 @@ func (fs FlagSet) Equals(otherFs FlagSet) bool {
 // Add adds new flags to the flag set. The function returns false iff no flags was actually added because they're already in the set.
 // The case of existing elements is preserved.
 func (fs FlagSet) Add(flags ...string) FlagSet {
-	return fs.clone().add(flags...)
+	f := fs.Clone()
+	f.add(flags...)
+
+	return f
 }
 
-func (fs FlagSet) AddToSelf(flags ...string) FlagSet {
-	return fs.add(flags...)
+func (fs FlagSet) AddToSelf(flags ...string) {
+	fs.add(flags...)
 }
 
 func (fs FlagSet) AddFlagSet(set FlagSet) FlagSet {
-	return fs.Add(set.ToSlice()...)
+	return fs.Add(maps.Values(set)...)
 }
 
-func (fs FlagSet) add(flags ...string) FlagSet {
+func (fs FlagSet) AddFlagSetToSelf(set FlagSet) {
+	fs.add(maps.Values(set)...)
+}
+
+func (fs FlagSet) add(flags ...string) {
 	for _, flag := range flags {
 		flagLower := strings.ToLower(flag)
 
@@ -130,8 +137,6 @@ func (fs FlagSet) add(flags ...string) FlagSet {
 
 		fs[flagLower] = flag
 	}
-
-	return fs
 }
 
 // Set ensures the flagset either contains or does not contain the given flag.
@@ -143,16 +148,35 @@ func (fs FlagSet) Set(flag string, on bool) FlagSet {
 	}
 }
 
-// Remove removes a list of flags from the set. The function returns false iif no flag was actually removed.
+// SetOnSelf ensures the flagset either contains or does not contain the given flag.
+func (fs FlagSet) SetOnSelf(flag string, on bool) {
+	if on {
+		fs.AddToSelf(flag)
+	} else {
+		fs.RemoveFromSelf(flag)
+	}
+}
+
 func (fs FlagSet) Remove(flags ...string) FlagSet {
-	return fs.clone().remove(flags...)
+	f := fs.Clone()
+	f.remove(flags...)
+
+	return f
 }
 
 func (fs FlagSet) RemoveFlagSet(set FlagSet) FlagSet {
-	return fs.Remove(set.ToSlice()...)
+	return fs.Remove(maps.Values(set)...)
 }
 
-func (fs FlagSet) remove(flags ...string) FlagSet {
+func (fs FlagSet) RemoveFromSelf(flags ...string) {
+	fs.remove(flags...)
+}
+
+func (fs FlagSet) RemoveFlagSetFromSelf(set FlagSet) {
+	fs.Remove(maps.Values(set)...)
+}
+
+func (fs FlagSet) remove(flags ...string) {
 	for _, flag := range flags {
 		flagLower := strings.ToLower(flag)
 
@@ -162,11 +186,9 @@ func (fs FlagSet) remove(flags ...string) FlagSet {
 
 		delete(fs, flagLower)
 	}
-
-	return fs
 }
 
-// clone creates a hard copy of the flag set.
-func (fs FlagSet) clone() FlagSet {
+// Clone creates a hard copy of the flag set.
+func (fs FlagSet) Clone() FlagSet {
 	return NewFlagSetFromSlice(fs.ToSlice())
 }

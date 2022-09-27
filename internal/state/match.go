@@ -108,9 +108,9 @@ func prepareMatch(
 	}
 
 	if recent > 0 {
-		atts = atts.Add(imap.AttrMarked)
+		atts.AddToSelf(imap.AttrMarked)
 	} else {
-		atts = atts.Add(imap.AttrUnmarked)
+		atts.AddToSelf(imap.AttrUnmarked)
 	}
 
 	return Match{
