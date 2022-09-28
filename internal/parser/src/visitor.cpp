@@ -21,7 +21,7 @@ antlrcpp::Any Visitor::visitStringQtd(imap::IMAPParser::StringQtdContext* ctx) {
   auto res = std::string{};
 
   for (const auto& c : ctx->quoted()->quotedChar())
-    res.append(visit(c).as<std::string>());
+    res.append(std::any_cast<std::string>(visit(c)));
 
   return res;
 }
@@ -61,86 +61,86 @@ antlrcpp::Any Visitor::visitCommand(imap::IMAPParser::CommandContext* ctx) {
     auto cmd = ctx->commandAny();
 
     if (cmd->capability()) {
-      command.set_allocated_capability(visit(cmd->capability()).as<proto::Capability*>());
+      command.set_allocated_capability(std::any_cast<proto::Capability*>(visit(cmd->capability())));
     } else if (cmd->noop()) {
-      command.set_allocated_noop(visit(cmd->noop()).as<proto::Noop*>());
+      command.set_allocated_noop(std::any_cast<proto::Noop*>(visit(cmd->noop())));
     } else if (cmd->logout()) {
-      command.set_allocated_logout(visit(cmd->logout()).as<proto::Logout*>());
+      command.set_allocated_logout(std::any_cast<proto::Logout*>(visit(cmd->logout())));
     } else if (cmd->id()) {
       auto idCtx = cmd->id();
       auto value = visit(idCtx->id_param_list());
       if (idCtx->id_param_list()->id_nil_param() != nullptr) {
-        command.set_allocated_id_get(value.as<proto::IDGet*>());
+        command.set_allocated_id_get(std::any_cast<proto::IDGet*>(value));
       } else {
-        command.set_allocated_id_set(value.as<proto::IDSet*>());
+        command.set_allocated_id_set(std::any_cast<proto::IDSet*>(value));
       }
     }
   } else if (ctx->commandNonAuth()) {
     auto cmd = ctx->commandNonAuth();
 
     if (cmd->auth()) {
-      command.set_allocated_auth(visit(cmd->auth()).as<proto::Auth*>());
+      command.set_allocated_auth(std::any_cast<proto::Auth*>(visit(cmd->auth())));
     } else if (cmd->startTLS()) {
-      command.set_allocated_starttls(visit(cmd->startTLS()).as<proto::StartTLS*>());
+      command.set_allocated_starttls(std::any_cast<proto::StartTLS*>(visit(cmd->startTLS())));
     } else if (cmd->login()) {
-      command.set_allocated_login(visit(cmd->login()).as<proto::Login*>());
+      command.set_allocated_login(std::any_cast<proto::Login*>(visit(cmd->login())));
     }
   } else if (ctx->commandAuth()) {
     auto cmd = ctx->commandAuth();
 
     if (cmd->select()) {
-      command.set_allocated_select(visit(cmd->select()).as<proto::Select*>());
+      command.set_allocated_select(std::any_cast<proto::Select*>(visit(cmd->select())));
     } else if (cmd->examine()) {
-      command.set_allocated_examine(visit(cmd->examine()).as<proto::Examine*>());
+      command.set_allocated_examine(std::any_cast<proto::Examine*>(visit(cmd->examine())));
     } else if (cmd->create()) {
-      command.set_allocated_create(visit(cmd->create()).as<proto::Create*>());
+      command.set_allocated_create(std::any_cast<proto::Create*>(visit(cmd->create())));
     } else if (cmd->del()) {
-      command.set_allocated_del(visit(cmd->del()).as<proto::Del*>());
+      command.set_allocated_del(std::any_cast<proto::Del*>(visit(cmd->del())));
     } else if (cmd->rename()) {
-      command.set_allocated_rename(visit(cmd->rename()).as<proto::Rename*>());
+      command.set_allocated_rename(std::any_cast<proto::Rename*>(visit(cmd->rename())));
     } else if (cmd->sub()) {
-      command.set_allocated_sub(visit(cmd->sub()).as<proto::Sub*>());
+      command.set_allocated_sub(std::any_cast<proto::Sub*>(visit(cmd->sub())));
     } else if (cmd->unsub()) {
-      command.set_allocated_unsub(visit(cmd->unsub()).as<proto::Unsub*>());
+      command.set_allocated_unsub(std::any_cast<proto::Unsub*>(visit(cmd->unsub())));
     } else if (cmd->list()) {
-      command.set_allocated_list(visit(cmd->list()).as<proto::List*>());
+      command.set_allocated_list(std::any_cast<proto::List*>(visit(cmd->list())));
     } else if (cmd->lsub()) {
-      command.set_allocated_lsub(visit(cmd->lsub()).as<proto::Lsub*>());
+      command.set_allocated_lsub(std::any_cast<proto::Lsub*>(visit(cmd->lsub())));
     } else if (cmd->status()) {
-      command.set_allocated_status(visit(cmd->status()).as<proto::Status*>());
+      command.set_allocated_status(std::any_cast<proto::Status*>(visit(cmd->status())));
     } else if (cmd->append()) {
-      command.set_allocated_append(visit(cmd->append()).as<proto::Append*>());
+      command.set_allocated_append(std::any_cast<proto::Append*>(visit(cmd->append())));
     } else if (cmd->idle()) {
-      command.set_allocated_idle(visit(cmd->idle()).as<proto::Idle*>());
+      command.set_allocated_idle(std::any_cast<proto::Idle*>(visit(cmd->idle())));
     }
   } else if (ctx->commandSelected()) {
     auto cmd = ctx->commandSelected();
 
     if (cmd->check()) {
-      command.set_allocated_check(visit(cmd->check()).as<proto::Check*>());
+      command.set_allocated_check(std::any_cast<proto::Check*>(visit(cmd->check())));
     } else if (cmd->close()) {
-      command.set_allocated_close(visit(cmd->close()).as<proto::Close*>());
+      command.set_allocated_close(std::any_cast<proto::Close*>(visit(cmd->close())));
     } else if (cmd->expunge()) {
-      command.set_allocated_expunge(visit(cmd->expunge()).as<proto::Expunge*>());
+      command.set_allocated_expunge(std::any_cast<proto::Expunge*>(visit(cmd->expunge())));
     } else if (cmd->uidExpunge()) {
-      command.set_allocated_uidexpunge(visit(cmd->uidExpunge()).as<proto::UIDExpunge*>());
+      command.set_allocated_uidexpunge(std::any_cast<proto::UIDExpunge*>(visit(cmd->uidExpunge())));
     } else if (cmd->unselect()) {
-      command.set_allocated_unselect(visit(cmd->unselect()).as<proto::Unselect*>());
+      command.set_allocated_unselect(std::any_cast<proto::Unselect*>(visit(cmd->unselect())));
     } else if (cmd->search()) {
-      command.set_allocated_search(visit(cmd->search()).as<proto::Search*>());
+      command.set_allocated_search(std::any_cast<proto::Search*>(visit(cmd->search())));
     } else if (cmd->fetch()) {
-      command.set_allocated_fetch(visit(cmd->fetch()).as<proto::Fetch*>());
+      command.set_allocated_fetch(std::any_cast<proto::Fetch*>(visit(cmd->fetch())));
     } else if (cmd->store()) {
-      command.set_allocated_store(visit(cmd->store()).as<proto::Store*>());
+      command.set_allocated_store(std::any_cast<proto::Store*>(visit(cmd->store())));
     } else if (cmd->copy()) {
-      command.set_allocated_copy(visit(cmd->copy()).as<proto::Copy*>());
+      command.set_allocated_copy(std::any_cast<proto::Copy*>(visit(cmd->copy())));
     } else if (cmd->move()) {
-      command.set_allocated_move(visit(cmd->move()).as<proto::Move*>());
+      command.set_allocated_move(std::any_cast<proto::Move*>(visit(cmd->move())));
     } else if (cmd->uid()) {
-      command.set_allocated_uid(visit(cmd->uid()).as<proto::UID*>());
+      command.set_allocated_uid(std::any_cast<proto::UID*>(visit(cmd->uid())));
     }
   } else if (ctx->done()) {
-    command.set_allocated_done(visit(ctx->done()).as<proto::Done*>());
+    command.set_allocated_done(std::any_cast<proto::Done*>(visit(ctx->done())));
   }
 
   return command;
@@ -177,8 +177,8 @@ antlrcpp::Any Visitor::visitAuth(imap::IMAPParser::AuthContext* ctx) {
 antlrcpp::Any Visitor::visitLogin(imap::IMAPParser::LoginContext* ctx) {
   auto login = new proto::Login;
 
-  login->set_username(visit(ctx->userID()->astring()).as<std::string>());
-  login->set_password(visit(ctx->password()->astring()).as<std::string>());
+  login->set_username(std::any_cast<std::string>(visit(ctx->userID()->astring())));
+  login->set_password(std::any_cast<std::string>(visit(ctx->password()->astring())));
 
   return login;
 }
@@ -188,7 +188,7 @@ antlrcpp::Any Visitor::visitMboxInbox(imap::IMAPParser::MboxInboxContext* ctx) {
 }
 
 antlrcpp::Any Visitor::visitMboxOther(imap::IMAPParser::MboxOtherContext* ctx) {
-  auto mbox = visit(ctx->astring()).as<std::string>();
+  auto mbox = std::any_cast<std::string>(visit(ctx->astring()));
 
   if (mbox.size() < 5)
     return mbox;
@@ -219,7 +219,7 @@ antlrcpp::Any Visitor::visitListMboxStr(imap::IMAPParser::ListMboxStrContext* ct
 antlrcpp::Any Visitor::visitSelect(imap::IMAPParser::SelectContext* ctx) {
   auto select = new proto::Select;
 
-  select->set_mailbox(visit(ctx->mailbox()).as<std::string>());
+  select->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox())));
 
   return select;
 }
@@ -227,7 +227,7 @@ antlrcpp::Any Visitor::visitSelect(imap::IMAPParser::SelectContext* ctx) {
 antlrcpp::Any Visitor::visitExamine(imap::IMAPParser::ExamineContext* ctx) {
   auto examine = new proto::Examine;
 
-  examine->set_mailbox(visit(ctx->mailbox()).as<std::string>());
+  examine->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox())));
 
   return examine;
 }
@@ -235,7 +235,7 @@ antlrcpp::Any Visitor::visitExamine(imap::IMAPParser::ExamineContext* ctx) {
 antlrcpp::Any Visitor::visitCreate(imap::IMAPParser::CreateContext* ctx) {
   auto create = new proto::Create;
 
-  create->set_mailbox(visit(ctx->mailbox()).as<std::string>());
+  create->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox())));
 
   return create;
 }
@@ -243,7 +243,7 @@ antlrcpp::Any Visitor::visitCreate(imap::IMAPParser::CreateContext* ctx) {
 antlrcpp::Any Visitor::visitDel(imap::IMAPParser::DelContext* ctx) {
   auto del = new proto::Del;
 
-  del->set_mailbox(visit(ctx->mailbox()).as<std::string>());
+  del->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox())));
 
   return del;
 }
@@ -251,8 +251,8 @@ antlrcpp::Any Visitor::visitDel(imap::IMAPParser::DelContext* ctx) {
 antlrcpp::Any Visitor::visitRename(imap::IMAPParser::RenameContext* ctx) {
   auto rename = new proto::Rename;
 
-  rename->set_mailbox(visit(ctx->mailbox(0)).as<std::string>());
-  rename->set_newname(visit(ctx->mailbox(1)).as<std::string>());
+  rename->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox(0))));
+  rename->set_newname(std::any_cast<std::string>(visit(ctx->mailbox(1))));
 
   return rename;
 }
@@ -260,7 +260,7 @@ antlrcpp::Any Visitor::visitRename(imap::IMAPParser::RenameContext* ctx) {
 antlrcpp::Any Visitor::visitSub(imap::IMAPParser::SubContext* ctx) {
   auto sub = new proto::Sub;
 
-  sub->set_mailbox(visit(ctx->mailbox()).as<std::string>());
+  sub->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox())));
 
   return sub;
 }
@@ -268,7 +268,7 @@ antlrcpp::Any Visitor::visitSub(imap::IMAPParser::SubContext* ctx) {
 antlrcpp::Any Visitor::visitUnsub(imap::IMAPParser::UnsubContext* ctx) {
   auto unsub = new proto::Unsub;
 
-  unsub->set_mailbox(visit(ctx->mailbox()).as<std::string>());
+  unsub->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox())));
 
   return unsub;
 }
@@ -276,8 +276,8 @@ antlrcpp::Any Visitor::visitUnsub(imap::IMAPParser::UnsubContext* ctx) {
 antlrcpp::Any Visitor::visitList(imap::IMAPParser::ListContext* ctx) {
   auto list = new proto::List;
 
-  list->set_reference(visit(ctx->mailbox()).as<std::string>());
-  list->set_mailbox(visit(ctx->listMailbox()).as<std::string>());
+  list->set_reference(std::any_cast<std::string>(visit(ctx->mailbox())));
+  list->set_mailbox(std::any_cast<std::string>(visit(ctx->listMailbox())));
 
   return list;
 }
@@ -285,8 +285,8 @@ antlrcpp::Any Visitor::visitList(imap::IMAPParser::ListContext* ctx) {
 antlrcpp::Any Visitor::visitLsub(imap::IMAPParser::LsubContext* ctx) {
   auto lsub = new proto::Lsub;
 
-  lsub->set_reference(visit(ctx->mailbox()).as<std::string>());
-  lsub->set_mailbox(visit(ctx->listMailbox()).as<std::string>());
+  lsub->set_reference(std::any_cast<std::string>(visit(ctx->mailbox())));
+  lsub->set_mailbox(std::any_cast<std::string>(visit(ctx->listMailbox())));
 
   return lsub;
 }
@@ -294,7 +294,7 @@ antlrcpp::Any Visitor::visitLsub(imap::IMAPParser::LsubContext* ctx) {
 antlrcpp::Any Visitor::visitStatus(imap::IMAPParser::StatusContext* ctx) {
   auto status = new proto::Status;
 
-  status->set_mailbox(visit(ctx->mailbox()).as<std::string>());
+  status->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox())));
 
   for (const auto& att : ctx->statusAtt())
     status->add_attributes(att->getText());
@@ -305,15 +305,15 @@ antlrcpp::Any Visitor::visitStatus(imap::IMAPParser::StatusContext* ctx) {
 antlrcpp::Any Visitor::visitAppend(imap::IMAPParser::AppendContext* ctx) {
   auto append = new proto::Append;
 
-  append->set_mailbox(visit(ctx->mailbox()).as<std::string>());
+  append->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox())));
 
-  append->set_message(visit(ctx->literal()).as<std::string>());
+  append->set_message(std::any_cast<std::string>(visit(ctx->literal())));
 
   if (ctx->dateTime())
-    append->set_allocated_datetime(visit(ctx->dateTime()).as<proto::DateTime*>());
+    append->set_allocated_datetime(std::any_cast<proto::DateTime*>(visit(ctx->dateTime())));
 
   if (ctx->flagList()) {
-    auto flags = visit(ctx->flagList()).as<std::vector<std::string>>();
+    auto flags = std::any_cast<std::vector<std::string>>(visit(ctx->flagList()));
 
     for (const auto& flag : flags)
       append->add_flags(flag);
@@ -337,7 +337,7 @@ antlrcpp::Any Visitor::visitExpunge(imap::IMAPParser::ExpungeContext* ctx) {
 antlrcpp::Any Visitor::visitUidExpunge(imap::IMAPParser::UidExpungeContext* ctx) {
   auto expunge = new proto::UIDExpunge;
 
-  expunge->set_allocated_sequenceset(visit(ctx->seqSet()).as<proto::SequenceSet*>());
+  expunge->set_allocated_sequenceset(std::any_cast<proto::SequenceSet*>(visit(ctx->seqSet())));
 
   return expunge;
 }
@@ -350,10 +350,10 @@ antlrcpp::Any Visitor::visitSearch(imap::IMAPParser::SearchContext* ctx) {
   auto search = new proto::Search;
 
   if (ctx->astring())
-    search->set_charset(visit(ctx->astring()).as<std::string>());
+    search->set_charset(std::any_cast<std::string>(visit(ctx->astring())));
 
   for (const auto& key : ctx->searchKey())
-    search->add_keys()->CopyFrom(*visit(key).as<proto::SearchKey*>());
+    search->add_keys()->CopyFrom(*std::any_cast<proto::SearchKey*>(visit(key)));
 
   return search;
 }
@@ -361,9 +361,9 @@ antlrcpp::Any Visitor::visitSearch(imap::IMAPParser::SearchContext* ctx) {
 antlrcpp::Any Visitor::visitFetch(imap::IMAPParser::FetchContext* ctx) {
   auto fetch = new proto::Fetch;
 
-  fetch->set_allocated_sequenceset(visit(ctx->seqSet()).as<proto::SequenceSet*>());
+  fetch->set_allocated_sequenceset(std::any_cast<proto::SequenceSet*>(visit(ctx->seqSet())));
 
-  auto atts = visit(ctx->fetchTarget()).as<std::vector<proto::FetchAttribute*>>();
+  auto atts = std::any_cast<std::vector<proto::FetchAttribute*>>(visit(ctx->fetchTarget()));
 
   for (const auto& att : atts)
     fetch->add_attributes()->CopyFrom(*att);
@@ -374,11 +374,11 @@ antlrcpp::Any Visitor::visitFetch(imap::IMAPParser::FetchContext* ctx) {
 antlrcpp::Any Visitor::visitStore(imap::IMAPParser::StoreContext* ctx) {
   auto store = new proto::Store;
 
-  store->set_allocated_sequenceset(visit(ctx->seqSet()).as<proto::SequenceSet*>());
+  store->set_allocated_sequenceset(std::any_cast<proto::SequenceSet*>(visit(ctx->seqSet())));
 
-  store->set_allocated_action(visit(ctx->storeAction()).as<proto::StoreAction*>());
+  store->set_allocated_action(std::any_cast<proto::StoreAction*>(visit(ctx->storeAction())));
 
-  auto flags = visit(ctx->storeFlags()).as<std::vector<std::string>>();
+  auto flags = std::any_cast<std::vector<std::string>>(visit(ctx->storeFlags()));
 
   for (const auto& flag : flags)
     store->add_flags(flag);
@@ -389,9 +389,9 @@ antlrcpp::Any Visitor::visitStore(imap::IMAPParser::StoreContext* ctx) {
 antlrcpp::Any Visitor::visitCopy(imap::IMAPParser::CopyContext* ctx) {
   auto copy = new proto::Copy;
 
-  copy->set_allocated_sequenceset(visit(ctx->seqSet()).as<proto::SequenceSet*>());
+  copy->set_allocated_sequenceset(std::any_cast<proto::SequenceSet*>(visit(ctx->seqSet())));
 
-  copy->set_mailbox(visit(ctx->mailbox()).as<std::string>());
+  copy->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox())));
 
   return copy;
 }
@@ -399,9 +399,9 @@ antlrcpp::Any Visitor::visitCopy(imap::IMAPParser::CopyContext* ctx) {
 antlrcpp::Any Visitor::visitMove(imap::IMAPParser::MoveContext* ctx) {
   auto move = new proto::Move;
 
-  move->set_allocated_sequenceset(visit(ctx->seqSet()).as<proto::SequenceSet*>());
+  move->set_allocated_sequenceset(std::any_cast<proto::SequenceSet*>(visit(ctx->seqSet())));
 
-  move->set_mailbox(visit(ctx->mailbox()).as<std::string>());
+  move->set_mailbox(std::any_cast<std::string>(visit(ctx->mailbox())));
 
   return move;
 }
@@ -410,23 +410,23 @@ antlrcpp::Any Visitor::visitUid(imap::IMAPParser::UidContext* ctx) {
   auto uid = new proto::UID;
 
   if (ctx->copy()) {
-    uid->set_allocated_copy(visit(ctx->copy()).as<proto::Copy*>());
+    uid->set_allocated_copy(std::any_cast<proto::Copy*>(visit(ctx->copy())));
   }
 
   if (ctx->fetch()) {
-    uid->set_allocated_fetch(visit(ctx->fetch()).as<proto::Fetch*>());
+    uid->set_allocated_fetch(std::any_cast<proto::Fetch*>(visit(ctx->fetch())));
   }
 
   if (ctx->search()) {
-    uid->set_allocated_search(visit(ctx->search()).as<proto::Search*>());
+    uid->set_allocated_search(std::any_cast<proto::Search*>(visit(ctx->search())));
   }
 
   if (ctx->store()) {
-    uid->set_allocated_store(visit(ctx->store()).as<proto::Store*>());
+    uid->set_allocated_store(std::any_cast<proto::Store*>(visit(ctx->store())));
   }
 
   if (ctx->move()) {
-    uid->set_allocated_move(visit(ctx->move()).as<proto::Move*>());
+    uid->set_allocated_move(std::any_cast<proto::Move*>(visit(ctx->move())));
   }
 
   return uid;
@@ -454,8 +454,8 @@ antlrcpp::Any Visitor::visitId_param_list(imap::IMAPParser::Id_param_listContext
 
 antlrcpp::Any Visitor::visitId_param_key_pair(imap::IMAPParser::Id_param_key_pairContext* ctx) {
   namespace proto = google::protobuf;
-  return proto::MapPair<std::string, std::string>{visit(ctx->string()).as<std::string>(),
-                                                  visit(ctx->id_param_key_value()).as<std::string>()};
+  return proto::MapPair<std::string, std::string>{std::any_cast<std::string>(visit(ctx->string())),
+                                                  std::any_cast<std::string>(visit(ctx->id_param_key_value()))};
 }
 
 antlrcpp::Any Visitor::visitId_params(imap::IMAPParser::Id_paramsContext* ctx) {
@@ -463,7 +463,7 @@ antlrcpp::Any Visitor::visitId_params(imap::IMAPParser::Id_paramsContext* ctx) {
   protobuf::Map<std::string, std::string> keys;
 
   for (const auto& keyPair : ctx->id_param_key_pair()) {
-    keys.insert(visit(keyPair).as<protobuf::MapPair<std::string, std::string>>());
+    keys.insert(std::any_cast<protobuf::MapPair<std::string, std::string>>(visit(keyPair)));
   }
 
   auto result = new proto::IDSet();
@@ -475,7 +475,7 @@ antlrcpp::Any Visitor::visitId_param_key_value(imap::IMAPParser::Id_param_key_va
   if (ctx->id_nil_param() != nullptr) {
     return std::string();
   } else {
-    return visit(ctx->nstring()).as<std::string>();
+    return std::any_cast<std::string>(visit(ctx->nstring()));
   }
 }
 
@@ -526,9 +526,9 @@ antlrcpp::Any Visitor::visitDateTime(imap::IMAPParser::DateTimeContext* ctx) {
 
   dateTime->mutable_date()->set_year(std::atoi(ctx->dateYear()->getText().c_str()));
 
-  dateTime->set_allocated_time(visit(ctx->time()).as<proto::Time*>());
+  dateTime->set_allocated_time(std::any_cast<proto::Time*>(visit(ctx->time())));
 
-  dateTime->set_allocated_zone(visit(ctx->zone()).as<proto::Zone*>());
+  dateTime->set_allocated_zone(std::any_cast<proto::Zone*>(visit(ctx->zone())));
 
   return dateTime;
 }
@@ -555,7 +555,7 @@ antlrcpp::Any Visitor::visitZone(imap::IMAPParser::ZoneContext* ctx) {
 
   zone->set_hour(std::atoi(hour.c_str()));
   zone->set_minute(std::atoi(minute.c_str()));
-  zone->set_sign(visit(ctx->sign()).as<bool>());
+  zone->set_sign(std::any_cast<bool>(visit(ctx->sign())));
 
   return zone;
 }
@@ -589,7 +589,7 @@ antlrcpp::Any Visitor::visitSearchKeyBcc(imap::IMAPParser::SearchKeyBccContext* 
 
   key->set_keyword(proto::SearchKeyword::SearchKWBcc);
 
-  key->set_text(visit(ctx->astring()).as<std::string>());
+  key->set_text(std::any_cast<std::string>(visit(ctx->astring())));
 
   return key;
 }
@@ -599,7 +599,7 @@ antlrcpp::Any Visitor::visitSearchKeyBefore(imap::IMAPParser::SearchKeyBeforeCon
 
   key->set_keyword(proto::SearchKeyword::SearchKWBefore);
 
-  key->set_date(visit(ctx->date()).as<std::string>());
+  key->set_date(std::any_cast<std::string>(visit(ctx->date())));
 
   return key;
 }
@@ -609,7 +609,7 @@ antlrcpp::Any Visitor::visitSearchKeyBody(imap::IMAPParser::SearchKeyBodyContext
 
   key->set_keyword(proto::SearchKeyword::SearchKWBody);
 
-  key->set_text(visit(ctx->astring()).as<std::string>());
+  key->set_text(std::any_cast<std::string>(visit(ctx->astring())));
 
   return key;
 }
@@ -619,7 +619,7 @@ antlrcpp::Any Visitor::visitSearchKeyCc(imap::IMAPParser::SearchKeyCcContext* ct
 
   key->set_keyword(proto::SearchKeyword::SearchKWCc);
 
-  key->set_text(visit(ctx->astring()).as<std::string>());
+  key->set_text(std::any_cast<std::string>(visit(ctx->astring())));
 
   return key;
 }
@@ -645,7 +645,7 @@ antlrcpp::Any Visitor::visitSearchKeyFrom(imap::IMAPParser::SearchKeyFromContext
 
   key->set_keyword(proto::SearchKeyword::SearchKWFrom);
 
-  key->set_text(visit(ctx->astring()).as<std::string>());
+  key->set_text(std::any_cast<std::string>(visit(ctx->astring())));
 
   return key;
 }
@@ -681,7 +681,7 @@ antlrcpp::Any Visitor::visitSearchKeyOn(imap::IMAPParser::SearchKeyOnContext* ct
 
   key->set_keyword(proto::SearchKeyword::SearchKWOn);
 
-  key->set_date(visit(ctx->date()).as<std::string>());
+  key->set_date(std::any_cast<std::string>(visit(ctx->date())));
 
   return key;
 }
@@ -707,7 +707,7 @@ antlrcpp::Any Visitor::visitSearchKeySince(imap::IMAPParser::SearchKeySinceConte
 
   key->set_keyword(proto::SearchKeyword::SearchKWSince);
 
-  key->set_date(visit(ctx->date()).as<std::string>());
+  key->set_date(std::any_cast<std::string>(visit(ctx->date())));
 
   return key;
 }
@@ -717,7 +717,7 @@ antlrcpp::Any Visitor::visitSearchKeySubject(imap::IMAPParser::SearchKeySubjectC
 
   key->set_keyword(proto::SearchKeyword::SearchKWSubject);
 
-  key->set_text(visit(ctx->astring()).as<std::string>());
+  key->set_text(std::any_cast<std::string>(visit(ctx->astring())));
 
   return key;
 }
@@ -727,7 +727,7 @@ antlrcpp::Any Visitor::visitSearchKeyText(imap::IMAPParser::SearchKeyTextContext
 
   key->set_keyword(proto::SearchKeyword::SearchKWText);
 
-  key->set_text(visit(ctx->astring()).as<std::string>());
+  key->set_text(std::any_cast<std::string>(visit(ctx->astring())));
 
   return key;
 }
@@ -737,7 +737,7 @@ antlrcpp::Any Visitor::visitSearchKeyTo(imap::IMAPParser::SearchKeyToContext* ct
 
   key->set_keyword(proto::SearchKeyword::SearchKWTo);
 
-  key->set_text(visit(ctx->astring()).as<std::string>());
+  key->set_text(std::any_cast<std::string>(visit(ctx->astring())));
 
   return key;
 }
@@ -797,9 +797,9 @@ antlrcpp::Any Visitor::visitSearchKeyHeader(imap::IMAPParser::SearchKeyHeaderCon
 
   key->set_keyword(proto::SearchKeyword::SearchKWHeader);
 
-  key->set_text(visit(ctx->astring()).as<std::string>());
+  key->set_text(std::any_cast<std::string>(visit(ctx->astring())));
 
-  key->set_field(visit(ctx->headerFieldName()->astring()).as<std::string>());
+  key->set_field(std::any_cast<std::string>(visit(ctx->headerFieldName()->astring())));
 
   return key;
 }
@@ -809,7 +809,7 @@ antlrcpp::Any Visitor::visitSearchKeyLarger(imap::IMAPParser::SearchKeyLargerCon
 
   key->set_keyword(proto::SearchKeyword::SearchKWLarger);
 
-  key->set_size(visit(ctx->number()).as<int>());
+  key->set_size(std::any_cast<int>(visit(ctx->number())));
 
   return key;
 }
@@ -819,7 +819,7 @@ antlrcpp::Any Visitor::visitSearchKeyNot(imap::IMAPParser::SearchKeyNotContext* 
 
   key->set_keyword(proto::SearchKeyword::SearchKWNot);
 
-  key->set_allocated_leftop(visit(ctx->searchKey()).as<proto::SearchKey*>());
+  key->set_allocated_leftop(std::any_cast<proto::SearchKey*>(visit(ctx->searchKey())));
 
   return key;
 }
@@ -829,9 +829,9 @@ antlrcpp::Any Visitor::visitSearchKeyOr(imap::IMAPParser::SearchKeyOrContext* ct
 
   key->set_keyword(proto::SearchKeyword::SearchKWOr);
 
-  key->set_allocated_leftop(visit(ctx->searchKey()[0]).as<proto::SearchKey*>());
+  key->set_allocated_leftop(std::any_cast<proto::SearchKey*>(visit(ctx->searchKey()[0])));
 
-  key->set_allocated_rightop(visit(ctx->searchKey()[1]).as<proto::SearchKey*>());
+  key->set_allocated_rightop(std::any_cast<proto::SearchKey*>(visit(ctx->searchKey()[1])));
 
   return key;
 }
@@ -841,7 +841,7 @@ antlrcpp::Any Visitor::visitSearchKeySentBefore(imap::IMAPParser::SearchKeySentB
 
   key->set_keyword(proto::SearchKeyword::SearchKWSentBefore);
 
-  key->set_date(visit(ctx->date()).as<std::string>());
+  key->set_date(std::any_cast<std::string>(visit(ctx->date())));
 
   return key;
 }
@@ -851,7 +851,7 @@ antlrcpp::Any Visitor::visitSearchKeySentOn(imap::IMAPParser::SearchKeySentOnCon
 
   key->set_keyword(proto::SearchKeyword::SearchKWSentOn);
 
-  key->set_date(visit(ctx->date()).as<std::string>());
+  key->set_date(std::any_cast<std::string>(visit(ctx->date())));
 
   return key;
 }
@@ -861,7 +861,7 @@ antlrcpp::Any Visitor::visitSearchKeySentSince(imap::IMAPParser::SearchKeySentSi
 
   key->set_keyword(proto::SearchKeyword::SearchKWSentSince);
 
-  key->set_date(visit(ctx->date()).as<std::string>());
+  key->set_date(std::any_cast<std::string>(visit(ctx->date())));
 
   return key;
 }
@@ -871,7 +871,7 @@ antlrcpp::Any Visitor::visitSearchKeySmaller(imap::IMAPParser::SearchKeySmallerC
 
   key->set_keyword(proto::SearchKeyword::SearchKWSmaller);
 
-  key->set_size(visit(ctx->number()).as<int>());
+  key->set_size(std::any_cast<int>(visit(ctx->number())));
 
   return key;
 }
@@ -881,7 +881,7 @@ antlrcpp::Any Visitor::visitSearchKeyUID(imap::IMAPParser::SearchKeyUIDContext* 
 
   key->set_keyword(proto::SearchKeyword::SearchKWUID);
 
-  key->set_allocated_sequenceset(visit(ctx->seqSet()).as<proto::SequenceSet*>());
+  key->set_allocated_sequenceset(std::any_cast<proto::SequenceSet*>(visit(ctx->seqSet())));
 
   return key;
 }
@@ -899,7 +899,7 @@ antlrcpp::Any Visitor::visitSearchKeySeqSet(imap::IMAPParser::SearchKeySeqSetCon
 
   key->set_keyword(proto::SearchKeyword::SearchKWSeqSet);
 
-  key->set_allocated_sequenceset(visit(ctx->seqSet()).as<proto::SequenceSet*>());
+  key->set_allocated_sequenceset(std::any_cast<proto::SequenceSet*>(visit(ctx->seqSet())));
 
   return key;
 }
@@ -910,7 +910,7 @@ antlrcpp::Any Visitor::visitSearchKeyList(imap::IMAPParser::SearchKeyListContext
   key->set_keyword(proto::SearchKeyword::SearchKWList);
 
   for (const auto& child : ctx->searchKey())
-    key->add_children()->CopyFrom(*visit(child).as<proto::SearchKey*>());
+    key->add_children()->CopyFrom(*std::any_cast<proto::SearchKey*>(visit(child)));
 
   return key;
 }
@@ -923,7 +923,7 @@ antlrcpp::Any Visitor::visitSeqSet(imap::IMAPParser::SeqSetContext* ctx) {
   auto sequenceSet = new proto::SequenceSet;
 
   for (const auto& item : ctx->seqItem())
-    sequenceSet->add_items()->CopyFrom(*visit(item).as<proto::SequenceItem*>());
+    sequenceSet->add_items()->CopyFrom(*std::any_cast<proto::SequenceItem*>(visit(item)));
 
   return sequenceSet;
 }
@@ -939,7 +939,7 @@ antlrcpp::Any Visitor::visitSeqItemNum(imap::IMAPParser::SeqItemNumContext* ctx)
 antlrcpp::Any Visitor::visitSeqItemRng(imap::IMAPParser::SeqItemRngContext* ctx) {
   auto seqItem = new proto::SequenceItem;
 
-  seqItem->set_allocated_range(visit(ctx->seqRange()).as<proto::SequenceRange*>());
+  seqItem->set_allocated_range(std::any_cast<proto::SequenceRange*>(visit(ctx->seqRange())));
 
   return seqItem;
 }
@@ -957,7 +957,7 @@ antlrcpp::Any Visitor::visitStoreAction(imap::IMAPParser::StoreActionContext* ct
   auto storeAction = new proto::StoreAction;
 
   if (ctx->sign()) {
-    if (visit(ctx->sign()).as<bool>())
+    if (std::any_cast<bool>(visit(ctx->sign())))
       storeAction->set_operation(proto::Operation::Add);
     else
       storeAction->set_operation(proto::Operation::Remove);
@@ -1039,7 +1039,7 @@ antlrcpp::Any Visitor::visitFetchTargetAtt(imap::IMAPParser::FetchTargetAttConte
   auto atts = std::vector<proto::FetchAttribute*>{};
 
   for (const auto& att : ctx->fetchAtt())
-    atts.push_back(visit(att).as<proto::FetchAttribute*>());
+    atts.push_back(std::any_cast<proto::FetchAttribute*>(visit(att)));
 
   return atts;
 }
@@ -1135,10 +1135,10 @@ antlrcpp::Any Visitor::visitFetchAttBodySection(imap::IMAPParser::FetchAttBodySe
     att->mutable_body()->set_peek(true);
 
   if (ctx->section())
-    att->mutable_body()->set_allocated_section(visit(ctx->section()).as<proto::BodySection*>());
+    att->mutable_body()->set_allocated_section(std::any_cast<proto::BodySection*>(visit(ctx->section())));
 
   if (ctx->partial())
-    att->mutable_body()->set_allocated_partial(visit(ctx->partial()).as<proto::BodyPartial*>());
+    att->mutable_body()->set_allocated_partial(std::any_cast<proto::BodyPartial*>(visit(ctx->partial())));
 
   return att;
 }
@@ -1164,7 +1164,7 @@ antlrcpp::Any Visitor::visitSectionKwdHeaderFields(imap::IMAPParser::SectionKwdH
     section->set_keyword(proto::SectionKeyword::HeaderFieldsNot);
 
   for (const auto& field : ctx->headerList()->headerFieldName())
-    section->add_fields(visit(field->astring()).as<std::string>());
+    section->add_fields(std::any_cast<std::string>(visit(field->astring())));
 
   return section;
 }
@@ -1192,10 +1192,10 @@ antlrcpp::Any Visitor::visitSectionWithPart(imap::IMAPParser::SectionWithPartCon
   auto section = new proto::BodySection;
 
   if (ctx->sectionText())
-    section->CopyFrom(*visit(ctx->sectionText()).as<proto::BodySection*>());
+    section->CopyFrom(*std::any_cast<proto::BodySection*>(visit(ctx->sectionText())));
 
   for (const auto& number : ctx->sectionPart()->number())
-    section->add_parts(visit(number).as<int>());
+    section->add_parts(std::any_cast<int>(visit(number)));
 
   return section;
 }
@@ -1203,8 +1203,8 @@ antlrcpp::Any Visitor::visitSectionWithPart(imap::IMAPParser::SectionWithPartCon
 antlrcpp::Any Visitor::visitPartial(imap::IMAPParser::PartialContext* ctx) {
   auto partial = new proto::BodyPartial;
 
-  partial->set_begin(visit(ctx->number(0)).as<int>());
-  partial->set_count(visit(ctx->number(1)).as<int>());
+  partial->set_begin(std::any_cast<int>(visit(ctx->number(0))));
+  partial->set_count(std::any_cast<int>(visit(ctx->number(1))));
 
   return partial;
 }
