@@ -21,6 +21,7 @@ var (
 	searchCountFlag     = flag.Uint("imap-search-count", 0, "Total number of messages to search during search benchmarks.")
 	searchTextListFlag  = flag.String("imap-search-text-list", "", "Use a list of new line separate search queries instead instead of the default list.")
 	searchSinceListFlag = flag.String("imap-search-since-list", "", "Use a list of new line dates instead of random generated.")
+	searchCmdQueryFlag  = flag.String("imap-search-cmd", "", "Search command to execute e.g.: \"OR BEFORE <> SINCE <>\"")
 )
 
 type SearchQuery interface {
@@ -196,7 +197,53 @@ func (s *SearchSinceQuery) Run(ctx context.Context, cl *client.Client, workerInd
 	return nil
 }
 
+type SearchCmdQuery struct {
+	criteria    *imap.SearchCriteria
+	searchCount uint32
+}
+
+func (*SearchCmdQuery) Name() string {
+	return "imap-search-cmd"
+}
+
+func (s *SearchCmdQuery) Setup(ctx context.Context, cl *client.Client, searchCount uint32) error {
+	s.criteria = imap.NewSearchCriteria()
+
+	if len(*searchCmdQueryFlag) == 0 {
+		return fmt.Errorf("please provide a query with -imap-search-cmd")
+	}
+
+	queries := strings.Split(*searchCmdQueryFlag, " ")
+
+	fields := xslices.Map(queries, func(v string) interface{} {
+		return interface{}(v)
+	})
+
+	if err := s.criteria.ParseWithCharset(fields, nil); err != nil {
+		return err
+	}
+
+	s.searchCount = searchCount
+
+	return nil
+}
+
+func (*SearchCmdQuery) TearDown(ctx context.Context, cl *client.Client) error {
+	return nil
+}
+
+func (s *SearchCmdQuery) Run(ctx context.Context, cl *client.Client, workerIndex uint) error {
+	for i := uint32(0); i < s.searchCount; i++ {
+		if _, err := cl.Search(s.criteria); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func init() {
 	benchmark.RegisterBenchmark(NewSearch(&SearchSinceQuery{}))
 	benchmark.RegisterBenchmark(NewSearch(&SearchTextQuery{}))
+	benchmark.RegisterBenchmark(NewSearch(&SearchCmdQuery{}))
 }
