@@ -26,26 +26,13 @@ func TestMergeResponses(t *testing.T) {
 				Exists().WithCount(4),
 			},
 		},
-		"exists decreased": {
-			given: []Response{
-				Exists().WithCount(1),
-				Exists().WithCount(2),
-				Exists().WithCount(1),
-				Exists().WithCount(2),
-				Exists().WithCount(3),
-				Exists().WithCount(4),
-			},
-			want: []Response{
-				Exists().WithCount(2),
-				Exists().WithCount(1),
-				Exists().WithCount(4),
-			},
-		},
 		"interupted exists": {
 			given: []Response{
 				Exists().WithCount(1),
 				Exists().WithCount(2),
 				Expunge(1),
+				Exists().WithCount(1),
+				Exists().WithCount(2),
 				Exists().WithCount(3),
 			},
 			want: []Response{
@@ -65,26 +52,13 @@ func TestMergeResponses(t *testing.T) {
 				Recent().WithCount(4),
 			},
 		},
-		"recent decreased": {
-			given: []Response{
-				Recent().WithCount(1),
-				Recent().WithCount(2),
-				Recent().WithCount(1),
-				Recent().WithCount(2),
-				Recent().WithCount(3),
-				Recent().WithCount(4),
-			},
-			want: []Response{
-				Recent().WithCount(2),
-				Recent().WithCount(1),
-				Recent().WithCount(4),
-			},
-		},
 		"interupted recent": {
 			given: []Response{
 				Recent().WithCount(1),
 				Recent().WithCount(2),
 				Expunge(1),
+				Recent().WithCount(1),
+				Recent().WithCount(2),
 				Recent().WithCount(3),
 			},
 			want: []Response{
@@ -115,34 +89,6 @@ func TestMergeResponses(t *testing.T) {
 				Recent().WithCount(8),
 			},
 		},
-		"decreasing exists while having recent": {
-			given: []Response{
-				Exists().WithCount(1),
-				Recent().WithCount(1),
-				Exists().WithCount(2),
-				Recent().WithCount(2),
-				Exists().WithCount(1),
-			},
-			want: []Response{
-				Exists().WithCount(2),
-				Exists().WithCount(1),
-				Recent().WithCount(2),
-			},
-		},
-		"decreasing recent while having exists": {
-			given: []Response{
-				Recent().WithCount(1),
-				Exists().WithCount(1),
-				Recent().WithCount(2),
-				Exists().WithCount(2),
-				Recent().WithCount(1),
-			},
-			want: []Response{
-				Recent().WithCount(2),
-				Recent().WithCount(1),
-				Exists().WithCount(2),
-			},
-		},
 		"interupting exists and recent": {
 			given: []Response{
 				Exists().WithCount(1),
@@ -150,20 +96,62 @@ func TestMergeResponses(t *testing.T) {
 				Exists().WithCount(2),
 				Recent().WithCount(2),
 				Expunge(1),
-				Exists().WithCount(3),
-				Recent().WithCount(3),
+				Exists().WithCount(2),
+				Recent().WithCount(2),
 			},
 			want: []Response{
 				Exists().WithCount(2),
 				Recent().WithCount(2),
 				Expunge(1),
-				Exists().WithCount(3),
-				Recent().WithCount(3),
+				Exists().WithCount(2),
+				Recent().WithCount(2),
 			},
 		},
 	} {
 		t.Run(testCase, func(t *testing.T) {
 			require.Equal(t, testData.want, Merge(testData.given))
+		})
+	}
+}
+
+func TestMergeResponsesPanics(t *testing.T) {
+	for testCase, testData := range map[string][]Response{
+		"exists decreased": {
+			Exists().WithCount(1),
+			Exists().WithCount(2),
+			Exists().WithCount(1),
+			Exists().WithCount(2),
+			Exists().WithCount(3),
+			Exists().WithCount(4),
+		},
+		"recent decreased": {
+			Recent().WithCount(1),
+			Recent().WithCount(2),
+			Recent().WithCount(1),
+			Recent().WithCount(2),
+			Recent().WithCount(3),
+			Recent().WithCount(4),
+		},
+		"decreasing exists while having recent": {
+			Exists().WithCount(1),
+			Recent().WithCount(1),
+			Exists().WithCount(2),
+			Recent().WithCount(2),
+			Exists().WithCount(1),
+		},
+		"decreasing recent while having exists": {
+			Recent().WithCount(1),
+			Exists().WithCount(1),
+			Recent().WithCount(2),
+			Exists().WithCount(2),
+			Recent().WithCount(1),
+		},
+	} {
+		t.Run(testCase, func(t *testing.T) {
+			require.PanicsWithValue(t,
+				"response decreased ID for exists or recent without expunge",
+				func() { Merge(testData) },
+			)
 		})
 	}
 }
