@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"net/mail"
+	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -14,415 +16,569 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/rfc822"
+	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/text/encoding"
 )
 
-func (m *Mailbox) Search(ctx context.Context, keys []*proto.SearchKey, decoder *encoding.Decoder) ([]uint32, error) {
-	snapMessages := m.snap.getAllMessages()
+var totalActiveSearchRequests int32
 
-	messages, err := doSearch(ctx, m, snapMessages, keys, decoder)
+func (m *Mailbox) Search(ctx context.Context, keys []*proto.SearchKey, decoder *encoding.Decoder) ([]uint32, error) {
+	var mapFn func(snapMsgWithSeq) uint32
+
+	if contexts.IsUID(ctx) {
+		mapFn = func(s snapMsgWithSeq) uint32 {
+			return uint32(s.UID)
+		}
+	} else {
+		mapFn = func(s snapMsgWithSeq) uint32 {
+			return uint32(s.Seq)
+		}
+	}
+
+	op, err := buildSearchOpListWithKeys(m, keys, decoder)
 	if err != nil {
 		return nil, err
 	}
 
-	return xslices.Map(messages, func(msg snapMsgWithSeq) uint32 {
-		if contexts.IsUID(ctx) {
-			return uint32(msg.UID)
+	msgCount := m.snap.len()
+
+	result := make([]uint32, msgCount)
+
+	activeSearchRequests := atomic.AddInt32(&totalActiveSearchRequests, 1)
+	defer atomic.AddInt32(&totalActiveSearchRequests, -1)
+
+	parallelism := runtime.NumCPU() / int(activeSearchRequests)
+
+	if err := parallel.DoContext(ctx, parallelism, msgCount, func(ctx context.Context, i int) error {
+		msg, ok := m.snap.messages.getWithSeqID(imap.SeqID(i + 1))
+		if !ok {
+			return nil
 		}
 
-		return uint32(msg.Seq)
+		matches, err := applySearch(ctx, m, msg, op)
+		if err != nil {
+			return err
+		}
+
+		if matches {
+			result[i] = mapFn(msg)
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return xslices.Filter(result, func(v uint32) bool {
+		return v != 0
 	}), nil
 }
 
-func doSearch(ctx context.Context, m *Mailbox, candidates []snapMsgWithSeq, keys []*proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	for _, key := range keys {
-		filtered, err := m.matchSearchKey(ctx, candidates, key, decoder)
+func buildSearchData(ctx context.Context, m *Mailbox, op *buildSearchOpResult, message snapMsgWithSeq) (searchData, error) {
+	data := searchData{message: message}
+
+	if op.needsMessage {
+		dbm, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
+			return db.GetMessageDateAndSize(ctx, client, message.ID.InternalID)
+		})
 		if err != nil {
-			return nil, err
+			return searchData{}, err
 		}
 
-		candidates = filtered
+		data.dbMessage.size = dbm.Size
+		data.dbMessage.date = dbm.Date
 	}
 
-	return candidates, nil
+	if op.needsLiteral {
+		l, err := m.state.getLiteral(message.ID.InternalID)
+		if err != nil {
+			return searchData{}, err
+		}
+
+		data.literal = l
+	}
+
+	if op.needsHeader {
+		headerBytes, _ := rfc822.Split(data.literal)
+		h, err := rfc822.NewHeader(headerBytes)
+
+		if err != nil {
+			return searchData{}, err
+		}
+
+		data.header = h
+	}
+
+	return data, nil
 }
 
-func (m *Mailbox) matchSearchKey(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
+func applySearch(ctx context.Context, m *Mailbox, msg snapMsgWithSeq, searchOp *buildSearchOpResult) (bool, error) {
+	data, err := buildSearchData(ctx, m, searchOp, msg)
+	if err != nil {
+		return false, err
+	}
+
+	ok, err := searchOp.op(&data)
+	if err != nil {
+		return false, err
+	}
+
+	return ok, nil
+}
+
+type searchData struct {
+	message   snapMsgWithSeq
+	literal   []byte
+	dbMessage struct {
+		date time.Time
+		size int
+	}
+	header *rfc822.Header
+}
+
+type searchOp = func(*searchData) (bool, error)
+
+type buildSearchOpResult struct {
+	op           searchOp
+	needsLiteral bool
+	needsMessage bool
+	needsHeader  bool
+}
+
+func (b *buildSearchOpResult) merge(other *buildSearchOpResult) {
+	b.needsLiteral = b.needsLiteral || other.needsLiteral
+	b.needsMessage = b.needsMessage || other.needsMessage
+	b.needsHeader = b.needsHeader || other.needsHeader
+}
+
+type searchOpResultOption interface {
+	apply(*buildSearchOpResult)
+}
+
+type withHeaderSearchOpResultOption struct{}
+
+func (withHeaderSearchOpResultOption) apply(s *buildSearchOpResult) {
+	s.needsHeader = true
+	s.needsLiteral = true
+}
+
+func needsHeader() searchOpResultOption {
+	return &withHeaderSearchOpResultOption{}
+}
+
+type withLiteralSearchOpResultOption struct{}
+
+func (withLiteralSearchOpResultOption) apply(s *buildSearchOpResult) {
+	s.needsLiteral = true
+}
+
+func needsLiteral() searchOpResultOption {
+	return &withLiteralSearchOpResultOption{}
+}
+
+type withDBMessageSearchOpResultOption struct{}
+
+func (withDBMessageSearchOpResultOption) apply(s *buildSearchOpResult) {
+	s.needsMessage = true
+}
+
+func needsDBMessage() searchOpResultOption {
+	return &withDBMessageSearchOpResultOption{}
+}
+
+func newBuildSearchOpResult(op searchOp, needs ...searchOpResultOption) *buildSearchOpResult {
+	r := &buildSearchOpResult{op: op}
+
+	for _, v := range needs {
+		v.apply(r)
+	}
+
+	return r
+}
+
+func buildSearchOp(m *Mailbox, key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
 	switch key.Keyword {
 	case proto.SearchKeyword_SearchKWAll:
-		return m.matchSearchKeyAll(ctx, candidates)
+		return buildSearchOpAll()
 
 	case proto.SearchKeyword_SearchKWAnswered:
-		return m.matchSearchKeyAnswered(ctx, candidates)
+		return buildSearchOpAnswered()
 
 	case proto.SearchKeyword_SearchKWBcc:
-		return m.matchSearchKeyBcc(ctx, candidates, key, decoder)
+		return buildSearchOpBcc(key, decoder)
 
 	case proto.SearchKeyword_SearchKWBefore:
-		return m.matchSearchKeyBefore(ctx, candidates, key)
+		return buildSearchOpBefore(key)
 
 	case proto.SearchKeyword_SearchKWBody:
-		return m.matchSearchKeyBody(ctx, candidates, key, decoder)
+		return buildSearchOpBody(key, decoder)
 
 	case proto.SearchKeyword_SearchKWCc:
-		return m.matchSearchKeyCc(ctx, candidates, key, decoder)
+		return buildSearchOpCc(key, decoder)
 
 	case proto.SearchKeyword_SearchKWDeleted:
-		return m.matchSearchKeyDeleted(ctx, candidates)
+		return buildSearchOpDeleted()
 
 	case proto.SearchKeyword_SearchKWDraft:
-		return m.matchSearchKeyDraft(ctx, candidates)
+		return buildSearchOpDraft()
 
 	case proto.SearchKeyword_SearchKWFlagged:
-		return m.matchSearchKeyFlagged(ctx, candidates)
+		return buildSearchOpFlagged()
 
 	case proto.SearchKeyword_SearchKWFrom:
-		return m.matchSearchKeyFrom(ctx, candidates, key, decoder)
+		return buildSearchOpFrom(key, decoder)
 
 	case proto.SearchKeyword_SearchKWHeader:
-		return m.matchSearchKeyHeader(ctx, candidates, key, decoder)
+		return buildSearchOpHeader(key, decoder)
 
 	case proto.SearchKeyword_SearchKWKeyword:
-		return m.matchSearchKeyKeyword(ctx, candidates, key)
+		return buildSearchOpKeyword(key)
 
 	case proto.SearchKeyword_SearchKWLarger:
-		return m.matchSearchKeyLarger(ctx, candidates, key)
+		return buildSearchOpLarger(key)
 
 	case proto.SearchKeyword_SearchKWNew:
-		return m.matchSearchKeyNew(ctx, candidates)
+		return buildSearchOpNew()
 
 	case proto.SearchKeyword_SearchKWNot:
-		return m.matchSearchKeyNot(ctx, candidates, key, decoder)
+		return buildSearchOpNot(m, key, decoder)
 
 	case proto.SearchKeyword_SearchKWOld:
-		return m.matchSearchKeyOld(ctx, candidates)
+		return buildSearchOpOld()
 
 	case proto.SearchKeyword_SearchKWOn:
-		return m.matchSearchKeyOn(ctx, candidates, key)
+		return buildSearchOpOn(key)
 
 	case proto.SearchKeyword_SearchKWOr:
-		return m.matchSearchKeyOr(ctx, candidates, key, decoder)
+		return buildSearchOpOr(m, key, decoder)
 
 	case proto.SearchKeyword_SearchKWRecent:
-		return m.matchSearchKeyRecent(ctx, candidates)
+		return buildSearchOpRecent()
 
 	case proto.SearchKeyword_SearchKWSeen:
-		return m.matchSearchKeySeen(ctx, candidates)
+		return buildSearchOpSeen()
 
 	case proto.SearchKeyword_SearchKWSentBefore:
-		return m.matchSearchKeySentBefore(ctx, candidates, key)
+		return buildSearchOpSentBefore(key)
 
 	case proto.SearchKeyword_SearchKWSentOn:
-		return m.matchSearchKeySentOn(ctx, candidates, key)
+		return buildSearchOpSentOn(key)
 
 	case proto.SearchKeyword_SearchKWSentSince:
-		return m.matchSearchKeySentSince(ctx, candidates, key)
+		return buildSearchOpSentSince(key)
 
 	case proto.SearchKeyword_SearchKWSince:
-		return m.matchSearchKeySince(ctx, candidates, key)
+		return buildSearchOpSince(key)
 
 	case proto.SearchKeyword_SearchKWSmaller:
-		return m.matchSearchKeySmaller(ctx, candidates, key)
+		return buildSearchOpSmaller(key)
 
 	case proto.SearchKeyword_SearchKWSubject:
-		return m.matchSearchKeySubject(ctx, candidates, key, decoder)
+		return buildSearchOpSubject(key, decoder)
 
 	case proto.SearchKeyword_SearchKWText:
-		return m.matchSearchKeyText(ctx, candidates, key, decoder)
+		return buildSearchOpText(key, decoder)
 
 	case proto.SearchKeyword_SearchKWTo:
-		return m.matchSearchKeyTo(ctx, candidates, key, decoder)
+		return buildSearchOpTo(key, decoder)
 
 	case proto.SearchKeyword_SearchKWUID:
-		return m.matchSearchKeyUID(ctx, candidates, key)
+		return buildSearchOpUID(m, key)
 
 	case proto.SearchKeyword_SearchKWUnanswered:
-		return m.matchSearchKeyUnanswered(ctx, candidates)
+		return buildSearchOpUnanswered()
 
 	case proto.SearchKeyword_SearchKWUndeleted:
-		return m.matchSearchKeyUndeleted(ctx, candidates)
+		return buildSearchOpUndeleted()
 
 	case proto.SearchKeyword_SearchKWUndraft:
-		return m.matchSearchKeyUndraft(ctx, candidates)
+		return buildSearchOpUndraft()
 
 	case proto.SearchKeyword_SearchKWUnflagged:
-		return m.matchSearchKeyUnflagged(ctx, candidates)
+		return buildSearchOpUnflagged()
 
 	case proto.SearchKeyword_SearchKWUnkeyword:
-		return m.matchSearchKeyUnkeyword(ctx, candidates, key)
+		return buildSearchOpUnkeyword(key)
 
 	case proto.SearchKeyword_SearchKWUnseen:
-		return m.matchSearchKeyUnseen(ctx, candidates)
+		return buildSearchOpUnseen()
 
 	case proto.SearchKeyword_SearchKWSeqSet:
-		return m.matchSearchKeySeqSet(ctx, candidates, key)
+		return buildSearchOpSeqSet(m, key)
 
 	case proto.SearchKeyword_SearchKWList:
-		return m.matchSearchKeyList(ctx, candidates, key, decoder)
+		return buildSearchOpList(m, key, decoder)
 
 	default:
 		return nil, fmt.Errorf("bad search keyword")
 	}
 }
 
-func (m *Mailbox) matchSearchKeyAll(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return candidates, nil
+func buildSearchOpAll() (*buildSearchOpResult, error) {
+	op := func(data *searchData) (bool, error) {
+		return true, nil
+	}
+
+	return newBuildSearchOpResult(op), nil
 }
 
-func (m *Mailbox) matchSearchKeyAnswered(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.ContainsUnchecked(imap.FlagAnsweredLowerCase), nil
-	})
+func buildSearchOpAnswered() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return s.message.flags.ContainsUnchecked(imap.FlagAnsweredLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
 }
 
-func (m *Mailbox) matchSearchKeyBcc(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
+func buildSearchOpBcc(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes(key.GetText())
+	if err != nil {
+		return nil, err
+	}
 
-		value, err := rfc822.GetHeaderValue(literal, "Bcc")
-		if err != nil {
-			return false, err
-		}
+	decodedKeyStr := strings.ToLower(string(decodedKey))
 
-		b, err := decoder.Bytes(key.GetText())
-		if err != nil {
-			return false, err
-		}
+	op := func(s *searchData) (bool, error) {
+		value := s.header.Get("Bcc")
 
-		return strings.Contains(strings.ToLower(value), strings.ToLower(string(b))), nil
-	})
+		return strings.Contains(strings.ToLower(value), decodedKeyStr), nil
+	}
+
+	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func (m *Mailbox) matchSearchKeyBefore(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
+func buildSearchOpBefore(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	beforeDate, err := time.Parse("_2-Jan-2006", key.GetDate())
 	if err != nil {
 		return nil, err
 	}
 
-	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) ([]snapMsgWithSeq, error) {
-		return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-			msg, err := db.GetMessage(ctx, client, message.ID.InternalID)
-			if err != nil {
-				return false, err
-			}
+	op := func(s *searchData) (bool, error) {
+		return s.dbMessage.date.Before(beforeDate), nil
+	}
 
-			return msg.Date.Before(beforeDate), nil
-		})
-	})
+	return newBuildSearchOpResult(op, needsDBMessage()), nil
 }
 
-func (m *Mailbox) matchSearchKeyBody(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
-
-		section := rfc822.Parse(literal)
-
-		b, err := decoder.Bytes(key.GetText())
-		if err != nil {
-			return false, err
-		}
-
-		return bytes.Contains(bytes.ToLower(section.Body()), bytes.ToLower(b)), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyCc(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
-
-		value, err := rfc822.GetHeaderValue(literal, "Cc")
-		if err != nil {
-			return false, err
-		}
-
-		b, err := decoder.Bytes(key.GetText())
-		if err != nil {
-			return false, err
-		}
-
-		return strings.Contains(strings.ToLower(value), strings.ToLower(string(b))), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyDeleted(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.ContainsUnchecked(imap.FlagDeletedLowerCase), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyDraft(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.ContainsUnchecked(imap.FlagDraftLowerCase), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyFlagged(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyFrom(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
-
-		value, err := rfc822.GetHeaderValue(literal, "From")
-		if err != nil {
-			return false, err
-		}
-
-		b, err := decoder.Bytes(key.GetText())
-		if err != nil {
-			return false, err
-		}
-
-		return strings.Contains(strings.ToLower(value), strings.ToLower(string(b))), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyHeader(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
-
-		value, err := rfc822.GetHeaderValue(literal, key.GetField())
-		if err != nil {
-			return false, err
-		}
-
-		b, err := decoder.Bytes(key.GetText())
-		if err != nil {
-			return false, err
-		}
-
-		return strings.Contains(strings.ToLower(value), strings.ToLower(string(b))), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyKeyword(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
-	flagLowerCase := strings.ToLower(key.GetFlag())
-
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.ContainsUnchecked(flagLowerCase), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyLarger(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
-	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) ([]snapMsgWithSeq, error) {
-		return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-			msg, err := db.GetMessage(ctx, client, message.ID.InternalID)
-			if err != nil {
-				return false, err
-			}
-
-			return msg.Size > int(key.GetSize()), nil
-		})
-	})
-}
-
-func (m *Mailbox) matchSearchKeyNew(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.ContainsUnchecked(imap.FlagRecentLowerCase) && !message.flags.ContainsUnchecked(imap.FlagSeenLowerCase), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyNot(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	left, err := m.matchSearchKey(ctx, candidates, key.GetLeftOp(), decoder)
+func buildSearchOpBody(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	keyBytes, err := decoder.Bytes(key.GetText())
 	if err != nil {
 		return nil, err
 	}
 
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return xslices.IndexFunc(left, func(left snapMsgWithSeq) bool { return left.ID == message.ID }) < 0, nil
-	})
+	keyBytesLower := bytes.ToLower(keyBytes)
+
+	op := func(s *searchData) (bool, error) {
+		section := rfc822.Parse(s.literal)
+
+		return bytes.Contains(bytes.ToLower(section.Body()), keyBytesLower), nil
+	}
+
+	return newBuildSearchOpResult(op, needsLiteral()), nil
 }
 
-func (m *Mailbox) matchSearchKeyOld(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.ContainsUnchecked(imap.FlagRecentLowerCase), nil
-	})
+func buildSearchOpCc(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes(key.GetText())
+	if err != nil {
+		return nil, err
+	}
+
+	decodedKeyStr := strings.ToLower(string(decodedKey))
+
+	op := func(s *searchData) (bool, error) {
+		value := s.header.Get("Cc")
+
+		return strings.Contains(strings.ToLower(value), decodedKeyStr), nil
+	}
+
+	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func (m *Mailbox) matchSearchKeyOn(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
+func buildSearchOpDeleted() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return s.message.flags.ContainsUnchecked(imap.FlagDeletedLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
+}
+
+func buildSearchOpDraft() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return s.message.flags.ContainsUnchecked(imap.FlagDraftLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
+}
+
+func buildSearchOpFlagged() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return s.message.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
+}
+
+func buildSearchOpFrom(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes(key.GetText())
+	if err != nil {
+		return nil, err
+	}
+
+	decodedKeyStr := strings.ToLower(string(decodedKey))
+
+	op := func(s *searchData) (bool, error) {
+		value := s.header.Get("From")
+
+		return strings.Contains(strings.ToLower(value), decodedKeyStr), nil
+	}
+
+	return newBuildSearchOpResult(op, needsHeader()), nil
+}
+
+func buildSearchOpHeader(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes(key.GetText())
+	if err != nil {
+		return nil, err
+	}
+
+	decodedKeyStr := strings.ToLower(string(decodedKey))
+
+	op := func(s *searchData) (bool, error) {
+		value := s.header.Get(key.GetField())
+
+		return strings.Contains(strings.ToLower(value), decodedKeyStr), nil
+	}
+
+	return newBuildSearchOpResult(op, needsHeader()), nil
+}
+
+func buildSearchOpKeyword(key *proto.SearchKey) (*buildSearchOpResult, error) {
+	flagLowerCase := strings.ToLower(key.GetFlag())
+
+	op := func(s *searchData) (bool, error) {
+		return s.message.flags.ContainsUnchecked(flagLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
+}
+
+func buildSearchOpLarger(key *proto.SearchKey) (*buildSearchOpResult, error) {
+	size := int(key.GetSize())
+
+	op := func(s *searchData) (bool, error) {
+		return s.dbMessage.size > size, nil
+	}
+
+	return newBuildSearchOpResult(op, needsDBMessage()), nil
+}
+
+func buildSearchOpNew() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return s.message.flags.ContainsUnchecked(imap.FlagRecentLowerCase) && !s.message.flags.ContainsUnchecked(imap.FlagSeenLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
+}
+
+func buildSearchOpNot(m *Mailbox, key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	toNegateOpResult, err := buildSearchOp(m, key.GetLeftOp(), decoder)
+	if err != nil {
+		return nil, err
+	}
+
+	op := func(s *searchData) (bool, error) {
+		result, err := toNegateOpResult.op(s)
+		if err != nil {
+			return false, err
+		}
+
+		return !result, nil
+	}
+
+	result := newBuildSearchOpResult(op)
+	result.merge(toNegateOpResult)
+
+	return result, nil
+}
+
+func buildSearchOpOld() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return !s.message.flags.ContainsUnchecked(imap.FlagRecentLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
+}
+
+func buildSearchOpOn(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	onDate, err := time.Parse("_2-Jan-2006", key.GetDate())
 	if err != nil {
 		return nil, err
 	}
 
-	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) ([]snapMsgWithSeq, error) {
-		return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-			msg, err := db.GetMessage(ctx, client, message.ID.InternalID)
-			if err != nil {
-				return false, err
-			}
+	op := func(s *searchData) (bool, error) {
+		return onDate.Truncate(24 * time.Hour).Equal(s.dbMessage.date.Truncate(24 * time.Hour)), nil
+	}
 
-			return onDate.Truncate(24 * time.Hour).Equal(msg.Date.Truncate(24 * time.Hour)), nil
-		})
-	})
+	return newBuildSearchOpResult(op, needsDBMessage()), nil
 }
 
-func (m *Mailbox) matchSearchKeyOr(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	left, err := m.matchSearchKey(ctx, candidates, key.GetLeftOp(), decoder)
+func buildSearchOpOr(m *Mailbox, key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	leftOp, err := buildSearchOp(m, key.GetLeftOp(), decoder)
 	if err != nil {
 		return nil, err
 	}
 
-	right, err := m.matchSearchKey(ctx, candidates, key.GetRightOp(), decoder)
+	rightOp, err := buildSearchOp(m, key.GetRightOp(), decoder)
 	if err != nil {
 		return nil, err
 	}
 
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		leftIdx := xslices.IndexFunc(left, func(left snapMsgWithSeq) bool { return left.ID == message.ID })
-		rightIdx := xslices.IndexFunc(right, func(right snapMsgWithSeq) bool { return right.ID == message.ID })
+	op := func(s *searchData) (bool, error) {
+		leftResult, err := leftOp.op(s)
+		if err != nil {
+			return false, err
+		}
 
-		return leftIdx >= 0 || rightIdx >= 0, nil
-	})
+		rightResult, err := rightOp.op(s)
+		if err != nil {
+			return false, err
+		}
+
+		return leftResult || rightResult, nil
+	}
+
+	result := newBuildSearchOpResult(op)
+	result.merge(leftOp)
+	result.merge(rightOp)
+
+	return result, nil
 }
 
-func (m *Mailbox) matchSearchKeyRecent(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.ContainsUnchecked(imap.FlagRecentLowerCase), nil
-	})
+func buildSearchOpRecent() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return s.message.flags.ContainsUnchecked(imap.FlagRecentLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
 }
 
-func (m *Mailbox) matchSearchKeySeen(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return message.flags.ContainsUnchecked(imap.FlagSeenLowerCase), nil
-	})
+func buildSearchOpSeen() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return s.message.flags.ContainsUnchecked(imap.FlagSeenLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
 }
 
-func (m *Mailbox) matchSearchKeySentBefore(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
+func buildSearchOpSentBefore(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	beforeDate, err := time.Parse("_2-Jan-2006", key.GetDate())
 	if err != nil {
 		return nil, err
 	}
 
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
-
-		value, err := rfc822.GetHeaderValue(literal, "Date")
-		if err != nil {
-			return false, err
-		}
+	op := func(s *searchData) (bool, error) {
+		value := s.header.Get("Date")
 
 		date, err := mail.ParseDate(value)
 		if err != nil {
@@ -432,25 +588,19 @@ func (m *Mailbox) matchSearchKeySentBefore(ctx context.Context, candidates []sna
 		date = convertToDateWithoutTZ(date)
 
 		return date.Before(beforeDate), nil
-	})
+	}
+
+	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func (m *Mailbox) matchSearchKeySentOn(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
+func buildSearchOpSentOn(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	onDate, err := time.Parse("_2-Jan-2006", key.GetDate())
 	if err != nil {
 		return nil, err
 	}
 
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
-
-		value, err := rfc822.GetHeaderValue(literal, "Date")
-		if err != nil {
-			return false, err
-		}
+	op := func(s *searchData) (bool, error) {
+		value := s.header.Get("Date")
 
 		date, err := mail.ParseDate(value)
 		if err != nil {
@@ -461,25 +611,19 @@ func (m *Mailbox) matchSearchKeySentOn(ctx context.Context, candidates []snapMsg
 		date = convertToDateWithoutTZ(date)
 
 		return date.Equal(onDate), nil
-	})
+	}
+
+	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func (m *Mailbox) matchSearchKeySentSince(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
+func buildSearchOpSentSince(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	sinceDate, err := time.Parse("_2-Jan-2006", key.GetDate())
 	if err != nil {
 		return nil, err
 	}
 
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
-
-		value, err := rfc822.GetHeaderValue(literal, "Date")
-		if err != nil {
-			return false, err
-		}
+	op := func(s *searchData) (bool, error) {
+		value := s.header.Get("Date")
 
 		date, err := mail.ParseDate(value)
 		if err != nil {
@@ -489,186 +633,214 @@ func (m *Mailbox) matchSearchKeySentSince(ctx context.Context, candidates []snap
 		date = convertToDateWithoutTZ(date)
 
 		return date.Equal(sinceDate) || date.After(sinceDate), nil
-	})
+	}
+
+	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func (m *Mailbox) matchSearchKeySince(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
+func buildSearchOpSince(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	sinceDate, err := time.Parse("_2-Jan-2006", key.GetDate())
 	if err != nil {
 		return nil, err
 	}
 
-	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) ([]snapMsgWithSeq, error) {
-		return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-			msg, err := db.GetMessage(ctx, client, message.ID.InternalID)
-			if err != nil {
-				return false, err
-			}
+	op := func(s *searchData) (bool, error) {
+		date := convertToDateWithoutTZ(s.dbMessage.date)
 
-			date := convertToDateWithoutTZ(msg.Date)
+		return date.Equal(sinceDate) || date.After(sinceDate), nil
+	}
 
-			return date.Equal(sinceDate) || date.After(sinceDate), nil
-		})
-	})
+	return newBuildSearchOpResult(op, needsDBMessage()), nil
 }
 
-func (m *Mailbox) matchSearchKeySmaller(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
-	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) ([]snapMsgWithSeq, error) {
-		return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-			msg, err := db.GetMessage(ctx, client, message.ID.InternalID)
-			if err != nil {
-				return false, err
-			}
+func buildSearchOpSmaller(key *proto.SearchKey) (*buildSearchOpResult, error) {
+	size := int(key.GetSize())
 
-			return msg.Size < int(key.GetSize()), nil
-		})
-	})
+	op := func(s *searchData) (bool, error) {
+		return s.dbMessage.size < size, nil
+	}
+
+	return newBuildSearchOpResult(op, needsDBMessage()), nil
 }
 
-func (m *Mailbox) matchSearchKeySubject(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
-
-		value, err := rfc822.GetHeaderValue(literal, "Subject")
-		if err != nil {
-			return false, err
-		}
-
-		b, err := decoder.Bytes(key.GetText())
-		if err != nil {
-			return false, err
-		}
-
-		return strings.Contains(strings.ToLower(value), strings.ToLower(string(b))), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyText(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
-
-		b, err := decoder.Bytes(key.GetText())
-		if err != nil {
-			return false, err
-		}
-
-		return bytes.Contains(bytes.ToLower(literal), bytes.ToLower(b)), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyTo(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		literal, err := m.state.getLiteral(message.ID.InternalID)
-		if err != nil {
-			return false, err
-		}
-
-		value, err := rfc822.GetHeaderValue(literal, "To")
-		if err != nil {
-			return false, err
-		}
-
-		b, err := decoder.Bytes(key.GetText())
-		if err != nil {
-			return false, err
-		}
-
-		return strings.Contains(strings.ToLower(value), strings.ToLower(string(b))), nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyUID(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
-	left, err := m.snap.getMessagesInUIDRange(key.GetSequenceSet())
+func buildSearchOpSubject(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes(key.GetText())
 	if err != nil {
 		return nil, err
 	}
 
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return xslices.IndexFunc(left, func(left snapMsgWithSeq) bool { return left.ID == message.ID }) >= 0, nil
-	})
+	decodedKeyStr := strings.ToLower(string(decodedKey))
+
+	op := func(s *searchData) (bool, error) {
+		value := s.header.Get("Subject")
+
+		return strings.Contains(strings.ToLower(value), decodedKeyStr), nil
+	}
+
+	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func (m *Mailbox) matchSearchKeyUnanswered(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.ContainsUnchecked(imap.FlagAnsweredLowerCase), nil
-	})
+func buildSearchOpText(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes(key.GetText())
+	if err != nil {
+		return nil, err
+	}
+
+	decodedKeyLower := bytes.ToLower(decodedKey)
+
+	op := func(s *searchData) (bool, error) {
+		return bytes.Contains(bytes.ToLower(s.literal), decodedKeyLower), nil
+	}
+
+	return newBuildSearchOpResult(op, needsLiteral()), nil
 }
 
-func (m *Mailbox) matchSearchKeyUndeleted(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.ContainsUnchecked(imap.FlagDeletedLowerCase), nil
-	})
+func buildSearchOpTo(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes(key.GetText())
+	if err != nil {
+		return nil, err
+	}
+
+	decodedKeyStr := strings.ToLower(string(decodedKey))
+
+	op := func(s *searchData) (bool, error) {
+		value := s.header.Get("To")
+
+		return strings.Contains(strings.ToLower(value), decodedKeyStr), nil
+	}
+
+	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func (m *Mailbox) matchSearchKeyUndraft(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.ContainsUnchecked(imap.FlagDraftLowerCase), nil
-	})
+func buildSearchOpUID(m *Mailbox, key *proto.SearchKey) (*buildSearchOpResult, error) {
+	intervals, err := m.snap.resolveUIDInterval(key.GetSequenceSet())
+	if err != nil {
+		return nil, err
+	}
+
+	op := func(s *searchData) (bool, error) {
+		for _, v := range intervals {
+			if v.contains(s.message.UID) {
+				return true, nil
+			}
+		}
+
+		return false, nil
+	}
+
+	return newBuildSearchOpResult(op), nil
 }
 
-func (m *Mailbox) matchSearchKeyUnflagged(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase), nil
-	})
+func buildSearchOpUnanswered() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return !s.message.flags.ContainsUnchecked(imap.FlagAnsweredLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
 }
 
-func (m *Mailbox) matchSearchKeyUnkeyword(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
+func buildSearchOpUndeleted() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return !s.message.flags.ContainsUnchecked(imap.FlagDeletedLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
+}
+
+func buildSearchOpUndraft() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return !s.message.flags.ContainsUnchecked(imap.FlagDraftLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
+}
+
+func buildSearchOpUnflagged() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return !s.message.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
+}
+
+func buildSearchOpUnkeyword(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	flagLowerCase := strings.ToLower(key.GetFlag())
 
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.ContainsUnchecked(flagLowerCase), nil
-	})
+	op := func(s *searchData) (bool, error) {
+		return !s.message.flags.ContainsUnchecked(flagLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
 }
 
-func (m *Mailbox) matchSearchKeyUnseen(ctx context.Context, candidates []snapMsgWithSeq) ([]snapMsgWithSeq, error) {
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return !message.flags.ContainsUnchecked(imap.FlagSeenLowerCase), nil
-	})
+func buildSearchOpUnseen() (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		return !s.message.flags.ContainsUnchecked(imap.FlagSeenLowerCase), nil
+	}
+
+	return newBuildSearchOpResult(op), nil
 }
 
-func (m *Mailbox) matchSearchKeySeqSet(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey) ([]snapMsgWithSeq, error) {
-	left, err := m.snap.getMessagesInSeqRange(key.GetSequenceSet())
+func buildSearchOpSeqSet(m *Mailbox, key *proto.SearchKey) (*buildSearchOpResult, error) {
+	intervals, err := m.snap.resolveSeqInterval(key.GetSequenceSet())
 	if err != nil {
 		return nil, err
 	}
 
-	return filter(ctx, candidates, func(message snapMsgWithSeq) (bool, error) {
-		return xslices.IndexFunc(left, func(left snapMsgWithSeq) bool { return left.ID == message.ID }) >= 0, nil
-	})
-}
-
-func (m *Mailbox) matchSearchKeyList(ctx context.Context, candidates []snapMsgWithSeq, key *proto.SearchKey, decoder *encoding.Decoder) ([]snapMsgWithSeq, error) {
-	return doSearch(ctx, m, candidates, key.GetChildren(), decoder)
-}
-
-func filter(ctx context.Context, candidates []snapMsgWithSeq, wantMessage func(seq snapMsgWithSeq) (bool, error)) ([]snapMsgWithSeq, error) {
-	var res []snapMsgWithSeq
-
-	for _, message := range candidates {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-
-		default: // fallthrough
+	op := func(s *searchData) (bool, error) {
+		for _, v := range intervals {
+			if v.contains(s.message.Seq) {
+				return true, nil
+			}
 		}
 
-		ok, err := wantMessage(message)
+		return false, nil
+	}
+
+	return newBuildSearchOpResult(op), nil
+}
+
+func buildSearchOpList(m *Mailbox, key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	opKeys := key.GetChildren()
+
+	return buildSearchOpListWithKeys(m, opKeys, decoder)
+}
+
+func buildSearchOpListWithKeys(m *Mailbox, opKeys []*proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	ops := make([]searchOp, 0, len(opKeys))
+
+	opResult := newBuildSearchOpResult(nil)
+
+	for _, opKey := range opKeys {
+		result, err := buildSearchOp(m, opKey, decoder)
 		if err != nil {
 			return nil, err
 		}
 
-		if ok {
-			res = append(res, message)
-		}
+		opResult.merge(result)
+		ops = append(ops, result.op)
 	}
 
-	return res, nil
+	opResult.op = func(s *searchData) (bool, error) {
+		result := true
+
+		for _, v := range ops {
+			ok, err := v(s)
+			if err != nil {
+				return false, err
+			}
+
+			result = result && ok
+
+			if !result {
+				break
+			}
+		}
+
+		return result, nil
+	}
+
+	return opResult, nil
 }
 
 func convertToDateWithoutTZ(t time.Time) time.Time {
