@@ -6,5 +6,12 @@
         "gtest",
         "nlohmann-json",
         "antlr4"
+    ],
+    "builtin-baseline": "5f82fa45df07a446bab57f65479f3d2df797f408",
+    "overrides": [
+        {
+            "name": "antlr4",
+            "version": "4.10.1"
+        }
     ]
 }

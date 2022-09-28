@@ -26,7 +26,7 @@ ParseResult parse(const std::string& input, const std::map<std::string, std::str
     if (errorListener.didError()) {
       result.error = *errorListener.m_errorMessage;
     } else {
-      result.command = Visitor{literals, del}.visit(commandCtx).as<proto::Command>().SerializeAsString();
+      result.command = std::any_cast<proto::Command>(Visitor{literals, del}.visit(commandCtx)).SerializeAsString();
     }
     if (auto tagCtx = commandCtx->tag(); tagCtx != nullptr) {
       result.tag = tagCtx->getText();

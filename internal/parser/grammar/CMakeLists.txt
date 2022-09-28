@@ -1,4 +1,4 @@
-set(ANTLR4_TAG 4.9.3)
+set(ANTLR4_TAG 4.10.1)
 
 set(antlr_exec_path "${CMAKE_CURRENT_BINARY_DIR}/antlr.jar")
 if (NOT EXISTS ${antlr_exec_path})
