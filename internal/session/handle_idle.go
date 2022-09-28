@@ -4,6 +4,7 @@ import (
 	"context"
 	"runtime/pprof"
 	"strconv"
+	"time"
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -21,11 +22,7 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, c
 		go func() {
 			labels := pprof.Labels("go", "Idle", "SessionID", strconv.Itoa(s.sessionID))
 			pprof.Do(ctx, labels, func(_ context.Context) {
-				for res := range resCh {
-					if err := res.Send(s); err != nil {
-						logrus.WithError(err).Error("Failed to send IDLE update")
-					}
-				}
+				sendResponsesInBulks(s, resCh)
 			})
 		}()
 
@@ -72,4 +69,37 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, c
 			}
 		}
 	})
+}
+
+func sendMergedResponses(s *Session, buffer []response.Response) {
+	for _, res := range response.Merge(buffer) {
+		if err := res.Send(s); err != nil {
+			logrus.WithError(err).Error("Failed to send IDLE update")
+		}
+	}
+}
+
+func sendResponsesInBulks(s *Session, resCh chan response.Response) {
+	buffer := []response.Response{}
+	ticker := time.NewTicker(500 * time.Millisecond)
+
+	defer ticker.Stop()
+
+	for {
+		select {
+		case res, ok := <-resCh:
+			if !ok {
+				sendMergedResponses(s, buffer)
+				return
+			}
+
+			if res != nil {
+				buffer = append(buffer, res)
+				logrus.WithField("response", res).Trace("Buffered")
+			}
+		case <-ticker.C:
+			sendMergedResponses(s, buffer)
+			buffer = []response.Response{}
+		}
+	}
 }

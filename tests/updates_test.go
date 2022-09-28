@@ -25,7 +25,6 @@ func TestMessageCreatedUpdate(t *testing.T) {
 		s.messageCreatedFromFile("user", mboxID, "testdata/afternoon-meeting.eml")
 
 		// Expect to receive the updates.
-		//c.S("* 1 EXISTS", "* 1 RECENT", "* 2 EXISTS", "* 2 RECENT")
 		c.S("* 2 EXISTS", "* 2 RECENT")
 
 		// Stop idling.
@@ -94,14 +93,14 @@ func TestMessageCreatedIDLEUpdate(t *testing.T) {
 		s.messageCreatedFromFile("user", other, "testdata/afternoon-meeting.eml")
 
 		// Expect that we receive IDLE updates.
-		c.S(`* 1 EXISTS`, `* 1 RECENT`, `* 2 EXISTS`, `* 2 RECENT`)
+		c.S(`* 2 EXISTS`, `* 2 RECENT`)
 
 		// Create two more messages externally.
 		s.messageCreatedFromFile("user", other, "testdata/multipart-mixed.eml")
 		s.messageCreatedFromFile("user", other, "testdata/afternoon-meeting.eml")
 
 		// Expect that we receive IDLE updates.
-		c.S(`* 3 EXISTS`, `* 3 RECENT`, `* 4 EXISTS`, `* 4 RECENT`)
+		c.S(`* 4 EXISTS`, `* 4 RECENT`)
 
 		// Select away and back to reset the RECENT count.
 		c.C(`DONE`).OK(`A002`)
@@ -114,7 +113,7 @@ func TestMessageCreatedIDLEUpdate(t *testing.T) {
 		s.messageCreatedFromFile("user", other, "testdata/afternoon-meeting.eml")
 
 		// Expect that we receive IDLE updates.
-		c.S(`* 5 EXISTS`, `* 1 RECENT`, `* 6 EXISTS`, `* 2 RECENT`)
+		c.S(`* 6 EXISTS`, `* 2 RECENT`)
 
 		// Stop IDLE.
 		c.C(`DONE`).OK(`A005`)
