@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
@@ -15,6 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent/uid"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
+	"golang.org/x/exp/slices"
 )
 
 const ChunkLimit = 1000
@@ -234,6 +234,10 @@ func MessageExistsWithRemoteID(ctx context.Context, client *ent.Client, messageI
 
 func GetMessage(ctx context.Context, client *ent.Client, messageID imap.InternalMessageID) (*ent.Message, error) {
 	return client.Message.Query().Where(message.ID(messageID)).Only(ctx)
+}
+
+func GetMessageDateAndSize(ctx context.Context, client *ent.Client, messageID imap.InternalMessageID) (*ent.Message, error) {
+	return client.Message.Query().Where(message.ID(messageID)).Select(message.FieldSize, message.FieldDate).Only(ctx)
 }
 
 func GetMessageMailboxIDs(ctx context.Context, client *ent.Client, messageID imap.InternalMessageID) ([]imap.InternalMailboxID, error) {

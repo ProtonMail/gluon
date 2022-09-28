@@ -226,3 +226,28 @@ func (list *snapMsgList) getWithUID(uid imap.UID) (snapMsgWithSeq, bool) {
 		snapMsg: list.msg[index],
 	}, ok
 }
+
+func (list *snapMsgList) getWithSeqID(id imap.SeqID) (snapMsgWithSeq, bool) {
+	index := int(id) - 1
+	listLen := len(list.msg)
+
+	if listLen == 0 || index >= listLen {
+		return snapMsgWithSeq{}, false
+	}
+
+	return snapMsgWithSeq{
+		Seq:     id,
+		snapMsg: list.msg[index],
+	}, true
+}
+
+func (list *snapMsgList) existsWithSeqID(id imap.SeqID) bool {
+	index := int(id) - 1
+	listLen := len(list.msg)
+
+	if index >= listLen {
+		return false
+	}
+
+	return true
+}
