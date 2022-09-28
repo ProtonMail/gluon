@@ -14,12 +14,12 @@ func Merge(input []Response) []Response {
 
 		var skipExists, skipRecent bool
 
-		lastExists, addResponse, skipExists = mergeExistsReponse(resp, lastExists)
+		lastExists, addResponse, skipExists = mergeExistsResponse(resp, lastExists)
 		if addResponse != nil {
 			filtered = append(filtered, addResponse)
 		}
 
-		lastRecent, addResponse, skipRecent = mergeRecentReponse(resp, lastRecent)
+		lastRecent, addResponse, skipRecent = mergeRecentResponse(resp, lastRecent)
 		if addResponse != nil {
 			filtered = append(filtered, addResponse)
 		}
@@ -42,15 +42,15 @@ func Merge(input []Response) []Response {
 	return filtered
 }
 
-func mergeExistsReponse(resp, last Response) (newLast, add Response, skip bool) {
-	return mergeTypeReponse(resp, last, isExists, existsHasHigherID)
+func mergeExistsResponse(resp, last Response) (newLast, add Response, skip bool) {
+	return mergeTypeResponse(resp, last, isExists, existsHasHigherID)
 }
 
-func mergeRecentReponse(resp, last Response) (newLast, add Response, skip bool) {
-	return mergeTypeReponse(resp, last, isRecent, recentHasHigherID)
+func mergeRecentResponse(resp, last Response) (newLast, add Response, skip bool) {
+	return mergeTypeResponse(resp, last, isRecent, recentHasHigherID)
 }
 
-func mergeTypeReponse(
+func mergeTypeResponse(
 	resp, last Response,
 	isType func(Response) bool,
 	isHigherID func(Response, Response) bool,
@@ -60,11 +60,11 @@ func mergeTypeReponse(
 			return resp, nil, true
 		}
 
-		return nil, last, false
-	} else {
-		if isExists(resp) || isRecent(resp) {
-			return last, nil, true
-		}
+		panic("response decreased ID for exists or recent without expunge")
+	}
+
+	if isExists(resp) || isRecent(resp) {
+		return last, nil, true
 	}
 
 	if last != nil {

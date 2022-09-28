@@ -141,7 +141,7 @@ func TestRecentIDLEExists(t *testing.T) {
 		c[2].doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
 
 		// Client 1 receives EXISTS and RECENT updates.
-		c[1].S(`* 1 EXISTS`, `* 1 RECENT`, `* 2 EXISTS`, `* 2 RECENT`)
+		c[1].S(`* 2 EXISTS`, `* 2 RECENT`)
 		c[1].C("DONE")
 		c[1].OK(`A007`)
 	})
@@ -164,7 +164,7 @@ func TestRecentIDLEExpunge(t *testing.T) {
 		c[2].C("A006 move 1:* folder").OK("A006")
 
 		// Client 1 receives EXISTS. Since Client 2 still has the mailbox selected, recent updates are not sent.
-		c[1].S(`* 1 EXISTS`, `* 2 EXISTS`)
+		c[1].S(`* 2 EXISTS`)
 
 		// Client 2 moves those two messages back to INBOX.
 		// In doing so, it sees the messages in the folder; they are no longer recent.
