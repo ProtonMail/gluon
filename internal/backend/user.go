@@ -128,10 +128,6 @@ func (user *user) close(ctx context.Context) error {
 		return err
 	}
 
-	if err := user.connector.Close(ctx); err != nil {
-		return err
-	}
-
 	user.closeStates()
 
 	// Ensure we wait until all states have been removed/closed by any active sessions otherwise we run  into issues

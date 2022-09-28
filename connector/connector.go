@@ -54,7 +54,4 @@ type Connector interface {
 
 	// SetUIDValidity sets the default UID validity for this user.
 	SetUIDValidity(uidValidity imap.UID) error
-
-	// Close the connector will no longer be used and all resources should be closed/released.
-	Close(ctx context.Context) error
 }

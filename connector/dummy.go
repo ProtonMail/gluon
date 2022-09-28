@@ -281,12 +281,10 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 	return nil
 }
 
-func (conn *Dummy) Close(ctx context.Context) error {
+func (conn *Dummy) Close() {
 	close(conn.updateQuitCh)
 	close(conn.updateCh)
 	conn.ticker.Stop()
-
-	return nil
 }
 
 func (conn *Dummy) GetLastRecordedIMAPID() imap.IMAPID {

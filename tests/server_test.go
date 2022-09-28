@@ -166,6 +166,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 			defaultPermanentFlags,
 			defaultAttributes,
 		)
+		defer conn.Close()
 
 		// Force USER ID to be consistent.
 		userID := hex.EncodeToString(hash.SHA256([]byte(creds.usernames[0])))
