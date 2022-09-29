@@ -234,3 +234,29 @@ func TestListWildcards(t *testing.T) {
 		c.OK(`tag`)
 	})
 }
+
+func TestListSpecialUseAttributes(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
+		s.mailboxCreated("user", []string{"INBOX"})
+		s.mailboxCreatedWithAttributes("user", []string{"Koncepty"}, imap.NewFlagSet(imap.AttrDrafts))
+		s.mailboxCreatedWithAttributes("user", []string{"Odeslane"}, imap.NewFlagSet(imap.AttrSent))
+		s.mailboxCreatedWithAttributes("user", []string{"S hvezdickou"}, imap.NewFlagSet(imap.AttrFlagged))
+		s.mailboxCreatedWithAttributes("user", []string{"Archiv"}, imap.NewFlagSet(imap.AttrArchive))
+		s.mailboxCreatedWithAttributes("user", []string{"Spam"}, imap.NewFlagSet(imap.AttrJunk))
+		s.mailboxCreatedWithAttributes("user", []string{"Kos"}, imap.NewFlagSet(imap.AttrTrash))
+		s.mailboxCreatedWithAttributes("user", []string{"Vsechny zpravy"}, imap.NewFlagSet(imap.AttrAll))
+
+		c.C(`a list "" "*"`)
+		c.S(
+			`* LIST (\Unmarked) "." "INBOX"`,
+			`* LIST (\Drafts \Unmarked) "." "Koncepty"`,
+			`* LIST (\Sent \Unmarked) "." "Odeslane"`,
+			`* LIST (\Flagged \Unmarked) "." "S hvezdickou"`,
+			`* LIST (\Archive \Unmarked) "." "Archiv"`,
+			`* LIST (\Junk \Unmarked) "." "Spam"`,
+			`* LIST (\Trash \Unmarked) "." "Kos"`,
+			`* LIST (\All \Unmarked) "." "Vsechny zpravy"`,
+		)
+		c.OK(`a`)
+	})
+}
