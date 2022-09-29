@@ -13,6 +13,7 @@ import (
 type ConnectorImpl interface {
 	Connector() connector.Connector
 	Sync(ctx context.Context) error
+	Close()
 }
 
 type ConnectorBuilder interface {
@@ -72,6 +73,10 @@ func (d *DummyConnectorImpl) Sync(ctx context.Context) error {
 	d.dummy.ClearUpdates()
 
 	return d.dummy.Sync(ctx)
+}
+
+func (d *DummyConnectorImpl) Close() {
+	d.dummy.Close()
 }
 
 func (*DummyConnectorBuilder) New() (ConnectorImpl, error) {

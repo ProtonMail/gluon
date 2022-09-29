@@ -55,13 +55,17 @@ func main() {
 
 	defer server.Close(ctx)
 
-	if err := addUser(ctx, server, []string{"user1@example.com", "alias1@example.com"}, "password1"); err != nil {
+	conn1, err := addUser(ctx, server, []string{"user1@example.com", "alias1@example.com"}, "password1")
+	if err != nil {
 		logrus.WithError(err).Fatal("Failed to add user")
 	}
+	defer conn1.Close()
 
-	if err := addUser(ctx, server, []string{"user2@example.com", "alias2@example.com"}, "password2"); err != nil {
+	conn2, err := addUser(ctx, server, []string{"user2@example.com", "alias2@example.com"}, "password2")
+	if err != nil {
 		logrus.WithError(err).Fatal("Failed to add user")
 	}
+	defer conn2.Close()
 
 	listener, err := net.Listen("tcp", "localhost:1143")
 	if err != nil {
@@ -83,7 +87,7 @@ func main() {
 	}
 }
 
-func addUser(ctx context.Context, server *gluon.Server, addresses []string, password string) error {
+func addUser(ctx context.Context, server *gluon.Server, addresses []string, password string) (*connector.Dummy, error) {
 	connector := connector.NewDummy(
 		addresses,
 		password,
@@ -99,14 +103,14 @@ func addUser(ctx context.Context, server *gluon.Server, addresses []string, pass
 		[]byte(password),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := connector.Sync(ctx); err != nil {
-		return err
+		return nil, err
 	}
 
 	logrus.WithField("userID", userID).Info("User added to server")
 
-	return nil
+	return connector, nil
 }
