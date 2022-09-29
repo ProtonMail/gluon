@@ -115,6 +115,10 @@ func (s *testSession) setLabelPrefix(user, prefix string) {
 }
 
 func (s *testSession) mailboxCreated(user string, name []string, withData ...string) imap.LabelID {
+	return s.mailboxCreatedWithAttributes(user, name, defaultAttributes, withData...)
+}
+
+func (s *testSession) mailboxCreatedWithAttributes(user string, name []string, attributes imap.FlagSet, withData ...string) imap.LabelID {
 	mboxID := imap.LabelID(utils.NewRandomLabelID())
 
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxCreated(imap.Mailbox{
@@ -122,7 +126,7 @@ func (s *testSession) mailboxCreated(user string, name []string, withData ...str
 		Name:           name,
 		Flags:          defaultFlags,
 		PermanentFlags: defaultPermanentFlags,
-		Attributes:     defaultAttributes,
+		Attributes:     attributes,
 	}))
 
 	for _, data := range withData {
