@@ -2,19 +2,19 @@ package gluon
 
 import "sync"
 
-type wg struct {
+type WaitGroup struct {
 	wg sync.WaitGroup
 }
 
-func (s *wg) Go(f func()) {
-	s.wg.Add(1)
+func (wg *WaitGroup) Go(f func()) {
+	wg.wg.Add(1)
 
 	go func() {
-		defer s.wg.Done()
+		defer wg.wg.Done()
 		f()
 	}()
 }
 
-func (s *wg) Wait() {
-	s.wg.Wait()
+func (wg *WaitGroup) Wait() {
+	wg.wg.Wait()
 }

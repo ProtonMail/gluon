@@ -45,7 +45,7 @@ type Server struct {
 	serveDoneCh chan struct{}
 
 	// serveWG keeps track of serving goroutines.
-	serveWG wg
+	serveWG WaitGroup
 
 	// nextID holds the ID that will be given to the next session.
 	nextID     int
@@ -166,7 +166,7 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 
 // serve handles incoming connections and starts a new goroutine for each.
 func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
-	var connWG wg
+	var connWG WaitGroup
 	defer connWG.Wait()
 
 	for {
