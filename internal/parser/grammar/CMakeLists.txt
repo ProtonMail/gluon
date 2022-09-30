@@ -31,9 +31,69 @@ antlr4_generate(IMAPParser
   "${ANTLR4_TOKEN_DIRECTORY_IMAPLexer}"
 )
 
+antlr4_generate(RFC5322AddressListLexer
+        ${CMAKE_CURRENT_SOURCE_DIR}/RFC5322AddressListLexer.g4
+        LEXER
+        FALSE
+        FALSE
+        rfc5322
+        )
+
+antlr4_generate(RFC5322AddressListParser
+        ${CMAKE_CURRENT_SOURCE_DIR}/RFC5322AddressListParser.g4
+        PARSER
+        FALSE
+        TRUE
+        rfc5322
+        "${ANTLR4_TOKEN_FILES_RFC5322AddressListLexer}"
+        "${ANTLR4_TOKEN_DIRECTORY_RFC5322AddressListLexer}"
+        )
+
+antlr4_generate(RFC2047Lexer
+        ${CMAKE_CURRENT_SOURCE_DIR}/RFC2047Lexer.g4
+        LEXER
+        FALSE
+        FALSE
+        rfc2047
+        )
+
+antlr4_generate(RFC2047Parser
+        ${CMAKE_CURRENT_SOURCE_DIR}/RFC2047Parser.g4
+        PARSER
+        FALSE
+        TRUE
+        rfc2047
+        "${ANTLR4_TOKEN_FILES_RFC2047Lexer}"
+        "${ANTLR4_TOKEN_DIRECTORY_RFC2047Lexer}"
+        )
+
+antlr4_generate(RFC5322DateTimeLexer
+        ${CMAKE_CURRENT_SOURCE_DIR}/RFC5322DateTimeLexer.g4
+        LEXER
+        FALSE
+        FALSE
+        rfc5322
+        )
+
+antlr4_generate(RFC5322DateTimeParser
+        ${CMAKE_CURRENT_SOURCE_DIR}/RFC5322DateTimeParser.g4
+        PARSER
+        FALSE
+        TRUE
+        rfc5322
+        "${ANTLR4_TOKEN_FILES_RFC5322DateTimeLexer}"
+        "${ANTLR4_TOKEN_DIRECTORY_RFC5322DateTimeLexer}"
+        )
+
 add_library(parser_gen STATIC
   ${ANTLR4_SRC_FILES_IMAPLexer}
   ${ANTLR4_SRC_FILES_IMAPParser}
+  ${ANTLR4_SRC_FILES_RFC5322DateTimeLexer}
+  ${ANTLR4_SRC_FILES_RFC5322DateTimeParser}
+  ${ANTLR4_SRC_FILES_RFC5322AddressListLexer}
+  ${ANTLR4_SRC_FILES_RFC5322AddressListParser}
+  ${ANTLR4_SRC_FILES_RFC2047Lexer}
+  ${ANTLR4_SRC_FILES_RFC2047Parser}
 )
 
 target_link_libraries(parser_gen 
@@ -48,6 +108,12 @@ target_include_directories(parser_gen
   PUBLIC ${ANTLR4_INCLUDE_DIR}
   PUBLIC ${ANTLR4_INCLUDE_DIR_IMAPLexer}
   PUBLIC ${ANTLR4_INCLUDE_DIR_IMAPParser}
+  PUBLIC ${ANTLR4_INCLUDE_DIR_RFC5322AddressListLexer}
+  PUBLIC ${ANTLR4_INCLUDE_DIR_RFC5322AddressListParser}
+  PUBLIC ${ANTLR4_INCLUDE_DIR_RFC5322DateTimeLexer}
+  PUBLIC ${ANTLR4_INCLUDE_DIR_RFC5322DateTimeParser}
+  PUBLIC ${ANTLR4_INCLUDE_DIR_RFC2047Lexer}
+  PUBLIC ${ANTLR4_INCLUDE_DIR_RFC2047Parser}
 )
 
 add_custom_command(
@@ -65,3 +131,5 @@ if (UNIX AND NOT APPLE)
     COMMAND_EXPAND_LISTS
   )
 endif()
+
+

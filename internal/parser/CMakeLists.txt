@@ -13,6 +13,7 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS YES)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_DEBUG_POSTFIX "d")
 
 if (APPLE)
   # Can't rely only on CMake's system information as it is possible to cross-compile for both x64 and arm64 on mac OS

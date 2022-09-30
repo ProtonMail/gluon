@@ -1,6 +1,8 @@
 package imap
 
 import (
+	"github.com/ProtonMail/gluon/internal/parser"
+	"github.com/sirupsen/logrus"
 	"net/mail"
 	"strings"
 
@@ -76,9 +78,14 @@ func envelope(header *rfc822.Header, c *paramList, writer parListWriter) error {
 
 // TODO: Should use RFC5322 package here but it's too slow... sad.
 func tryParseAddressList(val string) []*mail.Address {
-	if addr, err := mail.ParseAddressList(val); err == nil {
+	/*if addr, err := mail.ParseAddressList(val); err == nil {
 		return addr
+	}*/
+	addr, err := parser.ParseRFC5322AddressList(val)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to parse address")
+		return []*mail.Address{{Name: val}}
 	}
 
-	return []*mail.Address{{Address: val}}
+	return addr
 }

@@ -42,27 +42,27 @@ typedef _gostring_ swig_type_11;
 typedef _gostring_ swig_type_12;
 typedef _gostring_ swig_type_13;
 typedef _gostring_ swig_type_14;
-extern void _wrap_Swig_free_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern uintptr_t _wrap_Swig_malloc_parser_6ffc9200ef2d0bf8(swig_intgo arg1);
-extern uintptr_t _wrap_new_StringMap__SWIG_0_parser_6ffc9200ef2d0bf8(void);
-extern uintptr_t _wrap_new_StringMap__SWIG_1_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern swig_intgo _wrap_StringMap_size_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern _Bool _wrap_StringMap_empty_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern void _wrap_StringMap_clear_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern swig_type_1 _wrap_StringMap_get_parser_6ffc9200ef2d0bf8(uintptr_t arg1, swig_type_2 arg2);
-extern void _wrap_StringMap_set_parser_6ffc9200ef2d0bf8(uintptr_t arg1, swig_type_3 arg2, swig_type_4 arg3);
-extern void _wrap_StringMap_del_parser_6ffc9200ef2d0bf8(uintptr_t arg1, swig_type_5 arg2);
-extern _Bool _wrap_StringMap_has_key_parser_6ffc9200ef2d0bf8(uintptr_t arg1, swig_type_6 arg2);
-extern void _wrap_delete_StringMap_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern void _wrap_ParseResult_tag_set_parser_6ffc9200ef2d0bf8(uintptr_t arg1, swig_type_7 arg2);
-extern swig_type_8 _wrap_ParseResult_tag_get_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern void _wrap_ParseResult_command_set_parser_6ffc9200ef2d0bf8(uintptr_t arg1, swig_type_9 arg2);
-extern swig_type_10 _wrap_ParseResult_command_get_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern void _wrap_ParseResult_error_set_parser_6ffc9200ef2d0bf8(uintptr_t arg1, swig_type_11 arg2);
-extern swig_type_12 _wrap_ParseResult_error_get_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern uintptr_t _wrap_new_ParseResult_parser_6ffc9200ef2d0bf8(void);
-extern void _wrap_delete_ParseResult_parser_6ffc9200ef2d0bf8(uintptr_t arg1);
-extern uintptr_t _wrap_parse_parser_6ffc9200ef2d0bf8(swig_type_13 arg1, uintptr_t arg2, swig_type_14 arg3);
+extern void _wrap_Swig_free_parser_e936be103708c9c2(uintptr_t arg1);
+extern uintptr_t _wrap_Swig_malloc_parser_e936be103708c9c2(swig_intgo arg1);
+extern uintptr_t _wrap_new_StringMap__SWIG_0_parser_e936be103708c9c2(void);
+extern uintptr_t _wrap_new_StringMap__SWIG_1_parser_e936be103708c9c2(uintptr_t arg1);
+extern swig_intgo _wrap_StringMap_size_parser_e936be103708c9c2(uintptr_t arg1);
+extern _Bool _wrap_StringMap_empty_parser_e936be103708c9c2(uintptr_t arg1);
+extern void _wrap_StringMap_clear_parser_e936be103708c9c2(uintptr_t arg1);
+extern swig_type_1 _wrap_StringMap_get_parser_e936be103708c9c2(uintptr_t arg1, swig_type_2 arg2);
+extern void _wrap_StringMap_set_parser_e936be103708c9c2(uintptr_t arg1, swig_type_3 arg2, swig_type_4 arg3);
+extern void _wrap_StringMap_del_parser_e936be103708c9c2(uintptr_t arg1, swig_type_5 arg2);
+extern _Bool _wrap_StringMap_has_key_parser_e936be103708c9c2(uintptr_t arg1, swig_type_6 arg2);
+extern void _wrap_delete_StringMap_parser_e936be103708c9c2(uintptr_t arg1);
+extern void _wrap_ParseResult_tag_set_parser_e936be103708c9c2(uintptr_t arg1, swig_type_7 arg2);
+extern swig_type_8 _wrap_ParseResult_tag_get_parser_e936be103708c9c2(uintptr_t arg1);
+extern void _wrap_ParseResult_command_set_parser_e936be103708c9c2(uintptr_t arg1, swig_type_9 arg2);
+extern swig_type_10 _wrap_ParseResult_command_get_parser_e936be103708c9c2(uintptr_t arg1);
+extern void _wrap_ParseResult_error_set_parser_e936be103708c9c2(uintptr_t arg1, swig_type_11 arg2);
+extern swig_type_12 _wrap_ParseResult_error_get_parser_e936be103708c9c2(uintptr_t arg1);
+extern uintptr_t _wrap_new_ParseResult_parser_e936be103708c9c2(void);
+extern void _wrap_delete_ParseResult_parser_e936be103708c9c2(uintptr_t arg1);
+extern uintptr_t _wrap_parse_parser_e936be103708c9c2(swig_type_13 arg1, uintptr_t arg2, swig_type_14 arg3);
 #undef intgo
 */
 import "C"
@@ -97,13 +97,13 @@ func swigCopyString(s string) string {
 
 func Swig_free(arg1 uintptr) {
 	_swig_i_0 := arg1
-	C._wrap_Swig_free_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0))
+	C._wrap_Swig_free_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))
 }
 
 func Swig_malloc(arg1 int) (_swig_ret uintptr) {
 	var swig_r uintptr
 	_swig_i_0 := arg1
-	swig_r = (uintptr)(C._wrap_Swig_malloc_parser_6ffc9200ef2d0bf8(C.swig_intgo(_swig_i_0)))
+	swig_r = (uintptr)(C._wrap_Swig_malloc_parser_e936be103708c9c2(C.swig_intgo(_swig_i_0)))
 	return swig_r
 }
 
@@ -118,14 +118,14 @@ func (p SwigcptrStringMap) SwigIsStringMap() {
 
 func NewStringMap__SWIG_0() (_swig_ret StringMap) {
 	var swig_r StringMap
-	swig_r = (StringMap)(SwigcptrStringMap(C._wrap_new_StringMap__SWIG_0_parser_6ffc9200ef2d0bf8()))
+	swig_r = (StringMap)(SwigcptrStringMap(C._wrap_new_StringMap__SWIG_0_parser_e936be103708c9c2()))
 	return swig_r
 }
 
 func NewStringMap__SWIG_1(arg1 StringMap) (_swig_ret StringMap) {
 	var swig_r StringMap
 	_swig_i_0 := arg1.Swigcptr()
-	swig_r = (StringMap)(SwigcptrStringMap(C._wrap_new_StringMap__SWIG_1_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0))))
+	swig_r = (StringMap)(SwigcptrStringMap(C._wrap_new_StringMap__SWIG_1_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))))
 	return swig_r
 }
 
@@ -143,27 +143,27 @@ func NewStringMap(a ...interface{}) StringMap {
 func (arg1 SwigcptrStringMap) Size() (_swig_ret uint) {
 	var swig_r uint
 	_swig_i_0 := arg1
-	swig_r = (uint)(C._wrap_StringMap_size_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0)))
+	swig_r = (uint)(C._wrap_StringMap_size_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0)))
 	return swig_r
 }
 
 func (arg1 SwigcptrStringMap) Empty() (_swig_ret bool) {
 	var swig_r bool
 	_swig_i_0 := arg1
-	swig_r = (bool)(C._wrap_StringMap_empty_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0)))
+	swig_r = (bool)(C._wrap_StringMap_empty_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0)))
 	return swig_r
 }
 
 func (arg1 SwigcptrStringMap) Clear() {
 	_swig_i_0 := arg1
-	C._wrap_StringMap_clear_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0))
+	C._wrap_StringMap_clear_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))
 }
 
 func (arg1 SwigcptrStringMap) Get(arg2 string) (_swig_ret string) {
 	var swig_r string
 	_swig_i_0 := arg1
 	_swig_i_1 := arg2
-	swig_r_p := C._wrap_StringMap_get_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0), *(*C.swig_type_2)(unsafe.Pointer(&_swig_i_1)))
+	swig_r_p := C._wrap_StringMap_get_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0), *(*C.swig_type_2)(unsafe.Pointer(&_swig_i_1)))
 	swig_r = *(*string)(unsafe.Pointer(&swig_r_p))
 	if Swig_escape_always_false {
 		Swig_escape_val = arg2
@@ -177,7 +177,7 @@ func (arg1 SwigcptrStringMap) Set(arg2 string, arg3 string) {
 	_swig_i_0 := arg1
 	_swig_i_1 := arg2
 	_swig_i_2 := arg3
-	C._wrap_StringMap_set_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0), *(*C.swig_type_3)(unsafe.Pointer(&_swig_i_1)), *(*C.swig_type_4)(unsafe.Pointer(&_swig_i_2)))
+	C._wrap_StringMap_set_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0), *(*C.swig_type_3)(unsafe.Pointer(&_swig_i_1)), *(*C.swig_type_4)(unsafe.Pointer(&_swig_i_2)))
 	if Swig_escape_always_false {
 		Swig_escape_val = arg2
 	}
@@ -189,7 +189,7 @@ func (arg1 SwigcptrStringMap) Set(arg2 string, arg3 string) {
 func (arg1 SwigcptrStringMap) Del(arg2 string) {
 	_swig_i_0 := arg1
 	_swig_i_1 := arg2
-	C._wrap_StringMap_del_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0), *(*C.swig_type_5)(unsafe.Pointer(&_swig_i_1)))
+	C._wrap_StringMap_del_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0), *(*C.swig_type_5)(unsafe.Pointer(&_swig_i_1)))
 	if Swig_escape_always_false {
 		Swig_escape_val = arg2
 	}
@@ -199,7 +199,7 @@ func (arg1 SwigcptrStringMap) Has_key(arg2 string) (_swig_ret bool) {
 	var swig_r bool
 	_swig_i_0 := arg1
 	_swig_i_1 := arg2
-	swig_r = (bool)(C._wrap_StringMap_has_key_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0), *(*C.swig_type_6)(unsafe.Pointer(&_swig_i_1))))
+	swig_r = (bool)(C._wrap_StringMap_has_key_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0), *(*C.swig_type_6)(unsafe.Pointer(&_swig_i_1))))
 	if Swig_escape_always_false {
 		Swig_escape_val = arg2
 	}
@@ -208,7 +208,7 @@ func (arg1 SwigcptrStringMap) Has_key(arg2 string) (_swig_ret bool) {
 
 func DeleteStringMap(arg1 StringMap) {
 	_swig_i_0 := arg1.Swigcptr()
-	C._wrap_delete_StringMap_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0))
+	C._wrap_delete_StringMap_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))
 }
 
 type StringMap interface {
@@ -235,7 +235,7 @@ func (p SwigcptrParseResult) SwigIsParseResult() {
 func (arg1 SwigcptrParseResult) SetTag(arg2 string) {
 	_swig_i_0 := arg1
 	_swig_i_1 := arg2
-	C._wrap_ParseResult_tag_set_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0), *(*C.swig_type_7)(unsafe.Pointer(&_swig_i_1)))
+	C._wrap_ParseResult_tag_set_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0), *(*C.swig_type_7)(unsafe.Pointer(&_swig_i_1)))
 	if Swig_escape_always_false {
 		Swig_escape_val = arg2
 	}
@@ -244,7 +244,7 @@ func (arg1 SwigcptrParseResult) SetTag(arg2 string) {
 func (arg1 SwigcptrParseResult) GetTag() (_swig_ret string) {
 	var swig_r string
 	_swig_i_0 := arg1
-	swig_r_p := C._wrap_ParseResult_tag_get_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0))
+	swig_r_p := C._wrap_ParseResult_tag_get_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))
 	swig_r = *(*string)(unsafe.Pointer(&swig_r_p))
 	var swig_r_1 string
  swig_r_1 = swigCopyString(swig_r) 
@@ -254,7 +254,7 @@ func (arg1 SwigcptrParseResult) GetTag() (_swig_ret string) {
 func (arg1 SwigcptrParseResult) SetCommand(arg2 string) {
 	_swig_i_0 := arg1
 	_swig_i_1 := arg2
-	C._wrap_ParseResult_command_set_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0), *(*C.swig_type_9)(unsafe.Pointer(&_swig_i_1)))
+	C._wrap_ParseResult_command_set_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0), *(*C.swig_type_9)(unsafe.Pointer(&_swig_i_1)))
 	if Swig_escape_always_false {
 		Swig_escape_val = arg2
 	}
@@ -263,7 +263,7 @@ func (arg1 SwigcptrParseResult) SetCommand(arg2 string) {
 func (arg1 SwigcptrParseResult) GetCommand() (_swig_ret string) {
 	var swig_r string
 	_swig_i_0 := arg1
-	swig_r_p := C._wrap_ParseResult_command_get_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0))
+	swig_r_p := C._wrap_ParseResult_command_get_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))
 	swig_r = *(*string)(unsafe.Pointer(&swig_r_p))
 	var swig_r_1 string
  swig_r_1 = swigCopyString(swig_r) 
@@ -273,7 +273,7 @@ func (arg1 SwigcptrParseResult) GetCommand() (_swig_ret string) {
 func (arg1 SwigcptrParseResult) SetError(arg2 string) {
 	_swig_i_0 := arg1
 	_swig_i_1 := arg2
-	C._wrap_ParseResult_error_set_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0), *(*C.swig_type_11)(unsafe.Pointer(&_swig_i_1)))
+	C._wrap_ParseResult_error_set_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0), *(*C.swig_type_11)(unsafe.Pointer(&_swig_i_1)))
 	if Swig_escape_always_false {
 		Swig_escape_val = arg2
 	}
@@ -282,7 +282,7 @@ func (arg1 SwigcptrParseResult) SetError(arg2 string) {
 func (arg1 SwigcptrParseResult) GetError() (_swig_ret string) {
 	var swig_r string
 	_swig_i_0 := arg1
-	swig_r_p := C._wrap_ParseResult_error_get_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0))
+	swig_r_p := C._wrap_ParseResult_error_get_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))
 	swig_r = *(*string)(unsafe.Pointer(&swig_r_p))
 	var swig_r_1 string
  swig_r_1 = swigCopyString(swig_r) 
@@ -291,13 +291,13 @@ func (arg1 SwigcptrParseResult) GetError() (_swig_ret string) {
 
 func NewParseResult() (_swig_ret ParseResult) {
 	var swig_r ParseResult
-	swig_r = (ParseResult)(SwigcptrParseResult(C._wrap_new_ParseResult_parser_6ffc9200ef2d0bf8()))
+	swig_r = (ParseResult)(SwigcptrParseResult(C._wrap_new_ParseResult_parser_e936be103708c9c2()))
 	return swig_r
 }
 
 func DeleteParseResult(arg1 ParseResult) {
 	_swig_i_0 := arg1.Swigcptr()
-	C._wrap_delete_ParseResult_parser_6ffc9200ef2d0bf8(C.uintptr_t(_swig_i_0))
+	C._wrap_delete_ParseResult_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))
 }
 
 type ParseResult interface {
@@ -316,7 +316,7 @@ func Parse(arg1 string, arg2 StringMap, arg3 string) (_swig_ret ParseResult) {
 	_swig_i_0 := arg1
 	_swig_i_1 := arg2.Swigcptr()
 	_swig_i_2 := arg3
-	swig_r = (ParseResult)(SwigcptrParseResult(C._wrap_parse_parser_6ffc9200ef2d0bf8(*(*C.swig_type_13)(unsafe.Pointer(&_swig_i_0)), C.uintptr_t(_swig_i_1), *(*C.swig_type_14)(unsafe.Pointer(&_swig_i_2)))))
+	swig_r = (ParseResult)(SwigcptrParseResult(C._wrap_parse_parser_e936be103708c9c2(*(*C.swig_type_13)(unsafe.Pointer(&_swig_i_0)), C.uintptr_t(_swig_i_1), *(*C.swig_type_14)(unsafe.Pointer(&_swig_i_2)))))
 	if Swig_escape_always_false {
 		Swig_escape_val = arg1
 	}
