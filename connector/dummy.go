@@ -286,6 +286,7 @@ func (conn *Dummy) Close(ctx context.Context) error {
 	close(conn.updateQuitCh)
 	close(conn.updateCh)
 	conn.ticker.Stop()
+	conn.password = nil
 
 	return nil
 }
