@@ -46,7 +46,6 @@ type Connector interface {
 	MarkMessagesFlagged(ctx context.Context, messageIDs []imap.MessageID, flagged bool) error
 
 	// GetUpdates returns a stream of updates that the gluon server should apply.
-	// It is recommended that the returned channel is buffered with at least constants.ChannelBufferCount.
 	GetUpdates() <-chan imap.Update
 
 	// GetUIDValidity returns the default UID validity for this user.
