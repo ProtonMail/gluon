@@ -10,6 +10,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
+	"github.com/ProtonMail/gluon/queue"
 )
 
 func (s *Session) handleOther(
@@ -18,26 +19,36 @@ func (s *Session) handleOther(
 	cmd *proto.Command,
 	profiler profiling.CmdProfiler,
 ) <-chan response.Response {
-	ch := make(chan response.Response, channelBufferCount)
+	resCh := make(chan response.Response)
+
+	outCh := queue.NewQueuedChannel[response.Response](0, 0)
+
+	go func() {
+		defer outCh.Close()
+
+		for res := range resCh {
+			outCh.Enqueue(res)
+		}
+	}()
 
 	s.handleWG.Go(func() {
 		labels := pprof.Labels("go", "handleOther()", "SessionID", strconv.Itoa(s.sessionID))
 		pprof.Do(ctx, labels, func(_ context.Context) {
-			defer close(ch)
+			defer close(resCh)
 
 			ctx := state.NewStateContext(ctx, s.state)
 
-			if err := s.handleCommand(ctx, tag, cmd, ch, profiler); err != nil {
+			if err := s.handleCommand(ctx, tag, cmd, resCh, profiler); err != nil {
 				if res, ok := response.FromError(err); ok {
-					ch <- res
+					resCh <- res
 				} else {
-					ch <- response.No(tag).WithError(err)
+					resCh <- response.No(tag).WithError(err)
 				}
 			}
 		})
 	})
 
-	return ch
+	return outCh.GetChannel()
 }
 
 // handleCommand returns a response instance if a command needs to force an exit of the client.

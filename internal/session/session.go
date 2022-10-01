@@ -211,19 +211,8 @@ func (s *Session) serve(ctx context.Context) error {
 			}
 
 		default:
-			responseCh := s.handleOther(withStartTime(ctx, time.Now()), tag, cmd, profiler)
-			for res := range responseCh {
+			for res := range s.handleOther(withStartTime(ctx, time.Now()), tag, cmd, profiler) {
 				if err := res.Send(s); err != nil {
-					go func() {
-						// Consume all remaining channel response since the connection is no longer available.
-						// Failing to do so can cause a deadlock in the program as `s.handleOther` never finishes
-						// executing and can hold onto a number of locks indefinitely.
-						// Consumed on a separate go routine to not block the return.
-						for range responseCh {
-							// ...
-						}
-					}()
-
 					return fmt.Errorf("failed to send response to client: %w", err)
 				}
 			}

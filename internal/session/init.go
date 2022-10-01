@@ -3,8 +3,6 @@ package session
 import (
 	"os"
 	"strconv"
-
-	"github.com/ProtonMail/gluon/constants"
 )
 
 const (
@@ -13,8 +11,7 @@ const (
 )
 
 var (
-	maxLineLength      = 120
-	channelBufferCount = constants.ChannelBufferCount
+	maxLineLength = 120
 )
 
 func init() {
@@ -25,14 +22,5 @@ func init() {
 		}
 
 		maxLineLength = valNum
-	}
-
-	if val, ok := os.LookupEnv(responseChannelBufferCount); ok {
-		valNum, err := strconv.Atoi(val)
-		if err != nil {
-			panic(err)
-		}
-
-		channelBufferCount = valNum
 	}
 }
