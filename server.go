@@ -96,10 +96,10 @@ func New(withOpt ...Option) (*Server, error) {
 
 // AddUser creates a new user and generates new unique ID for this user.
 // If you have an existing userID, please use LoadUser instead.
-func (s *Server) AddUser(ctx context.Context, conn connector.Connector, encryptionPassphrase []byte) (string, error) {
+func (s *Server) AddUser(ctx context.Context, conn connector.Connector, passphrase []byte) (string, error) {
 	userID := s.backend.NewUserID()
 
-	if err := s.LoadUser(ctx, conn, userID, encryptionPassphrase); err != nil {
+	if err := s.LoadUser(ctx, conn, userID, passphrase); err != nil {
 		return "", err
 	}
 

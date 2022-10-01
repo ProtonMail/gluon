@@ -19,9 +19,7 @@ func CreateRandomState(st store.Store, count uint) ([]imap.InternalMessageID, er
 	for i := uint(0); i < count; i++ {
 		uuid := imap.InternalMessageID(uint64(i))
 
-		if err := store.Tx(st, func(transaction store.Transaction) error {
-			return transaction.Set(uuid, data)
-		}); err != nil {
+		if err := st.Set(uuid, data); err != nil {
 			return nil, err
 		}
 

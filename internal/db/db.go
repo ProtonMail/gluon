@@ -10,7 +10,6 @@ import (
 	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/reporter"
-	"github.com/ProtonMail/gluon/store"
 )
 
 type DB struct {
@@ -117,42 +116,4 @@ func NewDB(dir, userID string) (*DB, error) {
 
 func DeleteDB(dir, userID string) error {
 	return os.Remove(getDatabasePath(dir, userID))
-}
-
-// WriteAndStore is the same as WriteStoreAndResult.
-func WriteAndStore(ctx context.Context, db *DB, st store.Store, fn func(context.Context, *ent.Tx, store.Transaction) error) error {
-	return db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return store.Tx(st, func(transaction store.Transaction) error {
-			storeTxErr := fn(ctx, tx, transaction)
-
-			if storeTxErr != nil {
-				reporter.MessageWithContext(ctx,
-					"Failed to commit storage transaction",
-					reporter.Context{"error": storeTxErr},
-				)
-			}
-
-			return storeTxErr
-		})
-	})
-}
-
-// WriteAndStoreResult wraps the two transactions from the SQL and storage databases. The store transaction is wrapped by
-// the sql transaction. It is more important to guarantee that the SQL db is consistent, and we accept some unnecessary
-// changes in the storage db, we can always recover from these more easily.
-func WriteAndStoreResult[T any](ctx context.Context, db *DB, st store.Store, fn func(context.Context, *ent.Tx, store.Transaction) (T, error)) (T, error) {
-	return WriteResult(ctx, db, func(ctx context.Context, tx *ent.Tx) (T, error) {
-		val, storeTxErr := store.TxResult(st, func(transaction store.Transaction) (T, error) {
-			return fn(ctx, tx, transaction)
-		})
-
-		if storeTxErr != nil {
-			reporter.MessageWithContext(ctx,
-				"Failed to commit storage transaction",
-				reporter.Context{"error": storeTxErr},
-			)
-		}
-
-		return val, storeTxErr
-	})
 }
