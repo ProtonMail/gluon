@@ -59,7 +59,11 @@ func (u *updateInjector) forward(updateCh <-chan imap.Update) {
 
 	for {
 		select {
-		case update := <-updateCh:
+		case update, ok := <-updateCh:
+			if !ok {
+				return
+			}
+
 			u.send(update)
 
 		case <-u.forwardQuitCh:
