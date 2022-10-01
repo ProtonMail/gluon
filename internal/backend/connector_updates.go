@@ -51,6 +51,9 @@ func (user *user) apply(ctx context.Context, update imap.Update) error {
 	case *imap.MessageDeleted:
 		return user.applyMessageDeleted(ctx, update)
 
+	case *imap.Noop:
+		return nil
+
 	default:
 		return fmt.Errorf("bad update")
 	}
