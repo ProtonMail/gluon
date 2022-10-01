@@ -81,22 +81,17 @@ func listMailboxesClient(t testing.TB, client *client.Client, reference string, 
 	return iterator.Collect(iterator.Chan(mailboxesChannel))
 }
 
-func checkMailboxesMatchNamesAndAttributes(t *testing.T, client *client.Client, reference string, expression string, expectedNamesAndAttributes map[string][]string) {
-	haveNames := []string{}
-	for _, mbox := range listMailboxesClient(t, client, reference, expression) {
-		haveNames = append(haveNames, mbox.Name)
+func checkMailboxesMatchNamesAndAttributes(t *testing.T, client *client.Client, reference string, expression string, expectedNames []string, expectedAttributes []string) {
+	mailboxes := listMailboxesClient(t, client, "", "*")
 
-		wantAttributes, ok := expectedNamesAndAttributes[mbox.Name]
-		require.True(t, ok, "not expected to have mailbox %q", mbox.Name)
-		require.ElementsMatch(t, wantAttributes, mbox.Attributes, "for mailbox %q", mbox.Name)
+	var actualMailboxNames []string
+
+	for _, mailbox := range mailboxes {
+		actualMailboxNames = append(actualMailboxNames, mailbox.Name)
+		require.ElementsMatch(t, mailbox.Attributes, expectedAttributes)
 	}
 
-	wantNames := []string{}
-	for name := range expectedNamesAndAttributes {
-		wantNames = append(wantNames, name)
-	}
-
-	require.ElementsMatch(t, haveNames, wantNames)
+	require.ElementsMatch(t, actualMailboxNames, expectedNames)
 }
 
 func getMailboxNamesClient(t testing.TB, client *client.Client, reference string, expression string) []string {

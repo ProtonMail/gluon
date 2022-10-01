@@ -21,18 +21,17 @@ type Match struct {
 func getMatches(
 	ctx context.Context,
 	client *ent.Client,
-	allMailboxes []*ent.Mailbox,
+	mailboxes []*ent.Mailbox,
 	ref, pattern, delimiter string,
 	subscribed bool,
 ) (map[string]Match, error) {
 	matches := make(map[string]Match)
 
-	mailboxes := make(map[string]*ent.Mailbox)
-	for _, mbox := range allMailboxes {
-		mailboxes[mbox.Name] = mbox
-	}
+	for _, mailbox := range mailboxes {
+		if subscribed && !mailbox.Subscribed {
+			continue
+		}
 
-	for mboxName := range mailboxes {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -40,84 +39,39 @@ func getMatches(
 		default: // fallthrough
 		}
 
-		for _, superior := range append(listSuperiors(mboxName, delimiter), mboxName) {
-			matchedName, isMatched := match(ref, pattern, delimiter, superior)
-			if !isMatched {
-				continue
-			}
+		if name, ok := match(ref, pattern, delimiter, mailbox.Name); ok {
+			if mailbox.Name == name {
+				atts := imap.NewFlagSetFromSlice(xslices.Map(mailbox.Edges.Attributes, func(flag *ent.MailboxAttr) string {
+					return flag.Value
+				}))
 
-			if _, alreadyMatched := matches[matchedName]; alreadyMatched {
-				continue
-			}
+				recent, err := db.GetMailboxRecentCount(ctx, client, mailbox)
+				if err != nil {
+					return nil, err
+				}
 
-			mbox, mailboxExists := mailboxes[matchedName]
+				if recent > 0 {
+					atts.AddToSelf(imap.AttrMarked)
+				} else {
+					atts.AddToSelf(imap.AttrUnmarked)
+				}
 
-			match, isMatch, err := prepareMatch(
-				ctx, client, matchedName, mbox,
-				pattern, delimiter,
-				mboxName == matchedName, mailboxExists, subscribed,
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			if isMatch {
-				matches[match.Name] = match
+				matches[mailbox.Name] = Match{
+					Name:      mailbox.Name,
+					Delimiter: delimiter,
+					Atts:      atts,
+				}
+			} else {
+				matches[name] = Match{
+					Name:      name,
+					Delimiter: delimiter,
+					Atts:      imap.NewFlagSet(imap.AttrNoSelect),
+				}
 			}
 		}
 	}
 
 	return matches, nil
-}
-
-func prepareMatch(
-	ctx context.Context,
-	client *ent.Client,
-	matchedName string,
-	mbox *ent.Mailbox,
-	pattern, delimiter string,
-	isNotSuperior, mailboxExists, onlySubscribed bool,
-) (Match, bool, error) {
-	// not match when:
-	if onlySubscribed && !mbox.Subscribed && // should be subscribed and it's not
-		(isNotSuperior || !strings.HasSuffix(pattern, "%")) { // is not superior or percent wildcard not used
-		return Match{}, false, nil
-	}
-
-	// add match as NoSelect when:
-	if !mailboxExists || // is deleted superior
-		matchedName == "" || // is empty request for delimiter response
-		onlySubscribed && !mbox.Subscribed { // is unsubscribed superior
-		return Match{
-			Name:      matchedName,
-			Delimiter: delimiter,
-			Atts:      imap.NewFlagSet(imap.AttrNoSelect),
-		}, true, nil
-	}
-
-	atts := imap.NewFlagSetFromSlice(xslices.Map(
-		mbox.Edges.Attributes,
-		func(flag *ent.MailboxAttr) string {
-			return flag.Value
-		},
-	))
-
-	recent, err := db.GetMailboxRecentCount(ctx, client, mbox)
-	if err != nil {
-		return Match{}, false, err
-	}
-
-	if recent > 0 {
-		atts.AddToSelf(imap.AttrMarked)
-	} else {
-		atts.AddToSelf(imap.AttrUnmarked)
-	}
-
-	return Match{
-		Name:      mbox.Name,
-		Delimiter: delimiter,
-		Atts:      atts,
-	}, true, nil
 }
 
 // GOMSRV-100: validate this implementation.
