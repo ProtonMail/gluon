@@ -34,11 +34,10 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 				}
 
 				if err == nil && cmd.GetStartTLS() != nil {
-					// TLS needs to be handled here in order to ensure that next command read is over the
-					// tls connection.
-					if e := s.handleStartTLS(tag, cmd.GetStartTLS()); e != nil {
+					// TLS needs to be handled here to ensure that next command read is over the TLS connection.
+					if startTLSErr := s.handleStartTLS(tag, cmd.GetStartTLS()); startTLSErr != nil {
 						cmd = nil
-						err = e
+						err = startTLSErr
 					} else {
 						continue
 					}
@@ -46,10 +45,10 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 
 				select {
 				case cmdCh <- command{tag: tag, cmd: cmd, err: err}:
+					// ...
 
 				case <-ctx.Done():
 					return
-
 				}
 			}
 		})

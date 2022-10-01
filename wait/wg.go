@@ -1,12 +1,12 @@
-package gluon
+package wait
 
 import "sync"
 
-type WaitGroup struct {
+type Group struct {
 	wg sync.WaitGroup
 }
 
-func (wg *WaitGroup) Go(f func()) {
+func (wg *Group) Go(f func()) {
 	wg.wg.Add(1)
 
 	go func() {
@@ -15,6 +15,6 @@ func (wg *WaitGroup) Go(f func()) {
 	}()
 }
 
-func (wg *WaitGroup) Wait() {
+func (wg *Group) Wait() {
 	wg.wg.Wait()
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
+	"github.com/ProtonMail/gluon/wait"
 	"github.com/ProtonMail/gluon/watcher"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -45,7 +46,7 @@ type Server struct {
 	serveDoneCh chan struct{}
 
 	// serveWG keeps track of serving goroutines.
-	serveWG WaitGroup
+	serveWG wait.Group
 
 	// nextID holds the ID that will be given to the next session.
 	nextID     int
@@ -166,7 +167,7 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 
 // serve handles incoming connections and starts a new goroutine for each.
 func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
-	var connWG WaitGroup
+	var connWG wait.Group
 	defer connWG.Wait()
 
 	for {
