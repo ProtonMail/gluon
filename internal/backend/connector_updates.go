@@ -11,7 +11,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/rfc822"
-	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
@@ -225,7 +224,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	// assign them to the mailbox. There's an upper limit to the number of items badger can track in one transaction.
 	// This way we can keep the database consistent.
 	for _, chunk := range xslices.Chunk(messagesToCreate, db.ChunkLimit) {
-		if err := db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, storeTx store.Transaction) error {
+		if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 			// Create messages in the store
 			for _, msg := range chunk {
 				literalWithHeader, err := rfc822.SetHeaderValue(msg.Literal, ids.InternalIDKey, msg.InternalID.String())
@@ -233,7 +232,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 					return fmt.Errorf("failed to set internal ID: %w", err)
 				}
 
-				if err := storeTx.Set(msg.InternalID, literalWithHeader); err != nil {
+				if err := user.store.Set(msg.InternalID, literalWithHeader); err != nil {
 					return fmt.Errorf("failed to store message literal: %w", err)
 				}
 			}

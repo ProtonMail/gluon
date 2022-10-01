@@ -160,8 +160,8 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 			testServerVersionInfo.Vendor,
 			testServerVersionInfo.SupportURL,
 		),
-		gluon.WithStoreBuilder(&store.BadgerStoreBuilder{}),
 		gluon.WithIdleBulkTime(options.idleBulkTime),
+		gluon.WithStoreBuilder(&store.OnDiskStoreBuilder{}),
 	)
 	require.NoError(tb, err)
 

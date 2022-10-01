@@ -11,7 +11,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/rfc822"
-	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
 )
@@ -175,8 +174,8 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 		}
 	}
 
-	return db.WriteAndStoreResult(ctx, m.state.db(), m.state.user.GetStore(), func(ctx context.Context, tx *ent.Tx, transaction store.Transaction) (imap.UID, error) {
-		return m.state.actionCreateMessage(ctx, tx, transaction, m.snap.mboxID, literal, flags, date, m.snap == m.state.snap)
+	return db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (imap.UID, error) {
+		return m.state.actionCreateMessage(ctx, tx, m.snap.mboxID, literal, flags, date, m.snap == m.state.snap)
 	})
 }
 

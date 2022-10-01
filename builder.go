@@ -33,7 +33,7 @@ func newBuilder() (*serverBuilder, error) {
 	return &serverBuilder{
 		delim:              "/",
 		cmdExecProfBuilder: &profiling.NullCmdExecProfilerBuilder{},
-		storeBuilder:       &store.BadgerStoreBuilder{},
+		storeBuilder:       &store.OnDiskStoreBuilder{},
 		reporter:           &reporter.NullReporter{},
 		idleBulkTime:       time.Duration(500 * time.Millisecond),
 	}, nil

@@ -11,7 +11,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/rfc822"
-	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
@@ -91,7 +90,6 @@ func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 func (state *State) actionCreateMessage(
 	ctx context.Context,
 	tx *ent.Tx,
-	stx store.Transaction,
 	mboxID ids.MailboxIDPair,
 	literal []byte,
 	flags imap.FlagSet,
@@ -114,7 +112,7 @@ func (state *State) actionCreateMessage(
 		return 0, fmt.Errorf("failed to set internal ID: %w", err)
 	}
 
-	if err := stx.Set(internalID, literalWithHeader); err != nil {
+	if err := state.user.GetStore().Set(internalID, literalWithHeader); err != nil {
 		return 0, fmt.Errorf("failed to store message literal: %w", err)
 	}
 

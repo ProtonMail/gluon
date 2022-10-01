@@ -156,18 +156,25 @@ func (user *user) close(ctx context.Context) error {
 }
 
 func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
-	return db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, stx store.Transaction) error {
+	// Delete messages in database first before deleting from the storage to avoid data loss.
+	ids, err := db.WriteResult(ctx, user.db, func(ctx context.Context, tx *ent.Tx) ([]imap.InternalMessageID, error) {
 		ids, err := db.GetMessageIDsMarkedDeleted(ctx, tx.Client())
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if err := db.DeleteMessages(ctx, tx, ids...); err != nil {
-			return err
+			return nil, err
 		}
 
-		return stx.Delete(ids...)
+		return ids, nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	return user.store.Delete(ids...)
 }
 
 func (user *user) queueStateUpdate(update state.Update) {
@@ -236,18 +243,20 @@ func (user *user) removeState(ctx context.Context, st *state.State) error {
 	// After this point we need to notify the WaitGroup or we risk deadlocks.
 	defer user.statesWG.Done()
 
-	if err := db.WriteAndStore(ctx, user.db, user.store, func(ctx context.Context, tx *ent.Tx, stx store.Transaction) error {
+	// Delete messages in database first before deleting from the storage to avoid data loss.
+	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		if err := db.DeleteMessages(ctx, tx, messageIDs...); err != nil {
-			return err
-		}
-
-		if err := stx.Delete(messageIDs...); err != nil {
 			return err
 		}
 
 		return nil
 	}); err != nil {
 		return err
+	}
+
+	// If we fail to delete messages on disk, it shouldn't count as an error at this point.
+	if err := user.store.Delete(messageIDs...); err != nil {
+		logrus.WithError(err).Error("Failed to delete messages during removeState")
 	}
 
 	return state.Close(ctx)
