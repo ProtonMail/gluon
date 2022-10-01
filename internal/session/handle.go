@@ -17,10 +17,10 @@ func (s *Session) handleOther(
 	tag string,
 	cmd *proto.Command,
 	profiler profiling.CmdProfiler,
-) chan response.Response {
+) <-chan response.Response {
 	ch := make(chan response.Response, channelBufferCount)
 
-	go func() {
+	s.handleWG.Go(func() {
 		labels := pprof.Labels("go", "handleOther()", "SessionID", strconv.Itoa(s.sessionID))
 		pprof.Do(ctx, labels, func(_ context.Context) {
 			defer close(ch)
@@ -35,7 +35,7 @@ func (s *Session) handleOther(
 				}
 			}
 		})
-	}()
+	})
 
 	return ch
 }

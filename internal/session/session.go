@@ -22,6 +22,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/version"
+	"github.com/ProtonMail/gluon/wait"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
@@ -64,12 +65,24 @@ type Session struct {
 	// before the client logs in or selects a mailbox.
 	imapID imap.IMAPID
 
+	// version is the version info of the Gluon server.
 	version version.Info
 
+	// cmdProfilerBuilder is used in profiling command execution.
 	cmdProfilerBuilder profiling.CmdProfilerBuilder
+
+	// handleWG is used to wait for all commands to finish before closing the session.
+	handleWG wait.Group
 }
 
-func New(conn net.Conn, backend *backend.Backend, sessionID int, versionInfo version.Info, profiler profiling.CmdProfilerBuilder, eventCh chan<- events.Event) *Session {
+func New(
+	conn net.Conn,
+	backend *backend.Backend,
+	sessionID int,
+	version version.Info,
+	profiler profiling.CmdProfilerBuilder,
+	eventCh chan<- events.Event,
+) *Session {
 	return &Session{
 		conn:               conn,
 		liner:              liner.New(conn),
@@ -77,7 +90,7 @@ func New(conn net.Conn, backend *backend.Backend, sessionID int, versionInfo ver
 		caps:               []imap.Capability{imap.IMAP4rev1, imap.IDLE, imap.UNSELECT, imap.UIDPLUS, imap.MOVE},
 		sessionID:          sessionID,
 		eventCh:            eventCh,
-		version:            versionInfo,
+		version:            version,
 		cmdProfilerBuilder: profiler,
 	}
 }
@@ -110,6 +123,7 @@ func (s *Session) SetTLSConfig(cfg *tls.Config) {
 
 func (s *Session) Serve(ctx context.Context) error {
 	defer s.done(ctx)
+	defer s.handleWG.Wait()
 
 	if err := s.greet(); err != nil {
 		return err
