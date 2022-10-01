@@ -96,9 +96,14 @@ func newUser(
 		labels := pprof.Labels("go", "Connector Updates", "UserID", user.userID)
 		pprof.Do(contexts.NewRemoteUpdateCtx(ctx), labels, func(_ context.Context) {
 			updateCh := user.updateInjector.GetUpdates()
+
 			for {
 				select {
-				case update := <-updateCh:
+				case update, ok := <-updateCh:
+					if !ok {
+						return
+					}
+
 					if err := user.apply(ctx, update); err != nil {
 						reporter.MessageWithContext(ctx,
 							"Failed to apply connector update",
@@ -107,6 +112,7 @@ func newUser(
 
 						logrus.WithError(err).Errorf("Failed to apply update: %v", err)
 					}
+
 				case <-user.updateQuitCh:
 					return
 				}
