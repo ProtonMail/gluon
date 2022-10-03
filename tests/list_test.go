@@ -142,7 +142,6 @@ func TestListInbox(t *testing.T) {
 func TestListRemoved(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
 		c.C(`tag create blurdybloop`).OK(`tag`)
-		c.C(`tag create foo`).OK(`tag`)
 		c.C(`tag create foo.bar`).OK(`tag`)
 
 		c.C(`tag list "" "*"`).S(
@@ -165,6 +164,27 @@ func TestListRemoved(t *testing.T) {
 			`* LIST (\Noselect) "." "foo"`,
 			`* LIST (\Unmarked) "." "INBOX"`,
 		).OK(`tag`)
+	})
+}
+
+func TestListPanic(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
+		s.mailboxCreated("user", []string{"no-parent", "just-child"})
+
+		c.C(`S001 list "" "*"`)
+		c.S(
+			`* LIST (\Unmarked) "." "INBOX"`,
+			`* LIST (\Noselect) "." "no-parent"`,
+			`* LIST (\Unmarked) "." "no-parent.just-child"`,
+		)
+		c.OK(`S001`)
+
+		c.C(`P001 list "" "%"`)
+		c.S(
+			`* LIST (\Unmarked) "." "INBOX"`,
+			`* LIST (\Noselect) "." "no-parent"`,
+		)
+		c.OK(`P001`)
 	})
 }
 
@@ -212,6 +232,5 @@ func TestListWildcards(t *testing.T) {
 		c.C(`tag list "some.thing." "%"`)
 		c.S(`* LIST (\Unmarked) "." "some.thing.else"`)
 		c.OK(`tag`)
-
 	})
 }
