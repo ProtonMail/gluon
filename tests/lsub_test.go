@@ -23,6 +23,22 @@ func TestLsub(t *testing.T) {
 		)
 		c.S("P001 OK LSUB")
 
+		c.C(`tag DELETE foo`).OK(`tag`)
+
+		c.C(`S101 LSUB "" "*"`)
+		c.S(
+			`* LSUB (\Unmarked) "." "INBOX"`,
+			`* LSUB (\Unmarked) "." "foo.bar"`,
+		)
+		c.S("S101 OK LSUB")
+
+		c.C(`P101 LSUB "" "%"`)
+		c.S(
+			`* LSUB (\Unmarked) "." "INBOX"`,
+			`* LSUB (\Noselect) "." "foo"`,
+		)
+		c.S("P101 OK LSUB")
+
 		c.C("tag CREATE #news.comp.mail.mime").OK("tag")
 
 		c.C(`tag UNSUBSCRIBE "#news.comp.mail.mime"`).OK("tag")
@@ -74,6 +90,26 @@ func TestLsub(t *testing.T) {
 		c.C(`P005 LSUB "#news." "comp.%"`)
 		c.S(`* LSUB (\Unmarked) "." "#news.comp.mail"`)
 		c.OK(`P005`)
+	})
+}
+
+func TestLsubPanic(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
+		s.mailboxCreated("user", []string{"no-parent", "just-child"})
+
+		c.C(`S001 LSUB "" "*"`)
+		c.S(
+			`* LSUB (\Unmarked) "." "INBOX"`,
+			`* LSUB (\Unmarked) "." "no-parent.just-child"`,
+		)
+		c.OK(`S001`)
+
+		c.C(`P001 LSUB "" "%"`)
+		c.S(
+			`* LSUB (\Unmarked) "." "INBOX"`,
+			`* LSUB (\Noselect) "." "no-parent"`,
+		)
+		c.OK(`P001`)
 	})
 }
 

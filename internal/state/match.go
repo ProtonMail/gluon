@@ -79,7 +79,7 @@ func prepareMatch(
 	isNotSuperior, mailboxExists, onlySubscribed bool,
 ) (Match, bool, error) {
 	// not match when:
-	if onlySubscribed && !mbox.Subscribed && // should be subscribed and it's not
+	if onlySubscribed && (mbox == nil || !mbox.Subscribed) && // should be subscribed and it's not
 		(isNotSuperior || !strings.HasSuffix(pattern, "%")) { // is not superior or percent wildcard not used
 		return Match{}, false, nil
 	}
