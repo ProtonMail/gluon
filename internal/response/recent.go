@@ -8,25 +8,6 @@ type recent struct {
 	count uint32
 }
 
-func isRecent(r Response) bool {
-	_, ok := r.(*recent)
-	return ok
-}
-
-func recentHasHigherID(a, b Response) bool {
-	recentA, ok := a.(*recent)
-	if !ok {
-		return false
-	}
-
-	recentB, ok := b.(*recent)
-	if !ok {
-		return false
-	}
-
-	return recentA.count > recentB.count
-}
-
 func Recent() *recent {
 	return &recent{}
 }
@@ -42,4 +23,32 @@ func (r *recent) Send(s Session) error {
 
 func (r *recent) String() string {
 	return fmt.Sprintf("* %v RECENT", r.count)
+}
+
+func (r *recent) canSkip(other Response) bool {
+	if _, isExists := other.(*exists); isExists {
+		return true
+	}
+
+	if _, isFetch := other.(*fetch); isFetch {
+		return true
+	}
+
+	return false
+}
+
+func (r *recent) mergeWith(other Response) Response {
+	otherRecent, ok := other.(*recent)
+	if !ok {
+		return nil
+	}
+
+	if otherRecent.count > r.count {
+		panic(fmt.Sprintf(
+			"consecutive recents must be non-decreasing, but had %d and new %d",
+			otherRecent.count, r.count,
+		))
+	}
+
+	return r
 }

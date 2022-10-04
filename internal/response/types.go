@@ -9,3 +9,8 @@ type Response interface {
 type Session interface {
 	WriteResponse(string) error
 }
+
+type mergeableResponse interface {
+	mergeWith(Response) Response
+	canSkip(Response) bool
+}

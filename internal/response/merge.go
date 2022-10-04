@@ -5,71 +5,69 @@ func Merge(input []Response) []Response {
 		return nil
 	}
 
-	var lastExists, lastRecent Response
+	if len(input) < 2 {
+		return input
+	}
 
-	filtered := []Response{}
+	merged := make([]Response, 0, len(input))
 
 	for _, resp := range input {
-		var addResponse Response
-
-		var skipExists, skipRecent bool
-
-		lastExists, addResponse, skipExists = mergeExistsResponse(resp, lastExists)
-		if addResponse != nil {
-			filtered = append(filtered, addResponse)
-		}
-
-		lastRecent, addResponse, skipRecent = mergeRecentResponse(resp, lastRecent)
-		if addResponse != nil {
-			filtered = append(filtered, addResponse)
-		}
-
-		if skipRecent && skipExists {
-			continue
-		}
-
-		filtered = append(filtered, resp)
+		merged = appendOrMergeResponse(merged, resp)
 	}
 
-	if lastExists != nil {
-		filtered = append(filtered, lastExists)
-	}
-
-	if lastRecent != nil {
-		filtered = append(filtered, lastRecent)
-	}
-
-	return filtered
+	return merged
 }
 
-func mergeExistsResponse(resp, last Response) (newLast, add Response, skip bool) {
-	return mergeTypeResponse(resp, last, isExists, existsHasHigherID)
-}
+func appendOrMergeResponse(input []Response, unmerged Response) []Response {
+	mergeable, ok := unmerged.(mergeableResponse)
+	if !ok {
+		return append(input, unmerged)
+	}
 
-func mergeRecentResponse(resp, last Response) (newLast, add Response, skip bool) {
-	return mergeTypeResponse(resp, last, isRecent, recentHasHigherID)
-}
+	wasMerged := false
 
-func mergeTypeResponse(
-	resp, last Response,
-	isType func(Response) bool,
-	isHigherID func(Response, Response) bool,
-) (newLast, add Response, skip bool) {
-	if isType(resp) {
-		if last == nil || isHigherID(resp, last) {
-			return resp, nil, true
+	for i := len(input) - 1; i >= 0; i-- {
+		merged := mergeable.mergeWith(input[i])
+		if merged != nil {
+			wasMerged = true
+			input[i] = merged
+
+			break
 		}
 
-		panic("response decreased ID for exists or recent without expunge")
+		if !mergeable.canSkip(input[i]) {
+			break
+		}
 	}
 
-	if isExists(resp) || isRecent(resp) {
-		return last, nil, true
+	if !wasMerged {
+		input = append(input, unmerged)
 	}
 
-	if last != nil {
-		return nil, last, false
+	return input
+}
+
+func appendOrMergeItem(input []Item, unmerged Item) []Item {
+	mergeable, ok := unmerged.(mergeableItem)
+	if !ok {
+		return append(input, unmerged)
 	}
 
-	return last, nil, false
+	wasMerged := false
+
+	for i := range input {
+		merged := mergeable.mergeWith(input[i])
+		if merged != nil {
+			wasMerged = true
+			input[i] = merged
+
+			break
+		}
+	}
+
+	if !wasMerged {
+		input = append(input, unmerged)
+	}
+
+	return input
 }
