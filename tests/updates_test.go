@@ -190,7 +190,7 @@ func TestMessageRemovedUpdateRepeated(t *testing.T) {
 		// Create a mailbox for the test to run in.
 		mboxID := s.mailboxCreated("user", []string{"mbox"})
 
-		for i := 1; i <= 1000; i++ {
+		for i := 1; i <= 100; i++ {
 			messageID := s.messageCreatedFromFile("user", mboxID, "testdata/multipart-mixed.eml")
 
 			c.C("A006 select mbox")

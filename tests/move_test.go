@@ -173,7 +173,7 @@ func TestMoveDuplicate(t *testing.T) {
 		// Expect to receive exists updates for them.
 		// The destination should then contain 6 messages.
 		c[1].C(`A002 copy 1:3 dest`).OK(`A002`, `COPYUID 1 1:3 4:6`)
-		c[2].Se(`* 4 EXISTS`).Se(`* 5 EXISTS`).Se(`* 6 EXISTS`)
+		c[2].Se(`* 6 EXISTS`)
 		c[3].C(`C003 status dest (messages)`).Sxe(`MESSAGES 6`).OK(`C003`)
 
 		// The origin still has three messages.

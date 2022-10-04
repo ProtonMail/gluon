@@ -127,6 +127,7 @@ func TestReceptionOnIdle(t *testing.T) {
 				cli := sess.newClient()
 				defer func() {
 					require.NoError(t, cli.Logout())
+					time.Sleep(time.Second) // sending responses in bulks
 					close(stop)
 				}()
 				require.NoError(t, cli.Login("user", "pass"))
