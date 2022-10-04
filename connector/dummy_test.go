@@ -19,7 +19,7 @@ var (
 func TestDummyConnector_validateUpdate(t *testing.T) {
 	conn := NewDummy(
 		[]string{"username"},
-		"password",
+		[]byte("password"),
 		defaultPeriod,
 		defaultFlags,
 		defaultPermanentFlags,

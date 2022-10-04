@@ -78,7 +78,7 @@ func (*DummyConnectorBuilder) New() (ConnectorImpl, error) {
 	addresses := []string{*flags.UserName}
 	connector := connector.NewDummy(
 		addresses,
-		*flags.UserPassword,
+		[]byte(*flags.UserPassword),
 		time.Second,
 		imap.NewFlagSet(`\Answered`, `\Seen`, `\Flagged`, `\Deleted`),
 		imap.NewFlagSet(`\Answered`, `\Seen`, `\Flagged`, `\Deleted`),
