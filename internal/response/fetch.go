@@ -35,3 +35,42 @@ func (r *fetch) String() string {
 
 	return fmt.Sprintf(`* %v FETCH (%v)`, r.seq, join(items))
 }
+
+func (r *fetch) canSkip(other Response) bool {
+	otherExists, isExists := other.(*exists)
+	if isExists && r.seq < otherExists.count {
+		return true
+	}
+
+	_, isRecent := other.(*recent)
+	if isRecent {
+		return true
+	}
+
+	otherFetch, isFetch := other.(*fetch)
+	if isFetch && otherFetch.seq != r.seq {
+		return true
+	}
+
+	return false
+}
+
+func (r *fetch) mergeWith(other Response) Response {
+	otherFetch, ok := other.(*fetch)
+	if !ok {
+		return nil
+	}
+
+	if otherFetch.seq != r.seq {
+		panic(fmt.Sprintf(
+			"trying to merge fetch responses for different seq id, had %d and new %d",
+			otherFetch.seq, r.seq,
+		))
+	}
+
+	for _, item := range r.items {
+		otherFetch.items = appendOrMergeItem(otherFetch.items, item)
+	}
+
+	return otherFetch
+}

@@ -17,3 +17,14 @@ func ItemFlags(flags imap.FlagSet) *itemFlags {
 func (c *itemFlags) String() string {
 	return fmt.Sprintf("FLAGS (%v)", join(c.flags.ToSlice()))
 }
+
+func (c *itemFlags) mergeWith(other Item) Item {
+	otherFlags, ok := other.(*itemFlags)
+	if !ok {
+		return nil
+	}
+
+	otherFlags.flags = c.flags
+
+	return otherFlags
+}

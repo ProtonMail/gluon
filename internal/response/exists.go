@@ -45,3 +45,31 @@ func (r *exists) Send(s Session) error {
 func (r *exists) String() string {
 	return fmt.Sprintf("* %v EXISTS", r.count)
 }
+
+func (r *exists) canSkip(other Response) bool {
+	if _, isRecent := other.(*recent); isRecent {
+		return true
+	}
+
+	if _, isFetch := other.(*fetch); isFetch {
+		return true
+	}
+
+	return false
+}
+
+func (r *exists) mergeWith(other Response) Response {
+	otherExist, ok := other.(*exists)
+	if !ok {
+		return nil
+	}
+
+	if otherExist.count > r.count {
+		panic(fmt.Sprintf(
+			"consecutive exists must be non-decreasing, but had %d and new %d",
+			otherExist.count, r.count,
+		))
+	}
+
+	return r
+}

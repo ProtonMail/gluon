@@ -115,43 +115,55 @@ func TestMergeResponses(t *testing.T) {
 }
 
 func TestMergeResponsesPanics(t *testing.T) {
-	for testCase, testData := range map[string][]Response{
+	for testCase, testData := range map[string]struct {
+		given     []Response
+		wantPanic string
+	}{
 		"exists decreased": {
-			Exists().WithCount(1),
-			Exists().WithCount(2),
-			Exists().WithCount(1),
-			Exists().WithCount(2),
-			Exists().WithCount(3),
-			Exists().WithCount(4),
+			given: []Response{
+				Exists().WithCount(1),
+				Exists().WithCount(2),
+				Exists().WithCount(1),
+				Exists().WithCount(2),
+				Exists().WithCount(3),
+				Exists().WithCount(4),
+			},
+			wantPanic: "consecutive exists must be non-decreasing, but had 2 and new 1",
 		},
 		"recent decreased": {
-			Recent().WithCount(1),
-			Recent().WithCount(2),
-			Recent().WithCount(1),
-			Recent().WithCount(2),
-			Recent().WithCount(3),
-			Recent().WithCount(4),
+			given: []Response{
+				Recent().WithCount(1),
+				Recent().WithCount(2),
+				Recent().WithCount(1),
+				Recent().WithCount(2),
+				Recent().WithCount(3),
+				Recent().WithCount(4),
+			},
+			wantPanic: "consecutive recents must be non-decreasing, but had 2 and new 1",
 		},
 		"decreasing exists while having recent": {
-			Exists().WithCount(1),
-			Recent().WithCount(1),
-			Exists().WithCount(2),
-			Recent().WithCount(2),
-			Exists().WithCount(1),
+			given: []Response{
+				Exists().WithCount(1),
+				Recent().WithCount(1),
+				Exists().WithCount(2),
+				Recent().WithCount(2),
+				Exists().WithCount(1),
+			},
+			wantPanic: "consecutive exists must be non-decreasing, but had 2 and new 1",
 		},
 		"decreasing recent while having exists": {
-			Recent().WithCount(1),
-			Exists().WithCount(1),
-			Recent().WithCount(2),
-			Exists().WithCount(2),
-			Recent().WithCount(1),
+			given: []Response{
+				Recent().WithCount(1),
+				Exists().WithCount(1),
+				Recent().WithCount(2),
+				Exists().WithCount(2),
+				Recent().WithCount(1),
+			},
+			wantPanic: "consecutive recents must be non-decreasing, but had 2 and new 1",
 		},
 	} {
 		t.Run(testCase, func(t *testing.T) {
-			require.PanicsWithValue(t,
-				"response decreased ID for exists or recent without expunge",
-				func() { Merge(testData) },
-			)
+			require.PanicsWithValue(t, testData.wantPanic, func() { Merge(testData.given) })
 		})
 	}
 }
