@@ -21,11 +21,14 @@ import (
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/version"
 	"github.com/ProtonMail/gluon/wait"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
+
+const maxSessionError = 20
 
 type Session struct {
 	// conn is the underlying TCP connection to the client. It is wrapped by a buffered liner.
@@ -73,6 +76,9 @@ type Session struct {
 
 	// handleWG is used to wait for all commands to finish before closing the session.
 	handleWG wait.Group
+
+	/// errorCount error counter
+	errorCount int
 }
 
 func New(
@@ -165,16 +171,26 @@ func (s *Session) serve(ctx context.Context) error {
 
 			if res.err != nil {
 				logrus.WithError(res.err).Debugf("Error during command parsing")
+				s.errorCount++
 
 				if errors.Is(res.err, io.EOF) {
 					logrus.Debugf("Connection to client lost")
 					return nil
+				} else if s.errorCount >= maxSessionError {
+					_ = response.Bad(tag).WithError(ErrTooManyInvalid).Send(s)
+					reporter.MessageWithContext(ctx,
+						ErrTooManyInvalid.Error(),
+						reporter.Context{"error": ErrTooManyInvalid, "ID": s.imapID.String()},
+					)
+					return ErrTooManyInvalid
 				} else if err := response.Bad(tag).WithError(res.err).Send(s); err != nil {
 					return err
 				}
 
 				continue
 			}
+
+			s.errorCount = 0
 
 		case <-s.state.Done():
 			return nil
