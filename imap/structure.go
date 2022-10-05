@@ -2,7 +2,6 @@ package imap
 
 import (
 	"bytes"
-	"errors"
 	"mime"
 	"strings"
 
@@ -47,7 +46,7 @@ func structure(section *rfc822.Section, fields *paramList, writer *dualParListWr
 		return err
 	}
 
-	_, mimeSubType, mimeParams, err := getMIMEInfo(header)
+	_, mimeSubType, mimeParams, err := getMIMEInfo(section)
 	if err != nil {
 		return err
 	}
@@ -69,7 +68,7 @@ func singlePartStructure(section *rfc822.Section, fields *paramList, writer *dua
 		return err
 	}
 
-	mimeType, mimeSubType, mimeParams, err := getMIMEInfo(header)
+	mimeType, mimeSubType, mimeParams, err := getMIMEInfo(section)
 	if err != nil {
 		return err
 	}
@@ -138,18 +137,13 @@ func childStructures(section *rfc822.Section, c *paramList, writer *dualParListW
 	return nil
 }
 
-func getMIMEInfo(header *rfc822.Header) (string, string, map[string]string, error) {
-	contentType, contentTypeParams, err := rfc822.ParseContentType(header.Get("Content-Type"))
+func getMIMEInfo(section *rfc822.Section) (string, string, map[string]string, error) {
+	mimeType, mimeParams, err := section.ContentType()
 	if err != nil {
 		return "", "", nil, err
 	}
 
-	split := strings.Split(contentType, "/")
-	if len(split) != 2 {
-		return "", "", nil, errors.New("malformed MIME type")
-	}
-
-	return split[0], split[1], contentTypeParams, nil
+	return mimeType.Type(), mimeType.SubType(), mimeParams, nil
 }
 
 func addDispInfo(c *paramList, writer parListWriter, header *rfc822.Header) {
