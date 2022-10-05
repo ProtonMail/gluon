@@ -3,7 +3,6 @@ package rfc822
 import (
 	"bytes"
 	"fmt"
-	"strings"
 )
 
 type Section struct {
@@ -24,13 +23,13 @@ func (section *Section) Identifier() []int {
 	return section.identifier
 }
 
-func (section *Section) ContentType() (string, map[string]string, error) {
+func (section *Section) ContentType() (MIMEType, map[string]string, error) {
 	header, err := section.ParseHeader()
 	if err != nil {
 		return "", nil, err
 	}
 
-	return ParseContentType(header.Get("Content-Type"))
+	return parseMIMEType(header.Get("Content-Type"))
 }
 
 func (section *Section) Header() []byte {
@@ -106,7 +105,7 @@ func (section *Section) load() error {
 		}
 
 		section.children = append(section.children, child.children...)
-	} else if strings.HasPrefix(contentType, "multipart/") {
+	} else if contentType.IsMultiPart() {
 		scanner, err := NewByteScanner(section.literal[section.body:section.end], []byte(contentParams["boundary"]))
 		if err != nil {
 			return err
