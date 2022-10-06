@@ -145,7 +145,7 @@ func TestMoveCopyDuplicates(t *testing.T) {
 }
 
 func TestMoveDuplicate(t *testing.T) {
-	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t, withIdleBulkTime(0)), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		origID := s.mailboxCreated("user", []string{"orig"})
 		destID := s.mailboxCreated("user", []string{"dest"})
 

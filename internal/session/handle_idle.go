@@ -22,7 +22,15 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, c
 		go func() {
 			labels := pprof.Labels("go", "Idle", "SessionID", strconv.Itoa(s.sessionID))
 			pprof.Do(ctx, labels, func(_ context.Context) {
-				sendResponsesInBulks(s, resCh)
+				if s.idleBulkTime != 0 {
+					sendResponsesInBulks(s, resCh, s.idleBulkTime)
+				} else {
+					for res := range resCh {
+						if err := res.Send(s); err != nil {
+							logrus.WithError(err).Error("Failed to send IDLE update")
+						}
+					}
+				}
 			})
 		}()
 
@@ -79,9 +87,9 @@ func sendMergedResponses(s *Session, buffer []response.Response) {
 	}
 }
 
-func sendResponsesInBulks(s *Session, resCh chan response.Response) {
+func sendResponsesInBulks(s *Session, resCh chan response.Response, idleBulkTime time.Duration) {
 	buffer := []response.Response{}
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := time.NewTicker(idleBulkTime)
 
 	defer ticker.Stop()
 

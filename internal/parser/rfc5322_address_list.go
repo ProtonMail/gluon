@@ -26,6 +26,7 @@ func (p *RFC5322AddressListParser) Close() {
 
 func (p *RFC5322AddressListParser) Parse(input string) ([]*mail.Address, error) {
 	cstr := C.CString(input)
+
 	defer C.free(unsafe.Pointer(cstr))
 
 	addressCount := int(C.RFC5322AddressList_parse(p.parser, cstr))

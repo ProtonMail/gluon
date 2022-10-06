@@ -45,9 +45,10 @@ var testServerVersionInfo = version.Info{
 }
 
 type serverOptions struct {
-	credentials []credentials
-	delimiter   string
-	dataDir     string
+	credentials  []credentials
+	delimiter    string
+	dataDir      string
+	idleBulkTime time.Duration
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -70,6 +71,14 @@ func (d *delimiterServerOption) apply(options *serverOptions) {
 	options.delimiter = d.delimiter
 }
 
+type idleBulkTimeOption struct {
+	idleBulkTime time.Duration
+}
+
+func (d *idleBulkTimeOption) apply(options *serverOptions) {
+	options.idleBulkTime = d.idleBulkTime
+}
+
 type dataDirOption struct {
 	dir string
 }
@@ -84,6 +93,10 @@ type credentialsSeverOption struct {
 
 func (c *credentialsSeverOption) apply(options *serverOptions) {
 	options.credentials = c.credentials
+}
+
+func withIdleBulkTime(idleBulkTime time.Duration) serverOption {
+	return &idleBulkTimeOption{idleBulkTime: idleBulkTime}
 }
 
 func withDelimiter(delimiter string) serverOption {
@@ -104,8 +117,9 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 			usernames: []string{"user"},
 			password:  []byte("pass"),
 		}},
-		delimiter: "/",
-		dataDir:   tb.TempDir(),
+		delimiter:    "/",
+		dataDir:      tb.TempDir(),
+		idleBulkTime: time.Duration(500 * time.Millisecond),
 	}
 
 	for _, op := range modifiers {
@@ -147,6 +161,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 			testServerVersionInfo.SupportURL,
 		),
 		gluon.WithStoreBuilder(&store.BadgerStoreBuilder{}),
+		gluon.WithIdleBulkTime(options.idleBulkTime),
 	)
 	require.NoError(tb, err)
 

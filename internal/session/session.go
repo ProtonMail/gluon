@@ -64,6 +64,10 @@ type Session struct {
 	// tlsConfig holds TLS information (used, for example, for STARTTLS).
 	tlsConfig *tls.Config
 
+	// idleBulkTime to control how often IDLE responses are sent. 0 means
+	// immediate response with no response merging.
+	idleBulkTime time.Duration
+
 	// imapID holds the IMAP ID extension data for this client. This is necessary, since this information may arrive
 	// before the client logs in or selects a mailbox.
 	imapID imap.IMAPID
@@ -88,6 +92,7 @@ func New(
 	version version.Info,
 	profiler profiling.CmdProfilerBuilder,
 	eventCh chan<- events.Event,
+	idleBulkTime time.Duration,
 ) *Session {
 	return &Session{
 		conn:               conn,
@@ -96,6 +101,7 @@ func New(
 		caps:               []imap.Capability{imap.IMAP4rev1, imap.IDLE, imap.UNSELECT, imap.UIDPLUS, imap.MOVE},
 		sessionID:          sessionID,
 		eventCh:            eventCh,
+		idleBulkTime:       idleBulkTime,
 		version:            version,
 		cmdProfilerBuilder: profiler,
 	}

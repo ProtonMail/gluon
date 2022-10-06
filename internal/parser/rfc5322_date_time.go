@@ -14,6 +14,7 @@ import (
 
 func ParseRFC5322DateTime(input string) (time.Time, error) {
 	cstr := C.CString(input)
+
 	defer C.free(unsafe.Pointer(cstr))
 
 	dateTime := C.RFC5322DateTime{}
