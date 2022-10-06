@@ -11,6 +11,7 @@ import (
 	"runtime/pprof"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
@@ -73,6 +74,10 @@ type Server struct {
 
 	// reporter is used to report errors to things like Sentry.
 	reporter reporter.Reporter
+
+	// idleBulkTime to control how often IDLE responses are sent. 0 means
+	// immediate response with no response merging.
+	idleBulkTime time.Duration
 }
 
 // New creates a new server with the given options.
@@ -252,7 +257,7 @@ func (s *Server) addSession(ctx context.Context, conn net.Conn) (*session.Sessio
 
 	nextID := s.getNextID()
 
-	s.sessions[nextID] = session.New(conn, s.backend, nextID, s.versionInfo, s.cmdExecProfBuilder, s.newEventCh(ctx))
+	s.sessions[nextID] = session.New(conn, s.backend, nextID, s.versionInfo, s.cmdExecProfBuilder, s.newEventCh(ctx), s.idleBulkTime)
 
 	if s.tlsConfig != nil {
 		s.sessions[nextID].SetTLSConfig(s.tlsConfig)

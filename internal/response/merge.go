@@ -1,10 +1,6 @@
 package response
 
 func Merge(input []Response) []Response {
-	if input == nil {
-		return nil
-	}
-
 	if len(input) < 2 {
 		return input
 	}
@@ -18,6 +14,13 @@ func Merge(input []Response) []Response {
 	return merged
 }
 
+// appendOrMergeResponse will find out if `unmerged` can be merged with some
+// element of `input`. It starts last thing first (i.e. the newest update).
+//
+// There are certain response types which cannot be merged together (e.g. recent and
+// exist) but one response can ignore (canSkip == true) the other and try to
+// merge with older responses (e.g. exists.canSkip(other) return true for
+// recent and fetch).
 func appendOrMergeResponse(input []Response, unmerged Response) []Response {
 	mergeable, ok := unmerged.(mergeableResponse)
 	if !ok {

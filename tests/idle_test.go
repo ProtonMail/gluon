@@ -75,13 +75,19 @@ func TestIDLERecentReceivedOnSelectedClient(t *testing.T) {
 		// And bulked after 500 ms
 		c[2].doAppend("INBOX", "To: biz.biz").s.OK("")
 		c[2].doAppend("INBOX", "To: gardy.loo").s.OK("")
+
+		// Testing splitting the updates in at least two bulks.
 		time.Sleep(510 * time.Millisecond)
+
 		c[2].doAppend("INBOX", "To: wolo.lo").s.OK("")
 		c[2].doAppend("INBOX", "To: huga.chaga").s.OK("")
 		c[2].C("C2 LOGOUT").OK("C2")
 
+		// First bulk update should have 4 exists and recent.
 		c[1].S(`* 4 EXISTS`, `* 4 RECENT`)
-		c[1].S(`* 6 EXISTS`, `* 6 RECENT`)
+		// Depneds on append performance the 6 exist and recent in
+		// second or third bulk.
+		c[1].Se(`* 6 EXISTS`, `* 6 RECENT`)
 
 		// Stop IDLE.
 		c[1].C("DONE").OK("A002")

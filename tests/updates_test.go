@@ -186,11 +186,11 @@ func TestMessageRemovedUpdate(t *testing.T) {
 }
 
 func TestMessageRemovedUpdateRepeated(t *testing.T) {
-	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withIdleBulkTime(0)), func(c *testConnection, s *testSession) {
 		// Create a mailbox for the test to run in.
 		mboxID := s.mailboxCreated("user", []string{"mbox"})
 
-		for i := 1; i <= 100; i++ {
+		for i := 1; i <= 1000; i++ {
 			messageID := s.messageCreatedFromFile("user", mboxID, "testdata/multipart-mixed.eml")
 
 			c.C("A006 select mbox")

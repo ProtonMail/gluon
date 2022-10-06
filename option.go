@@ -3,6 +3,7 @@ package gluon
 import (
 	"crypto/tls"
 	"io"
+	"time"
 
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
@@ -43,6 +44,21 @@ type withTLS struct {
 
 func (opt withTLS) config(builder *serverBuilder) {
 	builder.tlsConfig = opt.cfg
+}
+
+// WithIdleBulkTime instructs the server to use the given IDLE bulk time.
+func WithIdleBulkTime(idleBulkTime time.Duration) Option {
+	return &withIdleBulkTime{
+		idleBulkTime: idleBulkTime,
+	}
+}
+
+type withIdleBulkTime struct {
+	idleBulkTime time.Duration
+}
+
+func (opt withIdleBulkTime) config(builder *serverBuilder) {
+	builder.idleBulkTime = opt.idleBulkTime
 }
 
 // WithLogger instructs the server to write incoming and outgoing IMAP communication to the given io.Writers.

@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/session"
@@ -19,6 +20,7 @@ type serverBuilder struct {
 	dir                string
 	delim              string
 	tlsConfig          *tls.Config
+	idleBulkTime       time.Duration
 	inLogger           io.Writer
 	outLogger          io.Writer
 	versionInfo        version.Info
@@ -33,6 +35,7 @@ func newBuilder() (*serverBuilder, error) {
 		cmdExecProfBuilder: &profiling.NullCmdExecProfilerBuilder{},
 		storeBuilder:       &store.BadgerStoreBuilder{},
 		reporter:           &reporter.NullReporter{},
+		idleBulkTime:       time.Duration(500 * time.Millisecond),
 	}, nil
 }
 
@@ -64,6 +67,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 		inLogger:           builder.inLogger,
 		outLogger:          builder.outLogger,
 		tlsConfig:          builder.tlsConfig,
+		idleBulkTime:       builder.idleBulkTime,
 		storeBuilder:       builder.storeBuilder,
 		cmdExecProfBuilder: builder.cmdExecProfBuilder,
 		versionInfo:        builder.versionInfo,
