@@ -5,7 +5,9 @@
         "protobuf",
         "gtest",
         "nlohmann-json",
-        "antlr4"
+        "antlr4",
+        "libiconv",
+        "cpp-base64"
     ],
     "builtin-baseline": "5f82fa45df07a446bab57f65479f3d2df797f408",
     "overrides": [

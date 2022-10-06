@@ -261,8 +261,8 @@ static void* Swig_malloc(int c) {
 #include <stdexcept>
 
 
-#include "src/parser.h"
-
+#include "src/imap/parser.h"
+        
 SWIGINTERN std::string const &std_map_Sl_std_string_Sc_std_string_Sg__get(std::map< std::string,std::string > *self,std::string const &key){
                 std::map< std::string, std::string, std::less< std::string > >::iterator i = self->find(key);
                 if (i != self->end())
@@ -288,7 +288,7 @@ SWIGINTERN bool std_map_Sl_std_string_Sc_std_string_Sg__has_key(std::map< std::s
 extern "C" {
 #endif
 
-void _wrap_Swig_free_parser_6ffc9200ef2d0bf8(void *_swig_go_0) {
+void _wrap_Swig_free_parser_e936be103708c9c2(void *_swig_go_0) {
   void *arg1 = (void *) 0 ;
   
   arg1 = *(void **)&_swig_go_0; 
@@ -298,7 +298,7 @@ void _wrap_Swig_free_parser_6ffc9200ef2d0bf8(void *_swig_go_0) {
 }
 
 
-void *_wrap_Swig_malloc_parser_6ffc9200ef2d0bf8(intgo _swig_go_0) {
+void *_wrap_Swig_malloc_parser_e936be103708c9c2(intgo _swig_go_0) {
   int arg1 ;
   void *result = 0 ;
   void *_swig_go_result;
@@ -311,7 +311,7 @@ void *_wrap_Swig_malloc_parser_6ffc9200ef2d0bf8(intgo _swig_go_0) {
 }
 
 
-std::map< std::string,std::string > *_wrap_new_StringMap__SWIG_0_parser_6ffc9200ef2d0bf8() {
+std::map< std::string,std::string > *_wrap_new_StringMap__SWIG_0_parser_e936be103708c9c2() {
   std::map< std::string,std::string > *result = 0 ;
   std::map< std::string,std::string > *_swig_go_result;
   
@@ -322,7 +322,7 @@ std::map< std::string,std::string > *_wrap_new_StringMap__SWIG_0_parser_6ffc9200
 }
 
 
-std::map< std::string,std::string > *_wrap_new_StringMap__SWIG_1_parser_6ffc9200ef2d0bf8(std::map< std::string,std::string > *_swig_go_0) {
+std::map< std::string,std::string > *_wrap_new_StringMap__SWIG_1_parser_e936be103708c9c2(std::map< std::string,std::string > *_swig_go_0) {
   std::map< std::string,std::string > *arg1 = 0 ;
   std::map< std::string,std::string > *result = 0 ;
   std::map< std::string,std::string > *_swig_go_result;
@@ -335,7 +335,7 @@ std::map< std::string,std::string > *_wrap_new_StringMap__SWIG_1_parser_6ffc9200
 }
 
 
-intgo _wrap_StringMap_size_parser_6ffc9200ef2d0bf8(std::map< std::string,std::string > *_swig_go_0) {
+intgo _wrap_StringMap_size_parser_e936be103708c9c2(std::map< std::string,std::string > *_swig_go_0) {
   std::map< std::string,std::string > *arg1 = (std::map< std::string,std::string > *) 0 ;
   unsigned int result;
   intgo _swig_go_result;
@@ -348,7 +348,7 @@ intgo _wrap_StringMap_size_parser_6ffc9200ef2d0bf8(std::map< std::string,std::st
 }
 
 
-bool _wrap_StringMap_empty_parser_6ffc9200ef2d0bf8(std::map< std::string,std::string > *_swig_go_0) {
+bool _wrap_StringMap_empty_parser_e936be103708c9c2(std::map< std::string,std::string > *_swig_go_0) {
   std::map< std::string,std::string > *arg1 = (std::map< std::string,std::string > *) 0 ;
   bool result;
   bool _swig_go_result;
@@ -361,7 +361,7 @@ bool _wrap_StringMap_empty_parser_6ffc9200ef2d0bf8(std::map< std::string,std::st
 }
 
 
-void _wrap_StringMap_clear_parser_6ffc9200ef2d0bf8(std::map< std::string,std::string > *_swig_go_0) {
+void _wrap_StringMap_clear_parser_e936be103708c9c2(std::map< std::string,std::string > *_swig_go_0) {
   std::map< std::string,std::string > *arg1 = (std::map< std::string,std::string > *) 0 ;
   
   arg1 = *(std::map< std::string,std::string > **)&_swig_go_0; 
@@ -371,7 +371,7 @@ void _wrap_StringMap_clear_parser_6ffc9200ef2d0bf8(std::map< std::string,std::st
 }
 
 
-_gostring_ _wrap_StringMap_get_parser_6ffc9200ef2d0bf8(std::map< std::string,std::string > *_swig_go_0, _gostring_ _swig_go_1) {
+_gostring_ _wrap_StringMap_get_parser_e936be103708c9c2(std::map< std::string,std::string > *_swig_go_0, _gostring_ _swig_go_1) {
   std::map< std::string,std::string > *arg1 = (std::map< std::string,std::string > *) 0 ;
   std::string *arg2 = 0 ;
   std::string *result = 0 ;
@@ -393,7 +393,7 @@ _gostring_ _wrap_StringMap_get_parser_6ffc9200ef2d0bf8(std::map< std::string,std
 }
 
 
-void _wrap_StringMap_set_parser_6ffc9200ef2d0bf8(std::map< std::string,std::string > *_swig_go_0, _gostring_ _swig_go_1, _gostring_ _swig_go_2) {
+void _wrap_StringMap_set_parser_e936be103708c9c2(std::map< std::string,std::string > *_swig_go_0, _gostring_ _swig_go_1, _gostring_ _swig_go_2) {
   std::map< std::string,std::string > *arg1 = (std::map< std::string,std::string > *) 0 ;
   std::string *arg2 = 0 ;
   std::string *arg3 = 0 ;
@@ -413,7 +413,7 @@ void _wrap_StringMap_set_parser_6ffc9200ef2d0bf8(std::map< std::string,std::stri
 }
 
 
-void _wrap_StringMap_del_parser_6ffc9200ef2d0bf8(std::map< std::string,std::string > *_swig_go_0, _gostring_ _swig_go_1) {
+void _wrap_StringMap_del_parser_e936be103708c9c2(std::map< std::string,std::string > *_swig_go_0, _gostring_ _swig_go_1) {
   std::map< std::string,std::string > *arg1 = (std::map< std::string,std::string > *) 0 ;
   std::string *arg2 = 0 ;
   
@@ -432,7 +432,7 @@ void _wrap_StringMap_del_parser_6ffc9200ef2d0bf8(std::map< std::string,std::stri
 }
 
 
-bool _wrap_StringMap_has_key_parser_6ffc9200ef2d0bf8(std::map< std::string,std::string > *_swig_go_0, _gostring_ _swig_go_1) {
+bool _wrap_StringMap_has_key_parser_e936be103708c9c2(std::map< std::string,std::string > *_swig_go_0, _gostring_ _swig_go_1) {
   std::map< std::string,std::string > *arg1 = (std::map< std::string,std::string > *) 0 ;
   std::string *arg2 = 0 ;
   bool result;
@@ -450,7 +450,7 @@ bool _wrap_StringMap_has_key_parser_6ffc9200ef2d0bf8(std::map< std::string,std::
 }
 
 
-void _wrap_delete_StringMap_parser_6ffc9200ef2d0bf8(std::map< std::string,std::string > *_swig_go_0) {
+void _wrap_delete_StringMap_parser_e936be103708c9c2(std::map< std::string,std::string > *_swig_go_0) {
   std::map< std::string,std::string > *arg1 = (std::map< std::string,std::string > *) 0 ;
   
   arg1 = *(std::map< std::string,std::string > **)&_swig_go_0; 
@@ -460,7 +460,7 @@ void _wrap_delete_StringMap_parser_6ffc9200ef2d0bf8(std::map< std::string,std::s
 }
 
 
-void _wrap_ParseResult_tag_set_parser_6ffc9200ef2d0bf8(parser::ParseResult *_swig_go_0, _gostring_ _swig_go_1) {
+void _wrap_ParseResult_tag_set_parser_e936be103708c9c2(parser::ParseResult *_swig_go_0, _gostring_ _swig_go_1) {
   parser::ParseResult *arg1 = (parser::ParseResult *) 0 ;
   std::string *arg2 = 0 ;
   
@@ -475,7 +475,7 @@ void _wrap_ParseResult_tag_set_parser_6ffc9200ef2d0bf8(parser::ParseResult *_swi
 }
 
 
-_gostring_ _wrap_ParseResult_tag_get_parser_6ffc9200ef2d0bf8(parser::ParseResult *_swig_go_0) {
+_gostring_ _wrap_ParseResult_tag_get_parser_e936be103708c9c2(parser::ParseResult *_swig_go_0) {
   parser::ParseResult *arg1 = (parser::ParseResult *) 0 ;
   std::string *result = 0 ;
   _gostring_ _swig_go_result;
@@ -488,7 +488,7 @@ _gostring_ _wrap_ParseResult_tag_get_parser_6ffc9200ef2d0bf8(parser::ParseResult
 }
 
 
-void _wrap_ParseResult_command_set_parser_6ffc9200ef2d0bf8(parser::ParseResult *_swig_go_0, _gostring_ _swig_go_1) {
+void _wrap_ParseResult_command_set_parser_e936be103708c9c2(parser::ParseResult *_swig_go_0, _gostring_ _swig_go_1) {
   parser::ParseResult *arg1 = (parser::ParseResult *) 0 ;
   std::string *arg2 = 0 ;
   
@@ -503,7 +503,7 @@ void _wrap_ParseResult_command_set_parser_6ffc9200ef2d0bf8(parser::ParseResult *
 }
 
 
-_gostring_ _wrap_ParseResult_command_get_parser_6ffc9200ef2d0bf8(parser::ParseResult *_swig_go_0) {
+_gostring_ _wrap_ParseResult_command_get_parser_e936be103708c9c2(parser::ParseResult *_swig_go_0) {
   parser::ParseResult *arg1 = (parser::ParseResult *) 0 ;
   std::string *result = 0 ;
   _gostring_ _swig_go_result;
@@ -516,7 +516,7 @@ _gostring_ _wrap_ParseResult_command_get_parser_6ffc9200ef2d0bf8(parser::ParseRe
 }
 
 
-void _wrap_ParseResult_error_set_parser_6ffc9200ef2d0bf8(parser::ParseResult *_swig_go_0, _gostring_ _swig_go_1) {
+void _wrap_ParseResult_error_set_parser_e936be103708c9c2(parser::ParseResult *_swig_go_0, _gostring_ _swig_go_1) {
   parser::ParseResult *arg1 = (parser::ParseResult *) 0 ;
   std::string *arg2 = 0 ;
   
@@ -531,7 +531,7 @@ void _wrap_ParseResult_error_set_parser_6ffc9200ef2d0bf8(parser::ParseResult *_s
 }
 
 
-_gostring_ _wrap_ParseResult_error_get_parser_6ffc9200ef2d0bf8(parser::ParseResult *_swig_go_0) {
+_gostring_ _wrap_ParseResult_error_get_parser_e936be103708c9c2(parser::ParseResult *_swig_go_0) {
   parser::ParseResult *arg1 = (parser::ParseResult *) 0 ;
   std::string *result = 0 ;
   _gostring_ _swig_go_result;
@@ -544,7 +544,7 @@ _gostring_ _wrap_ParseResult_error_get_parser_6ffc9200ef2d0bf8(parser::ParseResu
 }
 
 
-parser::ParseResult *_wrap_new_ParseResult_parser_6ffc9200ef2d0bf8() {
+parser::ParseResult *_wrap_new_ParseResult_parser_e936be103708c9c2() {
   parser::ParseResult *result = 0 ;
   parser::ParseResult *_swig_go_result;
   
@@ -555,7 +555,7 @@ parser::ParseResult *_wrap_new_ParseResult_parser_6ffc9200ef2d0bf8() {
 }
 
 
-void _wrap_delete_ParseResult_parser_6ffc9200ef2d0bf8(parser::ParseResult *_swig_go_0) {
+void _wrap_delete_ParseResult_parser_e936be103708c9c2(parser::ParseResult *_swig_go_0) {
   parser::ParseResult *arg1 = (parser::ParseResult *) 0 ;
   
   arg1 = *(parser::ParseResult **)&_swig_go_0; 
@@ -565,7 +565,7 @@ void _wrap_delete_ParseResult_parser_6ffc9200ef2d0bf8(parser::ParseResult *_swig
 }
 
 
-parser::ParseResult *_wrap_parse_parser_6ffc9200ef2d0bf8(_gostring_ _swig_go_0, std::map< std::string,std::string,std::less< std::string > > *_swig_go_1, _gostring_ _swig_go_2) {
+parser::ParseResult *_wrap_parse_parser_e936be103708c9c2(_gostring_ _swig_go_0, std::map< std::string,std::string,std::less< std::string > > *_swig_go_1, _gostring_ _swig_go_2) {
   std::string *arg1 = 0 ;
   std::map< std::string,std::string,std::less< std::string > > *arg2 = 0 ;
   std::string *arg3 = 0 ;

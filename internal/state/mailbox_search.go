@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/mail"
+	"github.com/ProtonMail/gluon/internal/parser"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -580,7 +580,7 @@ func buildSearchOpSentBefore(key *proto.SearchKey) (*buildSearchOpResult, error)
 	op := func(s *searchData) (bool, error) {
 		value := s.header.Get("Date")
 
-		date, err := mail.ParseDate(value)
+		date, err := parser.ParseRFC5322DateTime(value)
 		if err != nil {
 			return false, err
 		}
@@ -602,7 +602,7 @@ func buildSearchOpSentOn(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	op := func(s *searchData) (bool, error) {
 		value := s.header.Get("Date")
 
-		date, err := mail.ParseDate(value)
+		date, err := parser.ParseRFC5322DateTime(value)
 		if err != nil {
 			return false, err
 		}
@@ -625,7 +625,7 @@ func buildSearchOpSentSince(key *proto.SearchKey) (*buildSearchOpResult, error) 
 	op := func(s *searchData) (bool, error) {
 		value := s.header.Get("Date")
 
-		date, err := mail.ParseDate(value)
+		date, err := parser.ParseRFC5322DateTime(value)
 		if err != nil {
 			return false, err
 		}
