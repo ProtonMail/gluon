@@ -2,6 +2,7 @@ package tests
 
 import (
 	"testing"
+	"time"
 )
 
 func TestLoginSuccess(t *testing.T) {
@@ -86,5 +87,39 @@ func TestLoginCapabilities(t *testing.T) {
 	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("A001 login user pass")
 		c.S(`A001 OK [CAPABILITY IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT] Logged in`)
+	})
+}
+
+func TestLoginTooManyAttemps(t *testing.T) {
+	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		// 3 attempts.
+		c.C("A001 login user badpass").NO("A001")
+		c.C("A001 login user badpass").NO("A001")
+		c.C("A001 login user badpass").NO("A001")
+
+		c.C("A001 login user badpass")
+		// then jailed for 30sec.
+		loginTempo := time.NewTimer(time.Second * 30)
+		<-loginTempo.C
+		c.NO("A001")
+
+		// after unjailed, got direct answer
+		c.C("A001 login user pass").OK("A001")
+	})
+}
+
+func TestLoginTooManyAttempsMany(t *testing.T) {
+	runManyToOneTest(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
+		// 3 attempts.
+		c[1].C("A001 login user badpass").NO("A001")
+		c[2].C("A002 login user badpass").NO("A002")
+		c[3].C("A003 login user badpass").NO("A003")
+
+		c[1].C("A004 login user pass")
+		// then jailed for 30sec.
+		loginTempo := time.NewTimer(time.Second * 30)
+		<-loginTempo.C
+		c[1].OK("A004")
+
 	})
 }

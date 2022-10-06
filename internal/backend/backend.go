@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"runtime/pprof"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/internal/db"
@@ -14,6 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
+
+const maxLoginAttempts = 3
 
 type Backend struct {
 	// dir is the directory in which backend files should be stored.
@@ -28,6 +33,11 @@ type Backend struct {
 
 	// storeBuilder builds stores for the backend users.
 	storeBuilder store.Builder
+
+	/// loginErrorCount login failure counter that triggers a tempo.
+	loginErrorCount int32
+	lockLogin       sync.Mutex
+	lockLoginTempo  sync.Mutex
 }
 
 func New(dir string, storeBuilder store.Builder, delim string) (*Backend, error) {
@@ -108,12 +118,13 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string, removeFiles boo
 	return nil
 }
 
-func (b *Backend) GetState(username string, password []byte, sessionID int) (*state.State, error) {
+func (b *Backend) GetState(ctx context.Context, username string, password []byte, sessionID int) (*state.State, error) {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
-	userID, err := b.getUserID(username, password)
+	userID, err := b.getUserID(ctx, username, password)
 	if err != nil {
+		// todo filter on error and track ErrLoginBlocked to notify the connector
 		return nil, err
 	}
 
@@ -167,11 +178,38 @@ func (b *Backend) Close(ctx context.Context) error {
 	return nil
 }
 
-func (b *Backend) getUserID(username string, password []byte) (string, error) {
+func (b *Backend) getUserID(ctx context.Context, username string, password []byte) (string, error) {
+	b.lockLogin.Lock()
+	defer b.lockLogin.Unlock()
+
+	// wait for the end of the tempo
+	b.lockLoginTempo.Lock()
+	// empty critical section.
+	b.lockLoginTempo.Unlock() // nolint:staticcheck
+
 	for _, user := range b.users {
 		if user.connector.Authorize(username, password) {
+			atomic.StoreInt32(&b.loginErrorCount, 0)
 			return user.userID, nil
 		}
+	}
+
+	atomic.AddInt32(&b.loginErrorCount, 1)
+
+	if atomic.LoadInt32(&b.loginErrorCount) == maxLoginAttempts {
+		tempo := time.NewTimer(time.Second * 30)
+
+		go func() {
+			labels := pprof.Labels("go", "getUserID()")
+			pprof.Do(ctx, labels, func(_ context.Context) {
+				b.lockLoginTempo.Lock()
+				defer b.lockLoginTempo.Unlock()
+				<-tempo.C
+				atomic.StoreInt32(&b.loginErrorCount, 0)
+			})
+		}()
+
+		return "", ErrLoginBlocked
 	}
 
 	return "", ErrNoSuchUser
