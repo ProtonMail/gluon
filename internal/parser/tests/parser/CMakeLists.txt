@@ -3,7 +3,8 @@ find_package(nlohmann_json REQUIRED)
 
 add_executable(parser_test
   parser_test.cpp
-)
+  address_list_test.cpp
+  date_time_test.cpp)
 
 target_link_libraries(parser_test
   parser
