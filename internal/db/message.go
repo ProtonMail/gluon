@@ -613,3 +613,17 @@ func GetHighestMessageID(ctx context.Context, client *ent.Client) (imap.Internal
 
 	return message[0].ID, nil
 }
+
+func GetAllMessagesIDsAsMap(ctx context.Context, client *ent.Client) (map[imap.InternalMessageID]struct{}, error) {
+	messages, err := client.Message.Query().Select(message.FieldID).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	idMap := make(map[imap.InternalMessageID]struct{}, len(messages))
+	for _, v := range messages {
+		idMap[v.ID] = struct{}{}
+	}
+
+	return idMap, nil
+}
