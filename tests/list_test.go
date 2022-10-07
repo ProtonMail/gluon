@@ -237,7 +237,6 @@ func TestListWildcards(t *testing.T) {
 
 func TestListSpecialUseAttributes(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
-		s.mailboxCreated("user", []string{"INBOX"})
 		s.mailboxCreatedWithAttributes("user", []string{"Koncepty"}, imap.NewFlagSet(imap.AttrDrafts))
 		s.mailboxCreatedWithAttributes("user", []string{"Odeslane"}, imap.NewFlagSet(imap.AttrSent))
 		s.mailboxCreatedWithAttributes("user", []string{"S hvezdickou"}, imap.NewFlagSet(imap.AttrFlagged))
