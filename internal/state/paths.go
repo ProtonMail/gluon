@@ -9,6 +9,10 @@ import (
 
 // listSuperiors returns all names superior to the given name, if hierarchies are indicated with the given delimiter.
 func listSuperiors(name, delimiter string) []string {
+	if delimiter == "" {
+		return nil
+	}
+
 	split := strings.Split(name, delimiter)
 	if len(split) == 0 {
 		return nil

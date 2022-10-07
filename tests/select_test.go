@@ -64,3 +64,17 @@ func TestSelectUTF7(t *testing.T) {
 		c.C(`A005 LIST "" "*"`).Sxe(`&ZeVnLIqe-`).OK(`A005`)
 	})
 }
+
+func TestSelectWithNilDelimiter(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter("")), func(c *testConnection, _ *testSession) {
+		// Test we can create a mailbox with a UTF-7 name.
+		c.C("a CREATE A").OK("a")
+		c.C("a CREATE A/B").OK("a")
+		c.C("a CREATE A/B/C").OK("a")
+
+		// Test we can select the mailbox.
+		c.C("A001 SELECT A").OK("A001")
+		c.C("A002 SELECT A/B").OK("A002")
+		c.C("A003 SELECT A/B/C").OK("A003")
+	})
+}
