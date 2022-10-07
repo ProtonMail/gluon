@@ -68,6 +68,7 @@ func NewDummy(usernames []string, password []byte, period time.Duration, flags, 
 		conn.ticker.Tick(func(time.Time) {
 			for _, update := range conn.popUpdates() {
 				defer update.Wait()
+
 				select {
 				case conn.updateCh <- update:
 					continue
@@ -258,7 +259,7 @@ func (conn *Dummy) SetUIDValidity(imap.UID) error {
 func (conn *Dummy) Sync(ctx context.Context) error {
 	for _, mailbox := range conn.state.getLabels() {
 		update := imap.NewMailboxCreated(mailbox)
-		defer update.Wait()
+		defer update.WaitContext(ctx)
 
 		conn.updateCh <- update
 	}
@@ -275,7 +276,7 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 	}
 
 	update := imap.NewMessagesCreated(updates...)
-	defer update.Wait()
+	defer update.WaitContext(ctx)
 
 	conn.updateCh <- update
 

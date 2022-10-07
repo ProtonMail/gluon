@@ -29,9 +29,12 @@ func newUpdateInjector(ctx context.Context, connector connector.Connector, userI
 	injector.forwardWG.Add(1)
 
 	go func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		labels := pprof.Labels("go", "forward()", "UserID", userID)
-		pprof.Do(ctx, labels, func(_ context.Context) {
-			injector.forward(connector.GetUpdates())
+		pprof.Do(ctx, labels, func(ctx context.Context) {
+			injector.forward(ctx, connector.GetUpdates())
 		})
 	}()
 
@@ -51,7 +54,7 @@ func (u *updateInjector) Close(ctx context.Context) error {
 }
 
 // forward pulls updates off the stream and forwards them to the outgoing update channel.
-func (u *updateInjector) forward(updateCh <-chan imap.Update) {
+func (u *updateInjector) forward(ctx context.Context, updateCh <-chan imap.Update) {
 	defer func() {
 		close(u.updatesCh)
 		u.forwardWG.Done()
@@ -64,7 +67,7 @@ func (u *updateInjector) forward(updateCh <-chan imap.Update) {
 				return
 			}
 
-			u.send(update)
+			u.send(ctx, update)
 
 		case <-u.forwardQuitCh:
 			return
@@ -73,15 +76,14 @@ func (u *updateInjector) forward(updateCh <-chan imap.Update) {
 }
 
 // send the update on the updates channel, optionally blocking until it has been processed.
-func (u *updateInjector) send(update imap.Update, withBlock ...bool) {
+func (u *updateInjector) send(ctx context.Context, update imap.Update, withBlock ...bool) {
 	select {
-	case u.updatesCh <- update:
-
 	case <-u.forwardQuitCh:
 		return
-	}
 
-	if len(withBlock) > 0 && withBlock[0] {
-		update.Wait()
+	case u.updatesCh <- update:
+		if len(withBlock) > 0 && withBlock[0] {
+			update.WaitContext(ctx)
+		}
 	}
 }
