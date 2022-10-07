@@ -170,7 +170,7 @@ func (sc *stateConnectorImpl) refresh(ctx context.Context, messageIDs []imap.Mes
 			return err
 		}
 
-		sc.user.updateInjector.send(imap.NewMessageLabelsUpdated(
+		sc.user.updateInjector.send(ctx, imap.NewMessageLabelsUpdated(
 			message.ID,
 			mboxIDs,
 			message.Flags.ContainsUnchecked(imap.FlagSeenLowerCase),
@@ -184,7 +184,7 @@ func (sc *stateConnectorImpl) refresh(ctx context.Context, messageIDs []imap.Mes
 			return err
 		}
 
-		sc.user.updateInjector.send(imap.NewMailboxUpdated(
+		sc.user.updateInjector.send(ctx, imap.NewMailboxUpdated(
 			mailbox.ID,
 			mailbox.Name,
 		), true)
