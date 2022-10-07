@@ -49,6 +49,7 @@ type serverOptions struct {
 	delimiter    string
 	dataDir      string
 	idleBulkTime time.Duration
+	storeBuilder store.Builder
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -95,6 +96,14 @@ func (c *credentialsSeverOption) apply(options *serverOptions) {
 	options.credentials = c.credentials
 }
 
+type storeBuilderOption struct {
+	builder store.Builder
+}
+
+func (s *storeBuilderOption) apply(options *serverOptions) {
+	options.storeBuilder = s.builder
+}
+
 func withIdleBulkTime(idleBulkTime time.Duration) serverOption {
 	return &idleBulkTimeOption{idleBulkTime: idleBulkTime}
 }
@@ -111,6 +120,10 @@ func withCredentials(credentials []credentials) serverOption {
 	return &credentialsSeverOption{credentials: credentials}
 }
 
+func withStoreBuilder(builder store.Builder) serverOption {
+	return &storeBuilderOption{builder: builder}
+}
+
 func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
 	options := &serverOptions{
 		credentials: []credentials{{
@@ -120,6 +133,7 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 		delimiter:    "/",
 		dataDir:      tb.TempDir(),
 		idleBulkTime: time.Duration(500 * time.Millisecond),
+		storeBuilder: &store.OnDiskStoreBuilder{},
 	}
 
 	for _, op := range modifiers {
@@ -161,7 +175,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 			testServerVersionInfo.SupportURL,
 		),
 		gluon.WithIdleBulkTime(options.idleBulkTime),
-		gluon.WithStoreBuilder(&store.OnDiskStoreBuilder{}),
+		gluon.WithStoreBuilder(options.storeBuilder),
 	)
 	require.NoError(tb, err)
 

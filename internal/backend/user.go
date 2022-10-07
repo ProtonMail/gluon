@@ -85,6 +85,14 @@ func newUser(
 		return nil, err
 	}
 
+	if err := user.cleanupStaleStoreData(ctx); err != nil {
+		logrus.WithError(err).Error("Failed to cleanup stale store data")
+		reporter.MessageWithContext(ctx,
+			"Failed to cleanup stale store data",
+			reporter.Context{"error": err},
+		)
+	}
+
 	user.updateWG.Add(1)
 
 	go func() {
@@ -287,4 +295,26 @@ func (user *user) closeStates() {
 
 func (user *user) nextMessageID() imap.InternalMessageID {
 	return imap.InternalMessageID(atomic.AddUint64(&user.messageIDCounter, 1))
+}
+
+func (user *user) cleanupStaleStoreData(ctx context.Context) error {
+	storeIds, err := user.store.List()
+	if err != nil {
+		return err
+	}
+
+	dbIdMap, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (map[imap.InternalMessageID]struct{}, error) {
+		return db.GetAllMessagesIDsAsMap(ctx, client)
+	})
+	if err != nil {
+		return err
+	}
+
+	idsToDelete := xslices.Filter(storeIds, func(id imap.InternalMessageID) bool {
+		_, ok := dbIdMap[id]
+
+		return !ok
+	})
+
+	return user.store.Delete(idsToDelete...)
 }
