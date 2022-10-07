@@ -4,6 +4,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"github.com/sirupsen/logrus"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -113,6 +115,38 @@ func (c *onDiskStore) Delete(messageIDs ...imap.InternalMessageID) error {
 	}
 
 	return nil
+}
+
+func (c *onDiskStore) List() ([]imap.InternalMessageID, error) {
+	if c.sem != nil {
+		c.sem.Lock()
+		defer c.sem.Unlock()
+	}
+
+	var ids []imap.InternalMessageID
+
+	if err := filepath.Walk(c.path, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		id, err := imap.InternalMessageIDFromString(info.Name())
+		if err != nil {
+			logrus.WithError(err).Errorf("Invalid id file in cache: %v", info.Name())
+		}
+
+		ids = append(ids, id)
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ids, nil
 }
 
 func (c *onDiskStore) Close() error {
