@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"github.com/ProtonMail/gluon/imap"
 	"runtime"
 	"testing"
 
@@ -24,6 +25,7 @@ func TestOnDiskStore(t *testing.T) {
 			require.NoError(t, err)
 
 			testStore(t, store)
+			testStoreList(t, store)
 		})
 	}
 }
@@ -36,6 +38,16 @@ func testStore(t *testing.T, store store.Store) {
 	require.Equal(t, []byte("literal1"), must(store.Get(1)))
 	require.Equal(t, []byte("literal2"), must(store.Get(2)))
 	require.Equal(t, []byte("literal3"), must(store.Get(3)))
+}
+
+func testStoreList(t *testing.T, store store.Store) {
+	require.NoError(t, store.Set(1, []byte("literal1")))
+	require.NoError(t, store.Set(2, []byte("literal2")))
+	require.NoError(t, store.Set(3, []byte("literal3")))
+
+	list, err := store.List()
+	require.NoError(t, err)
+	require.ElementsMatch(t, list, []imap.InternalMessageID{1, 2, 3})
 }
 
 func must[T any](val T, err error) T {

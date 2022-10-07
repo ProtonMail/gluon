@@ -7,6 +7,7 @@ type Store interface {
 	Set(messageID imap.InternalMessageID, literal []byte) error
 	Delete(messageID ...imap.InternalMessageID) error
 	Close() error
+	List() ([]imap.InternalMessageID, error)
 }
 
 type Builder interface {
