@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
@@ -148,6 +149,14 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 }
 
 func (state *State) Create(ctx context.Context, name string) error {
+	if strings.HasPrefix(name, state.delimiter) {
+		return errors.New("invalid mailbox name: begins with hierarchy separator")
+	}
+
+	if strings.Contains(name, state.delimiter+state.delimiter) {
+		return errors.New("invalid mailbox name: has adjacent hierarchy separators")
+	}
+
 	mboxesToCreate, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) ([]string, error) {
 		var mboxesToCreate []string
 		// If the mailbox name is suffixed with the server's hierarchy separator, remove the separator and still create

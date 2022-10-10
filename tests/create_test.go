@@ -49,6 +49,16 @@ func TestCreateWithDifferentHierarchySeparator(t *testing.T) {
 	})
 }
 
+func TestCreateWithNilHierarchySeparator(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withDelimiter("")), func(client *client.Client, _ *testSession) {
+		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX"})
+		require.NoError(t, client.Create("Folder/Bar"))
+		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "Folder/Bar"})
+		require.NoError(t, client.Create("Folder"))
+		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "Folder", "Folder/Bar"})
+	})
+}
+
 func TestCreatePreviousLevelHierarchyIfNonExisting(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("Folder/Bar/ZZ"))
@@ -94,5 +104,19 @@ func TestEnsureNewMailboxWithDeletedNameHasGreaterId(t *testing.T) {
 			require.Greater(t, newValidity, oldValidity)
 		}
 
+	})
+}
+
+func TestCreateAdjacentSeparator(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		c.C(`A001 create foo//bar`)
+		c.Sx(`^A001 NO .*adjacent hierarchy separators\r\n$`)
+	})
+}
+
+func TestCreateBeginsWithSeparator(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		c.C(`A001 create /foo`)
+		c.Sx(`^A001 NO .*begins with hierarchy separator\r\n$`)
 	})
 }
