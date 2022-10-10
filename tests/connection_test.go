@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -197,14 +196,10 @@ func (s *testConnection) doBench(b *testing.B, cmd string) {
 
 // TODO: This is shitty because the uuid of one literal may appear within the data of another literal.
 func (s *testConnection) read() []byte {
-	line, literals, err := s.liner.Read(func() error { return nil })
+	line, err := s.liner.Read(func() error { return nil })
 	require.NoError(s.tb, err)
 
-	for uuid, literal := range literals {
-		line = bytes.Replace(line, []byte(uuid), literal, 1)
-	}
-
-	return line
+	return []byte(line)
 }
 
 func (s *testConnection) readN(n int) [][]byte {
@@ -222,7 +217,7 @@ func (s *testConnection) disconnect() error {
 }
 
 func (s *testConnection) expectClosed() {
-	_, _, err := s.liner.Read(func() error { return nil })
+	_, err := s.liner.Read(func() error { return nil })
 	require.ErrorIs(s.tb, err, io.EOF)
 }
 

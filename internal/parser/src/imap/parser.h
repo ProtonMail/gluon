@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 namespace parser {
 
@@ -14,12 +15,14 @@ struct ParseResult {
   // If not empty, contains the currently parsed command tag
   std::string tag;
   // Contains the protobuf serialized data
-  std::string command;
+  std::vector<uint8_t> command;
   // If an error occurred this field will not be empty
   std::string error;
 };
 
-ParseResult parse(const std::string&, const std::map<std::string, std::string>&, const std::string&);
+void parseInto(const char* input, const char delimiter, ParseResult& output);
+
+ParseResult parse(const char* input, const char delimiter);
 
 }  // namespace parser
 

@@ -4,8 +4,12 @@ options {
 	tokenVocab = IMAPLexer;
 }
 
+@members {
+    virtual std::string consumeTokens(std::string) = 0;
+}
+
 // 2.2. Commands and Responses
-crlf: CR LF;
+crlf: CR? LF;
 
 // 2.2.1. Client Protocol Sender and Server Protocol Receiver
 tag: tagChar+;
@@ -36,7 +40,9 @@ quotedChar
 
 quotedSpecial: DQuote | Backslash;
 
-literal: LCurly number RCurly crlf uuid;
+literal locals[
+std::string mLiteralText
+]: LCurly number{auto numberCtx=$number.ctx;}RCurly crlf {$mLiteralText = $parser->consumeTokens(numberCtx->getText());};
 uuid: hex4 hex4 Minus hex4 Minus hex4 Minus hex4 Minus hex4 hex4 hex4;
 hex4: hex hex hex hex;
 hex:  alpha | digit;

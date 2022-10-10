@@ -17,14 +17,14 @@ type Option interface {
 }
 
 // WithDelimiter instructs the server to use the given path delimiter instead of the default ('/').
-func WithDelimiter(delimiter string) Option {
+func WithDelimiter(delimiter rune) Option {
 	return &withDelimiter{
 		delimiter: delimiter,
 	}
 }
 
 type withDelimiter struct {
-	delimiter string
+	delimiter rune
 }
 
 func (opt withDelimiter) config(builder *serverBuilder) {

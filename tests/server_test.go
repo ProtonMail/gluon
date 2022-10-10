@@ -46,7 +46,7 @@ var testServerVersionInfo = version.Info{
 
 type serverOptions struct {
 	credentials  []credentials
-	delimiter    string
+	delimiter    rune
 	dataDir      string
 	idleBulkTime time.Duration
 	storeBuilder store.Builder
@@ -65,7 +65,7 @@ type serverOption interface {
 }
 
 type delimiterServerOption struct {
-	delimiter string
+	delimiter rune
 }
 
 func (d *delimiterServerOption) apply(options *serverOptions) {
@@ -109,7 +109,7 @@ func withIdleBulkTime(idleBulkTime time.Duration) serverOption {
 }
 
 func withDelimiter(delimiter string) serverOption {
-	return &delimiterServerOption{delimiter: delimiter}
+	return &delimiterServerOption{delimiter: []rune(delimiter)[0]}
 }
 
 func withDataDir(dir string) serverOption {
@@ -130,7 +130,7 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 			usernames: []string{"user"},
 			password:  []byte("pass"),
 		}},
-		delimiter:    "/",
+		delimiter:    '/',
 		dataDir:      tb.TempDir(),
 		idleBulkTime: time.Duration(500 * time.Millisecond),
 		storeBuilder: &store.OnDiskStoreBuilder{},

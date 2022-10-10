@@ -18,7 +18,7 @@ import (
 
 type serverBuilder struct {
 	dir                string
-	delim              string
+	delim              rune
 	tlsConfig          *tls.Config
 	idleBulkTime       time.Duration
 	inLogger           io.Writer
@@ -31,7 +31,7 @@ type serverBuilder struct {
 
 func newBuilder() (*serverBuilder, error) {
 	return &serverBuilder{
-		delim:              "/",
+		delim:              '/',
 		cmdExecProfBuilder: &profiling.NullCmdExecProfilerBuilder{},
 		storeBuilder:       &store.OnDiskStoreBuilder{},
 		reporter:           &reporter.NullReporter{},

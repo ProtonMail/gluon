@@ -19,7 +19,7 @@ add_library(parser STATIC
   rfc5322/rfc5322_parser_capi.h
   rfc5322/rfc5322_parser_capi.cpp
   "${CPP_BASE64_INCLUDE_DIRS}/cpp-base64/base64.cpp"
-  rfc5322/rfc5322_date_time_parser.cpp rfc5322/rfc5322_date_time_parser.h)
+  rfc5322/rfc5322_date_time_parser.cpp rfc5322/rfc5322_date_time_parser.h imap/parser_capi.cpp imap/parser_capi.h)
 
 target_link_libraries(parser
   PUBLIC parser_gen proto

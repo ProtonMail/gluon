@@ -14,7 +14,7 @@ import (
 type UserInterface interface {
 	GetUserID() string
 
-	GetDelimiter() string
+	GetDelimiter() rune
 
 	GetDB() *db.DB
 

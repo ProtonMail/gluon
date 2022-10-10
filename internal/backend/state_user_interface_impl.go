@@ -24,7 +24,7 @@ func (s *StateUserInterfaceImpl) GetUserID() string {
 	return s.u.userID
 }
 
-func (s *StateUserInterfaceImpl) GetDelimiter() string {
+func (s *StateUserInterfaceImpl) GetDelimiter() rune {
 	return s.u.delimiter
 }
 

@@ -20,7 +20,7 @@ type Backend struct {
 	dir string
 
 	// delim is the server's path delim.
-	delim string
+	delim rune
 
 	// users holds all registered backend users.
 	users     map[string]*user
@@ -30,7 +30,7 @@ type Backend struct {
 	storeBuilder store.Builder
 }
 
-func New(dir string, storeBuilder store.Builder, delim string) (*Backend, error) {
+func New(dir string, storeBuilder store.Builder, delim rune) (*Backend, error) {
 	return &Backend{
 		dir:          dir,
 		storeBuilder: storeBuilder,
@@ -43,7 +43,7 @@ func (b *Backend) NewUserID() string {
 	return uuid.NewString()
 }
 
-func (b *Backend) GetDelimiter() string {
+func (b *Backend) GetDelimiter() rune {
 	return b.delim
 }
 

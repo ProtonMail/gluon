@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/internal/parser"
 	"runtime/pprof"
 	"strconv"
 
@@ -16,7 +17,7 @@ type command struct {
 	err error
 }
 
-func (s *Session) startCommandReader(ctx context.Context, del string) <-chan command {
+func (s *Session) startCommandReader(ctx context.Context, del rune) <-chan command {
 	cmdCh := make(chan command)
 
 	go func() {
@@ -24,8 +25,11 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 		pprof.Do(ctx, labels, func(_ context.Context) {
 			defer close(cmdCh)
 
+			imapParser := parser.NewIMAPParser()
+			defer imapParser.Close()
+
 			for {
-				tag, cmd, err := s.readCommand(del)
+				tag, cmd, err := s.readCommand(imapParser, del)
 				if err != nil {
 					reporter.MessageWithContext(ctx,
 						"Failed to parse imap command",
@@ -57,18 +61,13 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 	return cmdCh
 }
 
-func (s *Session) readCommand(del string) (string, *proto.Command, error) {
-	line, literals, err := s.liner.Read(func() error { return response.Continuation().Send(s) })
+func (s *Session) readCommand(parser *parser.IMAPParser, del rune) (string, *proto.Command, error) {
+	line, err := s.liner.Read(func() error { return response.Continuation().Send(s) })
 	if err != nil {
 		return "", nil, err
 	}
 
-	s.logIncoming(string(line))
+	s.logIncoming(line)
 
-	tag, cmd, err := parse(line, literals, del)
-	if err != nil {
-		return tag, cmd, err
-	}
-
-	return tag, cmd, nil
+	return parser.Parse(line, del)
 }

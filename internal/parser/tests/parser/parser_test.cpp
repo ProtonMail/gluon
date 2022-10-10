@@ -1,4 +1,5 @@
 #include "imap/parser.h"
+#include "imap/parser_capi.h"
 #include <google/protobuf/util/json_util.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
@@ -6,37 +7,51 @@
 #include <utility>
 #include "imap.pb.h"
 
+
+
+static inline std::string commandToJson(const void* ptr, size_t size) {
+  auto command = proto::Command{};
+  command.ParseFromArray(ptr, size);
+
+  auto opts = google::protobuf::util::JsonPrintOptions{};
+  opts.always_print_primitive_fields = true;
+
+  auto result = std::string{};
+  google::protobuf::util::MessageToJsonString(command, &result, opts);
+
+  return nlohmann::json::parse(result).dump(2);
+}
+
+static inline std::string commandToJson(const std::vector<uint8_t>& input) {
+  return commandToJson(input.data(), input.size());
+}
+
 class ParserTest : public testing::Test {
  protected:
   struct Result {
     std::string tag;
     std::string json;
+    std::string error;
   };
   
-  Result parse(std::string input, std::map<std::string, std::string> literals) {
-    auto command = proto::Command{};
-    parser::ParseResult parseResult = parser::parse(input + "\r\n", literals, "/");
+  Result parse(std::string input) {
+    input += "\r\n";
+    parser::ParseResult parseResult = parser::parse(input.c_str(), '/');
     if (!parseResult.error.empty()) {
       return Result{
           parseResult.tag,
           "",
+          parseResult.error,
       };
     }
 
-    command.ParseFromString(parseResult.command);
 
-    auto opts = google::protobuf::util::JsonPrintOptions{};
-    opts.always_print_primitive_fields = true;
-
-    auto result = std::string{};
-    google::protobuf::util::MessageToJsonString(command, &result, opts);
-
-    return Result{parseResult.tag, nlohmann::json::parse(result).dump(2)};
+    return Result{parseResult.tag, commandToJson(parseResult.command)};
   }
 };
 
 TEST_F(ParserTest, Capability) {
-  auto result = parse("abcd CAPABILITY", {});
+  auto result = parse("abcd CAPABILITY");
 
   EXPECT_EQ(result.tag, "abcd");
   EXPECT_EQ(result.json, R"({
@@ -45,7 +60,7 @@ TEST_F(ParserTest, Capability) {
 }
 
 TEST_F(ParserTest, Logout) {
-  auto result = parse("A023 LOGOUT", {});
+  auto result = parse("A023 LOGOUT");
 
   EXPECT_EQ(result.tag, "A023");
   EXPECT_EQ(result.json, R"({
@@ -54,7 +69,7 @@ TEST_F(ParserTest, Logout) {
 }
 
 TEST_F(ParserTest, Noop) {
-  auto result = parse("a002 NOOP", {});
+  auto result = parse("a002 NOOP");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -63,7 +78,7 @@ TEST_F(ParserTest, Noop) {
 }
 
 TEST_F(ParserTest, StartTLS) {
-  auto result = parse("a002 STARTTLS", {});
+  auto result = parse("a002 STARTTLS");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -72,7 +87,7 @@ TEST_F(ParserTest, StartTLS) {
 }
 
 TEST_F(ParserTest, Authenticate) {
-  auto result = parse("A001 AUTHENTICATE GSSAPI", {});
+  auto result = parse("A001 AUTHENTICATE GSSAPI");
 
   EXPECT_EQ(result.tag, "A001");
   EXPECT_EQ(result.json, R"({
@@ -84,7 +99,7 @@ TEST_F(ParserTest, Authenticate) {
 }
 
 TEST_F(ParserTest, Login) {
-  auto result = parse("a001 LOGIN SMITH SESAME", {});
+  auto result = parse("a001 LOGIN SMITH SESAME");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -96,7 +111,7 @@ TEST_F(ParserTest, Login) {
 }
 
 TEST_F(ParserTest, LoginQuoted) {
-  auto result = parse(R"(a001 login "SMITH" "SESAME")", {});
+  auto result = parse(R"(a001 login "SMITH" "SESAME")");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -108,13 +123,7 @@ TEST_F(ParserTest, LoginQuoted) {
 }
 
 TEST_F(ParserTest, LoginLiteral) {
-  auto result = parse(
-      "a001 login {5}\r\n00010203-0405-4607-8809-0a0b0c0d0e0f "
-      "{6}\r\n00020203-0405-4607-8809-0a0b0c0d0e0f",
-      {
-          {"00010203-0405-4607-8809-0a0b0c0d0e0f", "SMITH"},
-          {"00020203-0405-4607-8809-0a0b0c0d0e0f", "SESAME"},
-      });
+  auto result = parse("a001 login {5}\r\nSMITH {6}\r\nSESAME");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -126,7 +135,7 @@ TEST_F(ParserTest, LoginLiteral) {
 }
 
 TEST_F(ParserTest, Select) {
-  auto result = parse("A142 SELECT INBOX", {});
+  auto result = parse("A142 SELECT INBOX");
 
   EXPECT_EQ(result.tag, "A142");
   EXPECT_EQ(result.json, R"({
@@ -137,7 +146,7 @@ TEST_F(ParserTest, Select) {
 }
 
 TEST_F(ParserTest, SelectInboxLowercase) {
-  auto result = parse("A142 SELECT inbox", {});
+  auto result = parse("A142 SELECT inbox");
 
   EXPECT_EQ(result.tag, "A142");
   EXPECT_EQ(result.json, R"({
@@ -148,7 +157,7 @@ TEST_F(ParserTest, SelectInboxLowercase) {
 }
 
 TEST_F(ParserTest, Examine) {
-  auto result = parse("A932 EXAMINE blurdybloop", {});
+  auto result = parse("A932 EXAMINE blurdybloop");
 
   EXPECT_EQ(result.tag, "A932");
   EXPECT_EQ(result.json, R"({
@@ -159,7 +168,7 @@ TEST_F(ParserTest, Examine) {
 }
 
 TEST_F(ParserTest, Create) {
-  auto result = parse("A003 CREATE foo/bar", {});
+  auto result = parse("A003 CREATE foo/bar");
 
   EXPECT_EQ(result.tag, "A003");
   EXPECT_EQ(result.json, R"({
@@ -170,7 +179,7 @@ TEST_F(ParserTest, Create) {
 }
 
 TEST_F(ParserTest, CreateInboxChild) {
-  auto result = parse("A003 CREATE inbox/bar", {});
+  auto result = parse("A003 CREATE inbox/bar");
 
   EXPECT_EQ(result.tag, "A003");
   EXPECT_EQ(result.json, R"({
@@ -181,7 +190,7 @@ TEST_F(ParserTest, CreateInboxChild) {
 }
 
 TEST_F(ParserTest, CreateInboxx) {
-  auto result = parse("A003 CREATE inboxx", {});
+  auto result = parse("A003 CREATE inboxx");
 
   EXPECT_EQ(result.tag, "A003");
   EXPECT_EQ(result.json, R"({
@@ -192,7 +201,7 @@ TEST_F(ParserTest, CreateInboxx) {
 }
 
 TEST_F(ParserTest, Delete) {
-  auto result = parse("A683 DELETE blurdybloop", {});
+  auto result = parse("A683 DELETE blurdybloop");
 
   EXPECT_EQ(result.tag, "A683");
   EXPECT_EQ(result.json, R"({
@@ -203,7 +212,7 @@ TEST_F(ParserTest, Delete) {
 }
 
 TEST_F(ParserTest, Rename) {
-  auto result = parse("A683 RENAME mbox newName", {});
+  auto result = parse("A683 RENAME mbox newName");
 
   EXPECT_EQ(result.tag, "A683");
   EXPECT_EQ(result.json, R"({
@@ -215,7 +224,7 @@ TEST_F(ParserTest, Rename) {
 }
 
 TEST_F(ParserTest, Subscribe) {
-  auto result = parse("A002 SUBSCRIBE #news.comp.mail.mime", {});
+  auto result = parse("A002 SUBSCRIBE #news.comp.mail.mime");
 
   EXPECT_EQ(result.tag, "A002");
   EXPECT_EQ(result.json, R"({
@@ -226,7 +235,7 @@ TEST_F(ParserTest, Subscribe) {
 }
 
 TEST_F(ParserTest, Unsubscribe) {
-  auto result = parse("A002 UNSUBSCRIBE #news.comp.mail.mime", {});
+  auto result = parse("A002 UNSUBSCRIBE #news.comp.mail.mime");
 
   EXPECT_EQ(result.tag, "A002");
   EXPECT_EQ(result.json, R"({
@@ -237,7 +246,7 @@ TEST_F(ParserTest, Unsubscribe) {
 }
 
 TEST_F(ParserTest, List) {
-  auto result = parse(R"(A101 LIST "" "")", {});
+  auto result = parse(R"(A101 LIST "" "")");
 
   EXPECT_EQ(result.tag, "A101");
   EXPECT_EQ(result.json, R"({
@@ -249,7 +258,7 @@ TEST_F(ParserTest, List) {
 }
 
 TEST_F(ParserTest, ListWithReference) {
-  auto result = parse(R"(A102 LIST #news.comp.mail.misc "")", {});
+  auto result = parse(R"(A102 LIST #news.comp.mail.misc "")");
 
   EXPECT_EQ(result.tag, "A102");
   EXPECT_EQ(result.json, R"({
@@ -261,7 +270,7 @@ TEST_F(ParserTest, ListWithReference) {
 }
 
 TEST_F(ParserTest, ListWithReferenceAndMailbox) {
-  auto result = parse(R"(A202 LIST ~/Mail/ %)", {});
+  auto result = parse(R"(A202 LIST ~/Mail/ %)");
 
   EXPECT_EQ(result.tag, "A202");
   EXPECT_EQ(result.json, R"({
@@ -273,7 +282,7 @@ TEST_F(ParserTest, ListWithReferenceAndMailbox) {
 }
 
 TEST_F(ParserTest, LSUB) {
-  auto result = parse(R"(A002 LSUB "#news." "comp.mail.*")", {});
+  auto result = parse(R"(A002 LSUB "#news." "comp.mail.*")");
 
   EXPECT_EQ(result.tag, "A002");
   EXPECT_EQ(result.json, R"({
@@ -285,7 +294,7 @@ TEST_F(ParserTest, LSUB) {
 }
 
 TEST_F(ParserTest, Status) {
-  auto result = parse(R"(A042 STATUS foo (UIDNEXT MESSAGES))", {});
+  auto result = parse(R"(A042 STATUS foo (UIDNEXT MESSAGES))");
 
   EXPECT_EQ(result.tag, "A042");
   EXPECT_EQ(result.json, R"({
@@ -300,12 +309,7 @@ TEST_F(ParserTest, Status) {
 }
 
 TEST_F(ParserTest, Append) {
-  auto result = parse(
-      "A003 APPEND saved-messages (\\Seen) \"15-Nov-1984 13:37:01 +0730\" "
-      "{23}\r\n00010203-0405-4607-8809-0a0b0c0d0e0f",
-      {
-          {"00010203-0405-4607-8809-0a0b0c0d0e0f", "My message body is here"},
-      });
+  auto result = parse("A003 APPEND saved-messages (\\Seen) \"15-Nov-1984 13:37:01 +0730\" {23}\r\nMy message body is here");
 
   EXPECT_EQ(result.tag, "A003");
   EXPECT_EQ(result.json, R"({
@@ -337,7 +341,7 @@ TEST_F(ParserTest, Append) {
 }
 
 TEST_F(ParserTest, Check) {
-  auto result = parse("a002 CHECK", {});
+  auto result = parse("a002 CHECK");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -346,7 +350,7 @@ TEST_F(ParserTest, Check) {
 }
 
 TEST_F(ParserTest, Close) {
-  auto result = parse("a002 CLOSE", {});
+  auto result = parse("a002 CLOSE");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -355,7 +359,7 @@ TEST_F(ParserTest, Close) {
 }
 
 TEST_F(ParserTest, Expunge) {
-  auto result = parse("a002 EXPUNGE", {});
+  auto result = parse("a002 EXPUNGE");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -364,7 +368,7 @@ TEST_F(ParserTest, Expunge) {
 }
 
 TEST_F(ParserTest, UIDExpunge) {
-  auto result = parse("a002 UID EXPUNGE 1:*", {});
+  auto result = parse("a002 UID EXPUNGE 1:*");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -384,7 +388,7 @@ TEST_F(ParserTest, UIDExpunge) {
 }
 
 TEST_F(ParserTest, Unselect) {
-  auto result = parse("a002 UNSELECT", {});
+  auto result = parse("a002 UNSELECT");
 
   EXPECT_EQ(result.json, R"({
   "unselect": {}
@@ -392,7 +396,7 @@ TEST_F(ParserTest, Unselect) {
 }
 
 TEST_F(ParserTest, SearchNotFrom) {
-  auto result = parse(R"(A281 SEARCH NOT FROM "Smith")", {});
+  auto result = parse(R"(A281 SEARCH NOT FROM "Smith")");
 
   EXPECT_EQ(result.tag, "A281");
   EXPECT_EQ(result.json, R"({
@@ -422,7 +426,7 @@ TEST_F(ParserTest, SearchNotFrom) {
 }
 
 TEST_F(ParserTest, SearchOrFrom) {
-  auto result = parse(R"(A281 SEARCH OR FROM "Smith" FROM "Bob")", {});
+  auto result = parse(R"(A281 SEARCH OR FROM "Smith" FROM "Bob")");
 
   EXPECT_EQ(result.tag, "A281");
   EXPECT_EQ(result.json, R"({
@@ -461,7 +465,7 @@ TEST_F(ParserTest, SearchOrFrom) {
 }
 
 TEST_F(ParserTest, SearchBcc) {
-  auto result = parse(R"(A282 SEARCH BCC "mail@example.com")", {});
+  auto result = parse(R"(A282 SEARCH BCC "mail@example.com")");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -482,7 +486,7 @@ TEST_F(ParserTest, SearchBcc) {
 }
 
 TEST_F(ParserTest, SearchBefore) {
-  auto result = parse(R"(A282 SEARCH BEFORE "1-Feb-1994")", {});
+  auto result = parse(R"(A282 SEARCH BEFORE "1-Feb-1994")");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -503,7 +507,7 @@ TEST_F(ParserTest, SearchBefore) {
 }
 
 TEST_F(ParserTest, SearchSentBefore) {
-  auto result = parse(R"(A282 SEARCH SENTBEFORE "1-Feb-1994")", {});
+  auto result = parse(R"(A282 SEARCH SENTBEFORE "1-Feb-1994")");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -524,7 +528,7 @@ TEST_F(ParserTest, SearchSentBefore) {
 }
 
 TEST_F(ParserTest, SearchOn) {
-  auto result = parse(R"(A282 SEARCH ON "1-Feb-1994")", {});
+  auto result = parse(R"(A282 SEARCH ON "1-Feb-1994")");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -545,7 +549,7 @@ TEST_F(ParserTest, SearchOn) {
 }
 
 TEST_F(ParserTest, SearchSentOn) {
-  auto result = parse(R"(A282 SEARCH SENTON "1-Feb-1994")", {});
+  auto result = parse(R"(A282 SEARCH SENTON "1-Feb-1994")");
 
   EXPECT_EQ(result.json, R"({
   "search": {
@@ -565,7 +569,7 @@ TEST_F(ParserTest, SearchSentOn) {
 }
 
 TEST_F(ParserTest, SearchSince) {
-  auto result = parse(R"(A282 SEARCH SINCE "1-Feb-1994")", {});
+  auto result = parse(R"(A282 SEARCH SINCE "1-Feb-1994")");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -586,7 +590,7 @@ TEST_F(ParserTest, SearchSince) {
 }
 
 TEST_F(ParserTest, SearchSentSince) {
-  auto result = parse(R"(A282 SEARCH SENTSINCE "1-Feb-1994")", {});
+  auto result = parse(R"(A282 SEARCH SENTSINCE "1-Feb-1994")");
 
   EXPECT_EQ(result.json, R"({
   "search": {
@@ -606,7 +610,7 @@ TEST_F(ParserTest, SearchSentSince) {
 }
 
 TEST_F(ParserTest, SearchBody) {
-  auto result = parse(R"(A282 SEARCH BODY "some body")", {});
+  auto result = parse(R"(A282 SEARCH BODY "some body")");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -627,7 +631,7 @@ TEST_F(ParserTest, SearchBody) {
 }
 
 TEST_F(ParserTest, SearchCc) {
-  auto result = parse(R"(A282 SEARCH CC "mail@example.com")", {});
+  auto result = parse(R"(A282 SEARCH CC "mail@example.com")");
 
   EXPECT_EQ(result.json, R"({
   "search": {
@@ -647,7 +651,7 @@ TEST_F(ParserTest, SearchCc) {
 }
 
 TEST_F(ParserTest, SearchFrom) {
-  auto result = parse(R"(A282 SEARCH FROM "mail@example.com")", {});
+  auto result = parse(R"(A282 SEARCH FROM "mail@example.com")");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -668,7 +672,7 @@ TEST_F(ParserTest, SearchFrom) {
 }
 
 TEST_F(ParserTest, SearchKeyword) {
-  auto result = parse(R"(A282 SEARCH KEYWORD something)", {});
+  auto result = parse(R"(A282 SEARCH KEYWORD something)");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -689,7 +693,7 @@ TEST_F(ParserTest, SearchKeyword) {
 }
 
 TEST_F(ParserTest, SearchUnkeyword) {
-  auto result = parse(R"(A282 SEARCH UNKEYWORD something)", {});
+  auto result = parse(R"(A282 SEARCH UNKEYWORD something)");
 
   EXPECT_EQ(result.json, R"({
   "search": {
@@ -709,7 +713,7 @@ TEST_F(ParserTest, SearchUnkeyword) {
 }
 
 TEST_F(ParserTest, SearchSubject) {
-  auto result = parse(R"(A282 SEARCH SUBJECT "some subject")", {});
+  auto result = parse(R"(A282 SEARCH SUBJECT "some subject")");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -730,7 +734,7 @@ TEST_F(ParserTest, SearchSubject) {
 }
 
 TEST_F(ParserTest, SearchText) {
-  auto result = parse(R"(A282 SEARCH TEXT "some text")", {});
+  auto result = parse(R"(A282 SEARCH TEXT "some text")");
 
   EXPECT_EQ(result.json, R"({
   "search": {
@@ -750,7 +754,7 @@ TEST_F(ParserTest, SearchText) {
 }
 
 TEST_F(ParserTest, SearchTo) {
-  auto result = parse(R"(A282 SEARCH TO "mail@example.com")", {});
+  auto result = parse(R"(A282 SEARCH TO "mail@example.com")");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -771,7 +775,7 @@ TEST_F(ParserTest, SearchTo) {
 }
 
 TEST_F(ParserTest, SearchLarger) {
-  auto result = parse(R"(A282 SEARCH LARGER 1234)", {});
+  auto result = parse(R"(A282 SEARCH LARGER 1234)");
 
   EXPECT_EQ(result.json, R"({
   "search": {
@@ -791,7 +795,7 @@ TEST_F(ParserTest, SearchLarger) {
 }
 
 TEST_F(ParserTest, SearchSmaller) {
-  auto result = parse(R"(A282 SEARCH SMALLER 1234)", {});
+  auto result = parse(R"(A282 SEARCH SMALLER 1234)");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -812,7 +816,7 @@ TEST_F(ParserTest, SearchSmaller) {
 }
 
 TEST_F(ParserTest, SearchHeader) {
-  auto result = parse(R"(A282 SEARCH HEADER "fieldName" "string")", {});
+  auto result = parse(R"(A282 SEARCH HEADER "fieldName" "string")");
 
   EXPECT_EQ(result.json, R"({
   "search": {
@@ -832,7 +836,7 @@ TEST_F(ParserTest, SearchHeader) {
 }
 
 TEST_F(ParserTest, SearchSeqSet) {
-  auto result = parse(R"(A282 SEARCH 2:4,5,6:10,*)", {});
+  auto result = parse(R"(A282 SEARCH 2:4,5,6:10,*)");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -875,7 +879,7 @@ TEST_F(ParserTest, SearchSeqSet) {
 }
 
 TEST_F(ParserTest, SearchUID) {
-  auto result = parse(R"(A282 SEARCH UID 2:4,5,6:10,*)", {});
+  auto result = parse(R"(A282 SEARCH UID 2:4,5,6:10,*)");
 
   EXPECT_EQ(result.tag, "A282");
   EXPECT_EQ(result.json, R"({
@@ -918,7 +922,7 @@ TEST_F(ParserTest, SearchUID) {
 }
 
 TEST_F(ParserTest, SearchTextWithCharset) {
-  auto result = parse(R"(A283 SEARCH CHARSET UTF-8 TEXT "some text")", {});
+  auto result = parse(R"(A283 SEARCH CHARSET UTF-8 TEXT "some text")");
 
   EXPECT_EQ(result.tag, "A283");
   EXPECT_EQ(result.json, R"({
@@ -940,7 +944,7 @@ TEST_F(ParserTest, SearchTextWithCharset) {
 }
 
 TEST_F(ParserTest, SearchChildren) {
-  auto result = parse(R"(A283 SEARCH (TEXT "some text" TEXT "some other text"))", {});
+  auto result = parse(R"(A283 SEARCH (TEXT "some text" TEXT "some other text"))");
 
   EXPECT_EQ(result.tag, "A283");
   EXPECT_EQ(result.json, R"({
@@ -980,10 +984,7 @@ TEST_F(ParserTest, SearchChildren) {
 }
 
 TEST_F(ParserTest, SearchLiteralText) {
-  auto result = parse("A284 SEARCH TEXT {6}\r\n00010203-0405-4607-8809-0a0b0c0d0e0f",
-                      {
-                          {"00010203-0405-4607-8809-0a0b0c0d0e0f", "hello!"},
-                      });
+  auto result = parse("A284 SEARCH TEXT {6}\r\nhello!");
 
   EXPECT_EQ(result.tag, "A284");
   EXPECT_EQ(result.json, R"({
@@ -1004,7 +1005,7 @@ TEST_F(ParserTest, SearchLiteralText) {
 }
 
 TEST_F(ParserTest, Fetch) {
-  auto result = parse("A654 FETCH 2:4 (FLAGS BODY[HEADER.FIELDS (FROM)])", {});
+  auto result = parse("A654 FETCH 2:4 (FLAGS BODY[HEADER.FIELDS (FROM)])");
 
   EXPECT_EQ(result.tag, "A654");
   EXPECT_EQ(result.json, R"({
@@ -1041,7 +1042,7 @@ TEST_F(ParserTest, Fetch) {
 }
 
 TEST_F(ParserTest, FetchPart) {
-  auto result = parse(R"(a001 FETCH 2:4 BODY.PEEK[4.2.2.HEADER.FIELDS.NOT (To From Subject)]<50.100>)", {});
+  auto result = parse(R"(a001 FETCH 2:4 BODY.PEEK[4.2.2.HEADER.FIELDS.NOT (To From Subject)]<50.100>)");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -1085,7 +1086,7 @@ TEST_F(ParserTest, FetchPart) {
 }
 
 TEST_F(ParserTest, FetchBodyHeader) {
-  auto result = parse(R"(a001 FETCH 2:4 BODY[HEADER])", {});
+  auto result = parse(R"(a001 FETCH 2:4 BODY[HEADER])");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -1117,7 +1118,7 @@ TEST_F(ParserTest, FetchBodyHeader) {
 }
 
 TEST_F(ParserTest, FetchBodyText) {
-  auto result = parse(R"(a001 FETCH 2:4 BODY[TEXT])", {});
+  auto result = parse(R"(a001 FETCH 2:4 BODY[TEXT])");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -1149,7 +1150,7 @@ TEST_F(ParserTest, FetchBodyText) {
 }
 
 TEST_F(ParserTest, FetchMultiple) {
-  auto result = parse(R"(a001 FETCH 2:4 (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY[]<50.100>))", {});
+  auto result = parse(R"(a001 FETCH 2:4 (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY[]<50.100>))");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -1192,7 +1193,7 @@ TEST_F(ParserTest, FetchMultiple) {
 }
 
 TEST_F(ParserTest, FetchWholeBody) {
-  auto result = parse(R"(a001 FETCH 2:4 (BODY[]))", {});
+  auto result = parse(R"(a001 FETCH 2:4 (BODY[]))");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -1219,7 +1220,7 @@ TEST_F(ParserTest, FetchWholeBody) {
 }
 
 TEST_F(ParserTest, FetchAll) {
-  auto result = parse("A654 FETCH 2:4 ALL", {});
+  auto result = parse("A654 FETCH 2:4 ALL");
 
   EXPECT_EQ(result.tag, "A654");
   EXPECT_EQ(result.json, R"({
@@ -1253,7 +1254,7 @@ TEST_F(ParserTest, FetchAll) {
 }
 
 TEST_F(ParserTest, FetchFast) {
-  auto result = parse("A654 FETCH 2:4 FAST", {});
+  auto result = parse("A654 FETCH 2:4 FAST");
 
   EXPECT_EQ(result.tag, "A654");
   EXPECT_EQ(result.json, R"({
@@ -1284,7 +1285,7 @@ TEST_F(ParserTest, FetchFast) {
 }
 
 TEST_F(ParserTest, FetchFull) {
-  auto result = parse("A654 FETCH 2:4 FULL", {});
+  auto result = parse("A654 FETCH 2:4 FULL");
 
   EXPECT_EQ(result.tag, "A654");
   EXPECT_EQ(result.json, R"({
@@ -1321,7 +1322,7 @@ TEST_F(ParserTest, FetchFull) {
 }
 
 TEST_F(ParserTest, Store) {
-  auto result = parse(R"(A003 STORE 2:4,9:* +FLAGS (\Deleted \Seen))", {});
+  auto result = parse(R"(A003 STORE 2:4,9:* +FLAGS (\Deleted \Seen))");
 
   EXPECT_EQ(result.tag, "A003");
   EXPECT_EQ(result.json, R"({
@@ -1355,7 +1356,7 @@ TEST_F(ParserTest, Store) {
 }
 
 TEST_F(ParserTest, StoreSpacedFlags) {
-  auto result = parse(R"(A003 STORE * -FLAGS \Deleted \Seen)", {});
+  auto result = parse(R"(A003 STORE * -FLAGS \Deleted \Seen)");
 
   EXPECT_EQ(result.tag, "A003");
   EXPECT_EQ(result.json, R"({
@@ -1380,7 +1381,7 @@ TEST_F(ParserTest, StoreSpacedFlags) {
 }
 
 TEST_F(ParserTest, StoreSpacedFlagsReplace) {
-  auto result = parse(R"(A003 STORE * FLAGS \Deleted \Seen)", {});
+  auto result = parse(R"(A003 STORE * FLAGS \Deleted \Seen)");
 
   EXPECT_EQ(result.tag, "A003");
   EXPECT_EQ(result.json, R"({
@@ -1405,7 +1406,7 @@ TEST_F(ParserTest, StoreSpacedFlagsReplace) {
 }
 
 TEST_F(ParserTest, Copy) {
-  auto result = parse("A003 COPY 2:4 MEETING", {});
+  auto result = parse("A003 COPY 2:4 MEETING");
 
   EXPECT_EQ(result.tag, "A003");
   EXPECT_EQ(result.json, R"({
@@ -1426,7 +1427,7 @@ TEST_F(ParserTest, Copy) {
 }
 
 TEST_F(ParserTest, Move) {
-  auto result = parse("A023 MOVE 1:* Target", {});
+  auto result = parse("A023 MOVE 1:* Target");
 
   EXPECT_EQ(result.tag, "A023");
   EXPECT_EQ(result.json, R"({
@@ -1447,7 +1448,7 @@ TEST_F(ParserTest, Move) {
 }
 
 TEST_F(ParserTest, MoveInbox) {
-  auto result = parse("A023 MOVE 1:* inbox", {});
+  auto result = parse("A023 MOVE 1:* inbox");
 
   EXPECT_EQ(result.tag, "A023");
   EXPECT_EQ(result.json, R"({
@@ -1468,7 +1469,7 @@ TEST_F(ParserTest, MoveInbox) {
 }
 
 TEST_F(ParserTest, MoveInboxQuoted) {
-  auto result = parse("A023 MOVE 1:* \"inbox\"", {});
+  auto result = parse("A023 MOVE 1:* \"inbox\"");
 
   EXPECT_EQ(result.tag, "A023");
   EXPECT_EQ(result.json, R"({
@@ -1489,7 +1490,7 @@ TEST_F(ParserTest, MoveInboxQuoted) {
 }
 
 TEST_F(ParserTest, UIDCopy) {
-  auto result = parse("a001 UID COPY 2:4 MEETING", {});
+  auto result = parse("a001 UID COPY 2:4 MEETING");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -1512,7 +1513,7 @@ TEST_F(ParserTest, UIDCopy) {
 }
 
 TEST_F(ParserTest, UIDMove) {
-  auto result = parse("a003 UID MOVE 1:* Test", {});
+  auto result = parse("a003 UID MOVE 1:* Test");
 
   EXPECT_EQ(result.tag, "a003");
   EXPECT_EQ(result.json, R"({
@@ -1535,7 +1536,7 @@ TEST_F(ParserTest, UIDMove) {
 }
 
 TEST_F(ParserTest, UIDFetch) {
-  auto result = parse("A999 UID FETCH 4827313:4828442 FLAGS", {});
+  auto result = parse("A999 UID FETCH 4827313:4828442 FLAGS");
 
   EXPECT_EQ(result.tag, "A999");
   EXPECT_EQ(result.json, R"({
@@ -1562,7 +1563,7 @@ TEST_F(ParserTest, UIDFetch) {
 }
 
 TEST_F(ParserTest, DISABLED_UIDSearch) {
-  auto result = parse("a001 UID SEARCH ALL", {});
+  auto result = parse("a001 UID SEARCH ALL");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -1571,7 +1572,7 @@ TEST_F(ParserTest, DISABLED_UIDSearch) {
 }
 
 TEST_F(ParserTest, UIDStore) {
-  auto result = parse(R"(a001 UID STORE 2:4,5:10 FLAGS (\Deleted \Seen))", {});
+  auto result = parse(R"(a001 UID STORE 2:4,5:10 FLAGS (\Deleted \Seen))");
 
   EXPECT_EQ(result.tag, "a001");
   EXPECT_EQ(result.json, R"({
@@ -1607,7 +1608,7 @@ TEST_F(ParserTest, UIDStore) {
 }
 
 TEST_F(ParserTest, Idle) {
-  auto result = parse("a002 IDLE", {});
+  auto result = parse("a002 IDLE");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -1616,7 +1617,7 @@ TEST_F(ParserTest, Idle) {
 }
 
 TEST_F(ParserTest, Done) {
-  auto result = parse("DONE", {});
+  auto result = parse("DONE");
 
   EXPECT_TRUE(result.tag.empty());
   EXPECT_EQ(result.json, R"({
@@ -1626,14 +1627,14 @@ TEST_F(ParserTest, Done) {
 
 TEST_F(ParserTest, SyntaxErrorInvalidFetchQueryWithTag) {
   std::string input = "A002 FETCH 1 (BODY[MIME])\r\n";
-  auto result = parse(input, {});
+  auto result = parse(input);
   EXPECT_EQ(result.tag, "A002");
   EXPECT_TRUE(result.json.empty());
 }
 
 TEST_F(ParserTest, SyntaxErrorWithTagRandomGibberish) {
   std::string input = "A006 RANDOMGIBBERISHTHATDOESNOTMAKEAVALIDIMAPCOMMAND\r\n";
-  auto result = parse(input, {});
+  auto result = parse(input);
   EXPECT_EQ(result.tag, "A006");
   EXPECT_TRUE(result.json.empty());
 }
@@ -1648,20 +1649,20 @@ TEST_F(ParserTest, RandomBytesDoesNotCrash) {
   };
   std::string input = "A006 ";
   input.append(reinterpret_cast<const char*>(&bytes[0]), sizeof(bytes));
-  auto result = parse(input, {});
-  EXPECT_TRUE(result.tag.empty());
+  auto result = parse(input);
   EXPECT_TRUE(result.json.empty());
+  EXPECT_TRUE(!result.error.empty());
 }
 
 TEST_F(ParserTest, SyntaxErrorWithoutTag) {
   std::string input = "\r\n";
-  auto result = parse(input, {});
+  auto result = parse(input);
   EXPECT_TRUE(result.tag.empty());
   EXPECT_TRUE(result.json.empty());
 }
 
 TEST_F(ParserTest, IdNil) {
-  auto result = parse("a002 ID NIL", {});
+  auto result = parse("a002 ID NIL");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -1670,7 +1671,7 @@ TEST_F(ParserTest, IdNil) {
 }
 
 TEST_F(ParserTest, IdWithOneField) {
-  auto result = parse(R"(a002 ID ("name" "foo"))", {});
+  auto result = parse(R"(a002 ID ("name" "foo"))");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -1684,15 +1685,15 @@ TEST_F(ParserTest, IdWithOneField) {
 
 TEST_F(ParserTest, IdMoreThan30FieldsFails) {
   auto result = parse(
-      R"(a002 ID ("bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo")",
-      {});
+      R"(a002 ID ("bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo" "bar" "foo")"
+      );
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_TRUE(result.json.empty());
 }
 
 TEST_F(ParserTest, IdEmptyFields) {
-  auto result = parse(R"(a002 ID ())", {});
+  auto result = parse(R"(a002 ID ())");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -1703,7 +1704,7 @@ TEST_F(ParserTest, IdEmptyFields) {
 }
 
 TEST_F(ParserTest, IdNilField) {
-  auto result = parse(R"(a002 ID ("foo" NIL))", {});
+  auto result = parse(R"(a002 ID ("foo" NIL))");
 
   EXPECT_EQ(result.tag, "a002");
   EXPECT_EQ(result.json, R"({
@@ -1712,5 +1713,22 @@ TEST_F(ParserTest, IdNilField) {
       "foo": ""
     }
   }
+})");
+}
+
+TEST(Parser, CAPI) {
+  std::unique_ptr<IMAPParser, void(*)(IMAPParser*)> parser(IMAPParser_new(), IMAPParser_free);
+  std::string input = "A002 LOGOUT\r\n";
+  int result= IMAPParser_parse(parser.get(), input.c_str(), '/');
+  EXPECT_EQ(0, result);
+
+
+  const void* cmdPtr = IMAPParser_getCommandData(parser.get());
+  const size_t cmdSize= IMAPParser_getCommandSize(parser.get());
+  auto commandJson = commandToJson(cmdPtr, cmdSize);
+
+  EXPECT_EQ(std::string(IMAPParser_getTag(parser.get())), "A002");
+  EXPECT_EQ(commandJson, R"({
+  "logout": {}
 })");
 }

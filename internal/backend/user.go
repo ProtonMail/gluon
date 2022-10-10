@@ -26,7 +26,7 @@ type user struct {
 	updateInjector *updateInjector
 	connector      connector.Connector
 	store          store.Store
-	delimiter      string
+	delimiter      rune
 
 	db *db.DB
 
@@ -48,7 +48,7 @@ func newUser(
 	database *db.DB,
 	conn connector.Connector,
 	store store.Store,
-	delimiter string,
+	delimiter rune,
 ) (*user, error) {
 	if err := database.Init(ctx); err != nil {
 		return nil, err

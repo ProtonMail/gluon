@@ -16,7 +16,7 @@ import (
 )
 
 func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, name string) (*ent.Mailbox, error) {
-	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
+	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, string(state.delimiter)))
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 			ctx,
 			tx,
 			res.ID,
-			strings.Join(res.Name, state.user.GetDelimiter()),
+			strings.Join(res.Name, string(state.user.GetDelimiter())),
 			res.Flags,
 			res.PermanentFlags,
 			res.Attributes,
@@ -47,12 +47,12 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 }
 
 func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name string) error {
-	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
+	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, string(state.delimiter)))
 	if err != nil {
 		return err
 	}
 
-	return db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter)
+	return db.CreateMailboxIfNotExists(ctx, tx, res, string(state.delimiter))
 }
 
 func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID ids.MailboxIDPair) error {
@@ -78,8 +78,8 @@ func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 	if err := state.user.GetRemote().UpdateMailbox(
 		ctx,
 		mboxID,
-		strings.Split(oldName, state.delimiter),
-		strings.Split(newName, state.delimiter),
+		strings.Split(oldName, string(state.delimiter)),
+		strings.Split(newName, string(state.delimiter)),
 	); err != nil {
 		return err
 	}

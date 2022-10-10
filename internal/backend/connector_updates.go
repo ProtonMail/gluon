@@ -73,7 +73,7 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 			ctx,
 			tx,
 			update.Mailbox.ID,
-			strings.Join(update.Mailbox.Name, user.delimiter),
+			strings.Join(update.Mailbox.Name, string(user.delimiter)),
 			update.Mailbox.Flags,
 			update.Mailbox.PermanentFlags,
 			update.Mailbox.Attributes,
@@ -128,12 +128,12 @@ func (user *user) applyMailboxUpdated(ctx context.Context, update *imap.MailboxU
 		return err
 	}
 
-	if currentName == strings.Join(update.MailboxName, user.delimiter) {
+	if currentName == strings.Join(update.MailboxName, string(user.delimiter)) {
 		return nil
 	}
 
 	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return db.RenameMailboxWithRemoteID(ctx, tx, update.MailboxID, strings.Join(update.MailboxName, user.delimiter))
+		return db.RenameMailboxWithRemoteID(ctx, tx, update.MailboxID, strings.Join(update.MailboxName, string(user.delimiter)))
 	})
 }
 

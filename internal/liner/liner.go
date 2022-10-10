@@ -6,8 +6,7 @@ import (
 	"io"
 	"regexp"
 	"strconv"
-
-	"github.com/google/uuid"
+	"strings"
 )
 
 // rxLiteral matches a line that ends in a literal length indicator.
@@ -24,13 +23,15 @@ func New(r io.Reader) *Liner {
 // Read reads a full line, automatically reading again if the line was not complete.
 // Each time an additional read is performed, doContinuation is called.
 // If the callback returns an error, the operation is aborted.
-func (l *Liner) Read(doContinuation func() error) ([]byte, map[string][]byte, error) {
+func (l *Liner) Read(doContinuation func() error) (string, error) {
+	builder := strings.Builder{}
+
 	line, err := l.br.ReadBytes('\n')
 	if err != nil {
-		return nil, nil, err
+		return "", err
 	}
 
-	lits := make(map[string][]byte)
+	builder.Write(line)
 
 	for {
 		length := shouldReadLiteral(line)
@@ -39,28 +40,27 @@ func (l *Liner) Read(doContinuation func() error) ([]byte, map[string][]byte, er
 		}
 
 		if err := doContinuation(); err != nil {
-			return nil, nil, err
+			return "", err
 		}
 
-		uuid := uuid.New().String()
+		buffer := make([]byte, length)
 
-		lits[uuid] = make([]byte, length)
-
-		if _, err := io.ReadFull(l.br, lits[uuid]); err != nil {
-			return nil, nil, err
+		if _, err := io.ReadFull(l.br, buffer); err != nil {
+			return "", err
 		}
 
-		line = append(line, uuid...)
+		builder.Write(buffer)
 
 		rest, err := l.br.ReadBytes('\n')
 		if err != nil {
-			return nil, nil, err
+			return "", err
 		}
 
-		line = append(line, rest...)
+		builder.Write(rest)
+		line = rest
 	}
 
-	return line, lits, nil
+	return builder.String(), nil
 }
 
 func shouldReadLiteral(line []byte) int {

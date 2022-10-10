@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -15,5 +16,20 @@ func TestParserDoesntCrashWithInvalidByteSequence(t *testing.T) {
 		192, 43, 192, 47, 0, 158, 192, 36, 192, 40, 0, 107, 192, 35, 192, 39, 0, 103, 192, 10,
 	}
 	text := string(bytes)
-	Parse(text, NewStringMap(), "/")
+
+	parser := NewIMAPParser()
+	defer parser.Close()
+
+	_, _, err := parser.Parse(text, '/')
+	require.Error(t, err)
+}
+
+func TestParserFailsToParserLogout(t *testing.T) {
+	parser := NewIMAPParser()
+	defer parser.Close()
+
+	tag, cmd, err := parser.Parse("A002 LOGOUT\r\n", '/')
+	require.NoError(t, err)
+	require.Equal(t, tag, "A002")
+	require.NotNil(t, cmd.GetLogout())
 }

@@ -11,7 +11,7 @@
 
 namespace parser {
 
-Visitor::Visitor(const std::map<std::string, std::string>& literals, const std::string& del) : mLiterals{literals}, mDel{del} {}
+Visitor::Visitor(const char del) : mDel{del} {}
 
 antlrcpp::Any Visitor::visitTag(imap::IMAPParser::TagContext* ctx) {
   return ctx->getText();
@@ -39,7 +39,7 @@ antlrcpp::Any Visitor::visitEscQChar(imap::IMAPParser::EscQCharContext* ctx) {
 }
 
 antlrcpp::Any Visitor::visitLiteral(imap::IMAPParser::LiteralContext* ctx) {
-  return mLiterals.at(ctx->uuid()->getText());
+  return ctx->mLiteralText;
 }
 
 antlrcpp::Any Visitor::visitAstringRaw(imap::IMAPParser::AstringRawContext* ctx) {

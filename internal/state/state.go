@@ -40,7 +40,7 @@ type State struct {
 
 	updatesQueue *queue.QueuedChannel[Update]
 
-	delimiter string
+	delimiter rune
 
 	// invalid indicates whether this state became invalid and a clients needs to disconnect.
 	invalid bool
@@ -52,7 +52,7 @@ func nextStateID() StateID {
 	return StateID(atomic.AddInt64(&stateIDGenerator, 1))
 }
 
-func NewState(user UserInterface, delimiter string) *State {
+func NewState(user UserInterface, delimiter rune) *State {
 	return &State{
 		user:         user,
 		StateID:      nextStateID(),
@@ -78,7 +78,7 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 			return err
 		}
 
-		matches, err := getMatches(ctx, client, mailboxes, ref, pattern, state.delimiter, subscribed)
+		matches, err := getMatches(ctx, client, mailboxes, ref, pattern, string(state.delimiter), subscribed)
 		if err != nil {
 			return err
 		}
@@ -152,8 +152,8 @@ func (state *State) Create(ctx context.Context, name string) error {
 		var mboxesToCreate []string
 		// If the mailbox name is suffixed with the server's hierarchy separator, remove the separator and still create
 		// the mailbox
-		if strings.HasSuffix(name, state.delimiter) {
-			name = strings.TrimRight(name, state.delimiter)
+		if strings.HasSuffix(name, string(state.delimiter)) {
+			name = strings.TrimRight(name, string(state.delimiter))
 		}
 
 		if exists, err := db.MailboxExistsWithName(ctx, client, name); err != nil {
@@ -162,7 +162,7 @@ func (state *State) Create(ctx context.Context, name string) error {
 			return nil, ErrExistingMailbox
 		}
 
-		for _, superior := range listSuperiors(name, state.delimiter) {
+		for _, superior := range listSuperiors(name, string(state.delimiter)) {
 			if exists, err := db.MailboxExistsWithName(ctx, client, superior); err != nil {
 				return nil, err
 			} else if exists {
@@ -228,7 +228,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		}
 
 		var mboxesToCreate []string
-		for _, superior := range listSuperiors(newName, state.delimiter) {
+		for _, superior := range listSuperiors(newName, string(state.delimiter)) {
 			if exists, err := db.MailboxExistsWithName(ctx, client, superior); err != nil {
 				return Result{}, err
 			} else if exists {
@@ -252,12 +252,12 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, m := range result.MBoxesToCreate {
-			res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(m, state.delimiter))
+			res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(m, string(state.delimiter)))
 			if err != nil {
 				return err
 			}
 
-			if err := db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter); err != nil {
+			if err := db.CreateMailboxIfNotExists(ctx, tx, res, string(state.delimiter)); err != nil {
 				return err
 			}
 		}
@@ -271,7 +271,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			return err
 		}
 
-		inferiors := listInferiors(oldName, state.delimiter, xslices.Map(mailboxes, func(mailbox *ent.Mailbox) string {
+		inferiors := listInferiors(oldName, string(state.delimiter), xslices.Map(mailboxes, func(mailbox *ent.Mailbox) string {
 			return mailbox.Name
 		}))
 
