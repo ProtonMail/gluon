@@ -149,12 +149,14 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 }
 
 func (state *State) Create(ctx context.Context, name string) error {
-	if strings.HasPrefix(name, state.delimiter) {
-		return errors.New("invalid mailbox name: begins with hierarchy separator")
-	}
+	if state.delimiter != "" {
+		if strings.HasPrefix(name, state.delimiter) {
+			return errors.New("invalid mailbox name: begins with hierarchy separator")
+		}
 
-	if strings.Contains(name, state.delimiter+state.delimiter) {
-		return errors.New("invalid mailbox name: has adjacent hierarchy separators")
+		if strings.Contains(name, state.delimiter+state.delimiter) {
+			return errors.New("invalid mailbox name: has adjacent hierarchy separators")
+		}
 	}
 
 	mboxesToCreate, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) ([]string, error) {
