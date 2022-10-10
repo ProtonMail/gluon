@@ -11,7 +11,7 @@ func TestList(t *testing.T) {
 		c.C("A002 CREATE #news/comp/mail/mime")
 		c.OK("A002")
 
-		c.C("A003 CREATE /usr/staff/jones")
+		c.C("A003 CREATE usr/staff/jones")
 		c.OK("A003")
 
 		c.C("A004 CREATE ~/Mail/meetings")
@@ -34,8 +34,8 @@ func TestList(t *testing.T) {
 		c.S(`* LIST (\Noselect) "/" "#news/"`)
 		c.OK("A102")
 
-		c.C(`A103 LIST /usr/staff/jones ""`)
-		c.S(`* LIST (\Noselect) "/" "/"`)
+		c.C(`A103 LIST usr/staff/jones ""`)
+		c.S(`* LIST (\Noselect) "/" "usr/"`)
 		c.OK("A103")
 
 		c.C(`A202 LIST ~/Mail/ %`)
