@@ -3,39 +3,51 @@
 This "benchmark" uses [Dovecot's ImapTest tool](https://imapwiki.org/ImapTest) to profile the performance of Gluon. The 
 information present here can also be used to verify the compliance of Gluon with the IMAP protocol.
 
-## Installation
+Build gluon demo in project root folder:
+
+```bash
+go build -o gluon-demo ./demo/demo.go
+```
+
+## Installation of ImapTest
 
 Follow the instructions outlined in [the tools' installation page](https://imapwiki.org/ImapTest/Installation) 
 to build the binary. The test mailbox is already present in this folder.
 
-## Running ImapTest
+## Simple ImapTest run
 
-The bare minimum required for running ImapTest is a username and a password:
+Assuming gluon demo is running, the bare minimum required for running ImapTest is a username and a password:
 
 ```bash
 imaptest host=127.0.0.1 port=1143 user=user1@example.com pass=password1
 ```
 
-For convenience, we have provided a few test scripts to quickly test Gluon with the demo binary present in this 
-repository.
+## Advance testing
 
- * **default.sh**: Runs the default ImapTest benchmarks.
- * **full.sh**: Runs every available ImapTest operation.
+The multiple scenario coverage can be run by
 
-Both of these scripts can be customized with the following environment variables:
-
-* **IMAPTEST_BIN**: Location of the ImapTest binary.
-* **SECS**: Number of seconds for which to run ImapTest.
-* **CLIENTS**: Number of concurrent clients used by ImapTest.
-
-Example:
-```bash
-# Run imaptest for 60s with one conccurent client connection.
-IMAPTEST_BIN=/bin/imaptest SECS=60 CLIENTS=1 ./default.sh
+```
+go test
 ```
 
-## Note about this tool
-The execution of this tool is non-deterministic, this means it can't be used to compare profile runs of two different 
-versions.
+The test cases are defined in `benchmark.yml`. Each case defines a number of
+clients and users to be used by ImapTest. One case can have multiple
+settings defined by name. The options are specified in `settings` section. The
+settings reflects ImapTest options as described in
+[here](https://imapwiki.org/ImapTest/Running).
+The ImapTest states are described in
+[here](https://imapwiki.org/ImapTest/States).
 
-It should be only be used to profile and/or stress the codebase in an isolation.
+We don't use for now the ImapTest scriptable scenarios but it is
+possible by defining the new test settings in file `./benchmark.yml` and
+creating separate definition file like example
+[here](https://github.com/dovecot/imaptest/tree/main/src/tests)
+
+
+## Note about this tool
+
+The execution of this tool is non-deterministic, this means it can't be used to
+compare profile runs of two different versions.
+
+It should be only be used to profile and/or stress the codebase in an
+isolation.
