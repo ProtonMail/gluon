@@ -3,6 +3,9 @@ package tests
 import (
 	"testing"
 	"time"
+
+	"github.com/ProtonMail/gluon/wait"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoginSuccess(t *testing.T) {
@@ -98,26 +101,45 @@ func TestLoginTooManyAttemps(t *testing.T) {
 		c.C("A001 login user badpass").NO("A001")
 
 		// The client should be jailed for 1 sec.
-		c.C("A001 login user badpass")
-		<-time.After(time.Second)
-		c.NO("A001")
+		require.Greater(t, timeFunc(func() {
+			c.C("A001 login user badpass").NO("A001")
+		}), time.Second)
 
-		// after unjailed, got direct answer
-		c.C("A001 login user pass").OK("A001")
+		// After unjailed, get direct answer.
+		require.Less(t, timeFunc(func() {
+			c.C("A001 login user pass").OK("A001")
+		}), time.Second)
 	})
 }
 
 func TestLoginTooManyAttempsMany(t *testing.T) {
-	runManyToOneTest(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTest(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		// 3 attempts.
 		c[1].C("A001 login user badpass").NO("A001")
 		c[2].C("A002 login user badpass").NO("A002")
 		c[3].C("A003 login user badpass").NO("A003")
 
-		// The first client should be jailed for 1 sec.
-		c[1].C("A004 login user pass")
-		<-time.After(time.Second)
-		c[1].OK("A004")
+		var wg wait.Group
 
+		// All clients should be jailed for 1 sec.
+		for _, i := range []int{1, 2, 3} {
+			i := i
+
+			wg.Go(func() {
+				require.Greater(t, timeFunc(func() {
+					c[i].C("A001 login user badpass").NO("A001")
+				}), time.Second)
+			})
+		}
+
+		wg.Wait()
 	})
+}
+
+func timeFunc(fn func()) time.Duration {
+	start := time.Now()
+
+	fn()
+
+	return time.Since(start)
 }
