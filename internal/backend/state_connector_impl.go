@@ -62,18 +62,17 @@ func (sc *stateConnectorImpl) CreateMessage(
 	ctx context.Context,
 	mboxID imap.LabelID,
 	literal []byte,
-	parsedMessage *imap.ParsedMessage,
 	flags imap.FlagSet,
 	date time.Time,
-) (imap.InternalMessageID, imap.Message, error) {
+) (imap.InternalMessageID, imap.Message, []byte, error) {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	msg, err := sc.connector.CreateMessage(ctx, mboxID, literal, parsedMessage, flags, date)
+	msg, newLiteral, err := sc.connector.CreateMessage(ctx, mboxID, literal, flags, date)
 	if err != nil {
-		return 0, imap.Message{}, err
+		return 0, imap.Message{}, nil, err
 	}
 
-	return sc.user.nextMessageID(), msg, nil
+	return sc.user.nextMessageID(), msg, newLiteral, nil
 }
 
 func (sc *stateConnectorImpl) AddMessagesToMailbox(
