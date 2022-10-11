@@ -452,7 +452,7 @@ func (state *State) QueueUpdates(updates ...Update) bool {
 }
 
 func (state *State) ApplyUpdate(ctx context.Context, update Update) error {
-	logrus.WithField("Update", update).Tracef("Applying state update on state %v", state.StateID)
+	logrus.WithField("Update", update).Debugf("Applying state update on state %v", state.StateID)
 
 	if !update.Filter(state) {
 		return nil
@@ -541,7 +541,7 @@ func (state *State) flushResponses(ctx context.Context, permitExpunge bool) ([]r
 	var dbUpdates []responderDBUpdate
 
 	for _, responder := range state.popResponders(permitExpunge) {
-		logrus.WithField("state", state.StateID).WithField("Origin", "Flush").Tracef("Applying responder: %v", responder.String())
+		logrus.WithField("state", state.StateID).WithField("Origin", "Flush").Debugf("Applying responder: %v", responder.String())
 
 		res, dbUpdate, err := responder.handle(ctx, state.snap, state.StateID)
 		if err != nil {
@@ -576,7 +576,7 @@ func (state *State) PushResponder(ctx context.Context, tx *ent.Tx, responder ...
 	}
 
 	for _, responder := range responder {
-		logrus.WithField("state", state.StateID).WithField("Origin", "Push").Tracef("Applying responder: %v", responder.String())
+		logrus.WithField("state", state.StateID).WithField("Origin", "Push").Debugf("Applying responder: %v", responder.String())
 
 		res, dbUpdate, err := responder.handle(ctx, state.snap, state.StateID)
 		if err != nil {
