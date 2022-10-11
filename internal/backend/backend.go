@@ -36,8 +36,8 @@ type Backend struct {
 
 	/// loginErrorCount login failure counter that triggers a tempo.
 	loginErrorCount int32
-	lockLogin       sync.Mutex
-	lockLoginTempo  sync.Mutex
+	LoginLock       sync.Mutex
+	LoginWg         sync.WaitGroup
 }
 
 func New(dir string, storeBuilder store.Builder, delim string) (*Backend, error) {
@@ -179,13 +179,10 @@ func (b *Backend) Close(ctx context.Context) error {
 }
 
 func (b *Backend) getUserID(ctx context.Context, username string, password []byte) (string, error) {
-	b.lockLogin.Lock()
-	defer b.lockLogin.Unlock()
+	b.LoginLock.Lock()
+	defer b.LoginLock.Unlock()
 
-	// wait for the end of the tempo
-	b.lockLoginTempo.Lock()
-	// empty critical section.
-	b.lockLoginTempo.Unlock() // nolint:staticcheck
+	b.LoginWg.Wait()
 
 	for _, user := range b.users {
 		if user.connector.Authorize(username, password) {
@@ -199,11 +196,12 @@ func (b *Backend) getUserID(ctx context.Context, username string, password []byt
 	if atomic.LoadInt32(&b.loginErrorCount) == maxLoginAttempts {
 		tempo := time.NewTimer(time.Second * 30)
 
+		b.LoginWg.Add(1)
+
 		go func() {
 			labels := pprof.Labels("go", "getUserID()")
 			pprof.Do(ctx, labels, func(_ context.Context) {
-				b.lockLoginTempo.Lock()
-				defer b.lockLoginTempo.Unlock()
+				defer b.LoginWg.Done()
 				<-tempo.C
 				atomic.StoreInt32(&b.loginErrorCount, 0)
 			})
