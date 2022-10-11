@@ -45,11 +45,12 @@ var testServerVersionInfo = version.Info{
 }
 
 type serverOptions struct {
-	credentials  []credentials
-	delimiter    string
-	dataDir      string
-	idleBulkTime time.Duration
-	storeBuilder store.Builder
+	credentials   []credentials
+	delimiter     string
+	loginJailTime time.Duration
+	dataDir       string
+	idleBulkTime  time.Duration
+	storeBuilder  store.Builder
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -130,10 +131,11 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 			usernames: []string{"user"},
 			password:  []byte("pass"),
 		}},
-		delimiter:    "/",
-		dataDir:      tb.TempDir(),
-		idleBulkTime: time.Duration(500 * time.Millisecond),
-		storeBuilder: &store.OnDiskStoreBuilder{},
+		delimiter:     "/",
+		loginJailTime: time.Second,
+		dataDir:       tb.TempDir(),
+		idleBulkTime:  time.Duration(500 * time.Millisecond),
+		storeBuilder:  &store.OnDiskStoreBuilder{},
 	}
 
 	for _, op := range modifiers {
@@ -158,6 +160,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	server, err := gluon.New(
 		gluon.WithDataDir(options.dataDir),
 		gluon.WithDelimiter(options.delimiter),
+		gluon.WithLoginJailTime(options.loginJailTime),
 		gluon.WithTLS(&tls.Config{
 			Certificates: []tls.Certificate{testCert},
 			MinVersion:   tls.VersionTLS13,

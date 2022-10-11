@@ -3,8 +3,6 @@ package tests
 import (
 	"testing"
 	"time"
-
-	"github.com/ProtonMail/gluon/internal/backend"
 )
 
 func TestLoginSuccess(t *testing.T) {
@@ -93,8 +91,6 @@ func TestLoginCapabilities(t *testing.T) {
 }
 
 func TestLoginTooManyAttemps(t *testing.T) {
-	backend.LoginJailTime = 1 * time.Second
-
 	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		// 3 attempts.
 		c.C("A001 login user badpass").NO("A001")
@@ -112,8 +108,6 @@ func TestLoginTooManyAttemps(t *testing.T) {
 }
 
 func TestLoginTooManyAttempsMany(t *testing.T) {
-	backend.LoginJailTime = 1 * time.Second
-
 	runManyToOneTest(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
 		// 3 attempts.
 		c[1].C("A001 login user badpass").NO("A001")

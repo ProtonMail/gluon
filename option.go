@@ -31,6 +31,21 @@ func (opt withDelimiter) config(builder *serverBuilder) {
 	builder.delim = opt.delimiter
 }
 
+// WithLoginJailTime instructs the server to use the given login jail time.
+func WithLoginJailTime(loginJailTime time.Duration) Option {
+	return &withLoginJailTime{
+		loginJailTime: loginJailTime,
+	}
+}
+
+func (opt withLoginJailTime) config(builder *serverBuilder) {
+	builder.loginJailTime = opt.loginJailTime
+}
+
+type withLoginJailTime struct {
+	loginJailTime time.Duration
+}
+
 // WithTLS instructs the server to use the given TLS config.
 func WithTLS(cfg *tls.Config) Option {
 	return &withTLS{

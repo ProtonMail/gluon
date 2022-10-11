@@ -19,6 +19,7 @@ import (
 type serverBuilder struct {
 	dir                string
 	delim              string
+	loginJailTime      time.Duration
 	tlsConfig          *tls.Config
 	idleBulkTime       time.Duration
 	inLogger           io.Writer
@@ -53,7 +54,12 @@ func (builder *serverBuilder) build() (*Server, error) {
 		return nil, err
 	}
 
-	backend, err := backend.New(filepath.Join(builder.dir, "backend"), builder.storeBuilder, builder.delim)
+	backend, err := backend.New(
+		filepath.Join(builder.dir, "backend"),
+		builder.storeBuilder,
+		builder.delim,
+		builder.loginJailTime,
+	)
 	if err != nil {
 		return nil, err
 	}
