@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"runtime/pprof"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,7 +17,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// maxLoginAttempts is the maximum number of permitted login attempts before the user is jailed.
 const maxLoginAttempts = 3
+
+// LoginJailTime is the duration of the jail time after maxLoginAttempts is reached.
+var LoginJailTime = 30 * time.Second
 
 type Backend struct {
 	// dir is the directory in which backend files should be stored.
@@ -34,10 +37,10 @@ type Backend struct {
 	// storeBuilder builds stores for the backend users.
 	storeBuilder store.Builder
 
-	/// loginErrorCount login failure counter that triggers a tempo.
+	// loginErrorCount login failure counter that triggers a tempo.
 	loginErrorCount int32
-	LoginLock       sync.Mutex
-	LoginWg         sync.WaitGroup
+	loginLock       sync.Mutex
+	loginWG         sync.WaitGroup
 }
 
 func New(dir string, storeBuilder store.Builder, delim string) (*Backend, error) {
@@ -179,10 +182,10 @@ func (b *Backend) Close(ctx context.Context) error {
 }
 
 func (b *Backend) getUserID(ctx context.Context, username string, password []byte) (string, error) {
-	b.LoginLock.Lock()
-	defer b.LoginLock.Unlock()
+	b.loginLock.Lock()
+	defer b.loginLock.Unlock()
 
-	b.LoginWg.Wait()
+	b.loginWG.Wait()
 
 	for _, user := range b.users {
 		if user.connector.Authorize(username, password) {
@@ -191,21 +194,13 @@ func (b *Backend) getUserID(ctx context.Context, username string, password []byt
 		}
 	}
 
-	atomic.AddInt32(&b.loginErrorCount, 1)
+	if count := atomic.AddInt32(&b.loginErrorCount, 1); count == maxLoginAttempts {
+		b.loginWG.Add(1)
 
-	if atomic.LoadInt32(&b.loginErrorCount) == maxLoginAttempts {
-		tempo := time.NewTimer(time.Second * 30)
-
-		b.LoginWg.Add(1)
-
-		go func() {
-			labels := pprof.Labels("go", "getUserID()")
-			pprof.Do(ctx, labels, func(_ context.Context) {
-				defer b.LoginWg.Done()
-				<-tempo.C
-				atomic.StoreInt32(&b.loginErrorCount, 0)
-			})
-		}()
+		time.AfterFunc(LoginJailTime, func() {
+			defer b.loginWG.Done()
+			atomic.StoreInt32(&b.loginErrorCount, 0)
+		})
 
 		return "", ErrLoginBlocked
 	}
