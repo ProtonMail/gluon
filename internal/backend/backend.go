@@ -20,9 +20,6 @@ import (
 // maxLoginAttempts is the maximum number of permitted login attempts before the user is jailed.
 const maxLoginAttempts = 3
 
-// LoginJailTime is the duration of the jail time after maxLoginAttempts is reached.
-var LoginJailTime = 30 * time.Second
-
 type Backend struct {
 	// dir is the directory in which backend files should be stored.
 	dir string
@@ -37,18 +34,22 @@ type Backend struct {
 	// storeBuilder builds stores for the backend users.
 	storeBuilder store.Builder
 
-	// loginErrorCount login failure counter that triggers a tempo.
+	// loginJailTime is the time a user is jailed after too many failed login attempts.
+	loginJailTime time.Duration
+
+	// loginErrorCount holds the number of failed login attempts for each user.
 	loginErrorCount int32
 	loginLock       sync.Mutex
 	loginWG         sync.WaitGroup
 }
 
-func New(dir string, storeBuilder store.Builder, delim string) (*Backend, error) {
+func New(dir string, storeBuilder store.Builder, delim string, loginJailTime time.Duration) (*Backend, error) {
 	return &Backend{
-		dir:          dir,
-		storeBuilder: storeBuilder,
-		delim:        delim,
-		users:        make(map[string]*user),
+		dir:           dir,
+		delim:         delim,
+		users:         make(map[string]*user),
+		storeBuilder:  storeBuilder,
+		loginJailTime: loginJailTime,
 	}, nil
 }
 
@@ -197,7 +198,7 @@ func (b *Backend) getUserID(ctx context.Context, username string, password []byt
 	if count := atomic.AddInt32(&b.loginErrorCount, 1); count == maxLoginAttempts {
 		b.loginWG.Add(1)
 
-		time.AfterFunc(LoginJailTime, func() {
+		time.AfterFunc(b.loginJailTime, func() {
 			defer b.loginWG.Done()
 			atomic.StoreInt32(&b.loginErrorCount, 0)
 		})
