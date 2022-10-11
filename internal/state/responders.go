@@ -144,13 +144,21 @@ func (u *targetedExists) getMessageID() imap.InternalMessageID {
 
 func (u *targetedExists) String() string {
 	var originState string
+
 	if u.originStateSet {
 		originState = fmt.Sprintf("%v", u.originStateID)
 	} else {
 		originState = "None"
 	}
 
-	return fmt.Sprintf("TargetedExists: message = %v remote = %v targetStateID = %v originStateID = %v", u.resp.messageID.InternalID.ShortID(), u.resp.messageID.RemoteID, u.targetStateID, originState)
+	return fmt.Sprintf(
+		"TargetedExists: message = %v uid = %v remote = %v targetStateID = %v originStateID = %v",
+		u.resp.messageID.InternalID.ShortID(),
+		u.resp.messageUID,
+		u.resp.messageID.RemoteID,
+		u.targetStateID,
+		originState,
+	)
 }
 
 // ExistsStateUpdate needs to be a separate update since it has to deal with a Recent flag propagation. If a session
@@ -275,7 +283,7 @@ func (u *expunge) getMessageID() imap.InternalMessageID {
 }
 
 func (u *expunge) String() string {
-	return fmt.Sprintf("Expung: message = %v",
+	return fmt.Sprintf("Expunge: message = %v",
 		u.messageID.ShortID(),
 	)
 }

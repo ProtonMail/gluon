@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ProtonMail/gluon"
@@ -45,25 +47,39 @@ func main() {
 		logrus.SetLevel(level)
 	}
 
-	server, err := gluon.New(gluon.WithLogger(
-		logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
-		logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
-	))
+	server, err := gluon.New(
+		gluon.WithLogger(
+			logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
+			logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
+		),
+		gluon.WithDataDir(os.Getenv("GLUON_DIR")),
+	)
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to create server")
 	}
 
 	defer server.Close(ctx)
 
-	if err := addUser(ctx, server, []string{"user1@example.com", "alias1@example.com"}, []byte("password1")); err != nil {
-		logrus.WithError(err).Fatal("Failed to add user")
+	nUsers := 2
+	if envUsers, err := strconv.Atoi(os.Getenv("GLUON_USER_COUNT")); err == nil {
+		nUsers = envUsers
 	}
 
-	if err := addUser(ctx, server, []string{"user2@example.com", "alias2@example.com"}, []byte("password2")); err != nil {
-		logrus.WithError(err).Fatal("Failed to add user")
+	for i := 1; i <= nUsers; i++ {
+		if err := addUser(ctx, server, []string{
+			fmt.Sprintf("user%d@example.com", i),
+			fmt.Sprintf("alias%d@example.com", i),
+		}, []byte("pass")); err != nil {
+			logrus.WithError(err).Fatal("Failed to add user")
+		}
 	}
 
-	listener, err := net.Listen("tcp", "localhost:1143")
+	host := "localhost:1143"
+	if envHost := os.Getenv("GLUON_HOST"); envHost != "" {
+		host = envHost
+	}
+
+	listener, err := net.Listen("tcp", host)
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to listen")
 	}

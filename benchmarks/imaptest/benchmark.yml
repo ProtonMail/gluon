@@ -1,0 +1,94 @@
+
+---
+
+cases:
+  - users: 1
+    clients: 1
+    settings:
+      - simple
+  - users: 10
+    clients: 10
+    settings:
+      - simple
+
+
+.OFF.cases:
+  - users: 1
+    clients: 10
+    settings:
+      - full
+  - users: 1
+    clients: 100
+    settings:
+      - simple
+      - full
+  - users: 1
+    clients: 1000
+    settings:
+      - simple
+      - full
+
+  - users: 10
+    clients: 10
+    settings:
+      - full
+  - users: 10
+    clients: 100
+    settings:
+      - simple
+      - full
+
+  - users: 100
+    clients: 100
+    settings:
+      - simple
+      - full
+  - users: 100
+    clients: 1000
+    settings:
+      - simple
+      - full
+
+  - users: 1000
+    clients: 1000
+    settings:
+      - simple
+      - full
+  - users: 1000
+    clients: 10000
+    settings:
+      - simple
+      - full
+
+settings:
+  simple:
+    mbox: dovecot-crlf
+    secs: 10
+    no_pipelining: true
+  simple-with-checks:
+    mbox: dovecot-crlf
+    secs: 10
+    checkpoint: 3
+    no_pipelining: true
+    own_msgs: true
+    own_flags: true
+  full:
+    mbox: dovecot-crlf
+    no_pipelining: false
+    secs: 60
+    mcreate: 50
+    mdelete: 50
+    uidf: 50
+    search: 30
+    noop: 15
+    fetch: 50
+    login: 100
+    logout: 100
+    list: 50
+    select: 100
+    fet2: 100,30
+    copy: 30,5
+    store: 50
+    delete: 100
+    expunge: 100
+    append: 100,5
