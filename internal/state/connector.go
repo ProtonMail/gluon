@@ -37,10 +37,9 @@ type Connector interface {
 		ctx context.Context,
 		mboxID imap.LabelID,
 		literal []byte,
-		message *imap.ParsedMessage,
 		flags imap.FlagSet,
 		date time.Time,
-	) (imap.InternalMessageID, imap.Message, error)
+	) (imap.InternalMessageID, imap.Message, []byte, error)
 
 	// AddMessagesToMailbox adds the message with the given ID to the mailbox with the given ID.
 	AddMessagesToMailbox(

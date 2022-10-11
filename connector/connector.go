@@ -28,7 +28,7 @@ type Connector interface {
 	GetMessage(ctx context.Context, messageID imap.MessageID) (imap.Message, []imap.LabelID, error)
 
 	// CreateMessage creates a new message on the remote.
-	CreateMessage(ctx context.Context, labelID imap.LabelID, literal []byte, parsedMessage *imap.ParsedMessage, flags imap.FlagSet, date time.Time) (imap.Message, error)
+	CreateMessage(ctx context.Context, labelID imap.LabelID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error)
 
 	// LabelMessages labels the given messages with the given label ID.
 	LabelMessages(ctx context.Context, messageIDs []imap.MessageID, labelID imap.LabelID) error

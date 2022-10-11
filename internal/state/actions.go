@@ -96,18 +96,17 @@ func (state *State) actionCreateMessage(
 	date time.Time,
 	isSelectedMailbox bool,
 ) (imap.UID, error) {
-	parsedMessage, err := imap.NewParsedMessage(literal)
+	internalID, res, newLiteral, err := state.user.GetRemote().CreateMessage(ctx, mboxID.RemoteID, literal, flags, date)
 	if err != nil {
 		return 0, err
 	}
 
-	internalID, res, err := state.user.GetRemote().CreateMessage(ctx, mboxID.RemoteID, literal, parsedMessage, flags, date)
+	parsedMessage, err := imap.NewParsedMessage(newLiteral)
 	if err != nil {
 		return 0, err
 	}
 
-	literalWithHeader, err := rfc822.SetHeaderValue(literal, ids.InternalIDKey, internalID.String())
-
+	literalWithHeader, err := rfc822.SetHeaderValue(newLiteral, ids.InternalIDKey, internalID.String())
 	if err != nil {
 		return 0, fmt.Errorf("failed to set internal ID: %w", err)
 	}
@@ -132,19 +131,16 @@ func (state *State) actionCreateMessage(
 
 	// We can append to non-selected mailboxes.
 	var st *State
+
 	if isSelectedMailbox {
 		st = state
 	}
 
-	if err := state.user.QueueOrApplyStateUpdate(
-		ctx,
-		tx,
-		newExistsStateUpdateWithExists(
-			mboxID.InternalID,
-			[]*exists{newExists(ids.MessageIDPair{InternalID: internalID, RemoteID: res.ID}, messageUID, flagSet)},
-			st,
-		),
-	); err != nil {
+	if err := state.user.QueueOrApplyStateUpdate(ctx, tx, newExistsStateUpdateWithExists(
+		mboxID.InternalID,
+		[]*exists{newExists(ids.MessageIDPair{InternalID: internalID, RemoteID: res.ID}, messageUID, flagSet)},
+		st,
+	)); err != nil {
 		return 0, err
 	}
 

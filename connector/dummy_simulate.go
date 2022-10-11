@@ -71,12 +71,12 @@ func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs 
 	}
 
 	conn.state.messages[message.ID] = &dummyMessage{
-		literal:       literal,
-		seen:          message.Flags.Contains(imap.FlagSeen),
-		flagged:       message.Flags.Contains(imap.FlagFlagged),
-		parsedMessage: parsedMessage,
-		date:          message.Date,
-		labelIDs:      labelIDs,
+		literal:  literal,
+		seen:     message.Flags.Contains(imap.FlagSeen),
+		flagged:  message.Flags.Contains(imap.FlagFlagged),
+		parsed:   parsedMessage,
+		date:     message.Date,
+		labelIDs: labelIDs,
 	}
 
 	update := imap.NewMessagesCreated(&imap.MessageCreated{
@@ -110,12 +110,12 @@ func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, m
 		}
 
 		conn.state.messages[messages[i].ID] = &dummyMessage{
-			literal:       literals[i],
-			seen:          messages[i].Flags.Contains(imap.FlagSeen),
-			flagged:       messages[i].Flags.Contains(imap.FlagFlagged),
-			parsedMessage: parsedMessage,
-			date:          messages[i].Date,
-			labelIDs:      labelIDs,
+			literal:  literals[i],
+			seen:     messages[i].Flags.Contains(imap.FlagSeen),
+			flagged:  messages[i].Flags.Contains(imap.FlagFlagged),
+			parsed:   parsedMessage,
+			date:     messages[i].Date,
+			labelIDs: labelIDs,
 		}
 
 		updates = append(updates, &imap.MessageCreated{

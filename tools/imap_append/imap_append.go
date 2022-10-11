@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -46,7 +45,7 @@ func main() {
 	}
 
 	for _, v := range args {
-		fileData, err := ioutil.ReadFile(v)
+		fileData, err := os.ReadFile(v)
 		if err != nil {
 			panic(fmt.Errorf("failed to read file:%v - %w", v, err))
 		}
