@@ -16,7 +16,7 @@ func newStateTracker() *stateTracker {
 }
 
 func (s *stateTracker) createRandomMBox(cl *client.Client) (string, error) {
-	mbox := uuid.NewString()
+	mbox := "Folders/" + uuid.NewString()
 
 	if err := cl.Create(mbox); err != nil {
 		return "", err
