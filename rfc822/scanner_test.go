@@ -36,6 +36,25 @@ body2
 	}
 }
 
+func TestScannerMalformedLineEnding(t *testing.T) {
+	// contains an extra \r before new line after boundary
+	const literal = "this part of the text should be ignored\r\n--longrandomstring\r\r\n\r\nbody1\r\n\r\n--longrandomstring\r\r\n\r\nbody2\r\n\r\n--longrandomstring--\r\r\n"
+
+	{
+		scanner, err := NewByteScanner([]byte(literal), []byte("longrandomstring"))
+		require.NoError(t, err)
+
+		parts := scanner.ScanAll()
+		require.Equal(t, len(parts), 2)
+
+		assert.Equal(t, "\r\nbody1\r\n", string(parts[0].Data))
+		assert.Equal(t, "\r\nbody2\r\n", string(parts[1].Data))
+
+		assert.Equal(t, "\r\nbody1\r\n", literal[parts[0].Offset:parts[0].Offset+len(parts[0].Data)])
+		assert.Equal(t, "\r\nbody2\r\n", literal[parts[1].Offset:parts[1].Offset+len(parts[1].Data)])
+	}
+}
+
 func TestScannerNested(t *testing.T) {
 	const literal = `This is the preamble.  It is to be ignored, though it 
 is a handy place for mail composers to include an 

@@ -35,7 +35,7 @@ func (mimeType MIMEType) SubType() string {
 	return ""
 }
 
-func parseMIMEType(val string) (MIMEType, map[string]string, error) {
+func ParseMIMEType(val string) (MIMEType, map[string]string, error) {
 	if val == "" {
 		val = string(TextPlain)
 	}
