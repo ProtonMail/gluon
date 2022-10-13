@@ -29,7 +29,7 @@ func (section *Section) ContentType() (MIMEType, map[string]string, error) {
 		return "", nil, err
 	}
 
-	return parseMIMEType(header.Get("Content-Type"))
+	return ParseMIMEType(header.Get("Content-Type"))
 }
 
 func (section *Section) Header() []byte {
