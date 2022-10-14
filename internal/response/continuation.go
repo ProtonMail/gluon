@@ -16,6 +16,7 @@ func (r *continuation) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *continuation) String(_ bool) string {
-	return strings.Join([]string{r.tag, "Ready"}, " ")
+func (r *continuation) Strings() (raw string, _ string) {
+	raw = strings.Join([]string{r.tag, "Ready"}, " ")
+	return raw, raw
 }

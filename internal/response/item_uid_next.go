@@ -14,6 +14,7 @@ func ItemUIDNext(n imap.UID) *itemUIDNext {
 	return &itemUIDNext{uid: n}
 }
 
-func (c *itemUIDNext) String(_ bool) string {
-	return fmt.Sprintf("UIDNEXT %v", c.uid)
+func (c *itemUIDNext) Strings() (raw string, _ string) {
+	raw = fmt.Sprintf("UIDNEXT %v", c.uid)
+	return raw, raw
 }

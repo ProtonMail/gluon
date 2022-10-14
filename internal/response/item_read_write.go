@@ -6,6 +6,7 @@ func ItemReadWrite() *itemReadWrite {
 	return &itemReadWrite{}
 }
 
-func (c *itemReadWrite) String(_ bool) string {
-	return "READ-WRITE"
+func (c *itemReadWrite) Strings() (raw string, _ string) {
+	raw = "READ-WRITE"
+	return raw, raw
 }

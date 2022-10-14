@@ -7,9 +7,13 @@ import (
 )
 
 func TestBye(t *testing.T) {
-	assert.Equal(t, "* BYE", Bye().String(false))
+	raw, filtered := Bye().Strings()
+	assert.Equal(t, "* BYE", raw)
+	assert.Equal(t, "* BYE", filtered)
 }
 
 func TestByeMessage(t *testing.T) {
-	assert.Equal(t, "* BYE message", Bye().WithMessage("message").String(false))
+	raw, filtered := Bye().WithMessage("message").Strings()
+	assert.Equal(t, "* BYE message", raw)
+	assert.Equal(t, "* BYE message", filtered)
 }

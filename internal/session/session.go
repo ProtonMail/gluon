@@ -243,9 +243,10 @@ func (s *Session) serve(ctx context.Context) error {
 }
 
 func (s *Session) WriteResponse(res response.Item) error {
-	s.logOutgoing(res.String(true))
+	raw, filtered := res.Strings()
+	s.logOutgoing(filtered)
 
-	if _, err := s.conn.Write([]byte(res.String(false) + "\r\n")); err != nil {
+	if _, err := s.conn.Write([]byte(raw + "\r\n")); err != nil {
 		return err
 	}
 

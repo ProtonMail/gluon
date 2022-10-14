@@ -12,10 +12,9 @@ func ItemRFC822Text(text []byte) *itemRFC822Text {
 	}
 }
 
-func (r *itemRFC822Text) String(isPrivateByDefault bool) string {
-	if isPrivateByDefault {
-		return ""
-	}
+func (r *itemRFC822Text) Strings() (raw string, filtered string) {
+	raw = fmt.Sprintf("RFC822.TEXT {%v}\r\n%s", len(r.text), r.text)
+	filtered = fmt.Sprintf("RFC822.TEXT {%v}", len(r.text))
 
-	return fmt.Sprintf("RFC822.TEXT {%v}\r\n%s", len(r.text), r.text)
+	return raw, filtered
 }

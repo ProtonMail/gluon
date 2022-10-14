@@ -12,6 +12,7 @@ func ItemBodyStructure(structure string) *itemBodyStructure {
 	}
 }
 
-func (r *itemBodyStructure) String(_ bool) string {
-	return fmt.Sprintf("BODYSTRUCTURE %v", r.structure)
+func (r *itemBodyStructure) Strings() (raw string, _ string) {
+	raw = fmt.Sprintf("BODYSTRUCTURE %v", r.structure)
+	return raw, raw
 }

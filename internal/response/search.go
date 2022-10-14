@@ -22,7 +22,7 @@ func (r *search) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *search) String(_ bool) string {
+func (r *search) Strings() (raw string, _ string) {
 	parts := []string{"*", "SEARCH"}
 
 	if len(r.seqs) > 0 {
@@ -35,5 +35,7 @@ func (r *search) String(_ bool) string {
 		parts = append(parts, join(seqs))
 	}
 
-	return join(parts)
+	raw = join(parts)
+
+	return raw, raw
 }

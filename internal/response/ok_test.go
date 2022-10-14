@@ -8,29 +8,43 @@ import (
 )
 
 func TestOkUntagged(t *testing.T) {
-	assert.Equal(t, `* OK`, Ok().String(false))
+	raw, filtered := Ok().Strings()
+	assert.Equal(t, `* OK`, raw)
+	assert.Equal(t, `* OK`, filtered)
 }
 
 func TestOkTagged(t *testing.T) {
-	assert.Equal(t, `tag OK`, Ok("tag").String(false))
+	raw, filtered := Ok("tag").Strings()
+	assert.Equal(t, `tag OK`, raw)
+	assert.Equal(t, `tag OK`, filtered)
 }
 
 func TestOkUnseen(t *testing.T) {
-	assert.Equal(t, `* OK [UNSEEN 17]`, Ok().WithItems(ItemUnseen(17)).String(false))
+	raw, filtered := Ok().WithItems(ItemUnseen(17)).Strings()
+	assert.Equal(t, `* OK [UNSEEN 17]`, raw)
+	assert.Equal(t, `* OK [UNSEEN 17]`, filtered)
 }
 
 func TestOkPermanentFlags(t *testing.T) {
-	assert.Equal(t, `* OK [PERMANENTFLAGS (\Deleted)]`, Ok().WithItems(ItemPermanentFlags(imap.NewFlagSet(`\Deleted`))).String(false))
+	raw, filtered := Ok().WithItems(ItemPermanentFlags(imap.NewFlagSet(`\Deleted`))).Strings()
+	assert.Equal(t, `* OK [PERMANENTFLAGS (\Deleted)]`, raw)
+	assert.Equal(t, `* OK [PERMANENTFLAGS (\Deleted)]`, filtered)
 }
 
 func TestOkUIDNext(t *testing.T) {
-	assert.Equal(t, `* OK [UIDNEXT 4392]`, Ok().WithItems(ItemUIDNext(4392)).String(false))
+	raw, filtered := Ok().WithItems(ItemUIDNext(4392)).Strings()
+	assert.Equal(t, `* OK [UIDNEXT 4392]`, raw)
+	assert.Equal(t, `* OK [UIDNEXT 4392]`, filtered)
 }
 
 func TestOkUIDValidity(t *testing.T) {
-	assert.Equal(t, `* OK [UIDVALIDITY 3857529045]`, Ok().WithItems(ItemUIDValidity(3857529045)).String(false))
+	raw, filtered := Ok().WithItems(ItemUIDValidity(3857529045)).Strings()
+	assert.Equal(t, `* OK [UIDVALIDITY 3857529045]`, raw)
+	assert.Equal(t, `* OK [UIDVALIDITY 3857529045]`, filtered)
 }
 
 func TestOkReadOnly(t *testing.T) {
-	assert.Equal(t, `* OK [READ-ONLY]`, Ok().WithItems(ItemReadOnly()).String(false))
+	raw, filtered := Ok().WithItems(ItemReadOnly()).Strings()
+	assert.Equal(t, `* OK [READ-ONLY]`, raw)
+	assert.Equal(t, `* OK [READ-ONLY]`, filtered)
 }

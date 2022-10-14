@@ -7,5 +7,7 @@ import (
 )
 
 func TestContinuation(t *testing.T) {
-	assert.Equal(t, "+ Ready", Continuation().String(false))
+	raw, filtered := Continuation().Strings()
+	assert.Equal(t, "+ Ready", raw)
+	assert.Equal(t, "+ Ready", filtered)
 }

@@ -6,6 +6,7 @@ func ItemTryCreate() *itemTryCreate {
 	return &itemTryCreate{}
 }
 
-func (c *itemTryCreate) String(_ bool) string {
-	return "TRYCREATE"
+func (c *itemTryCreate) Strings() (raw string, _ string) {
+	raw = "TRYCREATE"
+	return raw, raw
 }

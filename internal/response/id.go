@@ -14,8 +14,9 @@ func ID(id imap.IMAPID) *idResponse {
 	}
 }
 
-func (id *idResponse) String(_ bool) string {
-	return "* ID " + id.IMAPID.String()
+func (id *idResponse) Strings() (raw string, _ string) {
+	raw = "* ID " + id.IMAPID.String()
+	return raw, raw
 }
 
 func (r *idResponse) Send(session Session) error {

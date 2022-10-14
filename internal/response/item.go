@@ -1,7 +1,7 @@
 package response
 
 type Item interface {
-	String(isPrivateByDefault bool) string
+	Strings() (raw string, filtered string)
 }
 
 type mergeableItem interface {

@@ -30,16 +30,14 @@ func (r *itemBodyLiteral) WithPartial(begin, count int) *itemBodyLiteral {
 	return r
 }
 
-func (r *itemBodyLiteral) String(isPrivateByDefault bool) string {
-	if isPrivateByDefault {
-		return ""
-	}
-
+func (r *itemBodyLiteral) Strings() (raw string, filtered string) {
 	var partial string
 
 	if r.partial >= 0 {
 		partial = fmt.Sprintf("<%v>", r.partial)
 	}
 
-	return fmt.Sprintf("BODY[%v]%v {%v}\r\n%s", r.section, partial, len(r.literal), r.literal)
+	raw = fmt.Sprintf("BODY[%v]%v {%v}\r\n%s", r.section, partial, len(r.literal), r.literal)
+
+	return raw, filtered
 }

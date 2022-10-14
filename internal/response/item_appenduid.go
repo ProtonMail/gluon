@@ -17,6 +17,7 @@ func ItemAppendUID(uidValidity, messageUID imap.UID) *itemAppendUID {
 	}
 }
 
-func (c *itemAppendUID) String(_ bool) string {
-	return fmt.Sprintf("APPENDUID %v %v", c.uidValidity, c.messageUID)
+func (c *itemAppendUID) Strings() (raw string, _ string) {
+	raw = fmt.Sprintf("APPENDUID %v %v", c.uidValidity, c.messageUID)
+	return raw, raw
 }

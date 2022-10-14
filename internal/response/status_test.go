@@ -7,13 +7,11 @@ import (
 )
 
 func TestStatus(t *testing.T) {
-	assert.Equal(
-		t,
-		`* STATUS "blurdybloop" (MESSAGES 231 UIDNEXT 44292)`,
-		Status().
-			WithMailbox(`blurdybloop`).
-			WithItems(ItemMessages(231)).
-			WithItems(ItemUIDNext(44292)).
-			String(false),
-	)
+	raw, filtered := Status().
+		WithMailbox(`blurdybloop`).
+		WithItems(ItemMessages(231)).
+		WithItems(ItemUIDNext(44292)).
+		Strings()
+	assert.Equal(t, `* STATUS "blurdybloop" (MESSAGES 231 UIDNEXT 44292)`, raw)
+	assert.Equal(t, `* STATUS "blurdybloop" (MESSAGES 231 UIDNEXT 44292)`, filtered)
 }

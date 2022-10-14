@@ -3,7 +3,7 @@ package response
 
 type Response interface {
 	Send(Session) error
-	String(isPrivateByDefault bool) string
+	Strings() (raw string, filtered string)
 }
 
 type Session interface {

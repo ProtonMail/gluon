@@ -17,14 +17,16 @@ func (r *bye) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *bye) String(_ bool) string {
+func (r *bye) Strings() (raw string, _ string) {
 	parts := []string{"*", "BYE"}
 
 	if r.msg != "" {
 		parts = append(parts, r.msg)
 	}
 
-	return join(parts)
+	raw = join(parts)
+
+	return raw, raw
 }
 
 func (r *bye) WithMailboxDeleted() *bye {

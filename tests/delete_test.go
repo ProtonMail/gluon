@@ -110,7 +110,8 @@ func TestDeleteSelectedMailboxCausesDisconnect(t *testing.T) {
 
 		c.C("b002 SELECT mbox1").OK("b002")
 		c.C("b003 DELETE mbox1").OK("b003")
-		c.S(response.Bye().WithMailboxDeleted().String(false))
+		raw, _ := response.Bye().WithMailboxDeleted().Strings()
+		c.S(raw)
 	})
 }
 
@@ -121,7 +122,8 @@ func TestDeleteExaminedMailboxCausesDisconnect(t *testing.T) {
 
 		c.C("b002 EXAMINE mbox1").OK("b002")
 		c.C("b003 DELETE mbox1").OK("b003")
-		c.S(response.Bye().WithMailboxDeleted().String(false))
+		raw, _ := response.Bye().WithMailboxDeleted().Strings()
+		c.S(raw)
 	})
 }
 
@@ -137,11 +139,13 @@ func TestDeleteSelectedMailboxCausesDisconnectOnOtherClients(t *testing.T) {
 		// Delete mailbox
 		c[1].C("b002 SELECT mbox1").OK("b002")
 		c[1].C("b003 DELETE mbox1").OK("b003")
-		c[1].S(response.Bye().WithMailboxDeleted().String(false))
+		raw, _ := response.Bye().WithMailboxDeleted().Strings()
+		c[1].S(raw)
 
 		// Other client should get kicked out on next command
 		c[2].C("c002 NOOP")
-		c[2].S(response.Bye().WithInconsistentState().String(false))
+		raw, _ = response.Bye().WithInconsistentState().Strings()
+		c[2].S(raw)
 	})
 }
 
@@ -157,10 +161,12 @@ func TestDeleteExaminedMailboxCausesDisconnectOnOtherClients(t *testing.T) {
 		// Delete mailbox
 		c[1].C("b002 EXAMINE mbox1").OK("b002")
 		c[1].C("b003 DELETE mbox1").OK("b003")
-		c[1].S(response.Bye().WithMailboxDeleted().String(false))
+		raw, _ := response.Bye().WithMailboxDeleted().Strings()
+		c[1].S(raw)
 
 		// Other client should get kicked out on next command
 		c[2].C("c002 NOOP")
-		c[2].S(response.Bye().WithInconsistentState().String(false))
+		raw, _ = response.Bye().WithInconsistentState().Strings()
+		c[2].S(raw)
 	})
 }

@@ -8,17 +8,25 @@ import (
 )
 
 func TestNoUntagged(t *testing.T) {
-	assert.Equal(t, "* NO", No().String(false))
+	raw, filtered := No().Strings()
+	assert.Equal(t, "* NO", raw)
+	assert.Equal(t, "* NO", filtered)
 }
 
 func TestNoTagged(t *testing.T) {
-	assert.Equal(t, "tag NO", No("tag").String(false))
+	raw, filtered := No("tag").Strings()
+	assert.Equal(t, "tag NO", raw)
+	assert.Equal(t, "tag NO", filtered)
 }
 
 func TestNoError(t *testing.T) {
-	assert.Equal(t, "tag NO erroooooor", No("tag").WithError(errors.New("erroooooor")).String(false))
+	raw, filtered := No("tag").WithError(errors.New("erroooooor")).Strings()
+	assert.Equal(t, "tag NO erroooooor", raw)
+	assert.Equal(t, "tag NO erroooooor", filtered)
 }
 
 func TestNoTryCreate(t *testing.T) {
-	assert.Equal(t, "tag NO [TRYCREATE] erroooooor", No("tag").WithItems(ItemTryCreate()).WithError(errors.New("erroooooor")).String(false))
+	raw, filtered := No("tag").WithItems(ItemTryCreate()).WithError(errors.New("erroooooor")).Strings()
+	assert.Equal(t, "tag NO [TRYCREATE] erroooooor", raw)
+	assert.Equal(t, "tag NO [TRYCREATE] erroooooor", filtered)
 }

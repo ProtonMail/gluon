@@ -12,6 +12,7 @@ func ItemRFC822Size(size int) *itemRFC822Size {
 	}
 }
 
-func (s *itemRFC822Size) String(_ bool) string {
-	return fmt.Sprintf("RFC822.SIZE %v", s.size)
+func (s *itemRFC822Size) Strings() (raw string, _ string) {
+	raw = fmt.Sprintf("RFC822.SIZE %v", s.size)
+	return raw, raw
 }

@@ -26,14 +26,19 @@ func (r *fetch) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *fetch) String(isPrivateByDefault bool) string {
-	var items []string
+func (r *fetch) Strings() (raw string, filtered string) {
+	var items, filteredItems []string
 
 	for _, item := range r.items {
-		items = append(items, item.String(isPrivateByDefault))
+		rawStr, filteredStr := item.Strings()
+		items = append(items, rawStr)
+		filteredItems = append(filteredItems, filteredStr)
 	}
 
-	return fmt.Sprintf(`* %v FETCH (%v)`, r.seq, join(items))
+	raw = fmt.Sprintf(`* %v FETCH (%v)`, r.seq, join(items))
+	filtered = fmt.Sprintf(`* %v FETCH (%v)`, r.seq, join(filteredItems))
+
+	return raw, filtered
 }
 
 func (r *fetch) canSkip(other Response) bool {

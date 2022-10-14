@@ -36,7 +36,7 @@ func (r *list) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *list) String(_ bool) string {
+func (r *list) Strings() (raw string, _ string) {
 	del := "NIL"
 
 	if r.del != "" {
@@ -48,5 +48,7 @@ func (r *list) String(_ bool) string {
 		panic(err)
 	}
 
-	return fmt.Sprintf(`* LIST (%v) %v %v`, join(r.att.ToSlice()), del, strconv.Quote(enc))
+	raw = fmt.Sprintf(`* LIST (%v) %v %v`, join(r.att.ToSlice()), del, strconv.Quote(enc))
+
+	return raw, raw
 }

@@ -23,8 +23,9 @@ func (r *exists) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *exists) String(_ bool) string {
-	return fmt.Sprintf("* %v EXISTS", r.count)
+func (r *exists) Strings() (raw string, _ string) {
+	raw = fmt.Sprintf("* %v EXISTS", r.count)
+	return raw, raw
 }
 
 func (r *exists) canSkip(other Response) bool {

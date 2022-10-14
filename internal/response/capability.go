@@ -24,7 +24,7 @@ func (r *capability) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *capability) String(_ bool) string {
+func (r *capability) Strings() (raw string, _ string) {
 	var caps []string
 
 	for _, capability := range r.caps {
@@ -33,5 +33,7 @@ func (r *capability) String(_ bool) string {
 
 	slices.Sort(caps)
 
-	return fmt.Sprintf("* CAPABILITY %v", join(caps))
+	raw = fmt.Sprintf("* CAPABILITY %v", join(caps))
+
+	return raw, raw
 }

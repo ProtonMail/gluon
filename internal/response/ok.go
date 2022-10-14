@@ -38,22 +38,27 @@ func (r *ok) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *ok) String(isPrivateByDefault bool) string {
+func (r *ok) Strings() (raw string, filtered string) {
 	parts := []string{r.tag, "OK"}
+	partsFiltered := []string{r.tag, "OK"}
 
 	if len(r.items) > 0 {
-		var items []string
+		var items, itemsFiltered []string
 
 		for _, item := range r.items {
-			items = append(items, item.String(isPrivateByDefault))
+			rawPart, filteredPart := item.Strings()
+			items = append(items, rawPart)
+			itemsFiltered = append(itemsFiltered, filteredPart)
 		}
 
 		parts = append(parts, fmt.Sprintf("[%v]", join(items)))
+		partsFiltered = append(partsFiltered, fmt.Sprintf("[%v]", join(itemsFiltered)))
 	}
 
 	if r.msg != "" {
 		parts = append(parts, r.msg)
+		partsFiltered = append(partsFiltered, r.msg)
 	}
 
-	return join(parts)
+	return join(parts), join(partsFiltered)
 }

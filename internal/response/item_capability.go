@@ -17,7 +17,7 @@ func ItemCapability(caps ...imap.Capability) *itemCapability {
 	}
 }
 
-func (r *itemCapability) String(_ bool) string {
+func (r *itemCapability) Strings() (raw string, _ string) {
 	var caps []string
 
 	for _, capability := range r.caps {
@@ -26,5 +26,7 @@ func (r *itemCapability) String(_ bool) string {
 
 	slices.Sort(caps)
 
-	return fmt.Sprintf("CAPABILITY %v", join(caps))
+	raw = fmt.Sprintf("CAPABILITY %v", join(caps))
+
+	return raw, raw
 }

@@ -28,12 +28,17 @@ func (r *status) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *status) String(isPrivateByDefault bool) string {
-	var items []string
+func (r *status) Strings() (raw string, filtered string) {
+	var items, itemsFiltered []string
 
 	for _, item := range r.items {
-		items = append(items, item.String(isPrivateByDefault))
+		rawPart, filteredPart := item.Strings()
+		items = append(items, rawPart)
+		itemsFiltered = append(itemsFiltered, filteredPart)
 	}
 
-	return fmt.Sprintf(`* STATUS %v (%v)`, strconv.Quote(r.name), join(items))
+	raw = fmt.Sprintf(`* STATUS %v (%v)`, strconv.Quote(r.name), join(items))
+	filtered = fmt.Sprintf(`* STATUS %v (%v)`, strconv.Quote(r.name), join(itemsFiltered))
+
+	return raw, filtered
 }

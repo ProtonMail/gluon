@@ -8,17 +8,13 @@ import (
 )
 
 func TestList(t *testing.T) {
-	assert.Equal(
-		t,
-		`* LIST (\Noselect) "/" "~/Mail/foo"`,
-		List().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithDelimiter("/").WithName(`~/Mail/foo`).String(false),
-	)
+	raw, filtered := List().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithDelimiter("/").WithName(`~/Mail/foo`).Strings()
+	assert.Equal(t, `* LIST (\Noselect) "/" "~/Mail/foo"`, raw)
+	assert.Equal(t, `* LIST (\Noselect) "/" "~/Mail/foo"`, filtered)
 }
 
 func TestListNilDelimiter(t *testing.T) {
-	assert.Equal(
-		t,
-		`* LIST (\Noselect) NIL "Mail"`,
-		List().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithName(`Mail`).String(true),
-	)
+	raw, filtered := List().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithName(`Mail`).Strings()
+	assert.Equal(t, `* LIST (\Noselect) NIL "Mail"`, raw)
+	assert.Equal(t, `* LIST (\Noselect) NIL "Mail"`, filtered)
 }

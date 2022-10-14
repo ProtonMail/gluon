@@ -7,17 +7,13 @@ import (
 )
 
 func TestSearch(t *testing.T) {
-	assert.Equal(
-		t,
-		`* SEARCH 2 3 6`,
-		Search(2, 3, 6).String(false),
-	)
+	raw, filtered := Search(2, 3, 6).Strings()
+	assert.Equal(t, `* SEARCH 2 3 6`, raw)
+	assert.Equal(t, `* SEARCH 2 3 6`, filtered)
 }
 
 func TestSearchEmpty(t *testing.T) {
-	assert.Equal(
-		t,
-		`* SEARCH`,
-		Search().String(false),
-	)
+	raw, filtered := Search().Strings()
+	assert.Equal(t, `* SEARCH`, raw)
+	assert.Equal(t, `* SEARCH`, filtered)
 }

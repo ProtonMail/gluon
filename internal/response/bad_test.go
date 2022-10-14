@@ -8,13 +8,19 @@ import (
 )
 
 func TestBadUntagged(t *testing.T) {
-	assert.Equal(t, "* BAD", Bad().String(false))
+	raw, filtered := Bad().Strings()
+	assert.Equal(t, "* BAD", raw)
+	assert.Equal(t, "* BAD", filtered)
 }
 
 func TestBadTagged(t *testing.T) {
-	assert.Equal(t, "tag BAD", Bad("tag").String(false))
+	raw, filtered := Bad("tag").Strings()
+	assert.Equal(t, "tag BAD", raw)
+	assert.Equal(t, "tag BAD", filtered)
 }
 
 func TestBadError(t *testing.T) {
-	assert.Equal(t, "tag BAD erroooooor", Bad("tag").WithError(errors.New("erroooooor")).String(false))
+	raw, filtered := Bad("tag").WithError(errors.New("erroooooor")).Strings()
+	assert.Equal(t, "tag BAD erroooooor", raw)
+	assert.Equal(t, "tag BAD erroooooor", filtered)
 }

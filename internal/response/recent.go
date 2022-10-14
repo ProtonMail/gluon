@@ -21,8 +21,9 @@ func (r *recent) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *recent) String(_ bool) string {
-	return fmt.Sprintf("* %v RECENT", r.count)
+func (r *recent) Strings() (raw string, _ string) {
+	raw = fmt.Sprintf("* %v RECENT", r.count)
+	return raw, raw
 }
 
 func (r *recent) canSkip(other Response) bool {

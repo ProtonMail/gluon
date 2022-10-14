@@ -19,6 +19,7 @@ func ItemCopyUID(uidValidity imap.UID, sourceSet, destSet []imap.UID) *itemCopyU
 	}
 }
 
-func (c *itemCopyUID) String(_ bool) string {
-	return fmt.Sprintf("COPYUID %v %v %v", c.uidValidity, c.sourceSet, c.destSet)
+func (c *itemCopyUID) Strings() (raw string, _ string) {
+	raw = fmt.Sprintf("COPYUID %v %v %v", c.uidValidity, c.sourceSet, c.destSet)
+	return raw, raw
 }

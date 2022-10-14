@@ -23,6 +23,7 @@ func (r *flags) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *flags) String(_ bool) string {
-	return fmt.Sprintf("* FLAGS (%v)", join(r.flags.ToSlice()))
+func (r *flags) Strings() (raw string, _ string) {
+	raw = fmt.Sprintf("* FLAGS (%v)", join(r.flags.ToSlice()))
+	return raw, raw
 }

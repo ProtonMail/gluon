@@ -8,17 +8,13 @@ import (
 )
 
 func TestLsub(t *testing.T) {
-	assert.Equal(
-		t,
-		`* LSUB (\Noselect) "/" "~/Mail/foo"`,
-		Lsub().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithDelimiter("/").WithName(`~/Mail/foo`).String(false),
-	)
+	raw, filtered := Lsub().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithDelimiter("/").WithName(`~/Mail/foo`).Strings()
+	assert.Equal(t, `* LSUB (\Noselect) "/" "~/Mail/foo"`, raw)
+	assert.Equal(t, `* LSUB (\Noselect) "/" "~/Mail/foo"`, filtered)
 }
 
 func TestLsubNilDelimiter(t *testing.T) {
-	assert.Equal(
-		t,
-		`* LSUB (\Noselect) NIL "Mail"`,
-		Lsub().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithName(`Mail`).String(false),
-	)
+	raw, filtered := Lsub().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithName(`Mail`).Strings()
+	assert.Equal(t, `* LSUB (\Noselect) NIL "Mail"`, raw)
+	assert.Equal(t, `* LSUB (\Noselect) NIL "Mail"`, filtered)
 }

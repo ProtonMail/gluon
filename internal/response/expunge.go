@@ -20,6 +20,7 @@ func (r *expunge) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *expunge) String(_ bool) string {
-	return fmt.Sprintf("* %v EXPUNGE", r.seq)
+func (r *expunge) Strings() (raw string, _ string) {
+	raw = fmt.Sprintf("* %v EXPUNGE", r.seq)
+	return raw, raw
 }

@@ -36,24 +36,29 @@ func (r *no) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *no) String(isPrivateByDefault bool) (res string) {
+func (r *no) Strings() (raw string, filtered string) {
 	parts := []string{r.tag, "NO"}
+	partsFiltered := []string{r.tag, "NO"}
 
 	if len(r.items) > 0 {
-		var items []string
+		var items, itemsFiltered []string
 
 		for _, item := range r.items {
-			items = append(items, item.String(isPrivateByDefault))
+			itemRaw, itemFiltered := item.Strings()
+			items = append(items, itemRaw)
+			itemsFiltered = append(itemsFiltered, itemFiltered)
 		}
 
 		parts = append(parts, fmt.Sprintf("[%v]", join(items)))
+		partsFiltered = append(partsFiltered, fmt.Sprintf("[%v]", join(itemsFiltered)))
 	}
 
 	if r.err != nil {
 		parts = append(parts, r.err.Error())
+		partsFiltered = append(partsFiltered, r.err.Error())
 	}
 
-	return join(parts)
+	return join(parts), join(partsFiltered)
 }
 
 func (r *no) Error() string {

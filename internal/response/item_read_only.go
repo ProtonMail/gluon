@@ -6,6 +6,7 @@ func ItemReadOnly() *itemReadOnly {
 	return &itemReadOnly{}
 }
 
-func (c *itemReadOnly) String(_ bool) string {
-	return "READ-ONLY"
+func (c *itemReadOnly) Strings() (raw string, _ string) {
+	raw = "READ-ONLY"
+	return raw, raw
 }

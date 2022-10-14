@@ -7,5 +7,7 @@ import (
 )
 
 func TestRecent(t *testing.T) {
-	assert.Equal(t, `* 5 RECENT`, Recent().WithCount(5).String(false))
+	raw, filtered := Recent().WithCount(5).Strings()
+	assert.Equal(t, `* 5 RECENT`, raw)
+	assert.Equal(t, `* 5 RECENT`, filtered)
 }

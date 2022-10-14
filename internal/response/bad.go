@@ -28,14 +28,16 @@ func (r *bad) Send(s Session) error {
 	return s.WriteResponse(r)
 }
 
-func (r *bad) String(_ bool) string {
+func (r *bad) Strings() (raw string, _ string) {
 	parts := []string{r.tag, "BAD"}
 
 	if r.err != nil {
 		parts = append(parts, r.err.Error())
 	}
 
-	return join(parts)
+	raw = join(parts)
+
+	return raw, raw
 }
 
 func (r *bad) Error() string {
