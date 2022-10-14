@@ -6,6 +6,6 @@ func ItemExpungeIssued() *itemExpungeIssued {
 	return &itemExpungeIssued{}
 }
 
-func (c *itemExpungeIssued) String() string {
+func (c *itemExpungeIssued) String(_ bool) string {
 	return "EXPUNGEISSUED"
 }

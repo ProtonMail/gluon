@@ -12,7 +12,7 @@ func TestIdNilNoData(t *testing.T) {
 	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		wantResponse := response.ID(imap.NewIMAPIDFromVersionInfo(testServerVersionInfo))
 		c.C(`A001 ID NIL`)
-		c.S(wantResponse.String())
+		c.S(wantResponse.String(false))
 		c.OK(`A001`)
 	})
 }
@@ -22,7 +22,7 @@ func TestIdContextLookup(t *testing.T) {
 		wantResponse := response.ID(imap.NewIMAPIDFromVersionInfo(testServerVersionInfo))
 		// Store new ID
 		c.C(`A001 ID ("foo" "bar")`)
-		c.S(wantResponse.String())
+		c.S(wantResponse.String(false))
 		c.OK(`A001`)
 
 		c.C("A003 LOGIN user pass").OK("A003")

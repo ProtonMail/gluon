@@ -6,6 +6,6 @@ func ItemBadCharset() *itemBadCharset {
 	return &itemBadCharset{}
 }
 
-func (c *itemBadCharset) String() string {
+func (c *itemBadCharset) String(_ bool) string {
 	return "BADCHARSET"
 }

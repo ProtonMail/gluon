@@ -11,7 +11,7 @@ func TestList(t *testing.T) {
 	assert.Equal(
 		t,
 		`* LIST (\Noselect) "/" "~/Mail/foo"`,
-		List().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithDelimiter("/").WithName(`~/Mail/foo`).String(),
+		List().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithDelimiter("/").WithName(`~/Mail/foo`).String(false),
 	)
 }
 
@@ -19,6 +19,6 @@ func TestListNilDelimiter(t *testing.T) {
 	assert.Equal(
 		t,
 		`* LIST (\Noselect) NIL "Mail"`,
-		List().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithName(`Mail`).String(),
+		List().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithName(`Mail`).String(true),
 	)
 }

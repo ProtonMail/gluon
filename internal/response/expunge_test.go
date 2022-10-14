@@ -7,5 +7,5 @@ import (
 )
 
 func TestExpunge(t *testing.T) {
-	assert.Equal(t, `* 23 EXPUNGE`, Expunge(23).String())
+	assert.Equal(t, `* 23 EXPUNGE`, Expunge(23).String(false))
 }

@@ -20,10 +20,10 @@ func (r *exists) WithCount(n imap.SeqID) *exists {
 }
 
 func (r *exists) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *exists) String() string {
+func (r *exists) String(_ bool) string {
 	return fmt.Sprintf("* %v EXISTS", r.count)
 }
 

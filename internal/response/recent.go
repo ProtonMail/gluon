@@ -18,10 +18,10 @@ func (r *recent) WithCount(n uint32) *recent {
 }
 
 func (r *recent) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *recent) String() string {
+func (r *recent) String(_ bool) string {
 	return fmt.Sprintf("* %v RECENT", r.count)
 }
 

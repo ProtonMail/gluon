@@ -25,14 +25,14 @@ func (r *status) WithItems(item ...Item) *status {
 }
 
 func (r *status) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *status) String() string {
+func (r *status) String(isPrivateByDefault bool) string {
 	var items []string
 
 	for _, item := range r.items {
-		items = append(items, item.String())
+		items = append(items, item.String(isPrivateByDefault))
 	}
 
 	return fmt.Sprintf(`* STATUS %v (%v)`, strconv.Quote(r.name), join(items))

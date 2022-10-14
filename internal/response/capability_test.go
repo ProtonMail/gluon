@@ -8,9 +8,9 @@ import (
 )
 
 func TestCapabilityUntagged(t *testing.T) {
-	assert.Equal(t, "* CAPABILITY IMAP4rev1", Capability().WithCapabilities(imap.IMAP4rev1).String())
+	assert.Equal(t, "* CAPABILITY IMAP4rev1", Capability().WithCapabilities(imap.IMAP4rev1).String(false))
 }
 
 func TestCapabilityExtras(t *testing.T) {
-	assert.Equal(t, "* CAPABILITY IDLE IMAP4rev1", Capability().WithCapabilities(imap.IMAP4rev1, imap.IDLE).String())
+	assert.Equal(t, "* CAPABILITY IDLE IMAP4rev1", Capability().WithCapabilities(imap.IMAP4rev1, imap.IDLE).String(false))
 }

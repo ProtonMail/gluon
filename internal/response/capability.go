@@ -21,10 +21,10 @@ func (r *capability) WithCapabilities(caps ...imap.Capability) *capability {
 }
 
 func (r *capability) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *capability) String() string {
+func (r *capability) String(_ bool) string {
 	var caps []string
 
 	for _, capability := range r.caps {

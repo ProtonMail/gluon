@@ -25,10 +25,10 @@ func (r *bad) WithError(err error) *bad {
 }
 
 func (r *bad) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *bad) String() string {
+func (r *bad) String(_ bool) string {
 	parts := []string{r.tag, "BAD"}
 
 	if r.err != nil {

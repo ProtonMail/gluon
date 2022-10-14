@@ -12,6 +12,6 @@ func ItemMessages(n int) *itemMessages {
 	}
 }
 
-func (s *itemMessages) String() string {
+func (s *itemMessages) String(_ bool) string {
 	return fmt.Sprintf("MESSAGES %v", s.n)
 }

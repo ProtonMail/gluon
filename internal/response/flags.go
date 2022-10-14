@@ -20,9 +20,9 @@ func (r *flags) WithFlags(fs imap.FlagSet) *flags {
 }
 
 func (r *flags) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *flags) String() string {
+func (r *flags) String(_ bool) string {
 	return fmt.Sprintf("* FLAGS (%v)", join(r.flags.ToSlice()))
 }

@@ -15,6 +15,6 @@ func ItemInternalDate(date time.Time) *itemInternalDate {
 	return &itemInternalDate{date: date}
 }
 
-func (c *itemInternalDate) String() string {
+func (c *itemInternalDate) String(_ bool) string {
 	return fmt.Sprintf("INTERNALDATE \"%v\"", c.date.UTC().Format(internalDateFormat))
 }

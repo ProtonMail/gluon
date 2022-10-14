@@ -7,5 +7,5 @@ import (
 )
 
 func TestRecent(t *testing.T) {
-	assert.Equal(t, `* 5 RECENT`, Recent().WithCount(5).String())
+	assert.Equal(t, `* 5 RECENT`, Recent().WithCount(5).String(false))
 }

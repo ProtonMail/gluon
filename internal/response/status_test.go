@@ -14,6 +14,6 @@ func TestStatus(t *testing.T) {
 			WithMailbox(`blurdybloop`).
 			WithItems(ItemMessages(231)).
 			WithItems(ItemUIDNext(44292)).
-			String(),
+			String(false),
 	)
 }

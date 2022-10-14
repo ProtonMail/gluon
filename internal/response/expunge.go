@@ -17,9 +17,9 @@ func Expunge(seq imap.SeqID) *expunge {
 }
 
 func (r *expunge) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *expunge) String() string {
+func (r *expunge) String(_ bool) string {
 	return fmt.Sprintf("* %v EXPUNGE", r.seq)
 }

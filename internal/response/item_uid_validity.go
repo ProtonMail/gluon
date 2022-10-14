@@ -14,6 +14,6 @@ func ItemUIDValidity(n imap.UID) *itemUIDValidity {
 	return &itemUIDValidity{val: n}
 }
 
-func (c *itemUIDValidity) String() string {
+func (c *itemUIDValidity) String(_ bool) string {
 	return fmt.Sprintf("UIDVALIDITY %v", c.val)
 }

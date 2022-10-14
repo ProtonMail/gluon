@@ -35,17 +35,17 @@ func (r *ok) WithItems(items ...Item) *ok {
 }
 
 func (r *ok) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *ok) String() string {
+func (r *ok) String(isPrivateByDefault bool) string {
 	parts := []string{r.tag, "OK"}
 
 	if len(r.items) > 0 {
 		var items []string
 
 		for _, item := range r.items {
-			items = append(items, item.String())
+			items = append(items, item.String(isPrivateByDefault))
 		}
 
 		parts = append(parts, fmt.Sprintf("[%v]", join(items)))

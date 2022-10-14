@@ -14,10 +14,10 @@ func (r *bye) WithMessage(msg string) *bye {
 }
 
 func (r *bye) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *bye) String() string {
+func (r *bye) String(_ bool) string {
 	parts := []string{"*", "BYE"}
 
 	if r.msg != "" {

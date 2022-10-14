@@ -14,7 +14,7 @@ func ItemFlags(flags imap.FlagSet) *itemFlags {
 	return &itemFlags{flags: flags}
 }
 
-func (c *itemFlags) String() string {
+func (c *itemFlags) String(_ bool) string {
 	return fmt.Sprintf("FLAGS (%v)", join(c.flags.ToSlice()))
 }
 

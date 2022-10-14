@@ -23,14 +23,14 @@ func (r *fetch) WithItems(items ...Item) *fetch {
 }
 
 func (r *fetch) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *fetch) String() string {
+func (r *fetch) String(isPrivateByDefault bool) string {
 	var items []string
 
 	for _, item := range r.items {
-		items = append(items, item.String())
+		items = append(items, item.String(isPrivateByDefault))
 	}
 
 	return fmt.Sprintf(`* %v FETCH (%v)`, r.seq, join(items))

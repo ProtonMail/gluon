@@ -10,7 +10,7 @@ func TestSearch(t *testing.T) {
 	assert.Equal(
 		t,
 		`* SEARCH 2 3 6`,
-		Search(2, 3, 6).String(),
+		Search(2, 3, 6).String(false),
 	)
 }
 
@@ -18,6 +18,6 @@ func TestSearchEmpty(t *testing.T) {
 	assert.Equal(
 		t,
 		`* SEARCH`,
-		Search().String(),
+		Search().String(false),
 	)
 }

@@ -30,7 +30,11 @@ func (r *itemBodyLiteral) WithPartial(begin, count int) *itemBodyLiteral {
 	return r
 }
 
-func (r *itemBodyLiteral) String() string {
+func (r *itemBodyLiteral) String(isPrivateByDefault bool) string {
+	if isPrivateByDefault {
+		return ""
+	}
+
 	var partial string
 
 	if r.partial >= 0 {

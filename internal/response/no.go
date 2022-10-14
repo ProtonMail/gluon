@@ -33,17 +33,17 @@ func (r *no) WithError(err error) *no {
 }
 
 func (r *no) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *no) String() (res string) {
+func (r *no) String(isPrivateByDefault bool) (res string) {
 	parts := []string{r.tag, "NO"}
 
 	if len(r.items) > 0 {
 		var items []string
 
 		for _, item := range r.items {
-			items = append(items, item.String())
+			items = append(items, item.String(isPrivateByDefault))
 		}
 
 		parts = append(parts, fmt.Sprintf("[%v]", join(items)))

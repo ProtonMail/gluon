@@ -14,6 +14,6 @@ func ItemPermanentFlags(flags imap.FlagSet) *itemPermanentFlags {
 	return &itemPermanentFlags{flags: flags}
 }
 
-func (c *itemPermanentFlags) String() string {
+func (c *itemPermanentFlags) String(_ bool) string {
 	return fmt.Sprintf("PERMANENTFLAGS (%v)", join(c.flags.ToSlice()))
 }

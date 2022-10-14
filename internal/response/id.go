@@ -14,10 +14,10 @@ func ID(id imap.IMAPID) *idResponse {
 	}
 }
 
-func (id *idResponse) String() string {
+func (id *idResponse) String(_ bool) string {
 	return "* ID " + id.IMAPID.String()
 }
 
 func (r *idResponse) Send(session Session) error {
-	return session.WriteResponse(r.String())
+	return session.WriteResponse(r)
 }

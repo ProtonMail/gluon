@@ -11,6 +11,6 @@ func TestFlags(t *testing.T) {
 	assert.Equal(
 		t,
 		`* FLAGS (\Answered \Deleted \Draft \Flagged \Seen)`,
-		Flags().WithFlags(imap.NewFlagSet(`\Answered`, `\Flagged`, `\Deleted`, `\Seen`, `\Draft`)).String(),
+		Flags().WithFlags(imap.NewFlagSet(`\Answered`, `\Flagged`, `\Deleted`, `\Seen`, `\Draft`)).String(false),
 	)
 }

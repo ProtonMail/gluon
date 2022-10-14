@@ -12,6 +12,6 @@ func ItemEnvelope(envelope string) *itemEnvelope {
 	}
 }
 
-func (r *itemEnvelope) String() string {
+func (r *itemEnvelope) String(_ bool) string {
 	return fmt.Sprintf("ENVELOPE %v", r.envelope)
 }

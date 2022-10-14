@@ -3,11 +3,11 @@ package response
 
 type Response interface {
 	Send(Session) error
-	String() string
+	String(isPrivateByDefault bool) string
 }
 
 type Session interface {
-	WriteResponse(string) error
+	WriteResponse(item Item) error
 }
 
 type mergeableResponse interface {

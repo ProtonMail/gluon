@@ -13,9 +13,9 @@ func Continuation() *continuation {
 }
 
 func (r *continuation) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *continuation) String() string {
+func (r *continuation) String(_ bool) string {
 	return strings.Join([]string{r.tag, "Ready"}, " ")
 }

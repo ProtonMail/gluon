@@ -17,7 +17,7 @@ func ItemCapability(caps ...imap.Capability) *itemCapability {
 	}
 }
 
-func (r *itemCapability) String() string {
+func (r *itemCapability) String(_ bool) string {
 	var caps []string
 
 	for _, capability := range r.caps {

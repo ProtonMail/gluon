@@ -12,6 +12,6 @@ func ItemBody(structure string) *itemBody {
 	}
 }
 
-func (r *itemBody) String() string {
+func (r *itemBody) String(_ bool) string {
 	return fmt.Sprintf("BODY %v", r.structure)
 }

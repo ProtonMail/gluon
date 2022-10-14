@@ -32,10 +32,10 @@ func (r *lsub) WithAttributes(att imap.FlagSet) *lsub {
 }
 
 func (r *lsub) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *lsub) String() string {
+func (r *lsub) String(_ bool) string {
 	del := "NIL"
 
 	if r.del != "" {

@@ -13,6 +13,6 @@ func TestFetch(t *testing.T) {
 		`* 23 FETCH (FLAGS (\Seen) RFC822.SIZE 44827)`,
 		Fetch(23).
 			WithItems(ItemFlags(imap.NewFlagSet(`\Seen`)), ItemRFC822Size(44827)).
-			String(),
+			String(false),
 	)
 }

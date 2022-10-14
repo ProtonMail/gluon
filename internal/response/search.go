@@ -19,10 +19,10 @@ func Search(seqs ...uint32) *search {
 }
 
 func (r *search) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *search) String() string {
+func (r *search) String(_ bool) string {
 	parts := []string{"*", "SEARCH"}
 
 	if len(r.seqs) > 0 {

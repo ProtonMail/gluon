@@ -11,7 +11,7 @@ func TestLsub(t *testing.T) {
 	assert.Equal(
 		t,
 		`* LSUB (\Noselect) "/" "~/Mail/foo"`,
-		Lsub().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithDelimiter("/").WithName(`~/Mail/foo`).String(),
+		Lsub().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithDelimiter("/").WithName(`~/Mail/foo`).String(false),
 	)
 }
 
@@ -19,6 +19,6 @@ func TestLsubNilDelimiter(t *testing.T) {
 	assert.Equal(
 		t,
 		`* LSUB (\Noselect) NIL "Mail"`,
-		Lsub().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithName(`Mail`).String(),
+		Lsub().WithAttributes(imap.NewFlagSet(`\Noselect`)).WithName(`Mail`).String(false),
 	)
 }

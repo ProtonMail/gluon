@@ -10,6 +10,6 @@ func ItemUnseen(n uint32) *itemUnseen {
 	return &itemUnseen{count: n}
 }
 
-func (c *itemUnseen) String() string {
+func (c *itemUnseen) String(_ bool) string {
 	return fmt.Sprintf("UNSEEN %v", c.count)
 }

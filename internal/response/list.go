@@ -33,10 +33,10 @@ func (r *list) WithAttributes(att imap.FlagSet) *list {
 }
 
 func (r *list) Send(s Session) error {
-	return s.WriteResponse(r.String())
+	return s.WriteResponse(r)
 }
 
-func (r *list) String() string {
+func (r *list) String(_ bool) string {
 	del := "NIL"
 
 	if r.del != "" {

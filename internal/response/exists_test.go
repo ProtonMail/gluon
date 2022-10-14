@@ -7,5 +7,5 @@ import (
 )
 
 func TestExists(t *testing.T) {
-	assert.Equal(t, `* 23 EXISTS`, Exists().WithCount(23).String())
+	assert.Equal(t, `* 23 EXISTS`, Exists().WithCount(23).String(false))
 }

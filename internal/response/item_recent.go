@@ -12,6 +12,6 @@ func ItemRecent(n int) *itemRecent {
 	}
 }
 
-func (s *itemRecent) String() string {
+func (s *itemRecent) String(_ bool) string {
 	return fmt.Sprintf("RECENT %v", s.n)
 }
