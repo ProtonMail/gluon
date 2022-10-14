@@ -101,6 +101,28 @@ func (state *State) actionCreateMessage(
 		return 0, err
 	}
 
+	{
+		// Handle the case where duplicate messages can return the same remote ID.
+		internalID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), res.ID)
+		if err != nil && !ent.IsNotFound(err) {
+			return 0, err
+		}
+
+		if err == nil {
+			result, err := state.actionAddMessagesToMailbox(ctx,
+				tx,
+				[]ids.MessageIDPair{{InternalID: internalID, RemoteID: res.ID}},
+				mboxID,
+				isSelectedMailbox,
+			)
+			if err != nil {
+				return 0, err
+			}
+
+			return result[0].UID, nil
+		}
+	}
+
 	parsedMessage, err := imap.NewParsedMessage(newLiteral)
 	if err != nil {
 		return 0, err

@@ -44,13 +44,31 @@ var testServerVersionInfo = version.Info{
 	SupportURL: "",
 }
 
+type connectorBuilder interface {
+	New(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) Connector
+}
+
+type dummyConnectorBuilder struct{}
+
+func (*dummyConnectorBuilder) New(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) Connector {
+	return connector.NewDummy(
+		usernames,
+		password,
+		period,
+		flags,
+		permFlags,
+		attrs,
+	)
+}
+
 type serverOptions struct {
-	credentials   []credentials
-	delimiter     string
-	loginJailTime time.Duration
-	dataDir       string
-	idleBulkTime  time.Duration
-	storeBuilder  store.Builder
+	credentials      []credentials
+	delimiter        string
+	loginJailTime    time.Duration
+	dataDir          string
+	idleBulkTime     time.Duration
+	storeBuilder     store.Builder
+	connectorBuilder connectorBuilder
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -105,6 +123,14 @@ func (s *storeBuilderOption) apply(options *serverOptions) {
 	options.storeBuilder = s.builder
 }
 
+type connectorBuilderOption struct {
+	builder connectorBuilder
+}
+
+func (c *connectorBuilderOption) apply(options *serverOptions) {
+	options.connectorBuilder = c.builder
+}
+
 func withIdleBulkTime(idleBulkTime time.Duration) serverOption {
 	return &idleBulkTimeOption{idleBulkTime: idleBulkTime}
 }
@@ -125,17 +151,22 @@ func withStoreBuilder(builder store.Builder) serverOption {
 	return &storeBuilderOption{builder: builder}
 }
 
+func withConnectorBuilder(builder connectorBuilder) serverOption {
+	return &connectorBuilderOption{builder: builder}
+}
+
 func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
 	options := &serverOptions{
 		credentials: []credentials{{
 			usernames: []string{"user"},
 			password:  []byte("pass"),
 		}},
-		delimiter:     "/",
-		loginJailTime: time.Second,
-		dataDir:       tb.TempDir(),
-		idleBulkTime:  time.Duration(500 * time.Millisecond),
-		storeBuilder:  &store.OnDiskStoreBuilder{},
+		delimiter:        "/",
+		loginJailTime:    time.Second,
+		dataDir:          tb.TempDir(),
+		idleBulkTime:     time.Duration(500 * time.Millisecond),
+		storeBuilder:     &store.OnDiskStoreBuilder{},
+		connectorBuilder: &dummyConnectorBuilder{},
 	}
 
 	for _, op := range modifiers {
@@ -190,7 +221,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	dbPaths := make(map[string]string)
 
 	for _, creds := range options.credentials {
-		conn := connector.NewDummy(
+		conn := options.connectorBuilder.New(
 			creds.usernames,
 			creds.password,
 			defaultPeriod,
