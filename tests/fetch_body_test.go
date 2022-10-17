@@ -73,12 +73,10 @@ func TestFetchStructure(t *testing.T) {
 		c.C(`A004 SELECT INBOX`)
 		c.Se(`A004 OK [READ-WRITE] SELECT`)
 
-		// TODO: Dovecot says the base64 part is 0 lines long... it's obviously 1 line long, dovecot bug?
 		c.C(`A005 FETCH 1 (BODY)`)
 		c.S(`* 1 FETCH (BODY ((("text" "plain" ("charset" "utf-8" "format" "flowed") NIL NIL "7bit" 25 2)("text" "html" ("charset" "utf-8") NIL NIL "7bit" 197 10) "alternative")("text" "plain" ("charset" "UTF-8" "name" "thing.txt" "x-mac-creator" "0" "x-mac-type" "0") NIL NIL "base64" 32 1) "mixed"))`)
 		c.Sx(`A005 OK command completed in .*`)
 
-		// TODO: Dovecot says the base64 part is 0 lines long... it's obviously 1 line long, dovecot bug?
 		c.C(`A005 FETCH 1 (BODYSTRUCTURE)`)
 		c.S(`* 1 FETCH (BODYSTRUCTURE ((("text" "plain" ("charset" "utf-8" "format" "flowed") NIL NIL "7bit" 25 2 NIL NIL NIL NIL)("text" "html" ("charset" "utf-8") NIL NIL "7bit" 197 10 NIL NIL NIL NIL) "alternative" ("boundary" "------------62DCF50B21CF279F489F0184") NIL NIL NIL)("text" "plain" ("charset" "UTF-8" "name" "thing.txt" "x-mac-creator" "0" "x-mac-type" "0") NIL NIL "base64" 32 1 NIL ("attachment" ("filename" "thing.txt")) NIL NIL) "mixed" ("boundary" "------------4AC5F36D876D5EED478B5FF9") NIL "en-US" NIL))`)
 		c.Sx(`A005 OK command completed in .*`)
