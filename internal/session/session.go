@@ -83,6 +83,9 @@ type Session struct {
 
 	/// errorCount error counter
 	errorCount int
+
+	/// imapLogUnfiltered allow unfiltered log for IMAP
+	imapLogUnfiltered bool
 }
 
 func New(
@@ -93,6 +96,7 @@ func New(
 	profiler profiling.CmdProfilerBuilder,
 	eventCh chan<- events.Event,
 	idleBulkTime time.Duration,
+	imapLogUnfiltered bool,
 ) *Session {
 	return &Session{
 		conn:               conn,
@@ -104,6 +108,7 @@ func New(
 		idleBulkTime:       idleBulkTime,
 		version:            version,
 		cmdProfilerBuilder: profiler,
+		imapLogUnfiltered:  imapLogUnfiltered,
 	}
 }
 
@@ -244,7 +249,11 @@ func (s *Session) serve(ctx context.Context) error {
 
 func (s *Session) WriteResponse(res response.Item) error {
 	raw, filtered := res.Strings()
-	s.logOutgoing(filtered)
+	if s.imapLogUnfiltered {
+		s.logOutgoing(raw)
+	} else {
+		s.logOutgoing(filtered)
+	}
 
 	if _, err := s.conn.Write([]byte(raw + "\r\n")); err != nil {
 		return err

@@ -167,3 +167,18 @@ func (w *withReporter) config(builder *serverBuilder) {
 func WithReporter(reporter reporter.Reporter) Option {
 	return &withReporter{reporter: reporter}
 }
+
+// WithIMAPLog allow to have IMAP logs unfiltered
+func WithIMAPLog(unfiltered bool) Option {
+	return &withIMAPLog{
+		unfiltered: unfiltered,
+	}
+}
+
+type withIMAPLog struct {
+	unfiltered bool
+}
+
+func (opt withIMAPLog) config(builder *serverBuilder) {
+	builder.imapUnfiltered = opt.unfiltered
+}

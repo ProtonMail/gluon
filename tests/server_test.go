@@ -69,6 +69,7 @@ type serverOptions struct {
 	idleBulkTime     time.Duration
 	storeBuilder     store.Builder
 	connectorBuilder connectorBuilder
+	IMAPLog          bool
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -167,6 +168,7 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 		idleBulkTime:     time.Duration(500 * time.Millisecond),
 		storeBuilder:     &store.OnDiskStoreBuilder{},
 		connectorBuilder: &dummyConnectorBuilder{},
+		IMAPLog:          true,
 	}
 
 	for _, op := range modifiers {
@@ -210,6 +212,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		),
 		gluon.WithIdleBulkTime(options.idleBulkTime),
 		gluon.WithStoreBuilder(options.storeBuilder),
+		gluon.WithIMAPLog(options.IMAPLog),
 	)
 	require.NoError(tb, err)
 
