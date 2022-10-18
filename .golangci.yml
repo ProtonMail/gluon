@@ -18,3 +18,10 @@ issues:
     - path: benchmarks
       linters:
         - gosec
+        - dupword
+    - path: tests
+      linters:
+        - dupword
+    - path: _test\.go
+      linters:
+        - dupword
