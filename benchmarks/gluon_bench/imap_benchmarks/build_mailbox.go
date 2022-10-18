@@ -2,6 +2,7 @@ package imap_benchmarks
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"time"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
@@ -35,7 +36,8 @@ func BuildMailboxWithMessages(cl *client.Client, mailbox string, messageCount in
 	messagesLen := len(messages)
 
 	for i := 0; i < messageCount; i++ {
-		if err := AppendToMailbox(cl, mailbox, messages[i%messagesLen], time.Now()); err != nil {
+		literal := fmt.Sprintf("To: %v@a.com\r\nFrom: %v@a.com\r\n", uuid.NewString(), uuid.NewString()) + messages[i%messagesLen]
+		if err := AppendToMailbox(cl, mailbox, literal, time.Now()); err != nil {
 			return err
 		}
 	}
