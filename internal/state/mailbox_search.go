@@ -48,7 +48,13 @@ func (m *Mailbox) Search(ctx context.Context, keys []*proto.SearchKey, decoder *
 	activeSearchRequests := atomic.AddInt32(&totalActiveSearchRequests, 1)
 	defer atomic.AddInt32(&totalActiveSearchRequests, -1)
 
-	parallelism := runtime.NumCPU() / int(activeSearchRequests)
+	var parallelism int
+
+	if contexts.IsParallelismDisabledCtx(ctx) {
+		parallelism = 1
+	} else {
+		parallelism = runtime.NumCPU() / int(activeSearchRequests)
+	}
 
 	if err := parallel.DoContext(ctx, parallelism, msgCount, func(ctx context.Context, i int) error {
 		msg, ok := m.snap.messages.getWithSeqID(imap.SeqID(i + 1))

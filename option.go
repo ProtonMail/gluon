@@ -167,3 +167,13 @@ func (w *withReporter) config(builder *serverBuilder) {
 func WithReporter(reporter reporter.Reporter) Option {
 	return &withReporter{reporter: reporter}
 }
+
+type withDisableParallelism struct{}
+
+func (withDisableParallelism) config(builder *serverBuilder) {
+	builder.disableParallelism = true
+}
+
+func WithDisableParallelism() Option {
+	return &withDisableParallelism{}
+}

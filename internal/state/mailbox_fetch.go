@@ -80,7 +80,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 
 	// Only run in parallel if we have to fetch more than minCountForParallelism messages or if we have more than one
 	// message and we need to access the literal.
-	if len(snapMessages) > minCountForParallelism || (len(snapMessages) > 1 && needsLiteral) {
+	if !contexts.IsParallelismDisabledCtx(ctx) && (len(snapMessages) > minCountForParallelism || (len(snapMessages) > 1 && needsLiteral)) {
 		// If multiple fetch request are happening in parallel, reduce the number of goroutines in proportion to that
 		// to avoid overloading the user's machine.
 		parallelism = runtime.NumCPU() / int(activeFetchRequests)
