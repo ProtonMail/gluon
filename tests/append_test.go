@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"os"
@@ -259,5 +260,55 @@ func TestAppendConnectorReturnsSameRemoteIDDifferentMBox(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
 		}
+	})
+}
+
+func TestAppendCanHandleOutOfOrderUIDUpdates(t *testing.T) {
+	// Make sure we are correctly handling the case where we have to clients doing append at the same time.
+	// Both clients append a message and get assigned UID according to whichever got there first:
+	//
+	// * Client A -> Append -> UID 1
+	// * Client B -> Append -> UID 2
+	//
+	// All Clients apply their changes to their local state immediately and will receive a deferred updates for the
+	// same mailbox if other clients make updates.
+	// In the case of client B, it appends UID2 as the first message and then later receives an update from A with
+	// an UID lower than the last UID which caused unnecessary panics in the past.
+	//
+	runManyToOneTestWithAuth(t, defaultServerOptions(t, withDisableParallelism()), []int{1, 2}, func(c map[int]*testConnection, session *testSession) {
+		const MessageCount = 20
+
+		// Select mailbox so that both clients get updates.
+		c[1].C("A001 SELECT INBOX").OK("A001")
+		c[2].C("A002 SELECT INBOX").OK("A002")
+
+		appendFN := func(clientIndex int) {
+			for i := 0; i < MessageCount; i++ {
+				c[clientIndex+1].doAppend("INBOX", "To: f3@pm.me\r\n", "\\Seen").expect("OK")
+			}
+		}
+
+		wg := sync.WaitGroup{}
+		wg.Add(2)
+
+		for i := 0; i < 2; i++ {
+			go func(index int) {
+				defer wg.Done()
+				appendFN(index)
+			}(i)
+		}
+
+		wg.Wait()
+
+		validateUIDListFn := func(index int) {
+			c[index].C("F001 FETCH 1:* (UID)")
+			for i := 1; i <= MessageCount; i++ {
+				c[index].S(fmt.Sprintf("* %v FETCH (UID %v)", i, i))
+			}
+			c[index].OK("F001")
+		}
+
+		validateUIDListFn(1)
+		validateUIDListFn(2)
 	})
 }

@@ -386,6 +386,16 @@ func (snap *snapshot) appendMessage(messageID ids.MessageIDPair, uid imap.UID, f
 	return nil
 }
 
+func (snap *snapshot) appendMessageFromOtherState(messageID ids.MessageIDPair, uid imap.UID, flags imap.FlagSet) error {
+	snap.messages.insertOutOfOrder(
+		messageID,
+		uid,
+		flags,
+	)
+
+	return nil
+}
+
 func (snap *snapshot) expungeMessage(messageID imap.InternalMessageID) error {
 	if ok := snap.messages.remove(messageID); !ok {
 		return ErrNoSuchMessage
