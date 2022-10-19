@@ -2,7 +2,6 @@ package imap
 
 import (
 	"bytes"
-	"mime"
 	"strings"
 
 	"github.com/ProtonMail/gluon/rfc822"
@@ -147,7 +146,7 @@ func getMIMEInfo(section *rfc822.Section) (string, string, map[string]string, er
 }
 
 func addDispInfo(c *paramList, writer parListWriter, header *rfc822.Header) {
-	if contentDisp, contentDispParams, err := mime.ParseMediaType(header.Get("Content-Disposition")); err == nil {
+	if contentDisp, contentDispParams, err := rfc822.ParseMediaType(header.Get("Content-Disposition")); err == nil {
 		writer.writeByte(' ')
 		fields := c.newChildList(writer)
 		fields.addString(writer, contentDisp).addMap(writer, contentDispParams)

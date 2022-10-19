@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// ParseMediaType parses a MIME media type.
+var ParseMediaType = mime.ParseMediaType
+
 type MIMEType string
 
 const (
@@ -40,7 +43,7 @@ func ParseMIMEType(val string) (MIMEType, map[string]string, error) {
 		val = string(TextPlain)
 	}
 
-	mimeType, mimeParams, err := mime.ParseMediaType(val)
+	mimeType, mimeParams, err := ParseMediaType(val)
 	if err != nil {
 		return "", nil, err
 	}
