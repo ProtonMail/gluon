@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/ProtonMail/gluon/internal/contexts"
 	"io"
 	"net"
 	"runtime/pprof"
@@ -78,6 +79,9 @@ type Server struct {
 	// idleBulkTime to control how often IDLE responses are sent. 0 means
 	// immediate response with no response merging.
 	idleBulkTime time.Duration
+
+	// disableParallelism indicates whether the server is allowed to parallelize certain IMAP commands.
+	disableParallelism bool
 }
 
 // New creates a new server with the given options.
@@ -154,6 +158,7 @@ func (s *Server) AddWatcher(ofType ...events.Event) <-chan events.Event {
 // It stops serving when the context is canceled, the listener is closed, or the server is closed.
 func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
+	ctx = contexts.NewDisableParallelismCtx(ctx, s.disableParallelism)
 
 	s.publish(events.ListenerAdded{
 		Addr: l.Addr(),

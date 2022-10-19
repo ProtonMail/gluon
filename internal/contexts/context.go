@@ -57,3 +57,19 @@ func IsRemoteUpdateCtx(ctx context.Context) bool {
 func NewRemoteUpdateCtx(ctx context.Context) context.Context {
 	return context.WithValue(ctx, handleRemoteUpdateCtxKey, struct{}{})
 }
+
+type disableParallelismCtxType struct{}
+
+var disableParallelismCtxKey disableParallelismCtxType
+
+func IsParallelismDisabledCtx(ctx context.Context) bool {
+	return ctx.Value(disableParallelismCtxKey) != nil
+}
+
+func NewDisableParallelismCtx(ctx context.Context, disabled bool) context.Context {
+	if !disabled {
+		return ctx
+	}
+
+	return context.WithValue(ctx, disableParallelismCtxKey, struct{}{})
+}

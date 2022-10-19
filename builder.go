@@ -28,6 +28,7 @@ type serverBuilder struct {
 	cmdExecProfBuilder profiling.CmdProfilerBuilder
 	storeBuilder       store.Builder
 	reporter           reporter.Reporter
+	disableParallelism bool
 }
 
 func newBuilder() (*serverBuilder, error) {
@@ -78,5 +79,6 @@ func (builder *serverBuilder) build() (*Server, error) {
 		cmdExecProfBuilder: builder.cmdExecProfBuilder,
 		versionInfo:        builder.versionInfo,
 		reporter:           builder.reporter,
+		disableParallelism: builder.disableParallelism,
 	}, nil
 }

@@ -62,13 +62,14 @@ func (*dummyConnectorBuilder) New(usernames []string, password []byte, period ti
 }
 
 type serverOptions struct {
-	credentials      []credentials
-	delimiter        string
-	loginJailTime    time.Duration
-	dataDir          string
-	idleBulkTime     time.Duration
-	storeBuilder     store.Builder
-	connectorBuilder connectorBuilder
+	credentials        []credentials
+	delimiter          string
+	loginJailTime      time.Duration
+	dataDir            string
+	idleBulkTime       time.Duration
+	storeBuilder       store.Builder
+	connectorBuilder   connectorBuilder
+	disableParallelism bool
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -131,6 +132,12 @@ func (c *connectorBuilderOption) apply(options *serverOptions) {
 	options.connectorBuilder = c.builder
 }
 
+type disableParallelism struct{}
+
+func (disableParallelism) apply(options *serverOptions) {
+	options.disableParallelism = true
+}
+
 func withIdleBulkTime(idleBulkTime time.Duration) serverOption {
 	return &idleBulkTimeOption{idleBulkTime: idleBulkTime}
 }
@@ -153,6 +160,10 @@ func withStoreBuilder(builder store.Builder) serverOption {
 
 func withConnectorBuilder(builder connectorBuilder) serverOption {
 	return &connectorBuilderOption{builder: builder}
+}
+
+func withDisableParallelism() serverOption {
+	return &disableParallelism{}
 }
 
 func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
@@ -187,8 +198,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	// Log the (temporary?) directory to store gluon data.
 	logrus.Tracef("Gluon Data Dir: %v", options.dataDir)
 
-	// Create a new gluon server.
-	server, err := gluon.New(
+	gluonOptions := []gluon.Option{
 		gluon.WithDataDir(options.dataDir),
 		gluon.WithDelimiter(options.delimiter),
 		gluon.WithLoginJailTime(options.loginJailTime),
@@ -210,6 +220,15 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		),
 		gluon.WithIdleBulkTime(options.idleBulkTime),
 		gluon.WithStoreBuilder(options.storeBuilder),
+	}
+
+	if options.disableParallelism {
+		gluonOptions = append(gluonOptions, gluon.WithDisableParallelism())
+	}
+
+	// Create a new gluon server.
+	server, err := gluon.New(
+		gluonOptions...,
 	)
 	require.NoError(tb, err)
 
