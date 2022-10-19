@@ -3,6 +3,7 @@ package state
 import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
+	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
 
@@ -55,6 +56,24 @@ func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags 
 	}
 
 	list.msg = append(list.msg, snapMsg)
+
+	list.idx[msgID.InternalID] = snapMsg
+}
+
+func (list *snapMsgList) insertOutOfOrder(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
+	index, ok := list.binarySearchByUID(msgUID)
+	if ok {
+		panic("Duplicate UID added")
+	}
+
+	snapMsg := &snapMsg{
+		ID:        msgID,
+		UID:       msgUID,
+		flags:     flags,
+		toExpunge: flags.ContainsUnchecked(imap.FlagDeletedLowerCase),
+	}
+
+	list.msg = xslices.Insert(list.msg, index, snapMsg)
 
 	list.idx[msgID.InternalID] = snapMsg
 }

@@ -87,8 +87,10 @@ func (u *clearRecentFlagRespUpdate) apply(ctx context.Context, tx *ent.Tx) error
 // targetedExists needs to be separate so that we update the targetStateID safely when doing concurrent updates
 // in different states. This way we also avoid the extra step of copying the `exists` data.
 type targetedExists struct {
-	resp          *exists
-	targetStateID StateID
+	resp           *exists
+	targetStateID  StateID
+	originStateID  StateID
+	originStateSet bool
 }
 
 func (u *targetedExists) handle(_ context.Context, snap *snapshot, stateID StateID) ([]response.Response, responderDBUpdate, error) {
@@ -103,8 +105,14 @@ func (u *targetedExists) handle(_ context.Context, snap *snapshot, stateID State
 		flags = u.resp.flags
 	}
 
-	if err := snap.appendMessage(u.resp.messageID, u.resp.messageUID, flags); err != nil {
-		return nil, nil, err
+	if u.originStateSet && u.originStateID == stateID {
+		if err := snap.appendMessage(u.resp.messageID, u.resp.messageUID, flags); err != nil {
+			return nil, nil, err
+		}
+	} else {
+		if err := snap.appendMessageFromOtherState(u.resp.messageID, u.resp.messageUID, flags); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	seq, err := snap.getMessageSeq(u.resp.messageID.InternalID)
@@ -135,7 +143,14 @@ func (u *targetedExists) getMessageID() imap.InternalMessageID {
 }
 
 func (u *targetedExists) String() string {
-	return fmt.Sprintf("TargetedExists: message = %v remote = %v targetStateID = %v", u.resp.messageID.InternalID.ShortID(), u.resp.messageID.RemoteID, u.targetStateID)
+	var originState string
+	if u.originStateSet {
+		originState = fmt.Sprintf("%v", u.originStateID)
+	} else {
+		originState = "None"
+	}
+
+	return fmt.Sprintf("TargetedExists: message = %v remote = %v targetStateID = %v originStateID = %v", u.resp.messageID.InternalID.ShortID(), u.resp.messageID.RemoteID, u.targetStateID, originState)
 }
 
 // ExistsStateUpdate needs to be a separate update since it has to deal with a Recent flag propagation. If a session
@@ -148,40 +163,23 @@ type ExistsStateUpdate struct {
 	responders     []*exists
 	targetStateID  StateID
 	targetStateSet bool
-}
-
-func NewExistsStateUpdate(mailboxID imap.InternalMailboxID, messages []db.CreateAndAddMessagesResult, s *State) Update {
-	var stateID StateID
-
-	var targetStateSet bool
-
-	if s != nil {
-		stateID = s.StateID
-		targetStateSet = true
-	}
-
-	responders := xslices.Map(messages, func(result db.CreateAndAddMessagesResult) *exists {
-		exists := newExists(result.MessageID, result.UID, result.Flags)
-
-		return exists
-	})
-
-	return &ExistsStateUpdate{
-		MBoxIDStateFilter: MBoxIDStateFilter{MboxID: mailboxID},
-		responders:        responders,
-		targetStateID:     stateID,
-		targetStateSet:    targetStateSet,
-	}
+	originStateID  StateID
+	originStateSet bool
 }
 
 func newExistsStateUpdateWithExists(mailboxID imap.InternalMailboxID, responders []*exists, s *State) Update {
-	var stateID StateID
-
-	var targetStateSet bool
+	var (
+		stateID        StateID
+		originStateID  StateID
+		targetStateSet bool
+		originStateSet bool
+	)
 
 	if s != nil {
 		stateID = s.StateID
 		targetStateSet = true
+		originStateID = s.StateID
+		originStateSet = true
 	}
 
 	return &ExistsStateUpdate{
@@ -189,6 +187,8 @@ func newExistsStateUpdateWithExists(mailboxID imap.InternalMailboxID, responders
 		responders:        responders,
 		targetStateID:     stateID,
 		targetStateSet:    targetStateSet,
+		originStateSet:    originStateSet,
+		originStateID:     originStateID,
 	}
 }
 
@@ -210,21 +210,31 @@ func (e *ExistsStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) err
 		return e.targetStateID
 	}()
 
-	return s.PushResponder(ctx, tx, xslices.Map(e.responders, func(e *exists) Responder {
+	return s.PushResponder(ctx, tx, xslices.Map(e.responders, func(ex *exists) Responder {
 		return &targetedExists{
-			resp:          e,
-			targetStateID: targetStateID,
+			resp:           ex,
+			targetStateID:  targetStateID,
+			originStateID:  e.originStateID,
+			originStateSet: e.originStateSet,
 		}
 	})...)
 }
 
 func (e *ExistsStateUpdate) String() string {
-	return fmt.Sprintf("ExistsStateUpdate: %v Responders = %v targetStateId = %v",
+	var originState string
+	if e.originStateSet {
+		originState = fmt.Sprintf("%v", e.originStateID)
+	} else {
+		originState = "None"
+	}
+
+	return fmt.Sprintf("ExistsStateUpdate: %v Responders = %v targetStateID = %v originStateID = %v",
 		e.MBoxIDStateFilter,
 		xslices.Map(e.responders, func(rsp *exists) string {
 			return rsp.String()
 		}),
 		e.targetStateID,
+		originState,
 	)
 }
 
