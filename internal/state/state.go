@@ -79,6 +79,10 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 			return err
 		}
 
+		mailboxes = xslices.Filter(mailboxes, func(mailbox *ent.Mailbox) bool {
+			return state.user.GetRemote().IsMailboxVisible(ctx, mailbox.RemoteID)
+		})
+
 		matches, err := getMatches(ctx, client, mailboxes, ref, pattern, state.delimiter, subscribed)
 		if err != nil {
 			return err

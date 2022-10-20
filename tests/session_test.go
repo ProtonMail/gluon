@@ -43,6 +43,8 @@ type Connector interface {
 	Flush()
 
 	GetLastRecordedIMAPID() imap.IMAPID
+
+	SetMailboxVisible(imap.LabelID, bool)
 }
 
 type testSession struct {
