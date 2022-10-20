@@ -18,6 +18,9 @@ type Connector interface {
 	// CreateLabel creates a label with the given name.
 	CreateLabel(ctx context.Context, name []string) (imap.Mailbox, error)
 
+	// IsLabelVisible can be used to hide mailboxes from connected clients.
+	IsLabelVisible(ctx context.Context, labelID imap.LabelID) bool
+
 	// UpdateLabel sets the name of the label with the given ID.
 	UpdateLabel(ctx context.Context, labelID imap.LabelID, newName []string) error
 

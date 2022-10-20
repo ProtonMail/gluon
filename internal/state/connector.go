@@ -71,4 +71,7 @@ type Connector interface {
 
 	// SetUIDValidity sets the UID Validity for the user.
 	SetUIDValidity(imap.UID) error
+
+	// IsMailboxVisible checks whether a mailbox is visible to a client.
+	IsMailboxVisible(ctx context.Context, id imap.LabelID) bool
 }

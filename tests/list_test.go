@@ -273,3 +273,32 @@ func TestListNilDelimiter(t *testing.T) {
 		c.OK(`a`)
 	})
 }
+
+func TestListHiddenMailbox(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
+		m1 := s.mailboxCreatedWithAttributes("user", []string{"Koncepty"}, imap.NewFlagSet())
+		s.mailboxCreatedWithAttributes("user", []string{"Odeslane"}, imap.NewFlagSet())
+		m2 := s.mailboxCreatedWithAttributes("user", []string{"S hvezdickou"}, imap.NewFlagSet())
+		s.mailboxCreatedWithAttributes("user", []string{"Archiv"}, imap.NewFlagSet())
+		m3 := s.mailboxCreatedWithAttributes("user", []string{"Spam"}, imap.NewFlagSet())
+		s.mailboxCreatedWithAttributes("user", []string{"Kos"}, imap.NewFlagSet())
+		m4 := s.mailboxCreatedWithAttributes("user", []string{"Vsechny zpravy"}, imap.NewFlagSet())
+
+		{
+			connector := s.conns[s.userIDs["user"]]
+			connector.SetMailboxVisible(m1, false)
+			connector.SetMailboxVisible(m2, false)
+			connector.SetMailboxVisible(m3, false)
+			connector.SetMailboxVisible(m4, false)
+		}
+
+		c.C(`a list "" "*"`)
+		c.S(
+			`* LIST (\Unmarked) "." "INBOX"`,
+			`* LIST (\Unmarked) "." "Odeslane"`,
+			`* LIST (\Unmarked) "." "Archiv"`,
+			`* LIST (\Unmarked) "." "Kos"`,
+		)
+		c.OK(`a`)
+	})
+}

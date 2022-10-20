@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"github.com/ProtonMail/gluon/imap"
 	"testing"
 )
 
@@ -130,5 +131,39 @@ func TestLsubSubscribedNotExisting(t *testing.T) {
 		//
 		// c.S(`* LSUB (\Noselect) "." "foo"`)
 		c.OK(`A002`)
+	})
+}
+
+func TestLsubWithHiddenMailbox(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
+		m1 := s.mailboxCreatedWithAttributes("user", []string{"Koncepty"}, imap.NewFlagSet())
+		s.mailboxCreatedWithAttributes("user", []string{"Odeslane"}, imap.NewFlagSet())
+		m2 := s.mailboxCreatedWithAttributes("user", []string{"S hvezdickou"}, imap.NewFlagSet())
+		s.mailboxCreatedWithAttributes("user", []string{"Archiv"}, imap.NewFlagSet())
+		m3 := s.mailboxCreatedWithAttributes("user", []string{"Spam"}, imap.NewFlagSet())
+		s.mailboxCreatedWithAttributes("user", []string{"Kos"}, imap.NewFlagSet())
+		m4 := s.mailboxCreatedWithAttributes("user", []string{"Vsechny zpravy"}, imap.NewFlagSet())
+
+		{
+			connector := s.conns[s.userIDs["user"]]
+			connector.SetMailboxVisible(m1, false)
+			connector.SetMailboxVisible(m2, false)
+			connector.SetMailboxVisible(m3, false)
+			connector.SetMailboxVisible(m4, false)
+		}
+
+		{
+			c.C("A001 UNSUBSCRIBE Koncepty").OK("A001")
+			c.C("A001 UNSUBSCRIBE \"Vsechny zpravy\"").OK("A001")
+			c.C("A001 UNSUBSCRIBE Archiv").OK("A001")
+			c.C("A001 UNSUBSCRIBE Kos").OK("A001")
+		}
+
+		c.C(`a LSUB "" "*"`)
+		c.S(
+			`* LSUB (\Unmarked) "." "INBOX"`,
+			`* LSUB (\Unmarked) "." "Odeslane"`,
+		)
+		c.OK(`a`)
 	})
 }

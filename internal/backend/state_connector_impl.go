@@ -142,6 +142,10 @@ func (sc *stateConnectorImpl) SetUIDValidity(uidValidity imap.UID) error {
 	return sc.connector.SetUIDValidity(uidValidity)
 }
 
+func (sc *stateConnectorImpl) IsMailboxVisible(ctx context.Context, id imap.LabelID) bool {
+	return sc.connector.IsLabelVisible(ctx, id)
+}
+
 func (sc *stateConnectorImpl) getMetadataValue(key string) any {
 	v, ok := sc.metadata[key]
 	if !ok {

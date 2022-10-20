@@ -49,6 +49,8 @@ type Dummy struct {
 	// queue holds queued updates which are to be delivered to the mailserver each tick cycle.
 	queue     []imap.Update
 	queueLock sync.Mutex
+
+	hiddenLabels map[imap.LabelID]struct{}
 }
 
 func NewDummy(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
@@ -62,6 +64,7 @@ func NewDummy(usernames []string, password []byte, period time.Duration, flags, 
 		updateCh:     make(chan imap.Update, constants.ChannelBufferCount),
 		updateQuitCh: make(chan struct{}),
 		ticker:       ticker.New(period),
+		hiddenLabels: make(map[imap.LabelID]struct{}),
 	}
 
 	go func() {
@@ -303,6 +306,20 @@ func (conn *Dummy) GetLastRecordedIMAPID() imap.IMAPID {
 
 func (conn *Dummy) ClearUpdates() {
 	conn.popUpdates()
+}
+
+func (conn *Dummy) IsLabelVisible(_ context.Context, id imap.LabelID) bool {
+	_, ok := conn.hiddenLabels[id]
+
+	return !ok
+}
+
+func (conn *Dummy) SetMailboxVisible(id imap.LabelID, visible bool) {
+	if !visible {
+		conn.hiddenLabels[id] = struct{}{}
+	} else {
+		delete(conn.hiddenLabels, id)
+	}
 }
 
 func (conn *Dummy) pushUpdate(update imap.Update) {
