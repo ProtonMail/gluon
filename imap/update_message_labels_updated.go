@@ -6,18 +6,18 @@ import (
 	"github.com/bradenaw/juniper/xslices"
 )
 
-type MessageLabelsUpdated struct {
+type MessageMailboxesUpdated struct {
 	updateBase
 
 	*updateWaiter
 
 	MessageID     MessageID
-	MailboxIDs    []LabelID
+	MailboxIDs    []MailboxID
 	Seen, Flagged bool
 }
 
-func NewMessageLabelsUpdated(messageID MessageID, mailboxIDs []LabelID, seen, flagged bool) *MessageLabelsUpdated {
-	return &MessageLabelsUpdated{
+func NewMessageMailboxesUpdated(messageID MessageID, mailboxIDs []MailboxID, seen, flagged bool) *MessageMailboxesUpdated {
+	return &MessageMailboxesUpdated{
 		updateWaiter: newUpdateWaiter(),
 		MessageID:    messageID,
 		MailboxIDs:   mailboxIDs,
@@ -26,11 +26,11 @@ func NewMessageLabelsUpdated(messageID MessageID, mailboxIDs []LabelID, seen, fl
 	}
 }
 
-func (u *MessageLabelsUpdated) String() string {
+func (u *MessageMailboxesUpdated) String() string {
 	return fmt.Sprintf(
-		"MessageLabelsUpdated: MessageID = %v, MailboxIDs = %v, seen = %v, flagged = %v",
+		"MessageMailboxesUpdated: MessageID = %v, MailboxIDs = %v, seen = %v, flagged = %v",
 		u.MessageID.ShortID(),
-		xslices.Map(u.MailboxIDs, func(id LabelID) string { return id.ShortID() }),
+		xslices.Map(u.MailboxIDs, func(id MailboxID) string { return id.ShortID() }),
 		u.Seen,
 		u.Flagged,
 	)

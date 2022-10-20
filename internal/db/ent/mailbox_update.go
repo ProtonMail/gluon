@@ -33,13 +33,13 @@ func (mu *MailboxUpdate) Where(ps ...predicate.Mailbox) *MailboxUpdate {
 }
 
 // SetRemoteID sets the "RemoteID" field.
-func (mu *MailboxUpdate) SetRemoteID(ii imap.LabelID) *MailboxUpdate {
+func (mu *MailboxUpdate) SetRemoteID(ii imap.MailboxID) *MailboxUpdate {
 	mu.mutation.SetRemoteID(ii)
 	return mu
 }
 
 // SetNillableRemoteID sets the "RemoteID" field if the given value is not nil.
-func (mu *MailboxUpdate) SetNillableRemoteID(ii *imap.LabelID) *MailboxUpdate {
+func (mu *MailboxUpdate) SetNillableRemoteID(ii *imap.MailboxID) *MailboxUpdate {
 	if ii != nil {
 		mu.SetRemoteID(*ii)
 	}
@@ -626,13 +626,13 @@ type MailboxUpdateOne struct {
 }
 
 // SetRemoteID sets the "RemoteID" field.
-func (muo *MailboxUpdateOne) SetRemoteID(ii imap.LabelID) *MailboxUpdateOne {
+func (muo *MailboxUpdateOne) SetRemoteID(ii imap.MailboxID) *MailboxUpdateOne {
 	muo.mutation.SetRemoteID(ii)
 	return muo
 }
 
 // SetNillableRemoteID sets the "RemoteID" field if the given value is not nil.
-func (muo *MailboxUpdateOne) SetNillableRemoteID(ii *imap.LabelID) *MailboxUpdateOne {
+func (muo *MailboxUpdateOne) SetNillableRemoteID(ii *imap.MailboxID) *MailboxUpdateOne {
 	if ii != nil {
 		muo.SetRemoteID(*ii)
 	}

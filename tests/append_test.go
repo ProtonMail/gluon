@@ -188,7 +188,7 @@ type returnSameRemoteIDConnector struct {
 	messageLiteral []byte
 }
 
-func (r *returnSameRemoteIDConnector) CreateMessage(ctx context.Context, mboxID imap.LabelID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error) {
+func (r *returnSameRemoteIDConnector) CreateMessage(ctx context.Context, mboxID imap.MailboxID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 

@@ -17,7 +17,7 @@ import (
 	"github.com/bradenaw/juniper/xslices"
 )
 
-func CreateMailbox(ctx context.Context, tx *ent.Tx, labelID imap.LabelID, name string, flags, permFlags, attrs imap.FlagSet) (*ent.Mailbox, error) {
+func CreateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.MailboxID, name string, flags, permFlags, attrs imap.FlagSet) (*ent.Mailbox, error) {
 	create := tx.Mailbox.Create().
 		SetName(name)
 
@@ -33,8 +33,8 @@ func CreateMailbox(ctx context.Context, tx *ent.Tx, labelID imap.LabelID, name s
 		create.AddAttributes(tx.MailboxAttr.Create().SetValue(attr).SaveX(ctx))
 	}
 
-	if len(labelID) != 0 {
-		create = create.SetRemoteID(labelID)
+	if len(mboxID) != 0 {
+		create = create.SetRemoteID(mboxID)
 	}
 
 	globalUIDValidity, err := getGlobalUIDValidity(ctx, tx)
@@ -51,7 +51,7 @@ func MailboxExistsWithID(ctx context.Context, client *ent.Client, mboxID imap.In
 	return client.Mailbox.Query().Where(mailbox.ID(mboxID)).Exist(ctx)
 }
 
-func MailboxExistsWithRemoteID(ctx context.Context, client *ent.Client, mboxID imap.LabelID) (bool, error) {
+func MailboxExistsWithRemoteID(ctx context.Context, client *ent.Client, mboxID imap.MailboxID) (bool, error) {
 	return client.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Exist(ctx)
 }
 
@@ -59,7 +59,7 @@ func MailboxExistsWithName(ctx context.Context, client *ent.Client, name string)
 	return client.Mailbox.Query().Where(mailbox.Name(name)).Exist(ctx)
 }
 
-func RenameMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.LabelID, name string) error {
+func RenameMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.MailboxID, name string) error {
 	if _, err := tx.Mailbox.Update().
 		Where(mailbox.RemoteID(mboxID)).
 		SetName(name).
@@ -72,7 +72,7 @@ func RenameMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.Labe
 
 // DeleteMailboxWithRemoteID deletes the mailbox with the given remote ID.
 // It returns the (potentially new) global UID validity, along with a bool indicating whether it has been increased.
-func DeleteMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.LabelID) (imap.UID, bool, error) {
+func DeleteMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.MailboxID) (imap.UID, bool, error) {
 	mbox, err := tx.Mailbox.Query().
 		Where(mailbox.RemoteID(mboxID)).
 		Select(mailbox.FieldUIDValidity).
@@ -109,7 +109,7 @@ func DeleteMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.Labe
 	return newUIDValidity, newUIDValidity > curUIDValidity, nil
 }
 
-func UpdateRemoteMailboxID(ctx context.Context, tx *ent.Tx, internalID imap.InternalMailboxID, remoteID imap.LabelID) error {
+func UpdateRemoteMailboxID(ctx context.Context, tx *ent.Tx, internalID imap.InternalMailboxID, remoteID imap.MailboxID) error {
 	if _, err := tx.Mailbox.Update().
 		Where(mailbox.ID(internalID)).
 		SetRemoteID(remoteID).
@@ -147,7 +147,7 @@ func GetMailboxName(ctx context.Context, client *ent.Client, mboxID imap.Interna
 	return mailbox.Name, nil
 }
 
-func GetMailboxNameWithRemoteID(ctx context.Context, client *ent.Client, mboxID imap.LabelID) (string, error) {
+func GetMailboxNameWithRemoteID(ctx context.Context, client *ent.Client, mboxID imap.MailboxID) (string, error) {
 	mailbox, err := client.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Select(mailbox.FieldName).Only(ctx)
 	if err != nil {
 		return "", err
@@ -204,7 +204,7 @@ func GetMailboxByID(ctx context.Context, client *ent.Client, id imap.InternalMai
 	return client.Mailbox.Query().Where(mailbox.ID(id)).Only(ctx)
 }
 
-func GetMailboxByRemoteID(ctx context.Context, client *ent.Client, id imap.LabelID) (*ent.Mailbox, error) {
+func GetMailboxByRemoteID(ctx context.Context, client *ent.Client, id imap.MailboxID) (*ent.Mailbox, error) {
 	return client.Mailbox.Query().Where(mailbox.RemoteID(id)).Only(ctx)
 }
 
@@ -261,8 +261,8 @@ func GetMailboxMessagesForNewSnapshot(ctx context.Context, client *ent.Client, m
 	return messages, nil
 }
 
-func GetMailboxIDWithRemoteID(ctx context.Context, client *ent.Client, labelID imap.LabelID) (imap.InternalMailboxID, error) {
-	mbox, err := client.Mailbox.Query().Where(mailbox.RemoteID(labelID)).Select(mailbox.FieldID).Only(ctx)
+func GetMailboxIDWithRemoteID(ctx context.Context, client *ent.Client, mboxID imap.MailboxID) (imap.InternalMailboxID, error) {
+	mbox, err := client.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Select(mailbox.FieldID).Only(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -270,7 +270,7 @@ func GetMailboxIDWithRemoteID(ctx context.Context, client *ent.Client, labelID i
 	return mbox.ID, nil
 }
 
-func TranslateRemoteMailboxIDs(ctx context.Context, client *ent.Client, mboxIDs []imap.LabelID) ([]imap.InternalMailboxID, error) {
+func TranslateRemoteMailboxIDs(ctx context.Context, client *ent.Client, mboxIDs []imap.MailboxID) ([]imap.InternalMailboxID, error) {
 	mboxes, err := client.Mailbox.Query().Where(mailbox.RemoteIDIn(mboxIDs...)).Select(mailbox.FieldID).All(ctx)
 	if err != nil {
 		return nil, err

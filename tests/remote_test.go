@@ -7,7 +7,7 @@ import (
 func TestRemoteCopy(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		s.setFolderPrefix("user", "Folders")
-		s.setLabelPrefix("user", "Labels")
+		s.setMailboxPrefix("user", "Labels")
 
 		// Create two exclusive mailboxes, one with 100 messages.
 		s.mailboxCreated("user", []string{"Folders", "mbox1"}, "testdata/dovecot-crlf")

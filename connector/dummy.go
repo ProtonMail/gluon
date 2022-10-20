@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	ErrNoSuchLabel   = errors.New("no such label")
+	ErrNoSuchMailbox = errors.New("no such mailbox")
 	ErrNoSuchMessage = errors.New("no such message")
 
 	ErrInvalidPrefix   = errors.New("invalid prefix")
@@ -50,21 +50,21 @@ type Dummy struct {
 	queue     []imap.Update
 	queueLock sync.Mutex
 
-	hiddenLabels map[imap.LabelID]struct{}
+	hiddenMailboxes map[imap.MailboxID]struct{}
 }
 
 func NewDummy(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
 	conn := &Dummy{
-		state:        newDummyState(flags, permFlags, attrs),
-		usernames:    usernames,
-		password:     password,
-		flags:        flags,
-		permFlags:    permFlags,
-		attrs:        attrs,
-		updateCh:     make(chan imap.Update, constants.ChannelBufferCount),
-		updateQuitCh: make(chan struct{}),
-		ticker:       ticker.New(period),
-		hiddenLabels: make(map[imap.LabelID]struct{}),
+		state:           newDummyState(flags, permFlags, attrs),
+		usernames:       usernames,
+		password:        password,
+		flags:           flags,
+		permFlags:       permFlags,
+		attrs:           attrs,
+		updateCh:        make(chan imap.Update, constants.ChannelBufferCount),
+		updateQuitCh:    make(chan struct{}),
+		ticker:          ticker.New(period),
+		hiddenMailboxes: make(map[imap.MailboxID]struct{}),
 	}
 
 	go func() {
@@ -82,7 +82,7 @@ func NewDummy(usernames []string, password []byte, period time.Duration, flags, 
 		})
 	}()
 
-	conn.state.createLabelWithID([]string{imap.Inbox}, "0", false)
+	conn.state.createMailboxWithID([]string{imap.Inbox}, "0", false)
 
 	return conn
 }
@@ -99,58 +99,58 @@ func (conn *Dummy) GetUpdates() <-chan imap.Update {
 	return conn.updateCh
 }
 
-func (conn *Dummy) GetLabel(ctx context.Context, labelID imap.LabelID) (imap.Mailbox, error) {
-	return conn.state.getLabel(labelID)
+func (conn *Dummy) GetMailbox(ctx context.Context, mboxID imap.MailboxID) (imap.Mailbox, error) {
+	return conn.state.getMailbox(mboxID)
 }
 
-func (conn *Dummy) CreateLabel(ctx context.Context, name []string) (imap.Mailbox, error) {
+func (conn *Dummy) CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error) {
 	exclusive, err := conn.validateName(name)
 	if err != nil {
 		return imap.Mailbox{}, err
 	}
 
-	mbox := conn.state.createLabel(name, exclusive)
+	mbox := conn.state.createMailbox(name, exclusive)
 
 	conn.pushUpdate(imap.NewMailboxCreated(mbox))
 
 	return mbox, nil
 }
 
-func (conn *Dummy) UpdateLabel(ctx context.Context, labelID imap.LabelID, newName []string) error {
-	label, err := conn.state.getLabel(labelID)
+func (conn *Dummy) UpdateMailboxName(ctx context.Context, mboxID imap.MailboxID, newName []string) error {
+	mbox, err := conn.state.getMailbox(mboxID)
 	if err != nil {
 		return err
 	}
 
-	if err := conn.validateUpdate(label.Name, newName); err != nil {
+	if err := conn.validateUpdate(mbox.Name, newName); err != nil {
 		return err
 	}
 
-	conn.state.updateLabel(labelID, newName)
+	conn.state.updateMailboxName(mboxID, newName)
 
-	conn.pushUpdate(imap.NewMailboxUpdated(labelID, newName))
-
-	return nil
-}
-
-func (conn *Dummy) DeleteLabel(ctx context.Context, labelID imap.LabelID) error {
-	conn.state.deleteLabel(labelID)
-
-	conn.pushUpdate(imap.NewMailboxDeleted(labelID))
+	conn.pushUpdate(imap.NewMailboxUpdated(mboxID, newName))
 
 	return nil
 }
 
-func (conn *Dummy) GetMessage(ctx context.Context, messageID imap.MessageID) (imap.Message, []imap.LabelID, error) {
+func (conn *Dummy) DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) error {
+	conn.state.deleteMailbox(mboxID)
+
+	conn.pushUpdate(imap.NewMailboxDeleted(mboxID))
+
+	return nil
+}
+
+func (conn *Dummy) GetMessage(ctx context.Context, messageID imap.MessageID) (imap.Message, []imap.MailboxID, error) {
 	message, err := conn.state.getMessage(messageID)
 	if err != nil {
 		return imap.Message{}, nil, err
 	}
 
-	return message, conn.state.getLabelIDs(messageID), nil
+	return message, conn.state.getMailboxIDs(messageID), nil
 }
 
-func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error) {
+func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.MailboxID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error) {
 	// NOTE: We are only recording this here since it was the easiest command to verify the data has been record properly
 	// in the context, as APPEND will always require a communication with the remote connector.
 	conn.state.recordIMAPID(ctx)
@@ -173,7 +173,7 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, liter
 	update := imap.NewMessagesCreated(&imap.MessageCreated{
 		Message:       message,
 		Literal:       literal,
-		LabelIDs:      []imap.LabelID{mboxID},
+		MailboxIDs:    []imap.MailboxID{mboxID},
 		ParsedMessage: parsed,
 	})
 
@@ -182,13 +182,13 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.LabelID, liter
 	return message, literal, nil
 }
 
-func (conn *Dummy) LabelMessages(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.LabelID) error {
+func (conn *Dummy) AddMessagesToMailbox(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.MailboxID) error {
 	for _, messageID := range messageIDs {
-		conn.state.labelMessage(messageID, mboxID)
+		conn.state.addMessageToMailbox(messageID, mboxID)
 
-		conn.pushUpdate(imap.NewMessageLabelsUpdated(
+		conn.pushUpdate(imap.NewMessageMailboxesUpdated(
 			messageID,
-			conn.state.getLabelIDs(messageID),
+			conn.state.getMailboxIDs(messageID),
 			conn.state.isSeen(messageID),
 			conn.state.isFlagged(messageID),
 		))
@@ -197,13 +197,13 @@ func (conn *Dummy) LabelMessages(ctx context.Context, messageIDs []imap.MessageI
 	return nil
 }
 
-func (conn *Dummy) UnlabelMessages(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.LabelID) error {
+func (conn *Dummy) RemoveMessagesFromMailbox(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.MailboxID) error {
 	for _, messageID := range messageIDs {
-		conn.state.unlabelMessage(messageID, mboxID)
+		conn.state.removeMessageFromMailbox(messageID, mboxID)
 
-		conn.pushUpdate(imap.NewMessageLabelsUpdated(
+		conn.pushUpdate(imap.NewMessageMailboxesUpdated(
 			messageID,
-			conn.state.getLabelIDs(messageID),
+			conn.state.getMailboxIDs(messageID),
 			conn.state.isSeen(messageID),
 			conn.state.isFlagged(messageID),
 		))
@@ -212,14 +212,14 @@ func (conn *Dummy) UnlabelMessages(ctx context.Context, messageIDs []imap.Messag
 	return nil
 }
 
-func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID, labelFromID, labelToID imap.LabelID) error {
+func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) error {
 	for _, messageID := range messageIDs {
-		conn.state.unlabelMessage(messageID, labelFromID)
-		conn.state.labelMessage(messageID, labelToID)
+		conn.state.removeMessageFromMailbox(messageID, mboxFromID)
+		conn.state.addMessageToMailbox(messageID, mboxToID)
 
-		conn.pushUpdate(imap.NewMessageLabelsUpdated(
+		conn.pushUpdate(imap.NewMessageMailboxesUpdated(
 			messageID,
-			conn.state.getLabelIDs(messageID),
+			conn.state.getMailboxIDs(messageID),
 			conn.state.isSeen(messageID),
 			conn.state.isFlagged(messageID),
 		))
@@ -265,7 +265,7 @@ func (conn *Dummy) SetUIDValidity(imap.UID) error {
 }
 
 func (conn *Dummy) Sync(ctx context.Context) error {
-	for _, mailbox := range conn.state.getLabels() {
+	for _, mailbox := range conn.state.getMailboxes() {
 		update := imap.NewMailboxCreated(mailbox)
 		defer update.WaitContext(ctx)
 
@@ -308,17 +308,17 @@ func (conn *Dummy) ClearUpdates() {
 	conn.popUpdates()
 }
 
-func (conn *Dummy) IsLabelVisible(_ context.Context, id imap.LabelID) bool {
-	_, ok := conn.hiddenLabels[id]
+func (conn *Dummy) IsMailboxVisible(_ context.Context, id imap.MailboxID) bool {
+	_, ok := conn.hiddenMailboxes[id]
 
 	return !ok
 }
 
-func (conn *Dummy) SetMailboxVisible(id imap.LabelID, visible bool) {
+func (conn *Dummy) SetMailboxVisible(id imap.MailboxID, visible bool) {
 	if !visible {
-		conn.hiddenLabels[id] = struct{}{}
+		conn.hiddenMailboxes[id] = struct{}{}
 	} else {
-		delete(conn.hiddenLabels, id)
+		delete(conn.hiddenMailboxes, id)
 	}
 }
 
@@ -329,8 +329,8 @@ func (conn *Dummy) pushUpdate(update imap.Update) {
 	// We mimic the behaviour of the Proton sever. if several update to a message or mailbox happen in between
 	// two event polls, we only get one refresh update with the latest state.
 	switch update := update.(type) {
-	case *imap.MessageLabelsUpdated:
-		conn.queue = removeMessageLabelsUpdatedFromSlice(conn.queue, update.MessageID)
+	case *imap.MessageMailboxesUpdated:
+		conn.queue = removeMessageMailboxesUpdatedFromSlice(conn.queue, update.MessageID)
 	case *imap.MessageFlagsUpdated:
 		conn.queue = removeMessageFlagsUpdatedFromSlice(conn.queue, update.MessageID)
 
@@ -370,9 +370,9 @@ func (conn *Dummy) validateUpdate(oldName, newName []string) error {
 	return nil
 }
 
-func removeMessageLabelsUpdatedFromSlice(updates []imap.Update, messageID imap.MessageID) []imap.Update {
+func removeMessageMailboxesUpdatedFromSlice(updates []imap.Update, messageID imap.MessageID) []imap.Update {
 	return xslices.Filter(updates, func(update imap.Update) bool {
-		u, ok := update.(*imap.MessageLabelsUpdated)
+		u, ok := update.(*imap.MessageMailboxesUpdated)
 
 		return (!ok) || (u.MessageID != messageID)
 	})
@@ -386,7 +386,7 @@ func removeMessageFlagsUpdatedFromSlice(updates []imap.Update, messageID imap.Me
 	})
 }
 
-func removeMailboxUpdatedFromSlice(updates []imap.Update, mailboxID imap.LabelID) []imap.Update {
+func removeMailboxUpdatedFromSlice(updates []imap.Update, mailboxID imap.MailboxID) []imap.Update {
 	return xslices.Filter(updates, func(update imap.Update) bool {
 		u, ok := update.(*imap.MailboxUpdated)
 

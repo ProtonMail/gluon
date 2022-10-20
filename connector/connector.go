@@ -12,35 +12,35 @@ type Connector interface {
 	// Authorize returns whether the given username/password combination are valid for this connector.
 	Authorize(username string, password []byte) bool
 
-	// GetLabel returns information about the label with the given ID.
-	GetLabel(ctx context.Context, labelID imap.LabelID) (imap.Mailbox, error)
+	// GetMailbox returns information about the mailbox with the given ID.
+	GetMailbox(ctx context.Context, mboxID imap.MailboxID) (imap.Mailbox, error)
 
-	// CreateLabel creates a label with the given name.
-	CreateLabel(ctx context.Context, name []string) (imap.Mailbox, error)
+	// CreateMailbox creates a mailbox with the given name.
+	CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error)
 
-	// IsLabelVisible can be used to hide mailboxes from connected clients.
-	IsLabelVisible(ctx context.Context, labelID imap.LabelID) bool
+	// IsMailboxVisible can be used to hide mailboxes from connected clients.
+	IsMailboxVisible(ctx context.Context, mboxID imap.MailboxID) bool
 
-	// UpdateLabel sets the name of the label with the given ID.
-	UpdateLabel(ctx context.Context, labelID imap.LabelID, newName []string) error
+	// UpdateMailboxName sets the name of the mailbox with the given ID.
+	UpdateMailboxName(ctx context.Context, mboxID imap.MailboxID, newName []string) error
 
-	// DeleteLabel deletes the label with the given ID.
-	DeleteLabel(ctx context.Context, labelID imap.LabelID) error
+	// DeleteMailbox deletes the mailbox with the given ID.
+	DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) error
 
 	// GetMessage returns the message with the given ID.
-	GetMessage(ctx context.Context, messageID imap.MessageID) (imap.Message, []imap.LabelID, error)
+	GetMessage(ctx context.Context, messageID imap.MessageID) (imap.Message, []imap.MailboxID, error)
 
 	// CreateMessage creates a new message on the remote.
-	CreateMessage(ctx context.Context, labelID imap.LabelID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error)
+	CreateMessage(ctx context.Context, mboxID imap.MailboxID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error)
 
-	// LabelMessages labels the given messages with the given label ID.
-	LabelMessages(ctx context.Context, messageIDs []imap.MessageID, labelID imap.LabelID) error
+	// AddMessagesToMailbox adds the given messages to the given mailbox.
+	AddMessagesToMailbox(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.MailboxID) error
 
-	// UnlabelMessages unlabels the given messages with the given label ID.
-	UnlabelMessages(ctx context.Context, messageIDs []imap.MessageID, labelID imap.LabelID) error
+	// RemoveMessagesFromMailbox removes the given messages from the given mailbox.
+	RemoveMessagesFromMailbox(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.MailboxID) error
 
-	// MoveMessages removes the given messages from one label and adds them to the other label.
-	MoveMessages(ctx context.Context, messageIDs []imap.MessageID, labelFromID, labelToID imap.LabelID) error
+	// MoveMessages removes the given messages from one mailbox and adds them to the another mailbox.
+	MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) error
 
 	// MarkMessagesSeen sets the seen value of the given messages.
 	MarkMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error

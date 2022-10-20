@@ -40,7 +40,7 @@ func TestSearchCharSetISO88591(t *testing.T) {
 }
 
 func TestSearchCharSetASCII(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C("A001 search CHARSET US-ASCII TEXT foo")
 		c.S("* SEARCH 75")
 		c.OK("A001")
@@ -48,13 +48,13 @@ func TestSearchCharSetASCII(t *testing.T) {
 }
 
 func TestSearchCharSetInvalid(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C("A001 search CHARSET invalid-charset TEXT foo").NO("A001", "BADCHARSET")
 	})
 }
 
 func TestSearchAll(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C("A001 search all")
 		c.S("* SEARCH " + seq(1, 100))
 		c.OK("A001")
@@ -62,7 +62,7 @@ func TestSearchAll(t *testing.T) {
 }
 
 func TestSearchAnswered(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Set some messages as answered.
 		c.C(`A001 STORE 10,20,30,40,50 +FLAGS (\Answered)`).OK("A001")
 
@@ -74,7 +74,7 @@ func TestSearchAnswered(t *testing.T) {
 }
 
 func TestSearchBcc(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search bcc "dovecot@procontrol.fi"`)
 		c.S("* SEARCH 49 50")
 		c.OK("A001")
@@ -87,7 +87,7 @@ func TestSearchBcc(t *testing.T) {
 }
 
 func TestSearchBefore(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// None
 		c.C(`A001 search before 13-Aug-1982`)
 		c.S("* SEARCH")
@@ -106,7 +106,7 @@ func TestSearchBefore(t *testing.T) {
 }
 
 func TestSearchBody(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search body "Content-Length saves just the size of mail body"`)
 		c.S("* SEARCH 50")
 		c.OK("A001")
@@ -119,7 +119,7 @@ func TestSearchBody(t *testing.T) {
 }
 
 func TestSearchCc(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search cc "Dovecot Mailinglist <dovecot@procontrol.fi>"`)
 		c.S("* SEARCH 53 55 60")
 		c.OK("A001")
@@ -132,7 +132,7 @@ func TestSearchCc(t *testing.T) {
 }
 
 func TestSearchDeleted(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Set some messages as deleted.
 		c.C(`A001 STORE 10,20,30,40,50 +FLAGS (\Deleted)`).OK("A001")
 
@@ -144,7 +144,7 @@ func TestSearchDeleted(t *testing.T) {
 }
 
 func TestSearchDraft(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Set some messages as draft.
 		c.C(`A001 STORE 10,20,30,40,50 +FLAGS (\Draft)`).OK("A001")
 
@@ -156,7 +156,7 @@ func TestSearchDraft(t *testing.T) {
 }
 
 func TestSearchFlagged(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Set some messages as flagged.
 		c.C(`A001 STORE 10,20,30,40,50 +FLAGS (\Flagged)`).OK("A001")
 
@@ -168,7 +168,7 @@ func TestSearchFlagged(t *testing.T) {
 }
 
 func TestSearchFrom(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search from "\"Vanessa Lintner\" <reply@seekercenter.net>"`)
 		c.S("* SEARCH 5")
 		c.OK("A001")
@@ -184,7 +184,7 @@ func TestSearchFrom(t *testing.T) {
 }
 
 func TestSearchHeader(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search header Message-ID "<20020723193923.J22431@irccrew.org>"`)
 		c.S("* SEARCH 1")
 		c.OK("A001")
@@ -200,7 +200,7 @@ func TestSearchHeader(t *testing.T) {
 }
 
 func TestSearchKeyword(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Set some messages as with a custom flag.
 		c.C(`A001 STORE 10,20,30,40,50 +FLAGS (my-special-flag)`).OK("A001")
 
@@ -212,7 +212,7 @@ func TestSearchKeyword(t *testing.T) {
 }
 
 func TestSearchLarger(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C("A001 search larger 9500")
 		c.S("* SEARCH 47 48")
 		c.OK("A001")
@@ -220,7 +220,7 @@ func TestSearchLarger(t *testing.T) {
 }
 
 func TestSearchNew(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Initially all messages are recent and none are seen. Thus they are all new.
 		c.C("A001 search new")
 		c.S("* SEARCH " + seq(1, 100))
@@ -237,7 +237,7 @@ func TestSearchNew(t *testing.T) {
 }
 
 func TestSearchNot(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Set some messages as deleted.
 		c.C(`A001 STORE 50:* +FLAGS (\Deleted)`).OK("A001")
 
@@ -254,7 +254,7 @@ func TestSearchNot(t *testing.T) {
 }
 
 func TestSearchOld(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Initially all messages are recent so none are old.
 		c.C("A001 search old")
 		c.S("* SEARCH")
@@ -283,7 +283,7 @@ func TestSearchOld(t *testing.T) {
 }
 
 func TestSearchOn(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// None
 		c.C(`A001 search on 13-Aug-1982`)
 		c.S("* SEARCH")
@@ -304,7 +304,7 @@ func TestSearchOn(t *testing.T) {
 func TestSearchSentOnAndOn(t *testing.T) {
 	// Test search senton/on when internal date (e.g. 11-Aug-2002) and
 	// header date (10-Aug-2002) are different.
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search on 10-Aug-2002`)
 		c.S("* SEARCH")
 		c.OK("A001")
@@ -324,7 +324,7 @@ func TestSearchSentOnAndOn(t *testing.T) {
 }
 
 func TestSearchOr(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Set some messages as deleted.
 		c.C(`A001 STORE 1:30 +FLAGS (\Deleted)`).OK("A001")
 
@@ -362,7 +362,7 @@ func TestSearchOr(t *testing.T) {
 }
 
 func TestSearchRecent(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Initially all messages are recent.
 		c.C("A001 search recent")
 		c.S("* SEARCH " + seq(1, 100))
@@ -387,7 +387,7 @@ func TestSearchRecent(t *testing.T) {
 }
 
 func TestSearchSeen(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Initially no messages are seen.
 		c.C("A001 search seen")
 		c.S("* SEARCH")
@@ -404,7 +404,7 @@ func TestSearchSeen(t *testing.T) {
 }
 
 func TestSearchSentBefore(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search sentbefore 10-Aug-2002`)
 		c.S("* SEARCH " + seq(1, 18))
 		c.OK("A001")
@@ -429,7 +429,7 @@ func TestSearchSentSinceAndSentBefore(t *testing.T) {
 }
 
 func TestSearchSentOn(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search senton 22-Aug-2002`)
 		c.S("* SEARCH 21")
 		c.OK("A001")
@@ -437,7 +437,7 @@ func TestSearchSentOn(t *testing.T) {
 }
 
 func TestSearchSentSince(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search sentsince 13-Nov-2002`)
 		c.S("* SEARCH " + seq(93, 100))
 		c.OK("A001")
@@ -445,7 +445,7 @@ func TestSearchSentSince(t *testing.T) {
 }
 
 func TestSearchSince(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// None
 		c.C(`A001 search since 13-Aug-2200`)
 		c.S("* SEARCH")
@@ -464,7 +464,7 @@ func TestSearchSince(t *testing.T) {
 }
 
 func TestSearchSmaller(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C("A001 search smaller 1250")
 		c.S("* SEARCH 1 8 83")
 		c.OK("A001")
@@ -472,7 +472,7 @@ func TestSearchSmaller(t *testing.T) {
 }
 
 func TestSearchSubject(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search subject "first test mail"`)
 		c.S("* SEARCH 1")
 		c.OK("A001")
@@ -493,7 +493,7 @@ func TestSearchSubject(t *testing.T) {
 }
 
 func TestSearchText(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Search something from the header.
 		c.C(`A001 search text "Message-ID: <006701c24183$c7f10d60$0200a8c0@eero>"`)
 		c.S("* SEARCH 20")
@@ -512,7 +512,7 @@ func TestSearchText(t *testing.T) {
 }
 
 func TestSearchTo(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search to "Timo Sirainen <tss@iki.fi>"`)
 		c.S("* SEARCH 49")
 		c.OK("A001")
@@ -524,7 +524,7 @@ func TestSearchTo(t *testing.T) {
 }
 
 func TestUIDSearchTo(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Remove some messages to ensure sequence doesn't match uid
 		c.C(`A002 STORE 10,20,30,40,50 +FLAGS (\DELETED)`).OK("A002")
 		c.C(`A003 EXPUNGE`).OK("A003")
@@ -536,7 +536,7 @@ func TestUIDSearchTo(t *testing.T) {
 }
 
 func TestSearchUID(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search uid 1`)
 		c.S("* SEARCH 1")
 		c.OK("A001")
@@ -556,7 +556,7 @@ func TestSearchUID(t *testing.T) {
 }
 
 func TestSearchUIDAfterDelete(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Remove some messages to ensure sequence doesn't match uid
 		c.C(`A002 STORE 5,6,7 +FLAGS (\DELETED)`).OK("A002")
 		c.C(`A003 EXPUNGE`).OK("A003")
@@ -568,7 +568,7 @@ func TestSearchUIDAfterDelete(t *testing.T) {
 }
 
 func TestSearchUnanswered(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Initially, nothing is answered; everything is unanswered.
 		c.C("A001 search unanswered")
 		c.S("* SEARCH " + seq(1, 100))
@@ -590,7 +590,7 @@ func TestSearchUnanswered(t *testing.T) {
 }
 
 func TestSearchUndeleted(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Initially, nothing is deleted; everything is undeleted.
 		c.C("A001 search undeleted")
 		c.S("* SEARCH " + seq(1, 100))
@@ -612,7 +612,7 @@ func TestSearchUndeleted(t *testing.T) {
 }
 
 func TestSearchUndraft(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Initially, nothing is draft; everything is undraft.
 		c.C("A001 search undraft")
 		c.S("* SEARCH " + seq(1, 100))
@@ -634,7 +634,7 @@ func TestSearchUndraft(t *testing.T) {
 }
 
 func TestSearchUnflagged(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Initially, nothing is flagged; everything is unflagged.
 		c.C("A001 search unflagged")
 		c.S("* SEARCH " + seq(1, 100))
@@ -656,7 +656,7 @@ func TestSearchUnflagged(t *testing.T) {
 }
 
 func TestSearchUnkeyword(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Initially, nothing has a custom flag; everything is "unkeyword".
 		c.C("A001 search unkeyword my-special-flag")
 		c.S("* SEARCH " + seq(1, 100))
@@ -678,7 +678,7 @@ func TestSearchUnkeyword(t *testing.T) {
 }
 
 func TestSearchUnseen(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Initially, nothing is seen; everything is unseen.
 		c.C("A001 search unseen")
 		c.S("* SEARCH " + seq(1, 100))
@@ -700,7 +700,7 @@ func TestSearchUnseen(t *testing.T) {
 }
 
 func TestSearchSeqSet(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search 1`)
 		c.S("* SEARCH 1")
 		c.OK("A001")
@@ -720,7 +720,7 @@ func TestSearchSeqSet(t *testing.T) {
 }
 
 func TestSearchSeqSetFrom(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A001 search 1:2,4:6,30:31 from "\"Vanessa Lintner\" <reply@seekercenter.net>"`)
 		c.S("* SEARCH 5")
 		c.OK("A001")
@@ -728,7 +728,7 @@ func TestSearchSeqSetFrom(t *testing.T) {
 }
 
 func TestUIDSearchSeqSetFrom(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`A002 STORE 1:4,10:80 +FLAGS (\DELETED)`).OK("A002")
 		c.C(`A003 EXPUNGE`).OK("A003")
 
@@ -739,7 +739,7 @@ func TestUIDSearchSeqSetFrom(t *testing.T) {
 }
 
 func TestSearchList(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Set some messages as deleted.
 		c.C(`A001 STORE 1:30 +FLAGS (\Deleted)`).OK("A001")
 

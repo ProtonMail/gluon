@@ -27,15 +27,15 @@ type Connector interface {
 	CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error)
 
 	// UpdateMailbox sets the name of the mailbox with the given ID to the given new name.
-	UpdateMailbox(ctx context.Context, mboxID imap.LabelID, oldName, newName []string) error
+	UpdateMailbox(ctx context.Context, mboxID imap.MailboxID, oldName, newName []string) error
 
 	// DeleteMailbox deletes the mailbox with the given ID and name.
-	DeleteMailbox(ctx context.Context, mboxID imap.LabelID) error
+	DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) error
 
 	// CreateMessage appends a message literal to the mailbox with the given ID.
 	CreateMessage(
 		ctx context.Context,
-		mboxID imap.LabelID,
+		mboxID imap.MailboxID,
 		literal []byte,
 		flags imap.FlagSet,
 		date time.Time,
@@ -45,22 +45,22 @@ type Connector interface {
 	AddMessagesToMailbox(
 		ctx context.Context,
 		messageIDs []imap.MessageID,
-		mboxID imap.LabelID,
+		mboxID imap.MailboxID,
 	) error
 
 	// RemoveMessagesFromMailbox removes the message with the given ID from the mailbox with the given ID.
 	RemoveMessagesFromMailbox(
 		ctx context.Context,
 		messageIDs []imap.MessageID,
-		mboxID imap.LabelID,
+		mboxID imap.MailboxID,
 	) error
 
 	// MoveMessagesFromMailbox removes the message with the given ID from the mailbox with the given ID.
 	MoveMessagesFromMailbox(
 		ctx context.Context,
 		messageIDs []imap.MessageID,
-		mboxFromID imap.LabelID,
-		mboxToID imap.LabelID,
+		mboxFromID imap.MailboxID,
+		mboxToID imap.MailboxID,
 	) error
 
 	// SetMessagesSeen marks the message with the given ID as seen or unseen.
@@ -73,5 +73,5 @@ type Connector interface {
 	SetUIDValidity(imap.UID) error
 
 	// IsMailboxVisible checks whether a mailbox is visible to a client.
-	IsMailboxVisible(ctx context.Context, id imap.LabelID) bool
+	IsMailboxVisible(ctx context.Context, id imap.MailboxID) bool
 }

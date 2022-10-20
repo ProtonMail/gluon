@@ -26,15 +26,15 @@ type Connector interface {
 	connector.Connector
 
 	SetFolderPrefix(string)
-	SetLabelPrefix(string)
+	SetMailboxPrefix(string)
 
 	MailboxCreated(imap.Mailbox) error
-	MailboxDeleted(imap.LabelID) error
+	MailboxDeleted(imap.MailboxID) error
 
-	MessageCreated(imap.Message, []byte, []imap.LabelID) error
-	MessagesCreated([]imap.Message, [][]byte, [][]imap.LabelID) error
-	MessageAdded(imap.MessageID, imap.LabelID) error
-	MessageRemoved(imap.MessageID, imap.LabelID) error
+	MessageCreated(imap.Message, []byte, []imap.MailboxID) error
+	MessagesCreated([]imap.Message, [][]byte, [][]imap.MailboxID) error
+	MessageAdded(imap.MessageID, imap.MailboxID) error
+	MessageRemoved(imap.MessageID, imap.MailboxID) error
 	MessageSeen(imap.MessageID, bool) error
 	MessageFlagged(imap.MessageID, bool) error
 	MessageDeleted(imap.MessageID) error
@@ -44,7 +44,7 @@ type Connector interface {
 
 	GetLastRecordedIMAPID() imap.IMAPID
 
-	SetMailboxVisible(imap.LabelID, bool)
+	SetMailboxVisible(imap.MailboxID, bool)
 }
 
 type testSession struct {
@@ -112,16 +112,16 @@ func (s *testSession) setFolderPrefix(user, prefix string) {
 	s.conns[s.userIDs[user]].SetFolderPrefix(prefix)
 }
 
-func (s *testSession) setLabelPrefix(user, prefix string) {
-	s.conns[s.userIDs[user]].SetLabelPrefix(prefix)
+func (s *testSession) setMailboxPrefix(user, prefix string) {
+	s.conns[s.userIDs[user]].SetMailboxPrefix(prefix)
 }
 
-func (s *testSession) mailboxCreated(user string, name []string, withData ...string) imap.LabelID {
+func (s *testSession) mailboxCreated(user string, name []string, withData ...string) imap.MailboxID {
 	return s.mailboxCreatedWithAttributes(user, name, defaultAttributes, withData...)
 }
 
-func (s *testSession) mailboxCreatedWithAttributes(user string, name []string, attributes imap.FlagSet, withData ...string) imap.LabelID {
-	mboxID := imap.LabelID(utils.NewRandomLabelID())
+func (s *testSession) mailboxCreatedWithAttributes(user string, name []string, attributes imap.FlagSet, withData ...string) imap.MailboxID {
+	mboxID := imap.MailboxID(utils.NewRandomMailboxID())
 
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxCreated(imap.Mailbox{
 		ID:             mboxID,
@@ -140,11 +140,11 @@ func (s *testSession) mailboxCreatedWithAttributes(user string, name []string, a
 	return mboxID
 }
 
-func (s *testSession) batchMailboxCreated(user string, count int, mailboxNameGen func(number int) string) []imap.LabelID {
-	var mboxIDs []imap.LabelID
+func (s *testSession) batchMailboxCreated(user string, count int, mailboxNameGen func(number int) string) []imap.MailboxID {
+	var mboxIDs []imap.MailboxID
 
 	for i := 0; i < count; i++ {
-		mboxID := imap.LabelID(utils.NewRandomLabelID())
+		mboxID := imap.MailboxID(utils.NewRandomMailboxID())
 
 		require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxCreated(imap.Mailbox{
 			ID:             mboxID,
@@ -162,8 +162,8 @@ func (s *testSession) batchMailboxCreated(user string, count int, mailboxNameGen
 	return mboxIDs
 }
 
-func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, permFlags, attrs imap.FlagSet) imap.LabelID {
-	mboxID := imap.LabelID(utils.NewRandomLabelID())
+func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, permFlags, attrs imap.FlagSet) imap.MailboxID {
+	mboxID := imap.MailboxID(utils.NewRandomMailboxID())
 
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxCreated(imap.Mailbox{
 		ID:             mboxID,
@@ -178,7 +178,7 @@ func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, pe
 	return mboxID
 }
 
-func (s *testSession) messageCreated(user string, mailboxID imap.LabelID, literal []byte, internalDate time.Time, flags ...string) imap.MessageID {
+func (s *testSession) messageCreated(user string, mailboxID imap.MailboxID, literal []byte, internalDate time.Time, flags ...string) imap.MessageID {
 	messageID := imap.MessageID(utils.NewRandomMessageID())
 
 	s.messageCreatedWithID(user, messageID, mailboxID, literal, internalDate, flags...)
@@ -186,7 +186,7 @@ func (s *testSession) messageCreated(user string, mailboxID imap.LabelID, litera
 	return messageID
 }
 
-func (s *testSession) messageCreatedWithID(user string, messageID imap.MessageID, mailboxID imap.LabelID, literal []byte, internalDate time.Time, flags ...string) {
+func (s *testSession) messageCreatedWithID(user string, messageID imap.MessageID, mailboxID imap.MailboxID, literal []byte, internalDate time.Time, flags ...string) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageCreated(
 		imap.Message{
 			ID:    messageID,
@@ -194,13 +194,13 @@ func (s *testSession) messageCreatedWithID(user string, messageID imap.MessageID
 			Date:  internalDate,
 		},
 		literal,
-		[]imap.LabelID{mailboxID},
+		[]imap.MailboxID{mailboxID},
 	))
 
 	s.conns[s.userIDs[user]].Flush()
 }
 
-func (s *testSession) batchMessageCreated(user string, mailboxID imap.LabelID, count int, createMessage func(int) ([]byte, []string)) []imap.MessageID {
+func (s *testSession) batchMessageCreated(user string, mailboxID imap.MailboxID, count int, createMessage func(int) ([]byte, []string)) []imap.MessageID {
 	return s.batchMessageCreatedWithID(user, mailboxID, count, func(i int) (imap.MessageID, []byte, []string) {
 		messageID := imap.MessageID(utils.NewRandomMessageID())
 		literal, flags := createMessage(i)
@@ -209,12 +209,12 @@ func (s *testSession) batchMessageCreated(user string, mailboxID imap.LabelID, c
 	})
 }
 
-func (s *testSession) batchMessageCreatedWithID(user string, mailboxID imap.LabelID, count int, createMessage func(int) (imap.MessageID, []byte, []string)) []imap.MessageID {
+func (s *testSession) batchMessageCreatedWithID(user string, mailboxID imap.MailboxID, count int, createMessage func(int) (imap.MessageID, []byte, []string)) []imap.MessageID {
 	var messageIDs []imap.MessageID
 
 	messages := make([]imap.Message, 0, count)
 	literals := make([][]byte, 0, count)
-	mailboxes := make([][]imap.LabelID, 0, count)
+	mailboxes := make([][]imap.MailboxID, 0, count)
 
 	for i := 0; i < count; i++ {
 		messageID, literal, flags := createMessage(i)
@@ -227,7 +227,7 @@ func (s *testSession) batchMessageCreatedWithID(user string, mailboxID imap.Labe
 
 		literals = append(literals, literal)
 
-		mailboxes = append(mailboxes, []imap.LabelID{mailboxID})
+		mailboxes = append(mailboxes, []imap.MailboxID{mailboxID})
 
 		messageIDs = append(messageIDs, messageID)
 	}
@@ -239,14 +239,14 @@ func (s *testSession) batchMessageCreatedWithID(user string, mailboxID imap.Labe
 	return messageIDs
 }
 
-func (s *testSession) messageCreatedFromFile(user string, mailboxID imap.LabelID, path string, flags ...string) imap.MessageID {
+func (s *testSession) messageCreatedFromFile(user string, mailboxID imap.MailboxID, path string, flags ...string) imap.MessageID {
 	literal, err := os.ReadFile(path)
 	require.NoError(s.tb, err)
 
 	return s.messageCreated(user, mailboxID, literal, time.Now(), flags...)
 }
 
-func (s *testSession) messagesCreatedFromMBox(user string, mailboxID imap.LabelID, path string, flags ...string) {
+func (s *testSession) messagesCreatedFromMBox(user string, mailboxID imap.MailboxID, path string, flags ...string) {
 	f, err := os.Open(path)
 	require.NoError(s.tb, err)
 
@@ -264,13 +264,13 @@ func (s *testSession) messagesCreatedFromMBox(user string, mailboxID imap.LabelI
 	require.NoError(s.tb, f.Close())
 }
 
-func (s *testSession) messageAdded(user string, messageID imap.MessageID, mailboxID imap.LabelID) {
+func (s *testSession) messageAdded(user string, messageID imap.MessageID, mailboxID imap.MailboxID) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageAdded(messageID, mailboxID))
 
 	s.conns[s.userIDs[user]].Flush()
 }
 
-func (s *testSession) messageRemoved(user string, messageID imap.MessageID, mailboxID imap.LabelID) {
+func (s *testSession) messageRemoved(user string, messageID imap.MessageID, mailboxID imap.MailboxID) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageRemoved(messageID, mailboxID))
 
 	s.conns[s.userIDs[user]].Flush()

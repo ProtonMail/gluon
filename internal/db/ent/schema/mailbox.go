@@ -18,7 +18,7 @@ type Mailbox struct {
 func (Mailbox) Fields() []ent.Field {
 	return []ent.Field{
 		field.Uint64("id").GoType(imap.InternalMailboxID(0)).Unique().Immutable(),
-		field.String("RemoteID").Optional().Unique().GoType(imap.LabelID("")),
+		field.String("RemoteID").Optional().Unique().GoType(imap.MailboxID("")),
 		field.String("Name").Unique(),
 		field.Uint32("UIDNext").Default(1).GoType(imap.UID(0)),
 		field.Uint32("UIDValidity").Default(1).GoType(imap.UID(0)),

@@ -48,7 +48,7 @@ type MailboxMutation struct {
 	op                     Op
 	typ                    string
 	id                     *imap.InternalMailboxID
-	_RemoteID              *imap.LabelID
+	_RemoteID              *imap.MailboxID
 	_Name                  *string
 	_UIDNext               *imap.UID
 	add_UIDNext            *imap.UID
@@ -178,12 +178,12 @@ func (m *MailboxMutation) IDs(ctx context.Context) ([]imap.InternalMailboxID, er
 }
 
 // SetRemoteID sets the "RemoteID" field.
-func (m *MailboxMutation) SetRemoteID(ii imap.LabelID) {
+func (m *MailboxMutation) SetRemoteID(ii imap.MailboxID) {
 	m._RemoteID = &ii
 }
 
 // RemoteID returns the value of the "RemoteID" field in the mutation.
-func (m *MailboxMutation) RemoteID() (r imap.LabelID, exists bool) {
+func (m *MailboxMutation) RemoteID() (r imap.MailboxID, exists bool) {
 	v := m._RemoteID
 	if v == nil {
 		return
@@ -194,7 +194,7 @@ func (m *MailboxMutation) RemoteID() (r imap.LabelID, exists bool) {
 // OldRemoteID returns the old "RemoteID" field's value of the Mailbox entity.
 // If the Mailbox object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MailboxMutation) OldRemoteID(ctx context.Context) (v imap.LabelID, err error) {
+func (m *MailboxMutation) OldRemoteID(ctx context.Context) (v imap.MailboxID, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldRemoteID is only allowed on UpdateOne operations")
 	}
@@ -708,7 +708,7 @@ func (m *MailboxMutation) OldField(ctx context.Context, name string) (ent.Value,
 func (m *MailboxMutation) SetField(name string, value ent.Value) error {
 	switch name {
 	case mailbox.FieldRemoteID:
-		v, ok := value.(imap.LabelID)
+		v, ok := value.(imap.MailboxID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

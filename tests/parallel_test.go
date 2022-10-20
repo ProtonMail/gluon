@@ -16,7 +16,7 @@ func TestSelectWhileSyncing(t *testing.T) {
 		mailboxNames := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"}
 
 		// Collect the mailbox IDs as they're created.
-		mailboxIDs := xslices.Map(mailboxNames, func(name string) imap.LabelID {
+		mailboxIDs := xslices.Map(mailboxNames, func(name string) imap.MailboxID {
 			return s.mailboxCreated("user", []string{name})
 		})
 

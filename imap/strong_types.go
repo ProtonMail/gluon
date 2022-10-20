@@ -8,11 +8,11 @@ import (
 	"github.com/ProtonMail/gluon/internal/utils"
 )
 
-type LabelID string
+type MailboxID string
 
 type MessageID string
 
-func (l LabelID) ShortID() string {
+func (l MailboxID) ShortID() string {
 	return utils.ShortID(string(l))
 }
 

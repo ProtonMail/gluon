@@ -9,8 +9,8 @@ func NewRandomUserID() string {
 	return "usr-" + uuid.NewString()
 }
 
-// NewRandomLabelID return a new random label/mailbox ID. For debugging purposes, the ID starts with the 'label-' prefix.
-func NewRandomLabelID() string {
+// NewRandomMailboxID return a new random mailbox ID. For debugging purposes, the ID starts with the 'lbl-' prefix.
+func NewRandomMailboxID() string {
 	return "lbl-" + uuid.NewString()
 }
 

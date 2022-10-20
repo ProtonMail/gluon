@@ -9,19 +9,19 @@ func (conn *Dummy) SetFolderPrefix(pfx string) {
 
 	conn.pfxFolder = pfx
 
-	mbox := conn.state.createLabel([]string{pfx}, true)
+	mbox := conn.state.createMailbox([]string{pfx}, true)
 
 	mbox.Attributes = mbox.Attributes.Add(imap.AttrNoSelect)
 
 	conn.pushUpdate(imap.NewMailboxCreated(mbox))
 }
 
-func (conn *Dummy) SetLabelPrefix(pfx string) {
+func (conn *Dummy) SetMailboxPrefix(pfx string) {
 	defer conn.Flush()
 
 	conn.pfxLabel = pfx
 
-	mbox := conn.state.createLabel([]string{pfx}, false)
+	mbox := conn.state.createMailbox([]string{pfx}, false)
 
 	mbox.Attributes = mbox.Attributes.Add(imap.AttrNoSelect)
 
@@ -37,8 +37,8 @@ func (conn *Dummy) MailboxCreated(mbox imap.Mailbox) error {
 		return err
 	}
 
-	conn.state.labels[mbox.ID] = &dummyLabel{
-		labelName: mbox.Name,
+	conn.state.mailboxes[mbox.ID] = &dummyMailbox{
+		mboxName:  mbox.Name,
 		exclusive: exclusive,
 	}
 
@@ -47,15 +47,15 @@ func (conn *Dummy) MailboxCreated(mbox imap.Mailbox) error {
 	return nil
 }
 
-func (conn *Dummy) MailboxDeleted(labelID imap.LabelID) error {
-	conn.state.deleteLabel(labelID)
+func (conn *Dummy) MailboxDeleted(mboxID imap.MailboxID) error {
+	conn.state.deleteMailbox(mboxID)
 
-	conn.pushUpdate(imap.NewMailboxDeleted(labelID))
+	conn.pushUpdate(imap.NewMailboxDeleted(mboxID))
 
 	return nil
 }
 
-func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs []imap.LabelID) error {
+func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs []imap.MailboxID) error {
 	parsedMessage, err := imap.NewParsedMessage(literal)
 	if err != nil {
 		return err
@@ -64,25 +64,25 @@ func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs 
 	conn.state.lock.Lock()
 	defer conn.state.lock.Unlock()
 
-	labelIDs := make(map[imap.LabelID]struct{})
+	mboxIDMap := make(map[imap.MailboxID]struct{})
 
 	for _, mboxID := range mboxIDs {
-		labelIDs[mboxID] = struct{}{}
+		mboxIDMap[mboxID] = struct{}{}
 	}
 
 	conn.state.messages[message.ID] = &dummyMessage{
-		literal:  literal,
-		seen:     message.Flags.Contains(imap.FlagSeen),
-		flagged:  message.Flags.Contains(imap.FlagFlagged),
-		parsed:   parsedMessage,
-		date:     message.Date,
-		labelIDs: labelIDs,
+		literal: literal,
+		seen:    message.Flags.Contains(imap.FlagSeen),
+		flagged: message.Flags.Contains(imap.FlagFlagged),
+		parsed:  parsedMessage,
+		date:    message.Date,
+		mboxIDs: mboxIDMap,
 	}
 
 	update := imap.NewMessagesCreated(&imap.MessageCreated{
 		Message:       message,
 		Literal:       literal,
-		LabelIDs:      mboxIDs,
+		MailboxIDs:    mboxIDs,
 		ParsedMessage: parsedMessage,
 	})
 
@@ -91,7 +91,7 @@ func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs 
 	return nil
 }
 
-func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, mboxIDs [][]imap.LabelID) error {
+func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, mboxIDs [][]imap.MailboxID) error {
 	conn.state.lock.Lock()
 	defer conn.state.lock.Unlock()
 
@@ -103,25 +103,25 @@ func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, m
 			return err
 		}
 
-		labelIDs := make(map[imap.LabelID]struct{})
+		mboxIDMap := make(map[imap.MailboxID]struct{})
 
 		for _, mboxID := range mboxIDs[i] {
-			labelIDs[mboxID] = struct{}{}
+			mboxIDMap[mboxID] = struct{}{}
 		}
 
 		conn.state.messages[messages[i].ID] = &dummyMessage{
-			literal:  literals[i],
-			seen:     messages[i].Flags.Contains(imap.FlagSeen),
-			flagged:  messages[i].Flags.Contains(imap.FlagFlagged),
-			parsed:   parsedMessage,
-			date:     messages[i].Date,
-			labelIDs: labelIDs,
+			literal: literals[i],
+			seen:    messages[i].Flags.Contains(imap.FlagSeen),
+			flagged: messages[i].Flags.Contains(imap.FlagFlagged),
+			parsed:  parsedMessage,
+			date:    messages[i].Date,
+			mboxIDs: mboxIDMap,
 		}
 
 		updates = append(updates, &imap.MessageCreated{
 			Message:       messages[i],
 			Literal:       literals[i],
-			LabelIDs:      mboxIDs[i],
+			MailboxIDs:    mboxIDs[i],
 			ParsedMessage: parsedMessage,
 		})
 	}
@@ -131,12 +131,12 @@ func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, m
 	return nil
 }
 
-func (conn *Dummy) MessageAdded(messageID imap.MessageID, labelID imap.LabelID) error {
-	conn.state.labelMessage(messageID, labelID)
+func (conn *Dummy) MessageAdded(messageID imap.MessageID, mboxID imap.MailboxID) error {
+	conn.state.addMessageToMailbox(messageID, mboxID)
 
-	conn.pushUpdate(imap.NewMessageLabelsUpdated(
+	conn.pushUpdate(imap.NewMessageMailboxesUpdated(
 		messageID,
-		conn.state.getLabelIDs(messageID),
+		conn.state.getMailboxIDs(messageID),
 		conn.state.isSeen(messageID),
 		conn.state.isFlagged(messageID),
 	))
@@ -144,12 +144,12 @@ func (conn *Dummy) MessageAdded(messageID imap.MessageID, labelID imap.LabelID) 
 	return nil
 }
 
-func (conn *Dummy) MessageRemoved(messageID imap.MessageID, labelID imap.LabelID) error {
-	conn.state.unlabelMessage(messageID, labelID)
+func (conn *Dummy) MessageRemoved(messageID imap.MessageID, mboxID imap.MailboxID) error {
+	conn.state.removeMessageFromMailbox(messageID, mboxID)
 
-	conn.pushUpdate(imap.NewMessageLabelsUpdated(
+	conn.pushUpdate(imap.NewMessageMailboxesUpdated(
 		messageID,
-		conn.state.getLabelIDs(messageID),
+		conn.state.getMailboxIDs(messageID),
 		conn.state.isSeen(messageID),
 		conn.state.isFlagged(messageID),
 	))

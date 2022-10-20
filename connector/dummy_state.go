@@ -15,14 +15,14 @@ type dummyState struct {
 	flags, permFlags, attrs imap.FlagSet
 
 	messages   map[imap.MessageID]*dummyMessage
-	labels     map[imap.LabelID]*dummyLabel
+	mailboxes  map[imap.MailboxID]*dummyMailbox
 	lastIMAPID imap.IMAPID
 
 	lock sync.RWMutex
 }
 
-type dummyLabel struct {
-	labelName []string
+type dummyMailbox struct {
+	mboxName  []string
 	exclusive bool
 }
 
@@ -34,7 +34,7 @@ type dummyMessage struct {
 	date    time.Time
 	flags   imap.FlagSet
 
-	labelIDs map[imap.LabelID]struct{}
+	mboxIDs map[imap.MailboxID]struct{}
 }
 
 func newDummyState(flags, permFlags, attrs imap.FlagSet) *dummyState {
@@ -43,7 +43,7 @@ func newDummyState(flags, permFlags, attrs imap.FlagSet) *dummyState {
 		permFlags:  permFlags,
 		attrs:      attrs,
 		messages:   make(map[imap.MessageID]*dummyMessage),
-		labels:     make(map[imap.LabelID]*dummyLabel),
+		mailboxes:  make(map[imap.MailboxID]*dummyMailbox),
 		lastIMAPID: imap.NewIMAPID(),
 	}
 }
@@ -56,67 +56,67 @@ func (state *dummyState) recordIMAPID(ctx context.Context) {
 	}
 }
 
-func (state *dummyState) getLabels() []imap.Mailbox {
+func (state *dummyState) getMailboxes() []imap.Mailbox {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	return xslices.Map(maps.Keys(state.labels), func(labelID imap.LabelID) imap.Mailbox {
-		return state.toMailbox(labelID)
+	return xslices.Map(maps.Keys(state.mailboxes), func(mboxID imap.MailboxID) imap.Mailbox {
+		return state.toMailbox(mboxID)
 	})
 }
 
-func (state *dummyState) getLabel(labelID imap.LabelID) (imap.Mailbox, error) {
+func (state *dummyState) getMailbox(mboxID imap.MailboxID) (imap.Mailbox, error) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	if _, ok := state.labels[labelID]; !ok {
-		return imap.Mailbox{}, ErrNoSuchLabel
+	if _, ok := state.mailboxes[mboxID]; !ok {
+		return imap.Mailbox{}, ErrNoSuchMailbox
 	}
 
-	return state.toMailbox(labelID), nil
+	return state.toMailbox(mboxID), nil
 }
 
-func (state *dummyState) createLabel(name []string, exclusive bool) imap.Mailbox {
+func (state *dummyState) createMailbox(name []string, exclusive bool) imap.Mailbox {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	labelID := imap.LabelID(uuid.NewString())
+	mboxID := imap.MailboxID(uuid.NewString())
 
-	state.labels[labelID] = &dummyLabel{
-		labelName: name,
+	state.mailboxes[mboxID] = &dummyMailbox{
+		mboxName:  name,
 		exclusive: exclusive,
 	}
 
-	return state.toMailbox(labelID)
+	return state.toMailbox(mboxID)
 }
 
-func (state *dummyState) createLabelWithID(name []string, id imap.LabelID, exclusive bool) imap.Mailbox {
+func (state *dummyState) createMailboxWithID(name []string, id imap.MailboxID, exclusive bool) imap.Mailbox {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	state.labels[id] = &dummyLabel{
-		labelName: name,
+	state.mailboxes[id] = &dummyMailbox{
+		mboxName:  name,
 		exclusive: exclusive,
 	}
 
 	return state.toMailbox(id)
 }
 
-func (state *dummyState) updateLabel(labelID imap.LabelID, name []string) {
+func (state *dummyState) updateMailboxName(mboxID imap.MailboxID, name []string) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	state.labels[labelID].labelName = name
+	state.mailboxes[mboxID].mboxName = name
 }
 
-func (state *dummyState) deleteLabel(labelID imap.LabelID) {
+func (state *dummyState) deleteMailbox(mboxID imap.MailboxID) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	delete(state.labels, labelID)
+	delete(state.mailboxes, mboxID)
 
 	for _, message := range state.messages {
-		delete(message.labelIDs, labelID)
+		delete(message.mboxIDs, mboxID)
 	}
 }
 
@@ -141,7 +141,7 @@ func (state *dummyState) getMessageCreatedUpdate(id imap.MessageID) (*imap.Messa
 	return &imap.MessageCreated{
 		Message:       state.toMessage(id),
 		Literal:       msg.literal,
-		LabelIDs:      maps.Keys(msg.labelIDs),
+		MailboxIDs:    maps.Keys(msg.mboxIDs),
 		ParsedMessage: msg.parsed,
 	}, nil
 }
@@ -157,11 +157,11 @@ func (state *dummyState) getMessage(messageID imap.MessageID) (imap.Message, err
 	return state.toMessage(messageID), nil
 }
 
-func (state *dummyState) getLabelIDs(messageID imap.MessageID) []imap.LabelID {
+func (state *dummyState) getMailboxIDs(messageID imap.MessageID) []imap.MailboxID {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	return maps.Keys(state.messages[messageID].labelIDs)
+	return maps.Keys(state.messages[messageID].mboxIDs)
 }
 
 func (state *dummyState) getLiteral(messageID imap.MessageID) []byte {
@@ -172,7 +172,7 @@ func (state *dummyState) getLiteral(messageID imap.MessageID) []byte {
 }
 
 func (state *dummyState) createMessage(
-	mboxID imap.LabelID,
+	mboxID imap.MailboxID,
 	literal []byte,
 	parsed *imap.ParsedMessage,
 	seen, flagged bool,
@@ -193,34 +193,34 @@ func (state *dummyState) createMessage(
 	}
 
 	state.messages[messageID] = &dummyMessage{
-		literal:  literal,
-		seen:     seen,
-		parsed:   parsed,
-		flagged:  flagged,
-		flags:    otherFlags,
-		date:     date,
-		labelIDs: map[imap.LabelID]struct{}{mboxID: {}},
+		literal: literal,
+		seen:    seen,
+		parsed:  parsed,
+		flagged: flagged,
+		flags:   otherFlags,
+		date:    date,
+		mboxIDs: map[imap.MailboxID]struct{}{mboxID: {}},
 	}
 
 	return state.toMessage(messageID)
 }
 
-func (state *dummyState) labelMessage(messageID imap.MessageID, labelID imap.LabelID) {
+func (state *dummyState) addMessageToMailbox(messageID imap.MessageID, mboxID imap.MailboxID) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	if state.labels[labelID].exclusive {
-		state.messages[messageID].labelIDs = make(map[imap.LabelID]struct{})
+	if state.mailboxes[mboxID].exclusive {
+		state.messages[messageID].mboxIDs = make(map[imap.MailboxID]struct{})
 	}
 
-	state.messages[messageID].labelIDs[labelID] = struct{}{}
+	state.messages[messageID].mboxIDs[mboxID] = struct{}{}
 }
 
-func (state *dummyState) unlabelMessage(messageID imap.MessageID, labelID imap.LabelID) {
+func (state *dummyState) removeMessageFromMailbox(messageID imap.MessageID, mboxID imap.MailboxID) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	delete(state.messages[messageID].labelIDs, labelID)
+	delete(state.messages[messageID].mboxIDs, mboxID)
 }
 
 func (state *dummyState) setSeen(messageID imap.MessageID, seen bool) {
@@ -251,10 +251,10 @@ func (state *dummyState) isFlagged(messageID imap.MessageID) bool {
 	return state.messages[messageID].flagged
 }
 
-func (state *dummyState) toMailbox(labelID imap.LabelID) imap.Mailbox {
+func (state *dummyState) toMailbox(mboxID imap.MailboxID) imap.Mailbox {
 	return imap.Mailbox{
-		ID:             labelID,
-		Name:           state.labels[labelID].labelName,
+		ID:             mboxID,
+		Name:           state.mailboxes[mboxID].mboxName,
 		Flags:          state.flags,
 		PermanentFlags: state.permFlags,
 		Attributes:     state.attrs,

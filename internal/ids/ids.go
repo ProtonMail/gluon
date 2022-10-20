@@ -9,7 +9,7 @@ import (
 
 type MailboxIDPair struct {
 	InternalID imap.InternalMailboxID
-	RemoteID   imap.LabelID
+	RemoteID   imap.MailboxID
 }
 
 func (m *MailboxIDPair) String() string {
@@ -67,16 +67,16 @@ func SplitMessageIDPairSlice(s []MessageIDPair) ([]imap.InternalMessageID, []ima
 	return internalMessageIDs, remoteMessageIDs
 }
 
-func SplitMailboxIDPairSlice(s []MailboxIDPair) ([]imap.InternalMailboxID, []imap.LabelID) {
+func SplitMailboxIDPairSlice(s []MailboxIDPair) ([]imap.InternalMailboxID, []imap.MailboxID) {
 	l := len(s)
 
 	internalMailboxIDs := make([]imap.InternalMailboxID, 0, l)
-	labelIDs := make([]imap.LabelID, 0, l)
+	mailboxIDs := make([]imap.MailboxID, 0, l)
 
 	for _, v := range s {
 		internalMailboxIDs = append(internalMailboxIDs, v.InternalID)
-		labelIDs = append(labelIDs, v.RemoteID)
+		mailboxIDs = append(mailboxIDs, v.RemoteID)
 	}
 
-	return internalMailboxIDs, labelIDs
+	return internalMailboxIDs, mailboxIDs
 }
