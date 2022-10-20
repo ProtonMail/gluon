@@ -404,7 +404,7 @@ func (snap *snapshot) expungeMessage(messageID imap.InternalMessageID) error {
 	return nil
 }
 
-func (snap *snapshot) updateMailboxRemoteID(internalID imap.InternalMailboxID, remoteID imap.LabelID) error {
+func (snap *snapshot) updateMailboxRemoteID(internalID imap.InternalMailboxID, remoteID imap.MailboxID) error {
 	if snap.mboxID.InternalID != internalID {
 		return ErrNoSuchMailbox
 	}

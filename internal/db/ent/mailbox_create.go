@@ -25,13 +25,13 @@ type MailboxCreate struct {
 }
 
 // SetRemoteID sets the "RemoteID" field.
-func (mc *MailboxCreate) SetRemoteID(ii imap.LabelID) *MailboxCreate {
+func (mc *MailboxCreate) SetRemoteID(ii imap.MailboxID) *MailboxCreate {
 	mc.mutation.SetRemoteID(ii)
 	return mc
 }
 
 // SetNillableRemoteID sets the "RemoteID" field if the given value is not nil.
-func (mc *MailboxCreate) SetNillableRemoteID(ii *imap.LabelID) *MailboxCreate {
+func (mc *MailboxCreate) SetNillableRemoteID(ii *imap.MailboxID) *MailboxCreate {
 	if ii != nil {
 		mc.SetRemoteID(*ii)
 	}

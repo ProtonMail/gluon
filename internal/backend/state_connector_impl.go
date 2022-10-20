@@ -38,7 +38,7 @@ func (sc *stateConnectorImpl) ClearAllConnMetadata() {
 func (sc *stateConnectorImpl) CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error) {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	mbox, err := sc.connector.CreateLabel(ctx, name)
+	mbox, err := sc.connector.CreateMailbox(ctx, name)
 	if err != nil {
 		return imap.Mailbox{}, err
 	}
@@ -46,21 +46,21 @@ func (sc *stateConnectorImpl) CreateMailbox(ctx context.Context, name []string) 
 	return mbox, nil
 }
 
-func (sc *stateConnectorImpl) UpdateMailbox(ctx context.Context, mboxID imap.LabelID, oldName, newName []string) error {
+func (sc *stateConnectorImpl) UpdateMailbox(ctx context.Context, mboxID imap.MailboxID, oldName, newName []string) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	return sc.connector.UpdateLabel(ctx, mboxID, newName)
+	return sc.connector.UpdateMailboxName(ctx, mboxID, newName)
 }
 
-func (sc *stateConnectorImpl) DeleteMailbox(ctx context.Context, mboxID imap.LabelID) error {
+func (sc *stateConnectorImpl) DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	return sc.connector.DeleteLabel(ctx, mboxID)
+	return sc.connector.DeleteMailbox(ctx, mboxID)
 }
 
 func (sc *stateConnectorImpl) CreateMessage(
 	ctx context.Context,
-	mboxID imap.LabelID,
+	mboxID imap.MailboxID,
 	literal []byte,
 	flags imap.FlagSet,
 	date time.Time,
@@ -78,11 +78,11 @@ func (sc *stateConnectorImpl) CreateMessage(
 func (sc *stateConnectorImpl) AddMessagesToMailbox(
 	ctx context.Context,
 	messageIDs []imap.MessageID,
-	mboxID imap.LabelID,
+	mboxID imap.MailboxID,
 ) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	if err := sc.connector.LabelMessages(ctx, messageIDs, mboxID); err != nil {
+	if err := sc.connector.AddMessagesToMailbox(ctx, messageIDs, mboxID); err != nil {
 		return sc.refresh(ctx, messageIDs, mboxID)
 	}
 
@@ -92,11 +92,11 @@ func (sc *stateConnectorImpl) AddMessagesToMailbox(
 func (sc *stateConnectorImpl) RemoveMessagesFromMailbox(
 	ctx context.Context,
 	messageIDs []imap.MessageID,
-	mboxID imap.LabelID,
+	mboxID imap.MailboxID,
 ) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	if err := sc.connector.UnlabelMessages(ctx, messageIDs, mboxID); err != nil {
+	if err := sc.connector.RemoveMessagesFromMailbox(ctx, messageIDs, mboxID); err != nil {
 		return sc.refresh(ctx, messageIDs, mboxID)
 	}
 
@@ -106,8 +106,8 @@ func (sc *stateConnectorImpl) RemoveMessagesFromMailbox(
 func (sc *stateConnectorImpl) MoveMessagesFromMailbox(
 	ctx context.Context,
 	messageIDs []imap.MessageID,
-	mboxFromID imap.LabelID,
-	mboxToID imap.LabelID,
+	mboxFromID imap.MailboxID,
+	mboxToID imap.MailboxID,
 ) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
@@ -142,8 +142,8 @@ func (sc *stateConnectorImpl) SetUIDValidity(uidValidity imap.UID) error {
 	return sc.connector.SetUIDValidity(uidValidity)
 }
 
-func (sc *stateConnectorImpl) IsMailboxVisible(ctx context.Context, id imap.LabelID) bool {
-	return sc.connector.IsLabelVisible(ctx, id)
+func (sc *stateConnectorImpl) IsMailboxVisible(ctx context.Context, id imap.MailboxID) bool {
+	return sc.connector.IsMailboxVisible(ctx, id)
 }
 
 func (sc *stateConnectorImpl) getMetadataValue(key string) any {
@@ -166,14 +166,14 @@ func (sc *stateConnectorImpl) newContextWithMetadata(ctx context.Context) contex
 	return ctx
 }
 
-func (sc *stateConnectorImpl) refresh(ctx context.Context, messageIDs []imap.MessageID, mboxIDs ...imap.LabelID) error {
+func (sc *stateConnectorImpl) refresh(ctx context.Context, messageIDs []imap.MessageID, mboxIDs ...imap.MailboxID) error {
 	for _, messageID := range messageIDs {
 		message, mboxIDs, err := sc.connector.GetMessage(ctx, messageID)
 		if err != nil {
 			return err
 		}
 
-		sc.user.updateInjector.send(ctx, imap.NewMessageLabelsUpdated(
+		sc.user.updateInjector.send(ctx, imap.NewMessageMailboxesUpdated(
 			message.ID,
 			mboxIDs,
 			message.Flags.ContainsUnchecked(imap.FlagSeenLowerCase),
@@ -182,7 +182,7 @@ func (sc *stateConnectorImpl) refresh(ctx context.Context, messageIDs []imap.Mes
 	}
 
 	for _, mboxID := range mboxIDs {
-		mailbox, err := sc.connector.GetLabel(ctx, mboxID)
+		mailbox, err := sc.connector.GetMailbox(ctx, mboxID)
 		if err != nil {
 			return err
 		}

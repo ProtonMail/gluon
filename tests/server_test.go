@@ -319,7 +319,7 @@ func withClients(tb testing.TB, s *testSession, connIDs []int, tests func(map[in
 	}
 }
 
-func withData(s *testSession, username string, tests func(string, imap.LabelID)) {
+func withData(s *testSession, username string, tests func(string, imap.MailboxID)) {
 	mbox := uuid.NewString()
 
 	mboxID := s.mailboxCreated(username, []string{mbox}, "testdata/dovecot-crlf")

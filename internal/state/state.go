@@ -644,7 +644,7 @@ func (state *State) popResponders(permitExpunge bool) []Responder {
 	return pop
 }
 
-func (state *State) UpdateMailboxRemoteID(internalID imap.InternalMailboxID, remoteID imap.LabelID) error {
+func (state *State) UpdateMailboxRemoteID(internalID imap.InternalMailboxID, remoteID imap.MailboxID) error {
 	if state.snap != nil {
 		if err := state.snap.updateMailboxRemoteID(internalID, remoteID); err != nil {
 			return err

@@ -38,8 +38,8 @@ func (user *user) apply(ctx context.Context, update imap.Update) error {
 	case *imap.MessagesCreated:
 		return user.applyMessagesCreated(ctx, update)
 
-	case *imap.MessageLabelsUpdated:
-		return user.applyMessageLabelsUpdated(ctx, update)
+	case *imap.MessageMailboxesUpdated:
+		return user.applyMessageMailboxesUpdated(ctx, update)
 
 	case *imap.MessageFlagsUpdated:
 		return user.applyMessageFlagsUpdated(ctx, update)
@@ -156,7 +156,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	messagesToCreate := make([]*db.CreateMessageReq, 0, len(update.Messages))
 	messagesToCreateFilter := make(map[imap.MessageID]imap.InternalMessageID, len(update.Messages)/2)
 	messageForMBox := make(map[imap.InternalMailboxID][]imap.InternalMessageID)
-	mboxInternalIDMap := make(map[imap.LabelID]imap.InternalMailboxID)
+	mboxInternalIDMap := make(map[imap.MailboxID]imap.InternalMailboxID)
 
 	if err := user.db.Read(ctx, func(ctx context.Context, client *ent.Client) error {
 		for _, message := range update.Messages {
@@ -187,7 +187,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 				messagesToCreateFilter[message.Message.ID] = internalID
 			}
 
-			for _, mboxID := range message.LabelIDs {
+			for _, mboxID := range message.MailboxIDs {
 				v, ok := mboxInternalIDMap[mboxID]
 				if !ok {
 					internalMBoxID, err := db.GetMailboxIDWithRemoteID(ctx, client, mboxID)
@@ -260,8 +260,8 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	})
 }
 
-// applyMessageLabelsUpdated applies a MessageLabelsUpdated update.
-func (user *user) applyMessageLabelsUpdated(ctx context.Context, update *imap.MessageLabelsUpdated) error {
+// applyMessageMailboxesUpdated applies a MessageMailboxesUpdated update.
+func (user *user) applyMessageMailboxesUpdated(ctx context.Context, update *imap.MessageMailboxesUpdated) error {
 	if exists, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (bool, error) {
 		return db.MessageExistsWithRemoteID(ctx, client, update.MessageID)
 	}); err != nil {

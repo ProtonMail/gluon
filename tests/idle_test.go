@@ -35,7 +35,7 @@ func TestIDLEExistsUpdates(t *testing.T) {
 }
 
 func TestIDLEPendingUpdates(t *testing.T) {
-	runManyToOneTestWithData(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession, _ string, _ imap.LabelID) {
+	runManyToOneTestWithData(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession, _ string, _ imap.MailboxID) {
 		c[1].C("A001 select INBOX").OK("A001")
 
 		// Generate some pending updates.

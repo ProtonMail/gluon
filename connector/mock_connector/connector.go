@@ -36,6 +36,20 @@ func (m *MockConnector) EXPECT() *MockConnectorMockRecorder {
 	return m.recorder
 }
 
+// AddMessagesToMailbox mocks base method.
+func (m *MockConnector) AddMessagesToMailbox(arg0 context.Context, arg1 []imap.MessageID, arg2 imap.MailboxID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddMessagesToMailbox", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddMessagesToMailbox indicates an expected call of AddMessagesToMailbox.
+func (mr *MockConnectorMockRecorder) AddMessagesToMailbox(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMessagesToMailbox", reflect.TypeOf((*MockConnector)(nil).AddMessagesToMailbox), arg0, arg1, arg2)
+}
+
 // Authorize mocks base method.
 func (m *MockConnector) Authorize(arg0 string, arg1 []byte) bool {
 	m.ctrl.T.Helper()
@@ -64,71 +78,72 @@ func (mr *MockConnectorMockRecorder) Close(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockConnector)(nil).Close), arg0)
 }
 
-// CreateLabel mocks base method.
-func (m *MockConnector) CreateLabel(arg0 context.Context, arg1 []string) (imap.Mailbox, error) {
+// CreateMailbox mocks base method.
+func (m *MockConnector) CreateMailbox(arg0 context.Context, arg1 []string) (imap.Mailbox, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateLabel", arg0, arg1)
+	ret := m.ctrl.Call(m, "CreateMailbox", arg0, arg1)
 	ret0, _ := ret[0].(imap.Mailbox)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// CreateLabel indicates an expected call of CreateLabel.
-func (mr *MockConnectorMockRecorder) CreateLabel(arg0, arg1 interface{}) *gomock.Call {
+// CreateMailbox indicates an expected call of CreateMailbox.
+func (mr *MockConnectorMockRecorder) CreateMailbox(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateLabel", reflect.TypeOf((*MockConnector)(nil).CreateLabel), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMailbox", reflect.TypeOf((*MockConnector)(nil).CreateMailbox), arg0, arg1)
 }
 
 // CreateMessage mocks base method.
-func (m *MockConnector) CreateMessage(arg0 context.Context, arg1 imap.LabelID, arg2 []byte, arg3 *imap.ParsedMessage, arg4 imap.FlagSet, arg5 time.Time) (imap.Message, error) {
+func (m *MockConnector) CreateMessage(arg0 context.Context, arg1 imap.MailboxID, arg2 []byte, arg3 imap.FlagSet, arg4 time.Time) (imap.Message, []byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMessage", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "CreateMessage", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(imap.Message)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].([]byte)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // CreateMessage indicates an expected call of CreateMessage.
-func (mr *MockConnectorMockRecorder) CreateMessage(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+func (mr *MockConnectorMockRecorder) CreateMessage(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMessage", reflect.TypeOf((*MockConnector)(nil).CreateMessage), arg0, arg1, arg2, arg3, arg4, arg5)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMessage", reflect.TypeOf((*MockConnector)(nil).CreateMessage), arg0, arg1, arg2, arg3, arg4)
 }
 
-// DeleteLabel mocks base method.
-func (m *MockConnector) DeleteLabel(arg0 context.Context, arg1 imap.LabelID) error {
+// DeleteMailbox mocks base method.
+func (m *MockConnector) DeleteMailbox(arg0 context.Context, arg1 imap.MailboxID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteLabel", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteMailbox", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// DeleteLabel indicates an expected call of DeleteLabel.
-func (mr *MockConnectorMockRecorder) DeleteLabel(arg0, arg1 interface{}) *gomock.Call {
+// DeleteMailbox indicates an expected call of DeleteMailbox.
+func (mr *MockConnectorMockRecorder) DeleteMailbox(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLabel", reflect.TypeOf((*MockConnector)(nil).DeleteLabel), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMailbox", reflect.TypeOf((*MockConnector)(nil).DeleteMailbox), arg0, arg1)
 }
 
-// GetLabel mocks base method.
-func (m *MockConnector) GetLabel(arg0 context.Context, arg1 imap.LabelID) (imap.Mailbox, error) {
+// GetMailbox mocks base method.
+func (m *MockConnector) GetMailbox(arg0 context.Context, arg1 imap.MailboxID) (imap.Mailbox, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLabel", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetMailbox", arg0, arg1)
 	ret0, _ := ret[0].(imap.Mailbox)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetLabel indicates an expected call of GetLabel.
-func (mr *MockConnectorMockRecorder) GetLabel(arg0, arg1 interface{}) *gomock.Call {
+// GetMailbox indicates an expected call of GetMailbox.
+func (mr *MockConnectorMockRecorder) GetMailbox(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLabel", reflect.TypeOf((*MockConnector)(nil).GetLabel), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMailbox", reflect.TypeOf((*MockConnector)(nil).GetMailbox), arg0, arg1)
 }
 
 // GetMessage mocks base method.
-func (m *MockConnector) GetMessage(arg0 context.Context, arg1 imap.MessageID) (imap.Message, []imap.LabelID, error) {
+func (m *MockConnector) GetMessage(arg0 context.Context, arg1 imap.MessageID) (imap.Message, []imap.MailboxID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMessage", arg0, arg1)
 	ret0, _ := ret[0].(imap.Message)
-	ret1, _ := ret[1].([]imap.LabelID)
+	ret1, _ := ret[1].([]imap.MailboxID)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -137,6 +152,20 @@ func (m *MockConnector) GetMessage(arg0 context.Context, arg1 imap.MessageID) (i
 func (mr *MockConnectorMockRecorder) GetMessage(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMessage", reflect.TypeOf((*MockConnector)(nil).GetMessage), arg0, arg1)
+}
+
+// GetUIDValidity mocks base method.
+func (m *MockConnector) GetUIDValidity() imap.UID {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUIDValidity")
+	ret0, _ := ret[0].(imap.UID)
+	return ret0
+}
+
+// GetUIDValidity indicates an expected call of GetUIDValidity.
+func (mr *MockConnectorMockRecorder) GetUIDValidity() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUIDValidity", reflect.TypeOf((*MockConnector)(nil).GetUIDValidity))
 }
 
 // GetUpdates mocks base method.
@@ -153,18 +182,18 @@ func (mr *MockConnectorMockRecorder) GetUpdates() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdates", reflect.TypeOf((*MockConnector)(nil).GetUpdates))
 }
 
-// LabelMessages mocks base method.
-func (m *MockConnector) LabelMessages(arg0 context.Context, arg1 []imap.MessageID, arg2 imap.LabelID) error {
+// IsMailboxVisible mocks base method.
+func (m *MockConnector) IsMailboxVisible(arg0 context.Context, arg1 imap.MailboxID) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LabelMessages", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
+	ret := m.ctrl.Call(m, "IsMailboxVisible", arg0, arg1)
+	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// LabelMessages indicates an expected call of LabelMessages.
-func (mr *MockConnectorMockRecorder) LabelMessages(arg0, arg1, arg2 interface{}) *gomock.Call {
+// IsMailboxVisible indicates an expected call of IsMailboxVisible.
+func (mr *MockConnectorMockRecorder) IsMailboxVisible(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LabelMessages", reflect.TypeOf((*MockConnector)(nil).LabelMessages), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsMailboxVisible", reflect.TypeOf((*MockConnector)(nil).IsMailboxVisible), arg0, arg1)
 }
 
 // MarkMessagesFlagged mocks base method.
@@ -196,7 +225,7 @@ func (mr *MockConnectorMockRecorder) MarkMessagesSeen(arg0, arg1, arg2 interface
 }
 
 // MoveMessages mocks base method.
-func (m *MockConnector) MoveMessages(arg0 context.Context, arg1 []imap.MessageID, arg2, arg3 imap.LabelID) error {
+func (m *MockConnector) MoveMessages(arg0 context.Context, arg1 []imap.MessageID, arg2, arg3 imap.MailboxID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MoveMessages", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
@@ -209,30 +238,44 @@ func (mr *MockConnectorMockRecorder) MoveMessages(arg0, arg1, arg2, arg3 interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MoveMessages", reflect.TypeOf((*MockConnector)(nil).MoveMessages), arg0, arg1, arg2, arg3)
 }
 
-// UnlabelMessages mocks base method.
-func (m *MockConnector) UnlabelMessages(arg0 context.Context, arg1 []imap.MessageID, arg2 imap.LabelID) error {
+// RemoveMessagesFromMailbox mocks base method.
+func (m *MockConnector) RemoveMessagesFromMailbox(arg0 context.Context, arg1 []imap.MessageID, arg2 imap.MailboxID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnlabelMessages", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "RemoveMessagesFromMailbox", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// UnlabelMessages indicates an expected call of UnlabelMessages.
-func (mr *MockConnectorMockRecorder) UnlabelMessages(arg0, arg1, arg2 interface{}) *gomock.Call {
+// RemoveMessagesFromMailbox indicates an expected call of RemoveMessagesFromMailbox.
+func (mr *MockConnectorMockRecorder) RemoveMessagesFromMailbox(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlabelMessages", reflect.TypeOf((*MockConnector)(nil).UnlabelMessages), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMessagesFromMailbox", reflect.TypeOf((*MockConnector)(nil).RemoveMessagesFromMailbox), arg0, arg1, arg2)
 }
 
-// UpdateLabel mocks base method.
-func (m *MockConnector) UpdateLabel(arg0 context.Context, arg1 imap.LabelID, arg2 []string) error {
+// SetUIDValidity mocks base method.
+func (m *MockConnector) SetUIDValidity(arg0 imap.UID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateLabel", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "SetUIDValidity", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// UpdateLabel indicates an expected call of UpdateLabel.
-func (mr *MockConnectorMockRecorder) UpdateLabel(arg0, arg1, arg2 interface{}) *gomock.Call {
+// SetUIDValidity indicates an expected call of SetUIDValidity.
+func (mr *MockConnectorMockRecorder) SetUIDValidity(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLabel", reflect.TypeOf((*MockConnector)(nil).UpdateLabel), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUIDValidity", reflect.TypeOf((*MockConnector)(nil).SetUIDValidity), arg0)
+}
+
+// UpdateMailboxName mocks base method.
+func (m *MockConnector) UpdateMailboxName(arg0 context.Context, arg1 imap.MailboxID, arg2 []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMailboxName", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMailboxName indicates an expected call of UpdateMailboxName.
+func (mr *MockConnectorMockRecorder) UpdateMailboxName(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMailboxName", reflect.TypeOf((*MockConnector)(nil).UpdateMailboxName), arg0, arg1, arg2)
 }

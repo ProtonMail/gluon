@@ -261,7 +261,6 @@ func (uvq *UIDValidityQuery) Clone() *UIDValidityQuery {
 //		GroupBy(uidvalidity.FieldUIDValidity).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-//
 func (uvq *UIDValidityQuery) GroupBy(field string, fields ...string) *UIDValidityGroupBy {
 	grbuild := &UIDValidityGroupBy{config: uvq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -288,7 +287,6 @@ func (uvq *UIDValidityQuery) GroupBy(field string, fields ...string) *UIDValidit
 //	client.UIDValidity.Query().
 //		Select(uidvalidity.FieldUIDValidity).
 //		Scan(ctx, &v)
-//
 func (uvq *UIDValidityQuery) Select(fields ...string) *UIDValiditySelect {
 	uvq.fields = append(uvq.fields, fields...)
 	selbuild := &UIDValiditySelect{UIDValidityQuery: uvq}

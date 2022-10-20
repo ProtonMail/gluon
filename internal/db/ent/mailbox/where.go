@@ -81,7 +81,7 @@ func IDLTE(id imap.InternalMailboxID) predicate.Mailbox {
 }
 
 // RemoteID applies equality check predicate on the "RemoteID" field. It's identical to RemoteIDEQ.
-func RemoteID(v imap.LabelID) predicate.Mailbox {
+func RemoteID(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldRemoteID), vc))
@@ -119,7 +119,7 @@ func Subscribed(v bool) predicate.Mailbox {
 }
 
 // RemoteIDEQ applies the EQ predicate on the "RemoteID" field.
-func RemoteIDEQ(v imap.LabelID) predicate.Mailbox {
+func RemoteIDEQ(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldRemoteID), vc))
@@ -127,7 +127,7 @@ func RemoteIDEQ(v imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDNEQ applies the NEQ predicate on the "RemoteID" field.
-func RemoteIDNEQ(v imap.LabelID) predicate.Mailbox {
+func RemoteIDNEQ(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.NEQ(s.C(FieldRemoteID), vc))
@@ -135,7 +135,7 @@ func RemoteIDNEQ(v imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDIn applies the In predicate on the "RemoteID" field.
-func RemoteIDIn(vs ...imap.LabelID) predicate.Mailbox {
+func RemoteIDIn(vs ...imap.MailboxID) predicate.Mailbox {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = string(vs[i])
@@ -146,7 +146,7 @@ func RemoteIDIn(vs ...imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDNotIn applies the NotIn predicate on the "RemoteID" field.
-func RemoteIDNotIn(vs ...imap.LabelID) predicate.Mailbox {
+func RemoteIDNotIn(vs ...imap.MailboxID) predicate.Mailbox {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = string(vs[i])
@@ -157,7 +157,7 @@ func RemoteIDNotIn(vs ...imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDGT applies the GT predicate on the "RemoteID" field.
-func RemoteIDGT(v imap.LabelID) predicate.Mailbox {
+func RemoteIDGT(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.GT(s.C(FieldRemoteID), vc))
@@ -165,7 +165,7 @@ func RemoteIDGT(v imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDGTE applies the GTE predicate on the "RemoteID" field.
-func RemoteIDGTE(v imap.LabelID) predicate.Mailbox {
+func RemoteIDGTE(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.GTE(s.C(FieldRemoteID), vc))
@@ -173,7 +173,7 @@ func RemoteIDGTE(v imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDLT applies the LT predicate on the "RemoteID" field.
-func RemoteIDLT(v imap.LabelID) predicate.Mailbox {
+func RemoteIDLT(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.LT(s.C(FieldRemoteID), vc))
@@ -181,7 +181,7 @@ func RemoteIDLT(v imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDLTE applies the LTE predicate on the "RemoteID" field.
-func RemoteIDLTE(v imap.LabelID) predicate.Mailbox {
+func RemoteIDLTE(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldRemoteID), vc))
@@ -189,7 +189,7 @@ func RemoteIDLTE(v imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDContains applies the Contains predicate on the "RemoteID" field.
-func RemoteIDContains(v imap.LabelID) predicate.Mailbox {
+func RemoteIDContains(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.Contains(s.C(FieldRemoteID), vc))
@@ -197,7 +197,7 @@ func RemoteIDContains(v imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDHasPrefix applies the HasPrefix predicate on the "RemoteID" field.
-func RemoteIDHasPrefix(v imap.LabelID) predicate.Mailbox {
+func RemoteIDHasPrefix(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.HasPrefix(s.C(FieldRemoteID), vc))
@@ -205,7 +205,7 @@ func RemoteIDHasPrefix(v imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDHasSuffix applies the HasSuffix predicate on the "RemoteID" field.
-func RemoteIDHasSuffix(v imap.LabelID) predicate.Mailbox {
+func RemoteIDHasSuffix(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.HasSuffix(s.C(FieldRemoteID), vc))
@@ -227,7 +227,7 @@ func RemoteIDNotNil() predicate.Mailbox {
 }
 
 // RemoteIDEqualFold applies the EqualFold predicate on the "RemoteID" field.
-func RemoteIDEqualFold(v imap.LabelID) predicate.Mailbox {
+func RemoteIDEqualFold(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.EqualFold(s.C(FieldRemoteID), vc))
@@ -235,7 +235,7 @@ func RemoteIDEqualFold(v imap.LabelID) predicate.Mailbox {
 }
 
 // RemoteIDContainsFold applies the ContainsFold predicate on the "RemoteID" field.
-func RemoteIDContainsFold(v imap.LabelID) predicate.Mailbox {
+func RemoteIDContainsFold(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldRemoteID), vc))

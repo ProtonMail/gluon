@@ -5,7 +5,7 @@ import "testing"
 func TestPathConfig_ProtonPathConfig(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		s.setFolderPrefix("user", "Folders")
-		s.setLabelPrefix("user", "Labels")
+		s.setMailboxPrefix("user", "Labels")
 
 		c.C(`A001 CREATE Folders/TestFolder`)
 		c.Sx(`A001 OK`)
@@ -64,7 +64,7 @@ func TestPathConfig_ProtonPathConfig(t *testing.T) {
 func TestPathConfig_DotDelimiter(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
 		s.setFolderPrefix("user", "Folders")
-		s.setLabelPrefix("user", "Labels")
+		s.setMailboxPrefix("user", "Labels")
 
 		c.C(`A001 CREATE Folders.TestFolder`)
 		c.Sx(`A001 OK`)

@@ -1,7 +1,7 @@
 package imap
 
 type Mailbox struct {
-	ID LabelID
+	ID MailboxID
 
 	Name []string
 

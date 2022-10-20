@@ -262,7 +262,6 @@ func (mpfq *MailboxPermFlagQuery) Clone() *MailboxPermFlagQuery {
 //		GroupBy(mailboxpermflag.FieldValue).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-//
 func (mpfq *MailboxPermFlagQuery) GroupBy(field string, fields ...string) *MailboxPermFlagGroupBy {
 	grbuild := &MailboxPermFlagGroupBy{config: mpfq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -289,7 +288,6 @@ func (mpfq *MailboxPermFlagQuery) GroupBy(field string, fields ...string) *Mailb
 //	client.MailboxPermFlag.Query().
 //		Select(mailboxpermflag.FieldValue).
 //		Scan(ctx, &v)
-//
 func (mpfq *MailboxPermFlagQuery) Select(fields ...string) *MailboxPermFlagSelect {
 	mpfq.fields = append(mpfq.fields, fields...)
 	selbuild := &MailboxPermFlagSelect{MailboxPermFlagQuery: mpfq}

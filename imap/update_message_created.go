@@ -48,7 +48,7 @@ type MessagesCreated struct {
 type MessageCreated struct {
 	Message       Message
 	Literal       []byte
-	LabelIDs      []LabelID
+	MailboxIDs    []MailboxID
 	ParsedMessage *ParsedMessage
 }
 

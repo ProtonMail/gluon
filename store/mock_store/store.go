@@ -81,6 +81,21 @@ func (mr *MockStoreMockRecorder) Get(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockStore)(nil).Get), arg0)
 }
 
+// List mocks base method.
+func (m *MockStore) List() ([]imap.InternalMessageID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List")
+	ret0, _ := ret[0].([]imap.InternalMessageID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockStoreMockRecorder) List() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockStore)(nil).List))
+}
+
 // Set mocks base method.
 func (m *MockStore) Set(arg0 imap.InternalMessageID, arg1 []byte) error {
 	m.ctrl.T.Helper()

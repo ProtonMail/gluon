@@ -9,10 +9,10 @@ type MailboxDeleted struct {
 
 	*updateWaiter
 
-	MailboxID LabelID
+	MailboxID MailboxID
 }
 
-func NewMailboxDeleted(mailboxID LabelID) *MailboxDeleted {
+func NewMailboxDeleted(mailboxID MailboxID) *MailboxDeleted {
 	return &MailboxDeleted{
 		updateWaiter: newUpdateWaiter(),
 		MailboxID:    mailboxID,

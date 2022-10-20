@@ -27,7 +27,7 @@ var (
 type Sync struct {
 	connector utils.ConnectorImpl
 	server    *gluon.Server
-	mailboxes []imap.LabelID
+	mailboxes []imap.MailboxID
 }
 
 func NewSync() benchmark.Benchmark {
@@ -70,10 +70,10 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 		return nil, err
 	}
 
-	mboxIDs := make([]imap.LabelID, 0, *syncMBoxCountFlag)
+	mboxIDs := make([]imap.MailboxID, 0, *syncMBoxCountFlag)
 
 	for i := uint(0); i < *syncMBoxCountFlag; i++ {
-		mbox, err := c.Connector().CreateLabel(ctx, []string{uuid.NewString()})
+		mbox, err := c.Connector().CreateMailbox(ctx, []string{uuid.NewString()})
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 
 	flagSet := imap.NewFlagSet("\\Recent", "\\Draft", "\\Foo")
 
-	s.mailboxes = make([]imap.LabelID, 0, len(mboxIDs))
+	s.mailboxes = make([]imap.MailboxID, 0, len(mboxIDs))
 
 	for _, mboxID := range mboxIDs {
 		for i := uint(0); i < *syncMessageCountFlag; i++ {
@@ -132,7 +132,7 @@ func (s *Sync) Run(ctx context.Context) (*reporter.BenchmarkRun, error) {
 
 func (s *Sync) TearDown(ctx context.Context) error {
 	for _, id := range s.mailboxes {
-		if err := s.connector.Connector().DeleteLabel(ctx, id); err != nil {
+		if err := s.connector.Connector().DeleteMailbox(ctx, id); err != nil {
 			return err
 		}
 	}

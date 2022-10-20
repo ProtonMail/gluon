@@ -17,7 +17,7 @@ type Mailbox struct {
 	// ID of the ent.
 	ID imap.InternalMailboxID `json:"id,omitempty"`
 	// RemoteID holds the value of the "RemoteID" field.
-	RemoteID imap.LabelID `json:"RemoteID,omitempty"`
+	RemoteID imap.MailboxID `json:"RemoteID,omitempty"`
 	// Name holds the value of the "Name" field.
 	Name string `json:"Name,omitempty"`
 	// UIDNext holds the value of the "UIDNext" field.
@@ -118,7 +118,7 @@ func (m *Mailbox) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field RemoteID", values[i])
 			} else if value.Valid {
-				m.RemoteID = imap.LabelID(value.String)
+				m.RemoteID = imap.MailboxID(value.String)
 			}
 		case mailbox.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {

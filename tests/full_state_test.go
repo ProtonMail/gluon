@@ -183,7 +183,7 @@ func TestReceptionOnIdle(t *testing.T) {
  * Either delete it, Archive it or put it as unseen.
  */
 func TestMorningFiltering(t *testing.T) {
-	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, s *testSession, mbox string, mboxID imap.LabelID) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, s *testSession, mbox string, mboxID imap.MailboxID) {
 		require.NoError(t, client.Create("ReadLater"))
 		require.NoError(t, client.Create("Archive"))
 

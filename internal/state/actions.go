@@ -74,7 +74,7 @@ func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 	return state.user.QueueOrApplyStateUpdate(ctx, tx, NewMailboxDeletedStateUpdate(mboxID.InternalID))
 }
 
-func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.LabelID, oldName, newName string) error {
+func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.MailboxID, oldName, newName string) error {
 	if err := state.user.GetRemote().UpdateMailbox(
 		ctx,
 		mboxID,

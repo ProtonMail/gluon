@@ -105,7 +105,7 @@ func TestRenameBadHierarchy(t *testing.T) {
 }
 
 func TestRenameInbox(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap2.LabelID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap2.MailboxID) {
 		// Put all the 100 messages into the inbox.
 		c.C("tag move 1:* inbox").OK("tag")
 

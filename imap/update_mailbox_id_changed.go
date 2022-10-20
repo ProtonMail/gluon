@@ -10,10 +10,10 @@ type MailboxIDChanged struct {
 	*updateWaiter
 
 	InternalID InternalMailboxID
-	RemoteID   LabelID
+	RemoteID   MailboxID
 }
 
-func NewMailboxIDChanged(internalID InternalMailboxID, remoteID LabelID) *MailboxIDChanged {
+func NewMailboxIDChanged(internalID InternalMailboxID, remoteID MailboxID) *MailboxIDChanged {
 	return &MailboxIDChanged{
 		updateWaiter: newUpdateWaiter(),
 		InternalID:   internalID,

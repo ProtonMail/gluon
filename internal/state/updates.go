@@ -268,10 +268,10 @@ func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messag
 
 type mailboxRemoteIDUpdateStateUpdate struct {
 	SnapFilter
-	remoteID imap.LabelID
+	remoteID imap.MailboxID
 }
 
-func NewMailboxRemoteIDUpdateStateUpdate(internalID imap.InternalMailboxID, remoteID imap.LabelID) Update {
+func NewMailboxRemoteIDUpdateStateUpdate(internalID imap.InternalMailboxID, remoteID imap.MailboxID) Update {
 	return &mailboxRemoteIDUpdateStateUpdate{
 		SnapFilter: NewMBoxIDStateFilter(internalID),
 		remoteID:   remoteID,

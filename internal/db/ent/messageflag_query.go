@@ -299,7 +299,6 @@ func (mfq *MessageFlagQuery) WithMessages(opts ...func(*MessageQuery)) *MessageF
 //		GroupBy(messageflag.FieldValue).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-//
 func (mfq *MessageFlagQuery) GroupBy(field string, fields ...string) *MessageFlagGroupBy {
 	grbuild := &MessageFlagGroupBy{config: mfq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -326,7 +325,6 @@ func (mfq *MessageFlagQuery) GroupBy(field string, fields ...string) *MessageFla
 //	client.MessageFlag.Query().
 //		Select(messageflag.FieldValue).
 //		Scan(ctx, &v)
-//
 func (mfq *MessageFlagQuery) Select(fields ...string) *MessageFlagSelect {
 	mfq.fields = append(mfq.fields, fields...)
 	selbuild := &MessageFlagSelect{MessageFlagQuery: mfq}

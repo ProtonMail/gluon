@@ -12,11 +12,11 @@ type MailboxUpdated struct {
 
 	*updateWaiter
 
-	MailboxID   LabelID
+	MailboxID   MailboxID
 	MailboxName []string
 }
 
-func NewMailboxUpdated(mailboxID LabelID, mailboxName []string) *MailboxUpdated {
+func NewMailboxUpdated(mailboxID MailboxID, mailboxName []string) *MailboxUpdated {
 	return &MailboxUpdated{
 		updateWaiter: newUpdateWaiter(),
 		MailboxID:    mailboxID,
