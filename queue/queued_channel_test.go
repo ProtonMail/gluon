@@ -38,3 +38,15 @@ func TestQueuedChannel(t *testing.T) {
 	// Enqueuing more items after the queue is closed should return false.
 	require.False(t, queue.Enqueue(7, 8, 9))
 }
+
+func TestQueuedChannelDoesNotLeakIfThereAreNoReadersOnCloseAndDiscard(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	// Create a new queued channel.
+	queue := NewQueuedChannel[int](1, 3)
+
+	// Push some items to the queue.
+	require.True(t, queue.Enqueue(1, 2, 3))
+
+	queue.CloseAndDiscardQueued()
+}

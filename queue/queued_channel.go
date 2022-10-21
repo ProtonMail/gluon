@@ -9,6 +9,7 @@ import (
 // buffer size should be.
 type QueuedChannel[T any] struct {
 	ch     chan T
+	stopCh chan struct{}
 	items  []T
 	cond   *sync.Cond
 	closed atomicBool // Should use atomic.Bool once we use Go 1.19!
@@ -16,9 +17,10 @@ type QueuedChannel[T any] struct {
 
 func NewQueuedChannel[T any](chanBufferSize, queueCapacity int) *QueuedChannel[T] {
 	queue := &QueuedChannel[T]{
-		ch:    make(chan T, chanBufferSize),
-		items: make([]T, 0, queueCapacity),
-		cond:  sync.NewCond(&sync.Mutex{}),
+		ch:     make(chan T, chanBufferSize),
+		stopCh: make(chan struct{}),
+		items:  make([]T, 0, queueCapacity),
+		cond:   sync.NewCond(&sync.Mutex{}),
 	}
 
 	// The queue is initially not closed.
@@ -33,7 +35,13 @@ func NewQueuedChannel[T any](chanBufferSize, queueCapacity int) *QueuedChannel[T
 				return
 			}
 
-			queue.ch <- item
+			select {
+			case queue.ch <- item:
+				continue
+
+			case <-queue.stopCh:
+				return
+			}
 		}
 	}()
 
@@ -66,6 +74,12 @@ func (q *QueuedChannel[T]) Close() {
 	defer q.cond.L.Unlock()
 
 	q.cond.Broadcast()
+}
+
+// CloseAndDiscardQueued force closes the channel and does not guarantee that the remaining queued items will be read.
+func (q *QueuedChannel[T]) CloseAndDiscardQueued() {
+	close(q.stopCh)
+	q.Close()
 }
 
 func (q *QueuedChannel[T]) pop() (T, bool) {
