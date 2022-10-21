@@ -249,9 +249,14 @@ func (s *Server) Close(ctx context.Context) error {
 	s.serveErrCh.Close()
 
 	// Close any watchers.
+	s.watchersLock.Lock()
+	defer s.watchersLock.Unlock()
+
 	for _, watcher := range s.watchers {
 		watcher.Close()
 	}
+
+	s.watchers = nil
 
 	return nil
 }

@@ -43,5 +43,5 @@ func (w *Watcher[T]) Send(event T) bool {
 }
 
 func (w *Watcher[T]) Close() {
-	w.eventCh.Close()
+	w.eventCh.CloseAndDiscardQueued()
 }
