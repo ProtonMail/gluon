@@ -2,7 +2,6 @@ package imap
 
 import (
 	"context"
-	"sync"
 )
 
 type Waiter interface {
@@ -17,32 +16,26 @@ type Waiter interface {
 }
 
 type updateWaiter struct {
-	wg sync.WaitGroup
+	waitCh chan struct{}
 }
 
 func newUpdateWaiter() *updateWaiter {
-	var result updateWaiter
-
-	result.wg.Add(1)
-
-	return &result
+	return &updateWaiter{
+		waitCh: make(chan struct{}),
+	}
 }
 
 func (w *updateWaiter) Wait() {
-	w.wg.Wait()
+	<-w.waitCh
 }
 
 func (w *updateWaiter) WaitContext(ctx context.Context) {
-	waitCh := make(chan struct{})
-
-	go func() { w.wg.Wait(); close(waitCh) }()
-
 	select {
 	case <-ctx.Done():
-	case <-waitCh:
+	case <-w.waitCh:
 	}
 }
 
 func (w *updateWaiter) Done() {
-	w.wg.Done()
+	close(w.waitCh)
 }
