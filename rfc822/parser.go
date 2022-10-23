@@ -2,7 +2,10 @@ package rfc822
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
+	"io"
+	"mime/quotedprintable"
 )
 
 type Section struct {
@@ -51,6 +54,24 @@ func (section *Section) ParseHeader() (*Header, error) {
 
 func (section *Section) Body() []byte {
 	return section.literal[section.body:section.end]
+}
+
+func (section *Section) DecodedBody() ([]byte, error) {
+	header, err := section.ParseHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	switch header.Get("Content-Transfer-Encoding") {
+	case "base64":
+		return base64Decode(section.Body())
+
+	case "quoted-printable":
+		return quotedPrintableDecode(section.Body())
+
+	default:
+		return section.Body(), nil
+	}
 }
 
 func (section *Section) Literal() []byte {
@@ -188,4 +209,19 @@ func parse(literal []byte, identifier []int, begin, end int) *Section {
 		body:         begin + len(header),
 		end:          end,
 	}
+}
+
+func base64Decode(b []byte) ([]byte, error) {
+	res := make([]byte, base64.StdEncoding.DecodedLen(len(b)))
+
+	n, err := base64.StdEncoding.Decode(res, b)
+	if err != nil {
+		return nil, err
+	}
+
+	return res[0:n], nil
+}
+
+func quotedPrintableDecode(b []byte) ([]byte, error) {
+	return io.ReadAll(quotedprintable.NewReader(bytes.NewReader(b)))
 }
