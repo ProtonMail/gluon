@@ -46,18 +46,6 @@ func IsSilent(ctx context.Context) bool {
 	return ctx.Value(handleSilentKey) != nil
 }
 
-type handleRemoteUpdateCtxType struct{}
-
-var handleRemoteUpdateCtxKey handleRemoteUpdateCtxType
-
-func IsRemoteUpdateCtx(ctx context.Context) bool {
-	return ctx.Value(handleRemoteUpdateCtxKey) != nil
-}
-
-func NewRemoteUpdateCtx(ctx context.Context) context.Context {
-	return context.WithValue(ctx, handleRemoteUpdateCtxKey, struct{}{})
-}
-
 type disableParallelismCtxType struct{}
 
 var disableParallelismCtxKey disableParallelismCtxType
