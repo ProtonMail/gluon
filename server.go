@@ -6,18 +6,17 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/ProtonMail/gluon/internal/contexts"
 	"io"
 	"net"
-	"runtime/pprof"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/session"
+	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
@@ -202,13 +201,14 @@ func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
 				session, sessionID := s.addSession(ctx, conn)
 				defer s.removeSession(sessionID)
 
-				labels := pprof.Labels("go", "Serve", "SessionID", strconv.Itoa(sessionID))
-				pprof.Do(ctx, labels, func(ctx context.Context) {
+				logging.DoAnnotate(ctx, func(ctx context.Context) {
 					if err := session.Serve(ctx); err != nil {
 						if !errors.Is(err, net.ErrClosed) {
 							s.serveErrCh.Enqueue(err)
 						}
 					}
+				}, map[string]any{
+					"SessionID": sessionID,
 				})
 			})
 		}
@@ -313,14 +313,11 @@ func (s *Server) getNextID() int {
 func (s *Server) newEventCh(ctx context.Context) chan events.Event {
 	eventCh := make(chan events.Event)
 
-	go func() {
-		labels := pprof.Labels("Server", "Event Channel")
-		pprof.Do(ctx, labels, func(_ context.Context) {
-			for event := range eventCh {
-				s.publish(event)
-			}
-		})
-	}()
+	logging.GoAnnotate(ctx, func(ctx context.Context) {
+		for event := range eventCh {
+			s.publish(event)
+		}
+	})
 
 	return eventCh
 }

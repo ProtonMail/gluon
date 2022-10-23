@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
-	"runtime/pprof"
 	"testing"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/hash"
+	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
 	"github.com/emersion/go-imap/client"
@@ -272,9 +272,10 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	require.NoError(tb, server.Serve(ctx, listener))
 
 	// Run the test against the server.
-	labels := pprof.Labels("GLUON", "UNITTEST")
-	pprof.Do(ctx, labels, func(ctx context.Context) {
+	logging.DoAnnotate(ctx, func(ctx context.Context) {
 		tests(newTestSession(tb, listener, server, userIDs, conns, dbPaths, options))
+	}, map[string]any{
+		"Action": "Running gluon tests",
 	})
 
 	// Flush and remove user before shutdown.

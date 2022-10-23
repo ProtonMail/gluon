@@ -3,12 +3,12 @@ package tests
 import (
 	"context"
 	"fmt"
-	"runtime/pprof"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/logging"
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"
@@ -111,31 +111,31 @@ func TestReceptionOnIdle(t *testing.T) {
 		wg.Add(2)
 
 		// idling.
-		go func() {
+		logging.GoAnnotate(context.Background(), func(ctx context.Context) {
 			defer wg.Done()
-			labels := pprof.Labels("test", "client", "idling", "idle")
-			pprof.Do(context.Background(), labels, func(_ context.Context) {
-				done <- c.Idle(stop, nil)
-			})
-		}()
+			done <- c.Idle(stop, nil)
+		}, map[string]any{
+			"test":   "client",
+			"idling": "idle",
+		})
 
 		// receiving messages from another client.
-		go func() {
+		logging.GoAnnotate(context.Background(), func(ctx context.Context) {
 			defer wg.Done()
-			labels := pprof.Labels("test", "client", "sending", "idle")
-			pprof.Do(context.Background(), labels, func(_ context.Context) {
-				cli := sess.newClient()
-				defer func() {
-					require.NoError(t, cli.Logout())
-					time.Sleep(time.Second) // sending responses in bulks
-					close(stop)
-				}()
-				require.NoError(t, cli.Login("user", "pass"))
-				for i := 0; i < 3; i++ {
-					require.NoError(t, doAppendWithClientFromFile(t, cli, mailboxName, messagePath, time.Now()))
-				}
-			})
-		}()
+			cli := sess.newClient()
+			defer func() {
+				require.NoError(t, cli.Logout())
+				time.Sleep(time.Second) // sending responses in bulks
+				close(stop)
+			}()
+			require.NoError(t, cli.Login("user", "pass"))
+			for i := 0; i < 3; i++ {
+				require.NoError(t, doAppendWithClientFromFile(t, cli, mailboxName, messagePath, time.Now()))
+			}
+		}, map[string]any{
+			"test":    "client",
+			"sending": "idle",
+		})
 
 		// Listen for updates
 		var existsUpdate uint32 = 0

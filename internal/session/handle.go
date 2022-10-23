@@ -3,12 +3,11 @@ package session
 import (
 	"context"
 	"fmt"
-	"runtime/pprof"
-	"strconv"
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/queue"
 )
@@ -31,9 +30,8 @@ func (s *Session) handleOther(
 		}
 	}()
 
-	s.handleWG.Go(func() {
-		labels := pprof.Labels("go", "handleOther()", "SessionID", strconv.Itoa(s.sessionID))
-		pprof.Do(ctx, labels, func(_ context.Context) {
+	logging.DoAnnotate(ctx, func(ctx context.Context) {
+		s.handleWG.Go(func() {
 			defer close(resCh)
 
 			ctx := state.NewStateContext(ctx, s.state)
@@ -46,6 +44,10 @@ func (s *Session) handleOther(
 				}
 			}
 		})
+	}, map[string]any{
+		"Action": "Handling command",
+		"tag":    tag,
+		"cmd":    cmd,
 	})
 
 	return outCh.GetChannel()
