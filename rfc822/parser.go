@@ -86,6 +86,25 @@ func (section *Section) Part(identifier ...int) (*Section, error) {
 	return section, nil
 }
 
+func (section *Section) Walk(f func(*Section) error) error {
+	if err := f(section); err != nil {
+		return err
+	}
+
+	children, err := section.Children()
+	if err != nil {
+		return err
+	}
+
+	for _, child := range children {
+		if err := child.Walk(f); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (section *Section) load() error {
 	contentType, contentParams, err := section.ContentType()
 	if err != nil {
