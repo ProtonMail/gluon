@@ -9,7 +9,6 @@ import (
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/state"
@@ -102,7 +101,7 @@ func newUser(
 		defer cancel()
 
 		labels := pprof.Labels("go", "Connector Updates", "UserID", user.userID)
-		pprof.Do(contexts.NewRemoteUpdateCtx(ctx), labels, func(_ context.Context) {
+		pprof.Do(ctx, labels, func(_ context.Context) {
 			updateCh := user.updateInjector.GetUpdates()
 
 			for {
