@@ -2,11 +2,11 @@ package backend
 
 import (
 	"context"
-	"runtime/pprof"
 	"sync"
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/logging"
 )
 
 // updateInjector allows anyone to publish custom imap updates alongside the updates that are generated from the
@@ -20,7 +20,10 @@ type updateInjector struct {
 	forwardQuitCh chan struct{}
 }
 
-func newUpdateInjector(ctx context.Context, connector connector.Connector, userID string) *updateInjector {
+// newUpdateInjector creates a new updateInjector.
+//
+// nolint:contextcheck
+func newUpdateInjector(connector connector.Connector, userID string) *updateInjector {
 	injector := &updateInjector{
 		updatesCh:     make(chan imap.Update),
 		forwardQuitCh: make(chan struct{}),
@@ -28,15 +31,12 @@ func newUpdateInjector(ctx context.Context, connector connector.Connector, userI
 
 	injector.forwardWG.Add(1)
 
-	go func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		labels := pprof.Labels("go", "forward()", "UserID", userID)
-		pprof.Do(ctx, labels, func(ctx context.Context) {
-			injector.forward(ctx, connector.GetUpdates())
-		})
-	}()
+	logging.GoAnnotated(context.Background(), func(ctx context.Context) {
+		injector.forward(ctx, connector.GetUpdates())
+	}, logging.Labels{
+		"Action": "Forwarding updates",
+		"UserID": userID,
+	})
 
 	return injector
 }

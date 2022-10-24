@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"runtime/pprof"
 	"sync"
 	"sync/atomic"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
@@ -71,7 +71,7 @@ func newUser(
 	user := &user{
 		userID:           userID,
 		connector:        conn,
-		updateInjector:   newUpdateInjector(ctx, conn, userID),
+		updateInjector:   newUpdateInjector(conn, userID),
 		store:            store,
 		delimiter:        delimiter,
 		db:               database,
@@ -94,38 +94,36 @@ func newUser(
 
 	user.updateWG.Add(1)
 
-	go func() {
+	// nolint:contextcheck
+	logging.GoAnnotated(context.Background(), func(ctx context.Context) {
 		defer user.updateWG.Done()
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		updateCh := user.updateInjector.GetUpdates()
 
-		labels := pprof.Labels("go", "Connector Updates", "UserID", user.userID)
-		pprof.Do(ctx, labels, func(_ context.Context) {
-			updateCh := user.updateInjector.GetUpdates()
-
-			for {
-				select {
-				case update, ok := <-updateCh:
-					if !ok {
-						return
-					}
-
-					if err := user.apply(ctx, update); err != nil {
-						reporter.MessageWithContext(ctx,
-							"Failed to apply connector update",
-							reporter.Context{"error": err, "update": update.String()},
-						)
-
-						logrus.WithError(err).Errorf("Failed to apply update: %v", err)
-					}
-
-				case <-user.updateQuitCh:
+		for {
+			select {
+			case update, ok := <-updateCh:
+				if !ok {
 					return
 				}
+
+				if err := user.apply(ctx, update); err != nil {
+					reporter.MessageWithContext(ctx,
+						"Failed to apply connector update",
+						reporter.Context{"error": err, "update": update.String()},
+					)
+
+					logrus.WithError(err).Errorf("Failed to apply update: %v", err)
+				}
+
+			case <-user.updateQuitCh:
+				return
 			}
-		})
-	}()
+		}
+	}, logging.Labels{
+		"Action": "Applying connector updates",
+		"UserID": userID,
+	})
 
 	return user, nil
 }
