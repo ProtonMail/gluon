@@ -8,15 +8,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// nolint:govet
 func TestMessages(t *testing.T) {
 	msg := newMsgList(8)
 
-	msg.insert(ids.NewMessageIDPairWithoutRemote(1), 10, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.NewMessageIDPairWithoutRemote(2), 20, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.NewMessageIDPairWithoutRemote(3), 30, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.NewMessageIDPairWithoutRemote(4), 40, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.NewMessageIDPairWithoutRemote(5), 50, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.NewMessageIDPairWithoutRemote(6), 60, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{1, "1"}, 10, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{2, "2"}, 20, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{3, "3"}, 30, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{4, "4"}, 40, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{5, "5"}, 50, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{6, "6"}, 60, imap.NewFlagSet(imap.FlagSeen))
 
 	msg.remove(2)
 	msg.remove(4)
@@ -66,15 +67,16 @@ func TestMessages(t *testing.T) {
 	}
 }
 
+// nolint:govet
 func TestMessageUIDRange(t *testing.T) {
 	msg := newMsgList(8)
 
-	msg.insert(ids.NewMessageIDPairWithoutRemote(1), 10, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.NewMessageIDPairWithoutRemote(2), 20, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.NewMessageIDPairWithoutRemote(3), 30, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.NewMessageIDPairWithoutRemote(4), 40, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.NewMessageIDPairWithoutRemote(5), 50, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.NewMessageIDPairWithoutRemote(6), 60, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{1, "1"}, 10, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{2, "2"}, 20, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{3, "3"}, 30, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{4, "4"}, 40, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{5, "5"}, 50, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(ids.MessageIDPair{6, "6"}, 60, imap.NewFlagSet(imap.FlagSeen))
 
 	// UIDRange Higher than maximum
 	{

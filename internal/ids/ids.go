@@ -46,13 +46,6 @@ func NewMessageIDPair(msg *ent.Message) MessageIDPair {
 	}
 }
 
-func NewMessageIDPairWithoutRemote(internalID imap.InternalMessageID) MessageIDPair {
-	return MessageIDPair{
-		InternalID: internalID,
-		RemoteID:   "",
-	}
-}
-
 func SplitMessageIDPairSlice(s []MessageIDPair) ([]imap.InternalMessageID, []imap.MessageID) {
 	l := len(s)
 

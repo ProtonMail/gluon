@@ -585,6 +585,15 @@ func GetMessageIDFromRemoteID(ctx context.Context, client *ent.Client, id imap.M
 	return message.ID, nil
 }
 
+func GetMessageRemoteIDFromID(ctx context.Context, client *ent.Client, id imap.InternalMessageID) (imap.MessageID, error) {
+	message, err := client.Message.Query().Where(message.ID(id)).Select(message.FieldRemoteID).Only(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return message.RemoteID, nil
+}
+
 func NewFlagSet(msgUID *ent.UID, flags []*ent.MessageFlag) imap.FlagSet {
 	flagSet := imap.NewFlagSetFromSlice(xslices.Map(flags, func(flag *ent.MessageFlag) string {
 		return flag.Value

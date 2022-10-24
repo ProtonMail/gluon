@@ -40,7 +40,7 @@ func TestDummyConnector_validateUpdate(t *testing.T) {
 	require.Error(t, conn.validateUpdate([]string{"Folders", "something"}, []string{"other"}))
 	require.Error(t, conn.validateUpdate([]string{"something"}, []string{"Folders", "other"}))
 
-	conn.SetMailboxPrefix("Labels")
+	conn.SetLabelsPrefix("Labels")
 	require.NoError(t, conn.validateUpdate([]string{"Labels", "something"}, []string{"Labels", "other"}))
 	require.NoError(t, conn.validateUpdate([]string{"Labels", "something"}, []string{"Labels", "other", "long"}))
 	require.Error(t, conn.validateUpdate([]string{"Labels", "something"}, []string{"other"}))

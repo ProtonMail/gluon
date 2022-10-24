@@ -16,7 +16,7 @@ func (conn *Dummy) SetFolderPrefix(pfx string) {
 	conn.pushUpdate(imap.NewMailboxCreated(mbox))
 }
 
-func (conn *Dummy) SetMailboxPrefix(pfx string) {
+func (conn *Dummy) SetLabelsPrefix(pfx string) {
 	defer conn.Flush()
 
 	conn.pfxLabel = pfx
