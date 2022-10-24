@@ -22,15 +22,30 @@ func CreateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.MailboxID, name 
 		SetName(name)
 
 	for _, flag := range flags.ToSlice() {
-		create.AddFlags(tx.MailboxFlag.Create().SetValue(flag).SaveX(ctx))
+		flag, err := tx.MailboxFlag.Create().SetValue(flag).Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		create.AddFlags(flag)
 	}
 
 	for _, flag := range permFlags.ToSlice() {
-		create.AddPermanentFlags(tx.MailboxPermFlag.Create().SetValue(flag).SaveX(ctx))
+		permFlag, err := tx.MailboxPermFlag.Create().SetValue(flag).Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		create.AddPermanentFlags(permFlag)
 	}
 
 	for _, attr := range attrs.ToSlice() {
-		create.AddAttributes(tx.MailboxAttr.Create().SetValue(attr).SaveX(ctx))
+		attr, err := tx.MailboxAttr.Create().SetValue(attr).Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		create.AddAttributes(attr)
 	}
 
 	if len(mboxID) != 0 {
