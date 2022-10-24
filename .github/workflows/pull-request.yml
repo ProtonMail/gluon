@@ -75,8 +75,8 @@ jobs:
           name: ${{ matrix.os }}-libs
           path: internal/parser/lib
 
-      - name: Run go vet
-        run: go vet $(go list ./... | grep -v internal/parser)
+      - name: Run go mod tidy
+        run: go mod tidy
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
