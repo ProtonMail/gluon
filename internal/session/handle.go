@@ -3,12 +3,11 @@ package session
 import (
 	"context"
 	"fmt"
-	"runtime/pprof"
-	"strconv"
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/queue"
 )
@@ -32,11 +31,8 @@ func (s *Session) handleOther(
 	}()
 
 	s.handleWG.Go(func() {
-		labels := pprof.Labels("go", "handleOther()", "SessionID", strconv.Itoa(s.sessionID))
-		pprof.Do(ctx, labels, func(_ context.Context) {
+		logging.DoAnnotated(state.NewStateContext(ctx, s.state), func(ctx context.Context) {
 			defer close(resCh)
-
-			ctx := state.NewStateContext(ctx, s.state)
 
 			if err := s.handleCommand(ctx, tag, cmd, resCh, profiler); err != nil {
 				if res, ok := response.FromError(err); ok {
@@ -45,6 +41,10 @@ func (s *Session) handleOther(
 					resCh <- response.No(tag).WithError(err)
 				}
 			}
+		}, logging.Labels{
+			"Action":    "Handling IMAP command",
+			"SessionID": s.sessionID,
+			"Command":   cmd,
 		})
 	})
 

@@ -1,7 +1,10 @@
 package queue
 
 import (
+	"context"
 	"sync"
+
+	"github.com/ProtonMail/gluon/logging"
 )
 
 // QueuedChannel represents a channel on which queued items can be published without having to worry if the reader
@@ -26,7 +29,8 @@ func NewQueuedChannel[T any](chanBufferSize, queueCapacity int) *QueuedChannel[T
 	// The queue is initially not closed.
 	queue.closed.store(false)
 
-	go func() {
+	// Start the queue consumer.
+	logging.GoAnnotated(context.Background(), func(ctx context.Context) {
 		defer close(queue.ch)
 
 		for {
@@ -43,7 +47,7 @@ func NewQueuedChannel[T any](chanBufferSize, queueCapacity int) *QueuedChannel[T
 				return
 			}
 		}
-	}()
+	})
 
 	return queue
 }

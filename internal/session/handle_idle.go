@@ -2,12 +2,11 @@ package session
 
 import (
 	"context"
-	"runtime/pprof"
-	"strconv"
 	"time"
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/logging"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,20 +18,20 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, c
 	}
 
 	return s.state.Idle(ctx, func(pending []response.Response, resCh chan response.Response) error {
-		go func() {
-			labels := pprof.Labels("go", "Idle", "SessionID", strconv.Itoa(s.sessionID))
-			pprof.Do(ctx, labels, func(_ context.Context) {
-				if s.idleBulkTime != 0 {
-					sendResponsesInBulks(s, resCh, s.idleBulkTime)
-				} else {
-					for res := range resCh {
-						if err := res.Send(s); err != nil {
-							logrus.WithError(err).Error("Failed to send IDLE update")
-						}
+		logging.GoAnnotated(ctx, func(ctx context.Context) {
+			if s.idleBulkTime != 0 {
+				sendResponsesInBulks(s, resCh, s.idleBulkTime)
+			} else {
+				for res := range resCh {
+					if err := res.Send(s); err != nil {
+						logrus.WithError(err).Error("Failed to send IDLE update")
 					}
 				}
-			})
-		}()
+			}
+		}, logging.Labels{
+			"Action":    "Sending IDLE updates",
+			"SessionID": s.sessionID,
+		})
 
 		if err := response.Continuation().Send(s); err != nil {
 			return err
