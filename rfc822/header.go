@@ -33,6 +33,17 @@ type Header struct {
 	data       []byte
 }
 
+// NewEmptyHeader returns an empty header that can be filled with values.
+func NewEmptyHeader() *Header {
+	h, err := NewHeader([]byte{'\r', '\n'})
+	// The above code should never fail, but just in case.
+	if err != nil {
+		panic(err)
+	}
+
+	return h
+}
+
 func NewHeader(data []byte) (*Header, error) {
 	h := &Header{
 		keys: make(map[string][]*headerEntry),
