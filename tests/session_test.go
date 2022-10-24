@@ -26,7 +26,7 @@ type Connector interface {
 	connector.Connector
 
 	SetFolderPrefix(string)
-	SetMailboxPrefix(string)
+	SetLabelsPrefix(string)
 
 	MailboxCreated(imap.Mailbox) error
 	MailboxDeleted(imap.MailboxID) error
@@ -112,8 +112,8 @@ func (s *testSession) setFolderPrefix(user, prefix string) {
 	s.conns[s.userIDs[user]].SetFolderPrefix(prefix)
 }
 
-func (s *testSession) setMailboxPrefix(user, prefix string) {
-	s.conns[s.userIDs[user]].SetMailboxPrefix(prefix)
+func (s *testSession) setLabelsPrefix(user, prefix string) {
+	s.conns[s.userIDs[user]].SetLabelsPrefix(prefix)
 }
 
 func (s *testSession) mailboxCreated(user string, name []string, withData ...string) imap.MailboxID {

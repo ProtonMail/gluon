@@ -1,13 +1,20 @@
 package tests
 
 import (
+	"io"
+	"strconv"
 	"testing"
+	"time"
+
+	goimap "github.com/emersion/go-imap"
+	"github.com/emersion/go-imap/client"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRemoteCopy(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		s.setFolderPrefix("user", "Folders")
-		s.setMailboxPrefix("user", "Labels")
+		s.setLabelsPrefix("user", "Labels")
 
 		// Create two exclusive mailboxes, one with 100 messages.
 		s.mailboxCreated("user", []string{"Folders", "mbox1"}, "testdata/dovecot-crlf")
@@ -35,6 +42,51 @@ func TestRemoteCopy(t *testing.T) {
 		c.C(`A005 status Folders/mbox2 (messages)`).Sx(`MESSAGES 100`).OK(`A005`)
 		c.C(`A004 status Labels/mbox1 (messages)`).Sx(`MESSAGES 100`).OK(`A004`)
 		c.C(`A005 status Labels/mbox2 (messages)`).Sx(`MESSAGES 100`).OK(`A005`)
+	})
+}
+
+func TestAppendDuplicate(t *testing.T) {
+	const messagePath = "testdata/afternoon-meeting.eml"
+
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, s *testSession) {
+		s.setFolderPrefix("user", "Folders")
+		s.setLabelsPrefix("user", "Labels")
+
+		// Create exclusive mailboxes to be the origin and destination.
+		s.mailboxCreated("user", []string{"Folders", "origin"})
+		s.mailboxCreated("user", []string{"Folders", "destination"})
+
+		// Put the message in origin.
+		require.NoError(t, doAppendWithClientFromFile(t, client, "Folders/origin", messagePath, time.Now(), goimap.SeenFlag))
+
+		// Copy the message to destination.
+		status, err := client.Select("Folders/origin", false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(1), status.Messages)
+
+		section, err := goimap.ParseBodySectionName("BODY[]")
+		require.NoError(t, err)
+
+		messages := newFetchCommand(t, client).withItems(section.FetchItem()).fetch(strconv.Itoa(1)).messages
+		require.Len(t, messages, 1)
+
+		body, err := io.ReadAll(messages[0].GetBody(section))
+		require.NoError(t, err)
+
+		require.NoError(t, doAppendWithClient(client, "Folders/destination", string(body), time.Now(), goimap.SeenFlag))
+
+		// Check that the message is in destination.
+		status, err = client.Select("Folders/destination", false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(1), status.Messages)
+
+		// The folders are exclusive and so the remote will remove them automatically from the origin.
+		s.flush("user")
+
+		// Check that the message is no longer in origin.
+		status, err = client.Select("Folders/origin", false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(0), status.Messages)
 	})
 }
 

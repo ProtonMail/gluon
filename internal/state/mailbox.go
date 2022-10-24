@@ -166,7 +166,16 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 		}); err != nil || !exists {
 			logrus.WithError(err).Warn("The message has an unknown internal ID")
 		} else if res, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
-			return m.state.actionAddMessagesToMailbox(ctx, tx, []ids.MessageIDPair{ids.NewMessageIDPairWithoutRemote(msgID)}, ids.NewMailboxIDPair(m.mbox), m.snap == m.state.snap)
+			remoteID, err := db.GetMessageRemoteIDFromID(ctx, tx.Client(), msgID)
+			if err != nil {
+				return nil, err
+			}
+
+			return m.state.actionAddMessagesToMailbox(ctx, tx,
+				[]ids.MessageIDPair{{InternalID: msgID, RemoteID: remoteID}},
+				ids.NewMailboxIDPair(m.mbox),
+				m.snap == m.state.snap,
+			)
 		}); err != nil {
 			return 0, err
 		} else {
