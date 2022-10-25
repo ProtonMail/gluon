@@ -44,7 +44,6 @@ func (s *Session) handleOther(
 		}, logging.Labels{
 			"Action":    "Handling IMAP command",
 			"SessionID": s.sessionID,
-			"Command":   cmd,
 		})
 	})
 
