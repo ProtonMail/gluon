@@ -21,7 +21,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/goleak"
 )
 
 const defaultPeriod = time.Second
@@ -190,10 +189,10 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 // runServer initializes and starts the mailserver.
 func runServer(tb testing.TB, options *serverOptions, tests func(session *testSession)) {
 	loggerIn := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
-	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
+	defer loggerIn.Close()
 
-	// Setup goroutine leak detector here so that it doesn't report the goroutines created by logrus.
-	defer goleak.VerifyNone(tb, goleak.IgnoreCurrent())
+	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
+	defer loggerOut.Close()
 
 	// Log the (temporary?) directory to store gluon data.
 	logrus.Tracef("Gluon Data Dir: %v", options.dataDir)
