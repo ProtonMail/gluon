@@ -21,13 +21,13 @@ const (
 )
 
 func GoAnnotated(ctx context.Context, fn func(context.Context), labelMap ...Labels) {
-	pprof.Do(ctx, toLabelSet(labelMap...), func(ctx context.Context) {
+	pprofDo(ctx, toLabelSet(labelMap...), func(ctx context.Context) {
 		go fn(ctx)
 	})
 }
 
 func DoAnnotated(ctx context.Context, fn func(context.Context), labelMap ...Labels) {
-	pprof.Do(ctx, toLabelSet(labelMap...), fn)
+	pprofDo(ctx, toLabelSet(labelMap...), fn)
 }
 
 func toLabelSet(labelMap ...Labels) pprof.LabelSet {
