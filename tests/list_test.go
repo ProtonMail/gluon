@@ -262,7 +262,6 @@ func TestListSpecialUseAttributes(t *testing.T) {
 
 func TestListNilDelimiter(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter("")), func(c *testConnection, s *testSession) {
-		s.mailboxCreated("user", []string{"INBOX"})
 		s.mailboxCreated("user", []string{"Folders/Custom"})
 
 		c.C(`a list "" "*"`)
