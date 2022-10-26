@@ -2,6 +2,7 @@ run:
   go: 1.18
   skip-files:
     - internal/parser/parser.go
+    - internal/parser/extern
 
 linters:
   presets:
