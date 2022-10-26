@@ -47,8 +47,8 @@ runs:
     - name: Configure CMake project (mac)
       if: ${{ runner.os == 'macOS' }}
       run: |
-        cmake -B build-x64 -S internal/parser -G Ninja -W no-dev -DCMAKE_BUILD_TYPE=Release -DVCPKG_TARGET_TRIPLET=x64-osx -DCMAKE_OSX_ARCHITECTURES=x86_64 -DVCPKG_OSX_ARCHITECTURES=x86_64 -DVCPKG_BUILD_TYPE=release
-        cmake -B build-arm64 -S internal/parser -G Ninja -W no-dev -DCMAKE_BUILD_TYPE=Release -DVCPKG_TARGET_TRIPLET=arm64-osx -DCMAKE_OSX_ARCHITECTURES=arm64 -DVCPKG_OSX_ARCHITECTURES=arm64 -DVCPKG_BUILD_TYPE=release
+        cmake -B build-x64 -S internal/parser -G Ninja -W no-dev -DCMAKE_BUILD_TYPE=Release -DVCPKG_OVERLAY_TRIPLETS="$PWD/internal/parser/overlay-triplet" -DVCPKG_HOST_TRIPLET=x64-osx-min-11.0 -DVCPKG_TARGET_TRIPLET=x64-osx-min-11.0 -DCMAKE_OSX_ARCHITECTURES=x86_64 -DVCPKG_OSX_ARCHITECTURES=x86_64 -DVCPKG_BUILD_TYPE=release
+        cmake -B build-arm64 -S internal/parser -G Ninja -W no-dev -DCMAKE_BUILD_TYPE=Release -DVCPKG_OVERLAY_TRIPLETS="$PWD/internal/parser/overlay-triplet" -DVCPKG_TARGET_TRIPLET=arm64-osx-min-11.0 -DCMAKE_OSX_ARCHITECTURES=arm64 -DVCPKG_OSX_ARCHITECTURES=arm64 -DVCPKG_BUILD_TYPE=release
       shell: bash
 
     - name: Configure CMake project (not windows & not mac)
