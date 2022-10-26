@@ -14,6 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
+	"github.com/ProtonMail/gluon/wait"
 )
 
 type serverBuilder struct {
@@ -29,6 +30,7 @@ type serverBuilder struct {
 	storeBuilder       store.Builder
 	reporter           reporter.Reporter
 	disableParallelism bool
+	panicHandler       wait.PanicHandler
 }
 
 func newBuilder() (*serverBuilder, error) {
@@ -71,6 +73,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 		sessions:           make(map[int]*session.Session),
 		serveErrCh:         queue.NewQueuedChannel[error](1, 1),
 		serveDoneCh:        make(chan struct{}),
+		serveWG:            wait.Group{PanicHandler: builder.panicHandler},
 		inLogger:           builder.inLogger,
 		outLogger:          builder.outLogger,
 		tlsConfig:          builder.tlsConfig,
@@ -80,5 +83,6 @@ func (builder *serverBuilder) build() (*Server, error) {
 		versionInfo:        builder.versionInfo,
 		reporter:           builder.reporter,
 		disableParallelism: builder.disableParallelism,
+		panicHandler:       builder.panicHandler,
 	}, nil
 }

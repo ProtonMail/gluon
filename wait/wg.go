@@ -2,8 +2,13 @@ package wait
 
 import "sync"
 
+type PanicHandler interface {
+	HandlePanic()
+}
+
 type Group struct {
-	wg sync.WaitGroup
+	wg           sync.WaitGroup
+	PanicHandler PanicHandler
 }
 
 func (wg *Group) Go(f func()) {
@@ -11,6 +16,13 @@ func (wg *Group) Go(f func()) {
 
 	go func() {
 		defer wg.wg.Done()
+
+		defer func() {
+			if wg.PanicHandler != nil {
+				wg.PanicHandler.HandlePanic()
+			}
+		}()
+
 		f()
 	}()
 }

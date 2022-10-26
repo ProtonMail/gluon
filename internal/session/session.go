@@ -133,6 +133,10 @@ func (s *Session) SetTLSConfig(cfg *tls.Config) {
 	s.addCapability(imap.StartTLS)
 }
 
+func (s *Session) SetPanicHandler(panicHandler wait.PanicHandler) {
+	s.handleWG.PanicHandler = panicHandler
+}
+
 func (s *Session) Serve(ctx context.Context) error {
 	defer s.done(ctx)
 	defer s.handleWG.Wait()

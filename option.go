@@ -9,6 +9,7 @@ import (
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
+	"github.com/ProtonMail/gluon/wait"
 )
 
 // Option represents a type that can be used to configure the server.
@@ -176,4 +177,19 @@ func (withDisableParallelism) config(builder *serverBuilder) {
 
 func WithDisableParallelism() Option {
 	return &withDisableParallelism{}
+}
+
+// WithPanicHandler will add handler to recover from panic.
+func WithPanicHandler(panicHandler wait.PanicHandler) Option {
+	return &withPanicHandler{
+		panicHandler: panicHandler,
+	}
+}
+
+type withPanicHandler struct {
+	panicHandler wait.PanicHandler
+}
+
+func (opt withPanicHandler) config(builder *serverBuilder) {
+	builder.panicHandler = opt.panicHandler
 }

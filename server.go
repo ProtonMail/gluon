@@ -82,6 +82,9 @@ type Server struct {
 
 	// disableParallelism indicates whether the server is allowed to parallelize certain IMAP commands.
 	disableParallelism bool
+
+	// panicHandler will be used to recover from panic
+	panicHandler wait.PanicHandler
 }
 
 // New creates a new server with the given options.
@@ -177,7 +180,7 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 
 // serve handles incoming connections and starts a new goroutine for each.
 func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
-	var connWG wait.Group
+	connWG := wait.Group{PanicHandler: s.panicHandler}
 	defer connWG.Wait()
 
 	for {
@@ -275,6 +278,10 @@ func (s *Server) addSession(ctx context.Context, conn net.Conn) (*session.Sessio
 		s.sessions[nextID].SetTLSConfig(s.tlsConfig)
 	}
 
+	if s.panicHandler != nil {
+		s.sessions[nextID].SetPanicHandler(s.panicHandler)
+	}
+
 	if s.inLogger != nil {
 		s.sessions[nextID].SetIncomingLogger(s.inLogger)
 	}
@@ -316,6 +323,8 @@ func (s *Server) newEventCh(ctx context.Context) chan events.Event {
 	eventCh := make(chan events.Event)
 
 	logging.GoAnnotated(ctx, func(ctx context.Context) {
+		defer s.panicHandler.HandlePanic()
+
 		for event := range eventCh {
 			s.publish(event)
 		}
