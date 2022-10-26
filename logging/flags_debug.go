@@ -10,7 +10,7 @@ import (
 // StackKey refers to the stack trace.
 const StackKey = "stack"
 
-func getDefaultLabelSet(pc uintptr, file string, line int) Labels {
+func getDefaultLabels(pc uintptr, file string, line int) Labels {
 	return Labels{
 		FnKey:    runtime.FuncForPC(pc).Name(),
 		FileKey:  file,
