@@ -27,7 +27,7 @@ type Connector interface {
 	CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error)
 
 	// UpdateMailbox sets the name of the mailbox with the given ID to the given new name.
-	UpdateMailbox(ctx context.Context, mboxID imap.MailboxID, oldName, newName []string) error
+	UpdateMailbox(ctx context.Context, mboxID imap.MailboxID, newName []string) error
 
 	// DeleteMailbox deletes the mailbox with the given ID and name.
 	DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) error

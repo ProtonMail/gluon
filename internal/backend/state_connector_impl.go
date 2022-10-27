@@ -46,7 +46,7 @@ func (sc *stateConnectorImpl) CreateMailbox(ctx context.Context, name []string) 
 	return mbox, nil
 }
 
-func (sc *stateConnectorImpl) UpdateMailbox(ctx context.Context, mboxID imap.MailboxID, oldName, newName []string) error {
+func (sc *stateConnectorImpl) UpdateMailbox(ctx context.Context, mboxID imap.MailboxID, newName []string) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
 	return sc.connector.UpdateMailboxName(ctx, mboxID, newName)
@@ -82,11 +82,7 @@ func (sc *stateConnectorImpl) AddMessagesToMailbox(
 ) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	if err := sc.connector.AddMessagesToMailbox(ctx, messageIDs, mboxID); err != nil {
-		return sc.refresh(ctx, messageIDs, mboxID)
-	}
-
-	return nil
+	return sc.connector.AddMessagesToMailbox(ctx, messageIDs, mboxID)
 }
 
 func (sc *stateConnectorImpl) RemoveMessagesFromMailbox(
@@ -96,11 +92,7 @@ func (sc *stateConnectorImpl) RemoveMessagesFromMailbox(
 ) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	if err := sc.connector.RemoveMessagesFromMailbox(ctx, messageIDs, mboxID); err != nil {
-		return sc.refresh(ctx, messageIDs, mboxID)
-	}
-
-	return nil
+	return sc.connector.RemoveMessagesFromMailbox(ctx, messageIDs, mboxID)
 }
 
 func (sc *stateConnectorImpl) MoveMessagesFromMailbox(
@@ -111,31 +103,19 @@ func (sc *stateConnectorImpl) MoveMessagesFromMailbox(
 ) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	if err := sc.connector.MoveMessages(ctx, messageIDs, mboxFromID, mboxToID); err != nil {
-		return sc.refresh(ctx, messageIDs, mboxFromID)
-	}
-
-	return nil
+	return sc.connector.MoveMessages(ctx, messageIDs, mboxFromID, mboxToID)
 }
 
 func (sc *stateConnectorImpl) SetMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	if err := sc.connector.MarkMessagesSeen(ctx, messageIDs, seen); err != nil {
-		return sc.refresh(ctx, messageIDs)
-	}
-
-	return nil
+	return sc.connector.MarkMessagesSeen(ctx, messageIDs, seen)
 }
 
 func (sc *stateConnectorImpl) SetMessagesFlagged(ctx context.Context, messageIDs []imap.MessageID, flagged bool) error {
 	ctx = sc.newContextWithMetadata(ctx)
 
-	if err := sc.connector.MarkMessagesFlagged(ctx, messageIDs, flagged); err != nil {
-		return sc.refresh(ctx, messageIDs)
-	}
-
-	return nil
+	return sc.connector.MarkMessagesFlagged(ctx, messageIDs, flagged)
 }
 
 func (sc *stateConnectorImpl) SetUIDValidity(uidValidity imap.UID) error {
@@ -164,34 +144,4 @@ func (sc *stateConnectorImpl) newContextWithMetadata(ctx context.Context) contex
 	}
 
 	return ctx
-}
-
-func (sc *stateConnectorImpl) refresh(ctx context.Context, messageIDs []imap.MessageID, mboxIDs ...imap.MailboxID) error {
-	for _, messageID := range messageIDs {
-		message, mboxIDs, err := sc.connector.GetMessage(ctx, messageID)
-		if err != nil {
-			return err
-		}
-
-		sc.user.updateInjector.send(ctx, imap.NewMessageMailboxesUpdated(
-			message.ID,
-			mboxIDs,
-			message.Flags.ContainsUnchecked(imap.FlagSeenLowerCase),
-			message.Flags.ContainsUnchecked(imap.FlagFlaggedLowerCase),
-		), true)
-	}
-
-	for _, mboxID := range mboxIDs {
-		mailbox, err := sc.connector.GetMailbox(ctx, mboxID)
-		if err != nil {
-			return err
-		}
-
-		sc.user.updateInjector.send(ctx, imap.NewMailboxUpdated(
-			mailbox.ID,
-			mailbox.Name,
-		), true)
-	}
-
-	return nil
 }

@@ -298,12 +298,12 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 			newInferior := newName + strings.TrimPrefix(inferior, oldName)
 
-			if err := state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, inferior, newInferior); err != nil {
+			if err := state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, newInferior); err != nil {
 				return err
 			}
 		}
 
-		return state.actionUpdateMailbox(ctx, tx, result.MBox.RemoteID, oldName, newName)
+		return state.actionUpdateMailbox(ctx, tx, result.MBox.RemoteID, newName)
 	})
 }
 
