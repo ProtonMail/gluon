@@ -99,10 +99,6 @@ func (conn *Dummy) GetUpdates() <-chan imap.Update {
 	return conn.updateCh
 }
 
-func (conn *Dummy) GetMailbox(ctx context.Context, mboxID imap.MailboxID) (imap.Mailbox, error) {
-	return conn.state.getMailbox(mboxID)
-}
-
 func (conn *Dummy) CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error) {
 	exclusive, err := conn.validateName(name)
 	if err != nil {
@@ -139,15 +135,6 @@ func (conn *Dummy) DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) err
 	conn.pushUpdate(imap.NewMailboxDeleted(mboxID))
 
 	return nil
-}
-
-func (conn *Dummy) GetMessage(ctx context.Context, messageID imap.MessageID) (imap.Message, []imap.MailboxID, error) {
-	message, err := conn.state.getMessage(messageID)
-	if err != nil {
-		return imap.Message{}, nil, err
-	}
-
-	return message, conn.state.getMailboxIDs(messageID), nil
 }
 
 func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.MailboxID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error) {
