@@ -12,9 +12,6 @@ type Connector interface {
 	// Authorize returns whether the given username/password combination are valid for this connector.
 	Authorize(username string, password []byte) bool
 
-	// GetMailbox returns information about the mailbox with the given ID.
-	GetMailbox(ctx context.Context, mboxID imap.MailboxID) (imap.Mailbox, error)
-
 	// CreateMailbox creates a mailbox with the given name.
 	CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error)
 
@@ -26,9 +23,6 @@ type Connector interface {
 
 	// DeleteMailbox deletes the mailbox with the given ID.
 	DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) error
-
-	// GetMessage returns the message with the given ID.
-	GetMessage(ctx context.Context, messageID imap.MessageID) (imap.Message, []imap.MailboxID, error)
 
 	// CreateMessage creates a new message on the remote.
 	CreateMessage(ctx context.Context, mboxID imap.MailboxID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error)

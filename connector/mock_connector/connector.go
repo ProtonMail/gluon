@@ -123,37 +123,6 @@ func (mr *MockConnectorMockRecorder) DeleteMailbox(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMailbox", reflect.TypeOf((*MockConnector)(nil).DeleteMailbox), arg0, arg1)
 }
 
-// GetMailbox mocks base method.
-func (m *MockConnector) GetMailbox(arg0 context.Context, arg1 imap.MailboxID) (imap.Mailbox, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMailbox", arg0, arg1)
-	ret0, _ := ret[0].(imap.Mailbox)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetMailbox indicates an expected call of GetMailbox.
-func (mr *MockConnectorMockRecorder) GetMailbox(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMailbox", reflect.TypeOf((*MockConnector)(nil).GetMailbox), arg0, arg1)
-}
-
-// GetMessage mocks base method.
-func (m *MockConnector) GetMessage(arg0 context.Context, arg1 imap.MessageID) (imap.Message, []imap.MailboxID, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMessage", arg0, arg1)
-	ret0, _ := ret[0].(imap.Message)
-	ret1, _ := ret[1].([]imap.MailboxID)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// GetMessage indicates an expected call of GetMessage.
-func (mr *MockConnectorMockRecorder) GetMessage(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMessage", reflect.TypeOf((*MockConnector)(nil).GetMessage), arg0, arg1)
-}
-
 // GetUIDValidity mocks base method.
 func (m *MockConnector) GetUIDValidity() imap.UID {
 	m.ctrl.T.Helper()
