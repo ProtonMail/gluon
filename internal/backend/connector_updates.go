@@ -450,7 +450,9 @@ func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID 
 }
 
 func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageDeleted) error {
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	var stateUpdates []state.Update
+
+	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		if err := db.MarkMessageAsDeletedWithRemoteID(ctx, tx, update.MessageID); err != nil {
 			return err
 		}
@@ -460,8 +462,30 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 			return err
 		}
 
-		user.queueStateUpdate(state.NewRemoteMessageDeletedStateUpdate(internalMessageID, update.MessageID))
+		mailboxes, err := db.GetMessageMailboxIDs(ctx, tx.Client(), internalMessageID)
+		if err != nil {
+			return err
+		}
+
+		messageIDs := []imap.InternalMessageID{internalMessageID}
+
+		for _, mailbox := range mailboxes {
+			updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mailbox, messageIDs)
+			if err != nil {
+				return err
+			}
+
+			stateUpdates = append(stateUpdates, updates...)
+		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	for _, update := range stateUpdates {
+		user.queueStateUpdate(update)
+	}
+
+	return nil
 }
