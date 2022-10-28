@@ -236,12 +236,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 		if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 			// Create messages in the store
 			for _, msg := range chunk {
-				literalWithHeader, err := rfc822.SetHeaderValue(msg.Literal, ids.InternalIDKey, msg.InternalID.String())
-				if err != nil {
-					return fmt.Errorf("failed to set internal ID: %w", err)
-				}
-
-				if err := user.store.Set(msg.InternalID, literalWithHeader); err != nil {
+				if err := user.store.Set(msg.InternalID, msg.Literal); err != nil {
 					return fmt.Errorf("failed to store message literal: %w", err)
 				}
 			}
