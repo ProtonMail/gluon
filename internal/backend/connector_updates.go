@@ -167,15 +167,25 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	messageForMBox := make(map[imap.InternalMailboxID][]imap.InternalMessageID)
 	mboxInternalIDMap := make(map[imap.MailboxID]imap.InternalMailboxID)
 
+	var messagesToDelete []imap.InternalMessageID
+
 	if err := user.db.Read(ctx, func(ctx context.Context, client *ent.Client) error {
 		for _, message := range update.Messages {
 			internalID, ok := messagesToCreateFilter[message.Message.ID]
 			if !ok {
-				_, err := db.GetMessageIDFromRemoteID(ctx, client, message.Message.ID)
+				existingMessage, err := db.GetMessageFromRemoteIDWithDeletedFlag(ctx, client, message.Message.ID)
 				if ent.IsNotFound(err) {
 					internalID = user.nextMessageID()
-				} else {
+				} else if err != nil {
 					return err
+				} else if existingMessage.Deleted {
+					// This message has been marked as delete, but we received a create with the same messageID, we
+					// need to delete the old message from the database first before we can insert the new one.
+					logrus.WithField("message-id", message.Message.ID.ShortID()).Debug("Message marked delete, will be replaced with new incoming message")
+					messagesToDelete = append(messagesToDelete, existingMessage.ID)
+				} else {
+					// Message exists, but has not been marked deleted, so we can't replace.
+					return nil
 				}
 
 				literal, err := rfc822.SetHeaderValue(message.Literal, ids.InternalIDKey, internalID.String())
@@ -232,8 +242,15 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	// We sadly have to split this up into two separate transactions where we create the messages and one where we
 	// assign them to the mailbox. There's an upper limit to the number of items badger can track in one transaction.
 	// This way we can keep the database consistent.
-	for _, chunk := range xslices.Chunk(messagesToCreate, db.ChunkLimit) {
-		if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		// Delete messages that need to be replaced
+		for _, chunk := range xslices.Chunk(messagesToDelete, db.ChunkLimit) {
+			if err := db.DeleteMessages(ctx, tx, chunk...); err != nil {
+				return err
+			}
+		}
+
+		for _, chunk := range xslices.Chunk(messagesToCreate, db.ChunkLimit) {
 			// Create messages in the store
 			for _, msg := range chunk {
 				if err := user.store.Set(msg.InternalID, msg.Literal); err != nil {
@@ -245,11 +262,11 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 			if _, err := db.CreateMessages(ctx, tx, chunk...); err != nil {
 				return err
 			}
-
-			return nil
-		}); err != nil {
-			return err
 		}
+
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
