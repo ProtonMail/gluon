@@ -2,6 +2,7 @@ package tests
 
 import (
 	"testing"
+	"time"
 )
 
 func TestDeleted(t *testing.T) {
@@ -129,5 +130,50 @@ func TestUIDDeleted(t *testing.T) {
 		c.C(`A00E STATUS mbox1 (MESSAGES)`)
 		c.S(`* STATUS "mbox1" (MESSAGES 1)`)
 		c.S(`A00E OK STATUS`)
+	})
+}
+
+func TestRemoteDeleteOnSelectedMailboxRemoveMessageFromMailbox(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		mailboxID := s.mailboxCreated("user", []string{"mbox1"})
+		messageID1 := s.messageCreated("user", mailboxID, []byte("To: 3@3.pm"), time.Now())
+		s.messageCreated("user", mailboxID, []byte("To: 4@4.pm"), time.Now())
+
+		s.flush("user")
+
+		c.C(`A002 STATUS mbox1 (MESSAGES)`)
+		c.S(`* STATUS "mbox1" (MESSAGES 2)`)
+		c.S(`A002 OK STATUS`)
+
+		c.C("A003 SELECT mbox1").OK("A003")
+
+		s.messageDeleted("user", messageID1)
+		s.flush("user")
+
+		c.C(`A002 STATUS mbox1 (MESSAGES)`)
+		c.S(`* 1 EXPUNGE`)
+		c.S(`* STATUS "mbox1" (MESSAGES 1)`)
+		c.S(`A002 OK STATUS`)
+	})
+}
+
+func TestRemoteDeleteOnNonSelectedMailboxRemoveMessageFromMailbox(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		mailboxID := s.mailboxCreated("user", []string{"mbox1"})
+		messageID1 := s.messageCreated("user", mailboxID, []byte("To: 3@3.pm"), time.Now())
+		s.messageCreated("user", mailboxID, []byte("To: 4@4.pm"), time.Now())
+
+		s.flush("user")
+
+		c.C(`A002 STATUS mbox1 (MESSAGES)`)
+		c.S(`* STATUS "mbox1" (MESSAGES 2)`)
+		c.S(`A002 OK STATUS`)
+
+		s.messageDeleted("user", messageID1)
+		s.flush("user")
+
+		c.C(`A002 STATUS mbox1 (MESSAGES)`)
+		c.S(`* STATUS "mbox1" (MESSAGES 1)`)
+		c.S(`A002 OK STATUS`)
 	})
 }
