@@ -20,7 +20,7 @@ import (
 func (user *user) apply(ctx context.Context, update imap.Update) error {
 	defer update.Done()
 
-	logrus.WithField("update", update).Debug("Applying update")
+	logrus.WithField("update", update).WithField("user-id", user.userID).Debug("Applying update")
 
 	switch update := update.(type) {
 	case *imap.MailboxCreated:
