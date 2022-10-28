@@ -585,6 +585,15 @@ func GetMessageIDFromRemoteID(ctx context.Context, client *ent.Client, id imap.M
 	return message.ID, nil
 }
 
+func GetMessageFromRemoteIDWithDeletedFlag(ctx context.Context, client *ent.Client, id imap.MessageID) (*ent.Message, error) {
+	message, err := client.Message.Query().Where(message.RemoteID(id)).Select(message.FieldID, message.FieldDeleted).Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return message, nil
+}
+
 func GetMessageRemoteIDFromID(ctx context.Context, client *ent.Client, id imap.InternalMessageID) (imap.MessageID, error) {
 	message, err := client.Message.Query().Where(message.ID(id)).Select(message.FieldRemoteID).Only(ctx)
 	if err != nil {
