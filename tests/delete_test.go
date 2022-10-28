@@ -164,3 +164,18 @@ func TestDeleteExaminedMailboxCausesDisconnectOnOtherClients(t *testing.T) {
 		c[2].S(response.Bye().WithInconsistentState().String())
 	})
 }
+
+func TestDeleteSelectedMailboxWithRemoteUpdateCausesDisconnect(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		mailboxID := s.mailboxCreated("user", []string{"mbox1"})
+		s.flush("user")
+
+		c.C("b002 SELECT mbox1").OK("b002")
+
+		s.mailboxDeleted("user", mailboxID)
+		s.flush("user")
+
+		c.C("b003 NOOP")
+		c.S(response.Bye().WithInconsistentState().String())
+	})
+}
