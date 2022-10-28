@@ -2,8 +2,8 @@ package imap
 
 import (
 	"fmt"
-
 	"github.com/ProtonMail/gluon/rfc822"
+	"github.com/bradenaw/juniper/xslices"
 )
 
 type ParsedMessage struct {
@@ -60,5 +60,16 @@ func NewMessagesCreated(updates ...*MessageCreated) *MessagesCreated {
 }
 
 func (u *MessagesCreated) String() string {
-	return fmt.Sprintf("MessagesCreated (length = %v)", len(u.Messages))
+	return fmt.Sprintf("MessagesCreated: MessageCount=%v Messages=%v",
+		len(u.Messages),
+		xslices.Map(u.Messages, func(m *MessageCreated) string {
+			return fmt.Sprintf("ID:%v Mailboxes:%v Flags:%s",
+				m.Message.ID.ShortID(),
+				xslices.Map(m.MailboxIDs, func(mboxID MailboxID) string {
+					return mboxID.ShortID()
+				}),
+				m.Message.Flags.ToSlice(),
+			)
+		}),
+	)
 }
