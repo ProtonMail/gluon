@@ -87,15 +87,18 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 
 // applyMailboxDeleted applies a MailboxDeleted update.
 func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxDeleted) error {
-	if exists, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (bool, error) {
-		return db.MailboxExistsWithRemoteID(ctx, client, update.MailboxID)
-	}); err != nil {
+	internalMailboxID, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (imap.InternalMailboxID, error) {
+		return db.GetMailboxIDFromRemoteID(ctx, client, update.MailboxID)
+	})
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil
+		}
+
 		return err
-	} else if !exists {
-		return nil
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		uidValidity, increased, err := db.DeleteMailboxWithRemoteID(ctx, tx, update.MailboxID)
 		if err != nil {
 			return err
@@ -108,7 +111,13 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	user.queueStateUpdate(state.NewMailboxDeletedStateUpdate(internalMailboxID))
+
+	return nil
 }
 
 // applyMailboxUpdated applies a MailboxUpdated update.

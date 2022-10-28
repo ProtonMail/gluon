@@ -120,6 +120,10 @@ func (s *testSession) mailboxCreated(user string, name []string, withData ...str
 	return s.mailboxCreatedWithAttributes(user, name, defaultAttributes, withData...)
 }
 
+func (s *testSession) mailboxDeleted(user string, id imap.MailboxID) {
+	require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxDeleted(id))
+}
+
 func (s *testSession) mailboxCreatedWithAttributes(user string, name []string, attributes imap.FlagSet, withData ...string) imap.MailboxID {
 	mboxID := imap.MailboxID(utils.NewRandomMailboxID())
 

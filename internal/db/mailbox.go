@@ -70,6 +70,15 @@ func MailboxExistsWithRemoteID(ctx context.Context, client *ent.Client, mboxID i
 	return client.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Exist(ctx)
 }
 
+func GetMailboxIDFromRemoteID(ctx context.Context, client *ent.Client, mboxID imap.MailboxID) (imap.InternalMailboxID, error) {
+	mbox, err := client.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Select(mailbox.FieldID).Only(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return mbox.ID, nil
+}
+
 func MailboxExistsWithName(ctx context.Context, client *ent.Client, name string) (bool, error) {
 	return client.Mailbox.Query().Where(mailbox.Name(name)).Exist(ctx)
 }
