@@ -2,6 +2,9 @@ package session
 
 import (
 	"context"
+	"fmt"
+	"github.com/bradenaw/juniper/xslices"
+	"golang.org/x/exp/maps"
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -62,7 +65,15 @@ func (s *Session) readCommand(del string) (string, *proto.Command, error) {
 		return "", nil, err
 	}
 
-	s.logIncoming(string(line))
+	if len(literals) == 0 {
+		s.logIncoming(string(line))
+	} else {
+		s.logIncoming(fmt.Sprintf("%v Literals: %v", string(line),
+			xslices.Map(maps.Keys(literals), func(k string) string {
+				return fmt.Sprintf("%v: '%v'", k, string(literals[k]))
+			}),
+		))
+	}
 
 	tag, cmd, err := parse(line, literals, del)
 	if err != nil {
