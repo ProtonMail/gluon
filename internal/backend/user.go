@@ -182,11 +182,14 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 	return user.store.Delete(ids...)
 }
 
-func (user *user) queueStateUpdate(update state.Update) {
+func (user *user) queueStateUpdate(updates ...state.Update) {
 	if err := user.forState(func(state *state.State) error {
-		if !state.QueueUpdates(update) {
-			logrus.Errorf("Failed to push update to state %v", state.StateID)
+		for _, update := range updates {
+			if !state.QueueUpdates(update) {
+				logrus.Errorf("Failed to push update to state %v", state.StateID)
+			}
 		}
+
 		return nil
 	}); err != nil {
 		panic("unexpected, should not happen")

@@ -131,6 +131,35 @@ func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, m
 	return nil
 }
 
+func (conn *Dummy) MessageUpdated(message imap.Message, literal []byte, mboxIDs []imap.MailboxID) error {
+	conn.state.lock.Lock()
+	defer conn.state.lock.Unlock()
+
+	parsedMessage, err := imap.NewParsedMessage(literal)
+	if err != nil {
+		return err
+	}
+
+	mboxIDMap := make(map[imap.MailboxID]struct{})
+
+	for _, mboxID := range mboxIDs {
+		mboxIDMap[mboxID] = struct{}{}
+	}
+
+	conn.state.messages[message.ID] = &dummyMessage{
+		literal: literal,
+		seen:    message.Flags.Contains(imap.FlagSeen),
+		flagged: message.Flags.Contains(imap.FlagFlagged),
+		parsed:  parsedMessage,
+		date:    message.Date,
+		mboxIDs: mboxIDMap,
+	}
+
+	conn.pushUpdate(imap.NewMessageUpdated(message, literal, mboxIDs, parsedMessage))
+
+	return nil
+}
+
 func (conn *Dummy) MessageAdded(messageID imap.MessageID, mboxID imap.MailboxID) error {
 	conn.state.addMessageToMailbox(messageID, mboxID)
 

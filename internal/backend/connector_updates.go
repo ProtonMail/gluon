@@ -50,6 +50,9 @@ func (user *user) apply(ctx context.Context, update imap.Update) error {
 	case *imap.MessageDeleted:
 		return user.applyMessageDeleted(ctx, update)
 
+	case *imap.MessageUpdated:
+		return user.applyMessageUpdated(ctx, update)
+
 	case *imap.Noop:
 		return nil
 
@@ -167,27 +170,19 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	messageForMBox := make(map[imap.InternalMailboxID][]imap.InternalMessageID)
 	mboxInternalIDMap := make(map[imap.MailboxID]imap.InternalMailboxID)
 
-	var messagesToDelete []imap.InternalMessageID
-
 	if err := user.db.Read(ctx, func(ctx context.Context, client *ent.Client) error {
 		for _, message := range update.Messages {
 			internalID, ok := messagesToCreateFilter[message.Message.ID]
 			if !ok {
-				existingMessage, err := db.GetMessageFromRemoteIDWithDeletedFlag(ctx, client, message.Message.ID)
-				if ent.IsNotFound(err) {
-					internalID = user.nextMessageID()
-				} else if err != nil {
+				exists, err := db.HasMessageWithRemoteID(ctx, client, message.Message.ID)
+				if err != nil {
 					return err
-				} else if existingMessage.Deleted {
-					// This message has been marked as delete, but we received a create with the same messageID, we
-					// need to delete the old message from the database first before we can insert the new one.
-					logrus.WithField("message-id", message.Message.ID.ShortID()).Debug("Message marked delete, will be replaced with new incoming message")
-					messagesToDelete = append(messagesToDelete, existingMessage.ID)
-					internalID = user.nextMessageID()
-				} else {
-					// Message exists, but has not been marked deleted, so we can't replace.
-					return nil
+				} else if exists {
+					// Message exists, can't be replaced
+					continue
 				}
+
+				internalID = user.nextMessageID()
 
 				literal, err := rfc822.SetHeaderValue(message.Literal, ids.InternalIDKey, internalID.String())
 				if err != nil {
@@ -244,13 +239,6 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	// assign them to the mailbox. There's an upper limit to the number of items badger can track in one transaction.
 	// This way we can keep the database consistent.
 	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		// Delete messages that need to be replaced
-		for _, chunk := range xslices.Chunk(messagesToDelete, db.ChunkLimit) {
-			if err := db.DeleteMessages(ctx, tx, chunk...); err != nil {
-				return err
-			}
-		}
-
 		for _, chunk := range xslices.Chunk(messagesToCreate, db.ChunkLimit) {
 			// Create messages in the store
 			for _, msg := range chunk {
@@ -508,6 +496,94 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 	for _, update := range stateUpdates {
 		user.queueStateUpdate(update)
 	}
+
+	return nil
+}
+
+func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageUpdated) error {
+	var stateUpdates []state.Update
+
+	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		var exists bool
+
+		internalMessageID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), update.Message.ID)
+		if err != nil {
+			if !ent.IsNotFound(err) {
+				return err
+			}
+		} else {
+			exists = true
+		}
+
+		// delete the message and remove from the mailboxes.
+		if exists {
+			mailboxes, err := db.GetMessageMailboxIDs(ctx, tx.Client(), internalMessageID)
+			if err != nil {
+				return err
+			}
+
+			messageIDs := []imap.InternalMessageID{internalMessageID}
+
+			for _, mailbox := range mailboxes {
+				updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mailbox, messageIDs)
+				if err != nil {
+					return err
+				}
+
+				stateUpdates = append(stateUpdates, updates...)
+			}
+
+			if err := db.DeleteMessages(ctx, tx, internalMessageID); err != nil {
+				return err
+			}
+		}
+
+		// create new entry
+		{
+			newInternalID := user.nextMessageID()
+			literal, err := rfc822.SetHeaderValue(update.Literal, ids.InternalIDKey, newInternalID.String())
+			if err != nil {
+				return fmt.Errorf("failed to set internal ID: %w", err)
+			}
+
+			request := &db.CreateMessageReq{
+				Message:    update.Message,
+				Literal:    literal,
+				Body:       update.ParsedMessage.Body,
+				Structure:  update.ParsedMessage.Structure,
+				Envelope:   update.ParsedMessage.Envelope,
+				InternalID: newInternalID,
+			}
+
+			if _, err := db.CreateMessages(ctx, tx, request); err != nil {
+				return err
+			}
+
+			if err := user.store.Set(newInternalID, literal); err != nil {
+				return err
+			}
+
+			for _, mbox := range update.MailboxIDs {
+				internalMBoxID, err := db.GetMailboxIDFromRemoteID(ctx, tx.Client(), mbox)
+				if err != nil {
+					return err
+				}
+
+				_, update, err := state.AddMessagesToMailbox(ctx, tx, internalMBoxID, []imap.InternalMessageID{newInternalID}, nil)
+				if err != nil {
+					return err
+				}
+
+				stateUpdates = append(stateUpdates, update)
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	user.queueStateUpdate(stateUpdates...)
 
 	return nil
 }

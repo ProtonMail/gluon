@@ -189,8 +189,7 @@ func TestRemoteMessageUpdate(t *testing.T) {
 		c.S(`* STATUS "mbox1" (MESSAGES 1)`)
 		c.S(`A002 OK STATUS`)
 
-		s.messageDeleted("user", messageID)
-		s.messageCreatedWithID("user", messageID, mailboxID, []byte("To: 4@4.pm"), time.Now())
+		s.messageUpdatedWithID("user", messageID, mailboxID, []byte("To: 4@4.pm"), time.Now())
 		s.flush("user")
 
 		c.C(`A002 STATUS mbox1 (MESSAGES)`)
