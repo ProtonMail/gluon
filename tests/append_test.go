@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/internal/ids"
 	"os"
 	"sync"
 	"testing"
@@ -310,5 +311,49 @@ func TestAppendCanHandleOutOfOrderUIDUpdates(t *testing.T) {
 
 		validateUIDListFn(1)
 		validateUIDListFn(2)
+	})
+}
+
+func TestGODT2007AppendInternalIDPresentOnDeletedMessage(t *testing.T) {
+	const (
+		mailboxName = "saved-messages"
+	)
+
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, s *testSession) {
+		// Create message and mark deleted.
+		mboxID := s.mailboxCreated("user", []string{mailboxName})
+		messageID := s.messageCreated("user", mboxID, []byte("To: foo@bar.com\r\n"), time.Now())
+		s.flush("user")
+
+		_, err := client.Select(mailboxName, false)
+		require.NoError(t, err)
+
+		{
+			// Check if the header is correctly set.
+			result := newFetchCommand(t, client).withItems("UID", "BODY[HEADER]").fetch("1")
+			result.forSeqNum(1, func(builder *validatorBuilder) {
+				builder.ignoreFlags().wantSection("BODY[HEADER]", fmt.Sprintf("%v: 1", ids.InternalIDKey), "To: foo@bar.com\r\n")
+				builder.wantUID(1)
+			})
+			result.checkAndRequireMessageCount(1)
+		}
+
+		s.messageDeleted("user", messageID)
+		s.flush("user")
+
+		// Add the same message back with the same id
+		require.NoError(t, doAppendWithClient(client, mailboxName, fmt.Sprintf("%v: 1\r\nTo: foo@bar.com\r\n", ids.InternalIDKey), time.Now()))
+
+		{
+			// The message should have been created with a new internal id
+			result := newFetchCommand(t, client).withItems("UID", "BODY[HEADER]").fetch("1")
+			result.forSeqNum(1, func(builder *validatorBuilder) {
+				// The header value appears twice because we don't delete existing headers, we only add new ones.
+				builder.ignoreFlags().wantSection("BODY[HEADER]", fmt.Sprintf("%v: 2", ids.InternalIDKey), fmt.Sprintf("%v: 1", ids.InternalIDKey), "To: foo@bar.com\r\n")
+				builder.wantUID(2)
+			})
+			result.checkAndRequireMessageCount(1)
+		}
+
 	})
 }

@@ -161,25 +161,37 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 			return 0, err
 		}
 
-		if exists, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (bool, error) {
-			return db.HasMessageWithID(ctx, client, msgID)
-		}); err != nil || !exists {
-			logrus.WithError(err).Warn("The message has an unknown internal ID")
-		} else if res, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
-			remoteID, err := db.GetMessageRemoteIDFromID(ctx, tx.Client(), msgID)
+		if message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
+			message, err := db.GetMessageWithIDWithDeletedFlag(ctx, client, msgID)
 			if err != nil {
+				if ent.IsNotFound(err) {
+					return nil, nil
+				}
+
 				return nil, err
 			}
 
-			return m.state.actionAddMessagesToMailbox(ctx, tx,
-				[]ids.MessageIDPair{{InternalID: msgID, RemoteID: remoteID}},
-				ids.NewMailboxIDPair(m.mbox),
-				m.snap == m.state.snap,
-			)
-		}); err != nil {
-			return 0, err
-		} else {
-			return res[0].UID, nil
+			return message, nil
+		}); err != nil || message == nil {
+			logrus.WithError(err).Warn("The message has an unknown internal ID")
+		} else if !message.Deleted {
+			// Only shuffle around messages that haven't been marked for deletion.
+			if res, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
+				remoteID, err := db.GetMessageRemoteIDFromID(ctx, tx.Client(), msgID)
+				if err != nil {
+					return nil, err
+				}
+
+				return m.state.actionAddMessagesToMailbox(ctx, tx,
+					[]ids.MessageIDPair{{InternalID: msgID, RemoteID: remoteID}},
+					ids.NewMailboxIDPair(m.mbox),
+					m.snap == m.state.snap,
+				)
+			}); err != nil {
+				return 0, err
+			} else {
+				return res[0].UID, nil
+			}
 		}
 	}
 
