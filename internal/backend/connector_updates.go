@@ -183,6 +183,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 					// need to delete the old message from the database first before we can insert the new one.
 					logrus.WithField("message-id", message.Message.ID.ShortID()).Debug("Message marked delete, will be replaced with new incoming message")
 					messagesToDelete = append(messagesToDelete, existingMessage.ID)
+					internalID = user.nextMessageID()
 				} else {
 					// Message exists, but has not been marked deleted, so we can't replace.
 					return nil
