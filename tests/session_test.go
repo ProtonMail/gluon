@@ -33,6 +33,7 @@ type Connector interface {
 
 	MessageCreated(imap.Message, []byte, []imap.MailboxID) error
 	MessagesCreated([]imap.Message, [][]byte, [][]imap.MailboxID) error
+	MessageUpdated(imap.Message, []byte, []imap.MailboxID) error
 	MessageAdded(imap.MessageID, imap.MailboxID) error
 	MessageRemoved(imap.MessageID, imap.MailboxID) error
 	MessageSeen(imap.MessageID, bool) error
@@ -192,6 +193,20 @@ func (s *testSession) messageCreated(user string, mailboxID imap.MailboxID, lite
 
 func (s *testSession) messageCreatedWithID(user string, messageID imap.MessageID, mailboxID imap.MailboxID, literal []byte, internalDate time.Time, flags ...string) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageCreated(
+		imap.Message{
+			ID:    messageID,
+			Flags: imap.NewFlagSetFromSlice(flags),
+			Date:  internalDate,
+		},
+		literal,
+		[]imap.MailboxID{mailboxID},
+	))
+
+	s.conns[s.userIDs[user]].Flush()
+}
+
+func (s *testSession) messageUpdatedWithID(user string, messageID imap.MessageID, mailboxID imap.MailboxID, literal []byte, internalDate time.Time, flags ...string) {
+	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageUpdated(
 		imap.Message{
 			ID:    messageID,
 			Flags: imap.NewFlagSetFromSlice(flags),
