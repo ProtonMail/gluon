@@ -342,14 +342,18 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 	key = textproto.CanonicalMIMEHeaderKey(key)
 	data := joinLine([]byte(key), []byte(val))
 
+	result := make([]byte, 0, len(data)+len(literal))
 	if !foundFirstEntry {
-		return append(rawHeader, append(data, body...)...), nil
+		result = append(result, rawHeader...)
+		result = append(result, data...)
+		result = append(result, body...)
 	} else {
-		return append(
-			literal[0:parsedHeaderEntry.keyStart],
-			append(data, literal[parsedHeaderEntry.keyStart:]...)...,
-		), nil
+		result = append(result, literal[0:parsedHeaderEntry.keyStart]...)
+		result = append(result, data...)
+		result = append(result, literal[parsedHeaderEntry.keyStart:]...)
 	}
+
+	return result, nil
 }
 
 // GetHeaderValue is a helper method that queries a header value in a message literal.
