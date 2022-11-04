@@ -285,7 +285,7 @@ func (u *mailboxRemoteIDUpdateStateUpdate) Apply(ctx context.Context, tx *ent.Tx
 }
 
 func (u *mailboxRemoteIDUpdateStateUpdate) String() string {
-	return fmt.Sprintf("MailboxRemoteIDUpdateStateUpdate: %v remote = %v", u.SnapFilter, u.remoteID.ShortID())
+	return fmt.Sprintf("MailboxRemoteIDUpdateStateUpdate: %v remote = %v", u.SnapFilter.String(), u.remoteID.ShortID())
 }
 
 type mailboxDeletedStateUpdate struct {

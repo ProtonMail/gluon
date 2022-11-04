@@ -25,7 +25,7 @@ func (r *responderStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) 
 
 func (r *responderStateUpdate) String() string {
 	return fmt.Sprintf("ResponderStateUpdate: %v Responders=%v",
-		r.SnapFilter,
+		r.SnapFilter.String(),
 		xslices.Map(r.responders, func(rsp Responder) string {
 			return rsp.String()
 		}),
@@ -237,7 +237,7 @@ func (e *ExistsStateUpdate) String() string {
 	}
 
 	return fmt.Sprintf("ExistsStateUpdate: %v Responders = %v targetStateID = %v originStateID = %v",
-		e.MBoxIDStateFilter,
+		e.MBoxIDStateFilter.String(),
 		xslices.Map(e.responders, func(rsp *exists) string {
 			return rsp.String()
 		}),
