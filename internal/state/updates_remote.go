@@ -27,7 +27,7 @@ func (u *RemoteAddMessageFlagsStateUpdate) Apply(ctx context.Context, tx *ent.Tx
 }
 
 func (u *RemoteAddMessageFlagsStateUpdate) String() string {
-	return fmt.Sprintf("RemoteAddMessageFlagsStateUpdate %v flag = %v", u.MessageIDStateFilter, u.flag)
+	return fmt.Sprintf("RemoteAddMessageFlagsStateUpdate %v flag = %v", u.MessageIDStateFilter.String(), u.flag)
 }
 
 type RemoteRemoveMessageFlagsStateUpdate struct {
@@ -47,7 +47,7 @@ func (u *RemoteRemoveMessageFlagsStateUpdate) Apply(ctx context.Context, tx *ent
 }
 
 func (u *RemoteRemoveMessageFlagsStateUpdate) String() string {
-	return fmt.Sprintf("RemoteRemoveMessageFlagsStateUpdate %v flag = %v", u.MessageIDStateFilter, u.flag)
+	return fmt.Sprintf("RemoteRemoveMessageFlagsStateUpdate %v flag = %v", u.MessageIDStateFilter.String(), u.flag)
 }
 
 type RemoteMessageDeletedStateUpdate struct {
@@ -70,5 +70,5 @@ func (u *RemoteMessageDeletedStateUpdate) Apply(ctx context.Context, tx *ent.Tx,
 }
 
 func (u *RemoteMessageDeletedStateUpdate) String() string {
-	return fmt.Sprintf("RemoteMessageDeletedStateUpdate %v remote ID = %v", u.MessageIDStateFilter, u.remoteID)
+	return fmt.Sprintf("RemoteMessageDeletedStateUpdate %v remote ID = %v", u.MessageIDStateFilter.String(), u.remoteID)
 }
