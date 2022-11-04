@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -503,78 +504,104 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageUpdated) error {
 	var stateUpdates []state.Update
 
-	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		var exists bool
+	log := logrus.WithField("message updated", update.Message.ID.ShortID())
 
+	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		internalMessageID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), update.Message.ID)
 		if err != nil {
-			if !ent.IsNotFound(err) {
-				return err
+			if ent.IsNotFound(err) {
+				log.Debugf("Message %v no longer exists, skipping", update.Message.ID.ShortID())
+				return nil
+			}
+			return err
+		}
+
+		// compare and see if the literal has changed.
+		onDiskLiteral, err := user.store.Get(internalMessageID)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve literal from cache: %w", err)
+		}
+
+		updateLiteral := update.Literal
+		if id, err := rfc822.GetHeaderValue(updateLiteral, ids.InternalIDKey); err == nil {
+			if len(id) == 0 {
+				newLiteral, err := rfc822.SetHeaderValue(updateLiteral, ids.InternalIDKey, internalMessageID.String())
+				if err != nil {
+					log.WithError(err).Debug("failed to set header key, using update literal")
+				} else {
+					updateLiteral = newLiteral
+				}
 			}
 		} else {
-			exists = true
+			log.Debug("Failed to get header value from literal, using update literal")
 		}
 
-		// delete the message and remove from the mailboxes.
-		if exists {
-			mailboxes, err := db.GetMessageMailboxIDs(ctx, tx.Client(), internalMessageID)
-			if err != nil {
-				return err
-			}
+		if bytes.Equal(onDiskLiteral, updateLiteral) {
+			log.Debug("Message not updated as there are no changes to literals")
+			return nil
+		} else {
+			log.Debug("Message has new literal, applying update")
 
-			messageIDs := []imap.InternalMessageID{internalMessageID}
-
-			for _, mailbox := range mailboxes {
-				updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mailbox, messageIDs)
+			{
+				// delete the message and remove from the mailboxes.
+				mailboxes, err := db.GetMessageMailboxIDs(ctx, tx.Client(), internalMessageID)
 				if err != nil {
 					return err
 				}
 
-				stateUpdates = append(stateUpdates, updates...)
-			}
+				messageIDs := []imap.InternalMessageID{internalMessageID}
 
-			if err := db.DeleteMessages(ctx, tx, internalMessageID); err != nil {
-				return err
-			}
-		}
+				for _, mailbox := range mailboxes {
+					updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mailbox, messageIDs)
+					if err != nil {
+						return err
+					}
 
-		// create new entry
-		{
-			newInternalID := user.nextMessageID()
-			literal, err := rfc822.SetHeaderValue(update.Literal, ids.InternalIDKey, newInternalID.String())
-			if err != nil {
-				return fmt.Errorf("failed to set internal ID: %w", err)
-			}
+					stateUpdates = append(stateUpdates, updates...)
+				}
 
-			request := &db.CreateMessageReq{
-				Message:    update.Message,
-				Literal:    literal,
-				Body:       update.ParsedMessage.Body,
-				Structure:  update.ParsedMessage.Structure,
-				Envelope:   update.ParsedMessage.Envelope,
-				InternalID: newInternalID,
+				if err := db.DeleteMessages(ctx, tx, internalMessageID); err != nil {
+					return err
+				}
 			}
-
-			if _, err := db.CreateMessages(ctx, tx, request); err != nil {
-				return err
-			}
-
-			if err := user.store.Set(newInternalID, literal); err != nil {
-				return err
-			}
-
-			for _, mbox := range update.MailboxIDs {
-				internalMBoxID, err := db.GetMailboxIDFromRemoteID(ctx, tx.Client(), mbox)
+			// create new entry
+			{
+				newInternalID := user.nextMessageID()
+				literal, err := rfc822.SetHeaderValue(update.Literal, ids.InternalIDKey, newInternalID.String())
 				if err != nil {
+					return fmt.Errorf("failed to set internal ID: %w", err)
+				}
+
+				request := &db.CreateMessageReq{
+					Message:    update.Message,
+					Literal:    literal,
+					Body:       update.ParsedMessage.Body,
+					Structure:  update.ParsedMessage.Structure,
+					Envelope:   update.ParsedMessage.Envelope,
+					InternalID: newInternalID,
+				}
+
+				if _, err := db.CreateMessages(ctx, tx, request); err != nil {
 					return err
 				}
 
-				_, update, err := state.AddMessagesToMailbox(ctx, tx, internalMBoxID, []imap.InternalMessageID{newInternalID}, nil)
-				if err != nil {
+				if err := user.store.Set(newInternalID, literal); err != nil {
 					return err
 				}
 
-				stateUpdates = append(stateUpdates, update)
+				for _, mbox := range update.MailboxIDs {
+					internalMBoxID, err := db.GetMailboxIDFromRemoteID(ctx, tx.Client(), mbox)
+					if err != nil {
+						return err
+					}
+
+					_, update, err := state.AddMessagesToMailbox(ctx, tx, internalMBoxID, []imap.InternalMessageID{newInternalID}, nil)
+					if err != nil {
+						return err
+					}
+
+					stateUpdates = append(stateUpdates, update)
+				}
 			}
 		}
 
@@ -583,7 +610,9 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		return err
 	}
 
-	user.queueStateUpdate(stateUpdates...)
+	if len(stateUpdates) != 0 {
+		user.queueStateUpdate(stateUpdates...)
+	}
 
 	return nil
 }
