@@ -1,6 +1,7 @@
 package rfc822
 
 import (
+	"github.com/bradenaw/juniper/xslices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -298,17 +299,28 @@ func TestParseHeaderWithPrelude(t *testing.T) {
 func TestSetHeaderValue(t *testing.T) {
 	const literal = "To: user@pm.me"
 
-	newHeader, err := SetHeaderValue([]byte(literal), "foo", "bar")
+	// Create a clone so we can test this with mutable memory.
+	literalBytes := xslices.Clone([]byte(literal))
+
+	newHeader, err := SetHeaderValue(literalBytes, "foo", "bar")
 	require.NoError(t, err)
 
 	assert.Equal(t, newHeader, []byte("Foo: bar\r\nTo: user@pm.me"))
+	// Ensure the original data wasn't modified.
+	assert.Equal(t, literalBytes, []byte(literal))
 }
 
 func TestSetHeaderValueWithPrelude(t *testing.T) {
 	const literal = "From cras@irccrew.org  Tue Aug  6 13:34:34 2002\r\nTo: user@pm.me"
 
-	newHeader, err := SetHeaderValue([]byte(literal), "foo", "bar")
+	// Create a clone so we can test this with mutable memory.
+	literalBytes := xslices.Clone([]byte(literal))
+
+	newHeader, err := SetHeaderValue(literalBytes, "foo", "bar")
 	require.NoError(t, err)
 
 	assert.Equal(t, newHeader, []byte("From cras@irccrew.org  Tue Aug  6 13:34:34 2002\r\nFoo: bar\r\nTo: user@pm.me"))
+
+	// Ensure the original data wasn't modified.
+	assert.Equal(t, literalBytes, []byte(literal))
 }
