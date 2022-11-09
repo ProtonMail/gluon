@@ -141,8 +141,8 @@ std::string parse(std::string_view input) {
   std::string result;
 
   for (const auto& word: encodedContext->encodedWord()) {
-    const auto encoding = word->Encoding()->getText();
-    const auto charset = word->Token()->getText();
+    const auto encoding = word->encoding()->getText();
+    const auto charset = word->token()->getText();
     const auto text = word->encodedText()->getText();
 
     const auto decodedText = decodeText(encoding, text);
