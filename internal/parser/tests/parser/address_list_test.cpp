@@ -666,3 +666,19 @@ TEST(AddressList, CAPI) {
     }
   }
 }
+
+TEST(AddressList, Emoji) {
+  const TestInput input = {
+      R"(=?utf-8?q?Goce_Test_=F0=9F=A4=A6=F0=9F=8F=BB=E2=99=82=F0=9F=99=88?= =?utf-8?q?=F0=9F=8C=B2=E2=98=98=F0=9F=8C=B4?= <foo@bar.com>, "Proton GMX Edit" <z@bar.com>, "beta@bar.com" <beta@bar.com>, "testios12" <random@bar.com>, "random@bar.com" <random@bar.com>, =?utf-8?q?=C3=9C=C3=A4=C3=B6_Jakdij?= <another@bar.com>, =?utf-8?q?Q=C3=A4_T=C3=B6=C3=BCst_12_Edit?= <random2@bar.com>, =?utf-8?q?=E2=98=98=EF=B8=8F=F0=9F=8C=B2=F0=9F=8C=B4=F0=9F=99=82=E2=98=BA?= =?utf-8?q?=EF=B8=8F=F0=9F=98=83?= <dust@bar.com>, "Somebody Outlook" <hotmal@bar.com>)",
+      {{"Goce Test 🤦🏻♂🙈🌲☘🌴", "foo@bar.com"},
+       {"Proton GMX Edit", "z@bar.com"},
+       {"beta@bar.com", "beta@bar.com"},
+       {"testios12", "random@bar.com"},
+       {"random@bar.com", "random@bar.com"},
+       {"Üäö Jakdij", "another@bar.com"},
+       {"Qä Töüst 12 Edit", "random2@bar.com"},
+       {"☘️🌲🌴🙂☺️😃", "dust@bar.com"},
+       {"Somebody Outlook", "hotmal@bar.com"}}};
+
+  validateTest(input);
+}
