@@ -226,10 +226,11 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	}
 
 	// Create a new gluon server.
-	server, err := gluon.New(
-		gluonOptions...,
-	)
+	server, err := gluon.New(gluonOptions...)
 	require.NoError(tb, err)
+
+	// Watch server events.
+	eventCh := server.AddWatcher()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -272,7 +273,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 
 	// Run the test against the server.
 	logging.DoAnnotated(ctx, func(ctx context.Context) {
-		tests(newTestSession(tb, listener, server, userIDs, conns, dbPaths, options))
+		tests(newTestSession(tb, listener, server, eventCh, userIDs, conns, dbPaths, options))
 	}, logging.Labels{
 		"Action": "Running gluon tests",
 	})

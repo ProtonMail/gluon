@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/utils"
@@ -53,6 +54,7 @@ type testSession struct {
 
 	listener      net.Listener
 	server        *gluon.Server
+	eventCh       <-chan events.Event
 	userIDs       map[string]string
 	conns         map[string]Connector
 	userDBPaths   map[string]string
@@ -63,6 +65,7 @@ func newTestSession(
 	tb testing.TB,
 	listener net.Listener,
 	server *gluon.Server,
+	eventCh <-chan events.Event,
 	userIDs map[string]string,
 	conns map[string]Connector,
 	userDBPaths map[string]string,
@@ -72,6 +75,7 @@ func newTestSession(
 		tb:            tb,
 		listener:      listener,
 		server:        server,
+		eventCh:       eventCh,
 		userIDs:       userIDs,
 		conns:         conns,
 		userDBPaths:   userDBPaths,
