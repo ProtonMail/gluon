@@ -116,11 +116,17 @@ func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID 
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 
 	if err := s.backend.AddUser(ctx, userID, conn, passphrase); err != nil {
-		return err
+		return fmt.Errorf("failed to add user: %w", err)
+	}
+
+	counts, err := s.backend.GetMailboxMessageCounts(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get counts: %w", err)
 	}
 
 	s.publish(events.UserAdded{
 		UserID: userID,
+		Counts: counts,
 	})
 
 	return nil

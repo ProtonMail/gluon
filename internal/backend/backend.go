@@ -9,7 +9,10 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
+	"github.com/ProtonMail/gluon/internal/db/ent"
+	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
@@ -120,6 +123,36 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string, removeFiles boo
 	}
 
 	return nil
+}
+
+func (b *Backend) GetMailboxMessageCounts(ctx context.Context, userID string) (map[imap.MailboxID]int, error) {
+	b.usersLock.Lock()
+	defer b.usersLock.Unlock()
+
+	user, ok := b.users[userID]
+	if !ok {
+		return nil, ErrNoSuchUser
+	}
+
+	return db.ReadResult(ctx, user.db, func(ctx context.Context, c *ent.Client) (map[imap.MailboxID]int, error) {
+		counts := make(map[imap.MailboxID]int)
+
+		mailboxes, err := c.Mailbox.Query().Select(mailbox.FieldRemoteID).All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, mailbox := range mailboxes {
+			messageCount, err := mailbox.QueryUIDs().Count(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			counts[mailbox.RemoteID] = messageCount
+		}
+
+		return counts, nil
+	})
 }
 
 func (b *Backend) GetState(ctx context.Context, username string, password []byte, sessionID int) (*state.State, error) {
