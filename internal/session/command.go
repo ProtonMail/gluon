@@ -2,7 +2,10 @@ package session
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/maps"
 
@@ -26,7 +29,7 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 
 		for {
 			tag, cmd, err := s.readCommand(del)
-			if err != nil {
+			if err != nil && !errors.Is(err, io.EOF) {
 				reporter.MessageWithContext(ctx,
 					"Failed to parse imap command",
 					reporter.Context{"error": err},
