@@ -3,6 +3,7 @@ package session
 import (
 	"fmt"
 	"io"
+	"log"
 	"strings"
 )
 
@@ -14,6 +15,6 @@ func writeLog(w io.Writer, leader, sessionID, line string) {
 	}
 
 	if _, err := fmt.Fprintf(w, "%v[%v]: %v\n", leader, sessionID, line); err != nil {
-		panic(err)
+		log.Printf("gluon: failed to write log: %v", err)
 	}
 }
