@@ -5,11 +5,11 @@ package session
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,7 +17,6 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/liner"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
@@ -151,11 +150,6 @@ func (s *Session) serve(ctx context.Context) error {
 	profiler := s.cmdProfilerBuilder.New()
 	defer s.cmdProfilerBuilder.Collect(profiler)
 
-	var (
-		tag string
-		cmd *proto.Command
-	)
-
 	cmdCh := s.startCommandReader(ctx, s.backend.GetDelimiter())
 
 	for {
@@ -169,34 +163,25 @@ func (s *Session) serve(ctx context.Context) error {
 
 		case res, ok := <-cmdCh:
 			if !ok {
-				logrus.Debugf("Failed to read from command channel")
 				return nil
 			}
 
-			tag, cmd = res.tag, res.cmd
-
 			if res.err != nil {
-				logrus.WithError(res.err).Debugf("Error during command parsing")
-				s.errorCount++
-
-				if errors.Is(res.err, io.EOF) {
-					logrus.Debugf("Connection to client lost")
-					return nil
-				} else if s.errorCount >= maxSessionError {
-					_ = response.Bad(tag).WithError(ErrTooManyInvalid).Send(s)
-					reporter.MessageWithContext(ctx,
-						ErrTooManyInvalid.Error(),
-						reporter.Context{"error": ErrTooManyInvalid, "ID": s.imapID.String()},
-					)
-					return ErrTooManyInvalid
-				} else if err := response.Bad(tag).WithError(res.err).Send(s); err != nil {
+				if err := response.Bad(res.tag).WithError(res.err).Send(s); err != nil {
 					return err
+				}
+
+				if s.errorCount += 1; s.errorCount >= maxSessionError {
+					reporter.MessageWithContext(ctx,
+						"Too many errors in session, closing connection",
+						reporter.Context{"ID": s.imapID.String()},
+					)
+
+					return nil
 				}
 
 				continue
 			}
-
-			s.errorCount = 0
 
 		case <-s.state.Done():
 			return nil
@@ -252,9 +237,13 @@ func (s *Session) WriteResponse(res string) error {
 	return nil
 }
 
-func (s *Session) logIncoming(line string) {
+func (s *Session) logIncoming(line string, lits ...string) {
 	if s.inLogger == nil {
 		return
+	}
+
+	if len(lits) > 0 {
+		line = fmt.Sprintf("%s (Literals: %s)", line, strings.Join(lits, ", "))
 	}
 
 	writeLog(s.inLogger, "C", strconv.Itoa(s.sessionID), line)

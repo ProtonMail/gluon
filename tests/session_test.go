@@ -354,28 +354,39 @@ func parseDateFromDelimiter(messageDelimiter string) (t time.Time, err error) {
 	return time.Parse("Mon Jan _2 15:04:05 2006", strings.TrimSpace(strings.Join(split[2:], " ")))
 }
 
-func TestTooManyInvalidCommand(t *testing.T) {
-	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+func TestTooManyInvalidCommands(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		for i := 1; i <= 19; i++ {
 			c.Cf("%d FOO", i).BAD(fmt.Sprintf("%d", i))
 		}
+
+		// The next command should fail; the server should disconnect the client.
 		c.Cf("100 FOO").BAD("100")
-		// expect server to trigger the error as well
-		require.Errorf(t, <-s.server.GetErrorCh(), "100 BAD too many invalid IMAP commands")
+
+		// The client should be disconnected.
+		_, err := c.conn.Read(make([]byte, 1))
+		require.Error(t, err)
 	})
 }
 
-func TestResetTooManyInvalidCommand(t *testing.T) {
-	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+func TestResetTooManyInvalidCommands(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		for i := 1; i <= 19; i++ {
 			c.Cf("%d FOO", i).BAD(fmt.Sprintf("%d", i))
 		}
+
+		// The next command should succeed; the counter should be reset.
 		c.C("100 NOOP").OK("100")
+
 		for i := 1; i <= 19; i++ {
 			c.Cf("%d FOO", i).BAD(fmt.Sprintf("%d", i))
 		}
+
+		// The next command should fail; the server should disconnect the client.
 		c.Cf("100 FOO").BAD("100")
-		// expect server to trigger the error as well
-		require.Errorf(t, <-s.server.GetErrorCh(), "100 BAD too many invalid IMAP commands")
+
+		// The client should be disconnected.
+		_, err := c.conn.Read(make([]byte, 1))
+		require.Error(t, err)
 	})
 }

@@ -11,7 +11,5 @@ var (
 	ErrNotAuthenticated     = errors.New("session is not authenticated")
 	ErrAlreadyAuthenticated = errors.New("session is already authenticated")
 
-	ErrTooManyInvalid = errors.New("too many invalid IMAP commands")
-
 	ErrNotImplemented = errors.New("not implemented")
 )

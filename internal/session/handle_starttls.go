@@ -3,7 +3,6 @@ package session
 import (
 	"crypto/tls"
 
-	"github.com/ProtonMail/gluon/internal/liner"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 )
@@ -24,7 +23,8 @@ func (s *Session) handleStartTLS(tag string, cmd *proto.StartTLS) error {
 	}
 
 	s.conn = conn
-	s.liner = liner.New(conn)
+
+	s.liner.Reset(conn)
 
 	return nil
 }
