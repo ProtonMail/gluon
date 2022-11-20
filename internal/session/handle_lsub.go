@@ -6,10 +6,14 @@ import (
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/emersion/go-imap/utf7"
 )
 
 func (s *Session) handleLsub(ctx context.Context, tag string, cmd *proto.Lsub, ch chan response.Response) error {
+	profiling.Start(ctx, profiling.CmdTypeLSub)
+	defer profiling.Stop(ctx, profiling.CmdTypeLSub)
+
 	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
 	if err != nil {
 		return err

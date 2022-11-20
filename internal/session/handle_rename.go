@@ -5,10 +5,14 @@ import (
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/emersion/go-imap/utf7"
 )
 
 func (s *Session) handleRename(ctx context.Context, tag string, cmd *proto.Rename, ch chan response.Response) error {
+	profiling.Start(ctx, profiling.CmdTypeRename)
+	defer profiling.Stop(ctx, profiling.CmdTypeRename)
+
 	oldNameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
 	if err != nil {
 		return err

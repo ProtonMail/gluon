@@ -3,14 +3,24 @@ package session
 import (
 	"context"
 
+	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/profiling"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/ianaindex"
 )
 
 func (s *Session) handleSearch(ctx context.Context, tag string, cmd *proto.Search, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
+	if contexts.IsUID(ctx) {
+		profiling.Start(ctx, profiling.CmdTypeUIDSearch)
+		defer profiling.Stop(ctx, profiling.CmdTypeUIDSearch)
+	} else {
+		profiling.Start(ctx, profiling.CmdTypeSearch)
+		defer profiling.Stop(ctx, profiling.CmdTypeSearch)
+	}
+
 	var decoder *encoding.Decoder
 
 	switch charset := cmd.GetOptionalCharset().(type) {

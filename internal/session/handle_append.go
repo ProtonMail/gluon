@@ -8,11 +8,15 @@ import (
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/emersion/go-imap/utf7"
 )
 
 func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Append, ch chan response.Response) error {
+	profiling.Start(ctx, profiling.CmdTypeAppend)
+	defer profiling.Stop(ctx, profiling.CmdTypeAppend)
+
 	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
 	if err != nil {
 		return err

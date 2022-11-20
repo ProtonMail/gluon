@@ -6,9 +6,13 @@ import (
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/profiling"
 )
 
 func (s *Session) handleNoop(ctx context.Context, tag string, cmd *proto.Noop, ch chan response.Response) error {
+	profiling.Start(ctx, profiling.CmdTypeNoop)
+	defer profiling.Stop(ctx, profiling.CmdTypeNoop)
+
 	if (s.state != nil) && s.state.IsSelected() {
 		if err := s.state.Selected(ctx, func(mailbox *state.Mailbox) error {
 			return flush(ctx, mailbox, true, ch)
