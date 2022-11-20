@@ -90,6 +90,16 @@ func (s *testSession) newConnection() *testConnection {
 	return newTestConnection(s.tb, conn).Sx(`\* OK.*`)
 }
 
+func (s *testSession) newConnectionWithAuth() *testConnection {
+	conn, err := net.Dial(s.listener.Addr().Network(), s.listener.Addr().String())
+	require.NoError(s.tb, err)
+
+	return newTestConnection(s.tb, conn).Sx(`\* OK.*`).Login(
+		s.serverOptions.defaultUsername(),
+		s.serverOptions.defaultPassword(),
+	)
+}
+
 func (s *testSession) newClient() *client.Client {
 	client, err := client.Dial(s.listener.Addr().String())
 	require.NoError(s.tb, err)
