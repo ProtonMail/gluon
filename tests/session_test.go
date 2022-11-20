@@ -92,7 +92,7 @@ func (s *testSession) newConnection() *testConnection {
 
 func (s *testSession) withConnection(user string, fn func(*testConnection)) {
 	conn := s.newConnection()
-	defer conn.disconnect()
+	defer func() { require.NoError(s.tb, conn.disconnect()) }()
 
 	fn(conn.Login(user, s.options.password(user)))
 }

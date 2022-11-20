@@ -281,7 +281,6 @@ func TestAppendCanHandleOutOfOrderUIDUpdates(t *testing.T) {
 	// same mailbox if other clients make updates.
 	// In the case of client B, it appends UID2 as the first message and then later receives an update from A with
 	// an UID lower than the last UID which caused unnecessary panics in the past.
-
 	runManyToOneTestWithAuth(t, defaultServerOptions(t, withDisableParallelism()), []int{1, 2}, func(c map[int]*testConnection, session *testSession) {
 		const MessageCount = 20
 
