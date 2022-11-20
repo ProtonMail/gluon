@@ -305,3 +305,21 @@ func (u *mailboxDeletedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *St
 func (u *mailboxDeletedStateUpdate) String() string {
 	return fmt.Sprintf("MailboxDeletedStateUpdate: %v", u.MBoxIDStateFilter.String())
 }
+
+type uidValidityBumpedStateUpdate struct {
+	AllStateFilter
+}
+
+func NewUIDValidityBumpedStateUpdate() Update {
+	return &uidValidityBumpedStateUpdate{}
+}
+
+func (u *uidValidityBumpedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+	s.markInvalid()
+
+	return nil
+}
+
+func (u *uidValidityBumpedStateUpdate) String() string {
+	return "UIDValidityBumpedStateUpdate"
+}

@@ -31,6 +31,7 @@ type Connector interface {
 
 	MailboxCreated(imap.Mailbox) error
 	MailboxDeleted(imap.MailboxID) error
+	SetMailboxVisible(imap.MailboxID, bool)
 
 	MessageCreated(imap.Message, []byte, []imap.MailboxID) error
 	MessagesCreated([]imap.Message, [][]byte, [][]imap.MailboxID) error
@@ -41,12 +42,13 @@ type Connector interface {
 	MessageFlagged(imap.MessageID, bool) error
 	MessageDeleted(imap.MessageID) error
 
-	Sync(context.Context) error
-	Flush()
+	UIDValidityBumped()
 
 	GetLastRecordedIMAPID() imap.IMAPID
 
-	SetMailboxVisible(imap.MailboxID, bool)
+	Sync(context.Context) error
+
+	Flush()
 }
 
 type testSession struct {
@@ -322,6 +324,10 @@ func (s *testSession) messageFlagged(user string, messageID imap.MessageID, flag
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageFlagged(messageID, flagged))
 
 	s.conns[s.userIDs[user]].Flush()
+}
+
+func (s *testSession) uidValidityBumped(user string) {
+	s.conns[s.userIDs[user]].UIDValidityBumped()
 }
 
 func (s *testSession) flush(user string) {
