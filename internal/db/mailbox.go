@@ -12,14 +12,21 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/db/ent/uid"
-	"github.com/ProtonMail/gluon/internal/db/ent/uidvalidity"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
 )
 
-func CreateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.MailboxID, name string, flags, permFlags, attrs imap.FlagSet) (*ent.Mailbox, error) {
+func CreateMailbox(
+	ctx context.Context,
+	tx *ent.Tx,
+	mboxID imap.MailboxID,
+	name string,
+	flags, permFlags, attrs imap.FlagSet,
+	uidValidity imap.UID,
+) (*ent.Mailbox, error) {
 	create := tx.Mailbox.Create().
-		SetName(name)
+		SetName(name).
+		SetUIDValidity(uidValidity)
 
 	for _, flag := range flags.ToSlice() {
 		flag, err := tx.MailboxFlag.Create().SetValue(flag).Save(ctx)
@@ -51,13 +58,6 @@ func CreateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.MailboxID, name 
 	if len(mboxID) != 0 {
 		create = create.SetRemoteID(mboxID)
 	}
-
-	globalUIDValidity, err := getGlobalUIDValidity(ctx, tx)
-	if err != nil {
-		return nil, err
-	}
-
-	create.SetUIDValidity(globalUIDValidity)
 
 	return create.Save(ctx)
 }
@@ -95,19 +95,16 @@ func RenameMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.Mail
 }
 
 // DeleteMailboxWithRemoteID deletes the mailbox with the given remote ID.
-// It returns the (potentially new) global UID validity, along with a bool indicating whether it has been increased.
-func DeleteMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.MailboxID) (imap.UID, bool, error) {
-	mbox, err := tx.Mailbox.Query().
-		Where(mailbox.RemoteID(mboxID)).
-		Select(mailbox.FieldUIDValidity).
-		Only(ctx)
+// It returns the (potentially new) global UID validity.
+func DeleteMailboxWithRemoteID(
+	ctx context.Context,
+	tx *ent.Tx,
+	mboxID imap.MailboxID,
+	curUIDValidity imap.UID,
+) (imap.UID, error) {
+	mbox, err := tx.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Select(mailbox.FieldUIDValidity).Only(ctx)
 	if err != nil {
-		return 0, false, err
-	}
-
-	curUIDValidity, err := getGlobalUIDValidity(ctx, tx)
-	if err != nil {
-		return 0, false, err
+		return 0, err
 	}
 
 	var newUIDValidity imap.UID
@@ -118,19 +115,11 @@ func DeleteMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.Mail
 		newUIDValidity = curUIDValidity
 	}
 
-	if newUIDValidity > curUIDValidity {
-		if err := setGlobalUIDValidity(ctx, tx, newUIDValidity); err != nil {
-			return 0, false, err
-		}
+	if _, err := tx.Mailbox.Delete().Where(mailbox.RemoteID(mboxID)).Exec(ctx); err != nil {
+		return 0, err
 	}
 
-	if _, err := tx.Mailbox.Delete().
-		Where(mailbox.RemoteID(mboxID)).
-		Exec(ctx); err != nil {
-		return 0, false, err
-	}
-
-	return newUIDValidity, newUIDValidity > curUIDValidity, nil
+	return newUIDValidity, nil
 }
 
 func UpdateRemoteMailboxID(ctx context.Context, tx *ent.Tx, internalID imap.InternalMailboxID, remoteID imap.MailboxID) error {
@@ -305,7 +294,7 @@ func TranslateRemoteMailboxIDs(ctx context.Context, client *ent.Client, mboxIDs 
 	}), nil
 }
 
-func CreateMailboxIfNotExists(ctx context.Context, tx *ent.Tx, mbox imap.Mailbox, delimiter string) error {
+func CreateMailboxIfNotExists(ctx context.Context, tx *ent.Tx, mbox imap.Mailbox, delimiter string, uidValidity imap.UID) error {
 	exists, err := MailboxExistsWithRemoteID(ctx, tx.Client(), mbox.ID)
 	if err != nil {
 		return err
@@ -320,6 +309,7 @@ func CreateMailboxIfNotExists(ctx context.Context, tx *ent.Tx, mbox imap.Mailbox
 			mbox.Flags,
 			mbox.PermanentFlags,
 			mbox.Attributes,
+			uidValidity,
 		); err != nil {
 			return err
 		}
@@ -341,44 +331,4 @@ func FilterMailboxContains(ctx context.Context, client *ent.Client, mboxID imap.
 	}
 
 	return result, nil
-}
-
-func InitGlobalUIDValidity(ctx context.Context, tx *ent.Tx, uidValidity imap.UID) error {
-	curUIDValidity, err := tx.UIDValidity.Query().Select(uidvalidity.FieldUIDValidity).Only(ctx)
-	if err != nil {
-		if !ent.IsNotFound(err) {
-			return fmt.Errorf("failed to get current UID validity: %w", err)
-		}
-
-		if _, err := tx.UIDValidity.Create().SetUIDValidity(uidValidity).Save(ctx); err != nil {
-			return fmt.Errorf("failed to create UID validity entry: %w", err)
-		}
-
-		return nil
-	}
-
-	if uidValidity > curUIDValidity.UIDValidity {
-		if err := setGlobalUIDValidity(ctx, tx, uidValidity); err != nil {
-			return fmt.Errorf("failed to set UID validity: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func getGlobalUIDValidity(ctx context.Context, tx *ent.Tx) (imap.UID, error) {
-	uidValidity, err := tx.UIDValidity.Query().Select(uidvalidity.FieldUIDValidity).Only(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	return uidValidity.UIDValidity, nil
-}
-
-func setGlobalUIDValidity(ctx context.Context, tx *ent.Tx, uidValidity imap.UID) error {
-	if _, err := tx.UIDValidity.Update().SetUIDValidity(uidValidity).Save(ctx); err != nil {
-		return err
-	}
-
-	return nil
 }

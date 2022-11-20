@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/store"
@@ -25,4 +26,8 @@ type UserInterface interface {
 	QueueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update Update) error
 
 	ReleaseState(ctx context.Context, st *State) error
+
+	GetGlobalUIDValidity() imap.UID
+
+	SetGlobalUIDValidity(imap.UID)
 }

@@ -31,7 +31,6 @@ type hooks struct {
 	Message         []ent.Hook
 	MessageFlag     []ent.Hook
 	UID             []ent.Hook
-	UIDValidity     []ent.Hook
 }
 
 // Options applies the options on the config object.

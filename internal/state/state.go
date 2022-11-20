@@ -272,7 +272,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 				return err
 			}
 
-			if err := db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter); err != nil {
+			if err := db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, state.user.GetGlobalUIDValidity()); err != nil {
 				return err
 			}
 		}

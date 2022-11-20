@@ -22,8 +22,8 @@ import (
 type user struct {
 	userID string
 
-	updateInjector *updateInjector
 	connector      connector.Connector
+	updateInjector *updateInjector
 	store          store.Store
 	delimiter      string
 
@@ -31,14 +31,13 @@ type user struct {
 
 	states     map[state.StateID]*state.State
 	statesLock sync.RWMutex
+	statesWG   sync.WaitGroup
 
 	updateWG     sync.WaitGroup
 	updateQuitCh chan struct{}
 
-	// statesWG is
-	statesWG sync.WaitGroup
-
-	messageIDCounter uint64
+	messageIDCounter  uint64
+	globalUIDValidity imap.UID
 }
 
 func newUser(
@@ -61,23 +60,20 @@ func newUser(
 		return nil, err
 	}
 
-	// Init the global UID validity.
-	if err := database.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return db.InitGlobalUIDValidity(ctx, tx, conn.GetUIDValidity())
-	}); err != nil {
-		return nil, err
-	}
-
 	user := &user{
-		userID:           userID,
-		connector:        conn,
-		updateInjector:   newUpdateInjector(conn, userID),
-		store:            store,
-		delimiter:        delimiter,
-		db:               database,
-		states:           make(map[state.StateID]*state.State),
-		updateQuitCh:     make(chan struct{}),
-		messageIDCounter: uint64(highestMessageID),
+		userID: userID,
+
+		connector:      conn,
+		updateInjector: newUpdateInjector(conn, userID),
+		store:          store,
+		delimiter:      delimiter,
+
+		db: database,
+
+		states:            make(map[state.StateID]*state.State),
+		updateQuitCh:      make(chan struct{}),
+		messageIDCounter:  uint64(highestMessageID),
+		globalUIDValidity: conn.GetUIDValidity(),
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {

@@ -18,7 +18,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/db/ent/uid"
-	"github.com/ProtonMail/gluon/internal/db/ent/uidvalidity"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
@@ -44,8 +43,6 @@ type Client struct {
 	MessageFlag *MessageFlagClient
 	// UID is the client for interacting with the UID builders.
 	UID *UIDClient
-	// UIDValidity is the client for interacting with the UIDValidity builders.
-	UIDValidity *UIDValidityClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -66,7 +63,6 @@ func (c *Client) init() {
 	c.Message = NewMessageClient(c.config)
 	c.MessageFlag = NewMessageFlagClient(c.config)
 	c.UID = NewUIDClient(c.config)
-	c.UIDValidity = NewUIDValidityClient(c.config)
 }
 
 // Open opens a database/sql.DB specified by the driver name and
@@ -107,7 +103,6 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Message:         NewMessageClient(cfg),
 		MessageFlag:     NewMessageFlagClient(cfg),
 		UID:             NewUIDClient(cfg),
-		UIDValidity:     NewUIDValidityClient(cfg),
 	}, nil
 }
 
@@ -134,7 +129,6 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Message:         NewMessageClient(cfg),
 		MessageFlag:     NewMessageFlagClient(cfg),
 		UID:             NewUIDClient(cfg),
-		UIDValidity:     NewUIDValidityClient(cfg),
 	}, nil
 }
 
@@ -170,7 +164,6 @@ func (c *Client) Use(hooks ...Hook) {
 	c.Message.Use(hooks...)
 	c.MessageFlag.Use(hooks...)
 	c.UID.Use(hooks...)
-	c.UIDValidity.Use(hooks...)
 }
 
 // MailboxClient is a client for the Mailbox schema.
@@ -945,94 +938,4 @@ func (c *UIDClient) QueryMailbox(u *UID) *MailboxQuery {
 // Hooks returns the client hooks.
 func (c *UIDClient) Hooks() []Hook {
 	return c.hooks.UID
-}
-
-// UIDValidityClient is a client for the UIDValidity schema.
-type UIDValidityClient struct {
-	config
-}
-
-// NewUIDValidityClient returns a client for the UIDValidity from the given config.
-func NewUIDValidityClient(c config) *UIDValidityClient {
-	return &UIDValidityClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `uidvalidity.Hooks(f(g(h())))`.
-func (c *UIDValidityClient) Use(hooks ...Hook) {
-	c.hooks.UIDValidity = append(c.hooks.UIDValidity, hooks...)
-}
-
-// Create returns a builder for creating a UIDValidity entity.
-func (c *UIDValidityClient) Create() *UIDValidityCreate {
-	mutation := newUIDValidityMutation(c.config, OpCreate)
-	return &UIDValidityCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of UIDValidity entities.
-func (c *UIDValidityClient) CreateBulk(builders ...*UIDValidityCreate) *UIDValidityCreateBulk {
-	return &UIDValidityCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for UIDValidity.
-func (c *UIDValidityClient) Update() *UIDValidityUpdate {
-	mutation := newUIDValidityMutation(c.config, OpUpdate)
-	return &UIDValidityUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *UIDValidityClient) UpdateOne(uv *UIDValidity) *UIDValidityUpdateOne {
-	mutation := newUIDValidityMutation(c.config, OpUpdateOne, withUIDValidity(uv))
-	return &UIDValidityUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *UIDValidityClient) UpdateOneID(id int) *UIDValidityUpdateOne {
-	mutation := newUIDValidityMutation(c.config, OpUpdateOne, withUIDValidityID(id))
-	return &UIDValidityUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for UIDValidity.
-func (c *UIDValidityClient) Delete() *UIDValidityDelete {
-	mutation := newUIDValidityMutation(c.config, OpDelete)
-	return &UIDValidityDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *UIDValidityClient) DeleteOne(uv *UIDValidity) *UIDValidityDeleteOne {
-	return c.DeleteOneID(uv.ID)
-}
-
-// DeleteOne returns a builder for deleting the given entity by its id.
-func (c *UIDValidityClient) DeleteOneID(id int) *UIDValidityDeleteOne {
-	builder := c.Delete().Where(uidvalidity.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &UIDValidityDeleteOne{builder}
-}
-
-// Query returns a query builder for UIDValidity.
-func (c *UIDValidityClient) Query() *UIDValidityQuery {
-	return &UIDValidityQuery{
-		config: c.config,
-	}
-}
-
-// Get returns a UIDValidity entity by its id.
-func (c *UIDValidityClient) Get(ctx context.Context, id int) (*UIDValidity, error) {
-	return c.Query().Where(uidvalidity.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *UIDValidityClient) GetX(ctx context.Context, id int) *UIDValidity {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// Hooks returns the client hooks.
-func (c *UIDValidityClient) Hooks() []Hook {
-	return c.hooks.UIDValidity
 }

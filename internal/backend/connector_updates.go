@@ -81,6 +81,7 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 			update.Mailbox.Flags,
 			update.Mailbox.PermanentFlags,
 			update.Mailbox.Attributes,
+			user.globalUIDValidity,
 		); err != nil {
 			return err
 		}
@@ -103,13 +104,15 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 	}
 
 	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		uidValidity, increased, err := db.DeleteMailboxWithRemoteID(ctx, tx, update.MailboxID)
+		newUIDValidity, err := db.DeleteMailboxWithRemoteID(ctx, tx, update.MailboxID, user.globalUIDValidity)
 		if err != nil {
 			return err
 		}
 
-		if increased {
-			if err := user.connector.SetUIDValidity(uidValidity); err != nil {
+		if newUIDValidity != user.globalUIDValidity {
+			user.globalUIDValidity = newUIDValidity
+
+			if err := user.connector.SetUIDValidity(newUIDValidity); err != nil {
 				return err
 			}
 		}

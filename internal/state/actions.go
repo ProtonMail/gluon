@@ -35,6 +35,7 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 			res.Flags,
 			res.PermanentFlags,
 			res.Attributes,
+			state.user.GetGlobalUIDValidity(),
 		)
 		if err != nil {
 			return nil, err
@@ -52,7 +53,7 @@ func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name st
 		return err
 	}
 
-	return db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter)
+	return db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, state.user.GetGlobalUIDValidity())
 }
 
 func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID ids.MailboxIDPair) error {
@@ -60,13 +61,15 @@ func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 		return err
 	}
 
-	uidValidity, increased, err := db.DeleteMailboxWithRemoteID(ctx, tx, mboxID.RemoteID)
+	newUIDValidity, err := db.DeleteMailboxWithRemoteID(ctx, tx, mboxID.RemoteID, state.user.GetGlobalUIDValidity())
 	if err != nil {
 		return err
 	}
 
-	if increased {
-		if err := state.user.GetRemote().SetUIDValidity(uidValidity); err != nil {
+	if newUIDValidity != state.user.GetGlobalUIDValidity() {
+		state.user.SetGlobalUIDValidity(newUIDValidity)
+
+		if err := state.user.GetRemote().SetUIDValidity(newUIDValidity); err != nil {
 			return err
 		}
 	}

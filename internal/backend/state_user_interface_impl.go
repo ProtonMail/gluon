@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/state"
@@ -69,4 +70,12 @@ func (s *StateUserInterfaceImpl) QueueOrApplyStateUpdate(ctx context.Context, tx
 
 func (s *StateUserInterfaceImpl) ReleaseState(ctx context.Context, st *state.State) error {
 	return s.u.removeState(ctx, st)
+}
+
+func (s *StateUserInterfaceImpl) GetGlobalUIDValidity() imap.UID {
+	return s.u.globalUIDValidity
+}
+
+func (s *StateUserInterfaceImpl) SetGlobalUIDValidity(uid imap.UID) {
+	s.u.globalUIDValidity = uid
 }

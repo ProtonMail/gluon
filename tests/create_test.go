@@ -106,6 +106,42 @@ func TestEnsureNewMailboxWithDeletedNameHasGreaterId(t *testing.T) {
 	})
 }
 
+func TestCreate_UIDValidity(t *testing.T) {
+	runServer(t, defaultServerOptions(t), func(s *testSession) {
+		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
+			c.C("tag create a").OK("tag")
+			c.C("tag create b").OK("tag")
+			c.C("tag create c").OK("tag")
+
+			c.C("tag select a").Sxe("UIDVALIDITY 1").OK("tag")
+			c.C("tag select b").Sxe("UIDVALIDITY 1").OK("tag")
+			c.C("tag select c").Sxe("UIDVALIDITY 1").OK("tag")
+		})
+
+		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
+			c.C("tag delete a").OK("tag")
+		})
+
+		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
+			c.C("tag delete b").OK("tag")
+		})
+
+		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
+			c.C("tag delete c").OK("tag")
+		})
+
+		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
+			c.C("tag create a").OK("tag")
+			c.C("tag create b").OK("tag")
+			c.C("tag create c").OK("tag")
+
+			c.C("tag select a").Sxe("UIDVALIDITY 2").OK("tag")
+			c.C("tag select b").Sxe("UIDVALIDITY 2").OK("tag")
+			c.C("tag select c").Sxe("UIDVALIDITY 2").OK("tag")
+		})
+	})
+}
+
 func TestCreateAdjacentSeparator(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C(`A001 create foo//bar`)

@@ -17,7 +17,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/db/ent/uid"
-	"github.com/ProtonMail/gluon/internal/db/ent/uidvalidity"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -45,7 +44,6 @@ func columnChecker(table string) func(string) error {
 		message.Table:         message.ValidColumn,
 		messageflag.Table:     messageflag.ValidColumn,
 		uid.Table:             uid.ValidColumn,
-		uidvalidity.Table:     uidvalidity.ValidColumn,
 	}
 	check, ok := checks[table]
 	if !ok {
