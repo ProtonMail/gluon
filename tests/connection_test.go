@@ -165,6 +165,15 @@ func (s *testConnection) BAD(tag string) {
 	s.Sxe(tag + " BAD")
 }
 
+// Login is a shortcut for a login request.
+func (s *testConnection) Login(username, password string) *testConnection {
+	withTag(func(tag string) {
+		s.Cf("%v login %v %s", tag, username, password).OK(tag)
+	})
+
+	return s
+}
+
 func (s *testConnection) doCreateTempDir() (string, func()) {
 	name := uuid.NewString()
 

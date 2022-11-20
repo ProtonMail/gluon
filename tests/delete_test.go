@@ -87,7 +87,6 @@ func TestDeleteMailboxHasChildren(t *testing.T) {
 			`* LIST (\Marked) "/" "foo/bar"`,
 		)
 		c.OK(`A009`)
-
 	})
 }
 

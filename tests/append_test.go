@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/internal/ids"
 	"os"
 	"sync"
 	"testing"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/ids"
 	goimap "github.com/emersion/go-imap"
 	uidplus "github.com/emersion/go-imap-uidplus"
 	"github.com/emersion/go-imap/client"
@@ -26,18 +26,21 @@ func TestAppend(t *testing.T) {
 
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create(mailboxName))
+
 		{
 			// first check, empty mailbox
 			status, err := client.Status(mailboxName, []goimap.StatusItem{goimap.StatusMessages})
 			require.NoError(t, err)
 			require.Equal(t, uint32(0), status.Messages, "Expected message count does not match")
 		}
+
 		{
 			require.NoError(t, doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.SeenFlag))
 			require.NoError(t, doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.SeenFlag))
 			require.NoError(t, doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.SeenFlag))
 			require.Error(t, doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.RecentFlag))
 		}
+
 		{
 			// second check, there should be 3 messages
 			status, err := client.Status(mailboxName, []goimap.StatusItem{goimap.StatusMessages})
@@ -54,16 +57,17 @@ func TestAppendWithUidPlus(t *testing.T) {
 	)
 
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
-		const (
-			validityUid = uint32(1)
-		)
+		const validityUid = uint32(1)
+
 		require.NoError(t, client.Create(mailboxName))
+
 		{
 			// first check, empty mailbox
 			status, err := client.Status(mailboxName, []goimap.StatusItem{goimap.StatusMessages})
 			require.NoError(t, err)
 			require.Equal(t, uint32(0), status.Messages, "Expected message count does not match")
 		}
+
 		{
 			// Insert some messages
 			clientUidPlus := uidplus.NewClient(client)
@@ -87,6 +91,7 @@ func TestAppendWithUidPlus(t *testing.T) {
 			}
 			require.Error(t, doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.RecentFlag))
 		}
+
 		{
 			// second check, there should be 3 messages
 			status, err := client.Status(mailboxName, []goimap.StatusItem{goimap.StatusMessages})
@@ -106,6 +111,7 @@ func TestAppendNoSuchMailbox(t *testing.T) {
 		err := doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.SeenFlag)
 		require.Error(t, err)
 	})
+
 	// Run the old test as well as there is no way to check for the `[TRYCREATE]` flag of the response
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.doAppendFromFile(`saved-messages`, `testdata/afternoon-meeting.eml`, `\Seen`).expect(`NO \[TRYCREATE\]`)
@@ -275,7 +281,7 @@ func TestAppendCanHandleOutOfOrderUIDUpdates(t *testing.T) {
 	// same mailbox if other clients make updates.
 	// In the case of client B, it appends UID2 as the first message and then later receives an update from A with
 	// an UID lower than the last UID which caused unnecessary panics in the past.
-	//
+
 	runManyToOneTestWithAuth(t, defaultServerOptions(t, withDisableParallelism()), []int{1, 2}, func(c map[int]*testConnection, session *testSession) {
 		const MessageCount = 20
 
@@ -354,6 +360,5 @@ func TestGODT2007AppendInternalIDPresentOnDeletedMessage(t *testing.T) {
 			})
 			result.checkAndRequireMessageCount(1)
 		}
-
 	})
 }
