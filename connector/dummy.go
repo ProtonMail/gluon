@@ -50,7 +50,11 @@ type Dummy struct {
 	queue     []imap.Update
 	queueLock sync.Mutex
 
+	// hiddenMailboxes holds mailboxes that are hidden from the user.
 	hiddenMailboxes map[imap.MailboxID]struct{}
+
+	// uidValidity holds the global UID validity.
+	uidValidity imap.UID
 }
 
 func NewDummy(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
@@ -65,6 +69,7 @@ func NewDummy(usernames []string, password []byte, period time.Duration, flags, 
 		updateQuitCh:    make(chan struct{}),
 		ticker:          ticker.New(period),
 		hiddenMailboxes: make(map[imap.MailboxID]struct{}),
+		uidValidity:     1,
 	}
 
 	go func() {
@@ -244,10 +249,12 @@ func (conn *Dummy) MarkMessagesFlagged(ctx context.Context, messageIDs []imap.Me
 }
 
 func (conn *Dummy) GetUIDValidity() imap.UID {
-	return 1
+	return conn.uidValidity
 }
 
-func (conn *Dummy) SetUIDValidity(imap.UID) error {
+func (conn *Dummy) SetUIDValidity(newUIDValidity imap.UID) error {
+	conn.uidValidity = newUIDValidity
+
 	return nil
 }
 
