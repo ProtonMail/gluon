@@ -52,13 +52,13 @@ type Connector interface {
 type testSession struct {
 	tb testing.TB
 
-	listener      net.Listener
-	server        *gluon.Server
-	eventCh       <-chan events.Event
-	userIDs       map[string]string
-	conns         map[string]Connector
-	userDBPaths   map[string]string
-	serverOptions *serverOptions
+	listener    net.Listener
+	server      *gluon.Server
+	eventCh     <-chan events.Event
+	userIDs     map[string]string
+	conns       map[string]Connector
+	userDBPaths map[string]string
+	options     *serverOptions
 }
 
 func newTestSession(
@@ -72,14 +72,14 @@ func newTestSession(
 	options *serverOptions,
 ) *testSession {
 	return &testSession{
-		tb:            tb,
-		listener:      listener,
-		server:        server,
-		eventCh:       eventCh,
-		userIDs:       userIDs,
-		conns:         conns,
-		userDBPaths:   userDBPaths,
-		serverOptions: options,
+		tb:          tb,
+		listener:    listener,
+		server:      server,
+		eventCh:     eventCh,
+		userIDs:     userIDs,
+		conns:       conns,
+		userDBPaths: userDBPaths,
+		options:     options,
 	}
 }
 
@@ -90,14 +90,11 @@ func (s *testSession) newConnection() *testConnection {
 	return newTestConnection(s.tb, conn).Sx(`\* OK.*`)
 }
 
-func (s *testSession) newConnectionWithAuth() *testConnection {
-	conn, err := net.Dial(s.listener.Addr().Network(), s.listener.Addr().String())
-	require.NoError(s.tb, err)
+func (s *testSession) withConnection(user string, fn func(*testConnection)) {
+	conn := s.newConnection()
+	defer conn.disconnect()
 
-	return newTestConnection(s.tb, conn).Sx(`\* OK.*`).Login(
-		s.serverOptions.defaultUsername(),
-		s.serverOptions.defaultPassword(),
-	)
+	fn(conn.Login(user, s.options.password(user)))
 }
 
 func (s *testSession) newClient() *client.Client {
