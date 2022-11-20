@@ -140,22 +140,22 @@ func (s *Session) Serve(ctx context.Context) error {
 		return err
 	}
 
-	return s.serve(ctx)
+	profiler := s.cmdProfilerBuilder.New()
+	defer s.cmdProfilerBuilder.Collect(profiler)
+
+	return s.serve(profiling.WithProfiler(ctx, profiler))
 }
 
 func (s *Session) serve(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	profiler := s.cmdProfilerBuilder.New()
-	defer s.cmdProfilerBuilder.Collect(profiler)
-
 	cmdCh := s.startCommandReader(ctx, s.backend.GetDelimiter())
 
 	for {
 		select {
-		case stateUpdate := <-s.state.GetStateUpdatesCh():
-			if err := s.state.ApplyUpdate(ctx, stateUpdate); err != nil {
+		case update := <-s.state.GetStateUpdatesCh():
+			if err := s.state.ApplyUpdate(ctx, update); err != nil {
 				logrus.WithError(err).Error("Failed to apply state update")
 			}
 
@@ -181,6 +181,33 @@ func (s *Session) serve(ctx context.Context) error {
 				}
 
 				continue
+			} else {
+				s.errorCount = 0
+			}
+
+			// Before proceeding with command execution, check whether we still have a valid state.
+			// State can become invalid at any time, e.g.: deletion of a selected mailbox by another client.
+			if s.state != nil && !s.state.IsValid() {
+				return response.Bye().WithInconsistentState().Send(s)
+			}
+
+			switch {
+			case res.cmd.GetLogout() != nil:
+				return s.handleLogout(ctx, res.tag, res.cmd.GetLogout())
+
+			case res.cmd.GetIdle() != nil:
+				if err := s.handleIdle(ctx, res.tag, res.cmd.GetIdle(), cmdCh); err != nil {
+					if err := response.No(res.tag).WithError(err).Send(s); err != nil {
+						return fmt.Errorf("failed to send response to client: %w", err)
+					}
+				}
+
+			default:
+				for res := range s.handleOther(withStartTime(ctx, time.Now()), res.tag, res.cmd) {
+					if err := res.Send(s); err != nil {
+						return fmt.Errorf("failed to send response to client: %w", err)
+					}
+				}
 			}
 
 		case <-s.state.Done():
@@ -188,41 +215,6 @@ func (s *Session) serve(ctx context.Context) error {
 
 		case <-ctx.Done():
 			return ctx.Err()
-		}
-
-		// Before proceeding with command execution, check whether we still have a valid state. State can become
-		// at any time, e.g.: deletion of a selected mailbox by another client.
-		if s.state != nil && !s.state.IsValid() {
-			if err := response.Bye().WithInconsistentState().Send(s); err != nil {
-				logrus.WithError(err).Error("Failed to send untagged message to client")
-			}
-
-			return nil
-		}
-
-		switch {
-		case cmd.GetLogout() != nil:
-			profiler.Start(profiling.CmdTypeLogout)
-			defer profiler.Stop(profiling.CmdTypeLogout)
-
-			return s.handleLogout(ctx, tag, cmd.GetLogout())
-
-		case cmd.GetIdle() != nil:
-			profiler.Start(profiling.CmdTypeIdle)
-			defer profiler.Stop(profiling.CmdTypeIdle)
-
-			if err := s.handleIdle(ctx, tag, cmd.GetIdle(), cmdCh); err != nil {
-				if err := response.No(tag).WithError(err).Send(s); err != nil {
-					return fmt.Errorf("failed to send response to client: %w", err)
-				}
-			}
-
-		default:
-			for res := range s.handleOther(withStartTime(ctx, time.Now()), tag, cmd, profiler) {
-				if err := res.Send(s); err != nil {
-					return fmt.Errorf("failed to send response to client: %w", err)
-				}
-			}
 		}
 	}
 }

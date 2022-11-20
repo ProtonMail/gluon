@@ -4,14 +4,24 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/emersion/go-imap/utf7"
 )
 
 func (s *Session) handleMove(ctx context.Context, tag string, cmd *proto.Move, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
+	if contexts.IsUID(ctx) {
+		profiling.Start(ctx, profiling.CmdTypeUIDMove)
+		defer profiling.Stop(ctx, profiling.CmdTypeUIDMove)
+	} else {
+		profiling.Start(ctx, profiling.CmdTypeMove)
+		defer profiling.Stop(ctx, profiling.CmdTypeMove)
+	}
+
 	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
 	if err != nil {
 		return nil, err

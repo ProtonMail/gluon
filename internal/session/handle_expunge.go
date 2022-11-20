@@ -3,13 +3,17 @@ package session
 import (
 	"context"
 
-	context2 "github.com/ProtonMail/gluon/internal/contexts"
+	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/profiling"
 )
 
 func (s *Session) handleExpunge(ctx context.Context, tag string, cmd *proto.Expunge, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
+	profiling.Start(ctx, profiling.CmdTypeExpunge)
+	defer profiling.Stop(ctx, profiling.CmdTypeExpunge)
+
 	if mailbox.ReadOnly() {
 		return nil, ErrReadOnly
 	}
@@ -26,7 +30,10 @@ func (s *Session) handleExpunge(ctx context.Context, tag string, cmd *proto.Expu
 }
 
 func (s *Session) handleUIDExpunge(ctx context.Context, tag string, cmd *proto.UIDExpunge, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
-	ctx = context2.AsUID(ctx)
+	profiling.Start(ctx, profiling.CmdTypeExpunge)
+	defer profiling.Stop(ctx, profiling.CmdTypeExpunge)
+
+	ctx = contexts.AsUID(ctx)
 
 	if mailbox.ReadOnly() {
 		return nil, ErrReadOnly

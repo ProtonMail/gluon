@@ -5,9 +5,13 @@ import (
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/profiling"
 )
 
 func (s *Session) handleLogout(ctx context.Context, tag string, cmd *proto.Logout) error {
+	profiling.Start(ctx, profiling.CmdTypeLogout)
+	defer profiling.Stop(ctx, profiling.CmdTypeLogout)
+
 	s.userLock.Lock()
 	defer s.userLock.Unlock()
 

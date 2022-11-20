@@ -4,13 +4,23 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 )
 
 func (s *Session) handleFetch(ctx context.Context, tag string, cmd *proto.Fetch, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
+	if contexts.IsUID(ctx) {
+		profiling.Start(ctx, profiling.CmdTypeUIDFetch)
+		defer profiling.Stop(ctx, profiling.CmdTypeUIDFetch)
+	} else {
+		profiling.Start(ctx, profiling.CmdTypeFetch)
+		defer profiling.Stop(ctx, profiling.CmdTypeFetch)
+	}
+
 	if err := mailbox.Fetch(ctx, cmd.GetSequenceSet(), cmd.GetAttributes(), ch); errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err), nil
 	} else if err != nil {

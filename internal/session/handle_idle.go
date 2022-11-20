@@ -7,12 +7,16 @@ import (
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/logging"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/sirupsen/logrus"
 )
 
 // GOMSRV-86: What does it mean to do IDLE when you're not selected?
 // GOMSRV-87: Should IDLE be stopped automatically when the context is cancelled?
 func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, cmdCh <-chan command) error {
+	profiling.Start(ctx, profiling.CmdTypeIdle)
+	defer profiling.Stop(ctx, profiling.CmdTypeIdle)
+
 	if s.state == nil {
 		return ErrNotAuthenticated
 	}

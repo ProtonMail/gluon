@@ -7,9 +7,13 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/profiling"
 )
 
 func (s *Session) handleLogin(ctx context.Context, tag string, cmd *proto.Login, ch chan response.Response) error {
+	profiling.Start(ctx, profiling.CmdTypeLogin)
+	defer profiling.Stop(ctx, profiling.CmdTypeLogin)
+
 	s.userLock.Lock()
 	defer s.userLock.Unlock()
 

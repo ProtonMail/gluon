@@ -7,11 +7,15 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/emersion/go-imap/utf7"
 )
 
 func (s *Session) handleDelete(ctx context.Context, tag string, cmd *proto.Del, ch chan response.Response) error {
+	profiling.Start(ctx, profiling.CmdTypeDelete)
+	defer profiling.Stop(ctx, profiling.CmdTypeDelete)
+
 	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
 	if err != nil {
 		return err

@@ -4,16 +4,25 @@ import (
 	"context"
 	"errors"
 
-	context2 "github.com/ProtonMail/gluon/internal/contexts"
+	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 )
 
 func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
+	if contexts.IsUID(ctx) {
+		profiling.Start(ctx, profiling.CmdTypeUIDStore)
+		defer profiling.Stop(ctx, profiling.CmdTypeUIDStore)
+	} else {
+		profiling.Start(ctx, profiling.CmdTypeStore)
+		defer profiling.Stop(ctx, profiling.CmdTypeStore)
+	}
+
 	if cmd.GetAction().GetSilent() {
-		ctx = context2.AsSilent(ctx)
+		ctx = contexts.AsSilent(ctx)
 	}
 
 	flags, err := validateStoreFlags(cmd.GetFlags())
