@@ -1,10 +1,11 @@
 package tests
 
 import (
+	"testing"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type TestStoreBuilder struct {
@@ -22,7 +23,7 @@ func (t *TestStoreBuilder) New(dir, userID string, passphrase []byte) (store.Sto
 		return nil, err
 	}
 
-	var testStoreBuilderTestIDs = []imap.InternalMessageID{
+	testStoreBuilderTestIDs := []imap.InternalMessageID{
 		20414124, 234534834634, 13244367346734098, 2341234234234,
 	}
 

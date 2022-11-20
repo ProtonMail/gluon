@@ -20,16 +20,14 @@ func runOneToOneTest(tb testing.TB, options *serverOptions, tests func(*testConn
 // runOneToOneTestWithAuth runs a test with one account and one connection. The connection is logged in.
 func runOneToOneTestWithAuth(tb testing.TB, options *serverOptions, tests func(*testConnection, *testSession)) {
 	runOneToOneTest(tb, options, func(c *testConnection, s *testSession) {
-		withTag(func(tag string) {
-			c.Cf("%v login %v %s", tag, options.defaultUsername(), options.defaultUserPassword()).OK(tag)
-		})
-
-		tests(c, s)
+		tests(c.Login(options.defaultUsername(), string(options.defaultUserPassword())), s)
 	})
 }
 
 // runOneToOneTestWithData runs a test with one account and one connection. A mailbox is created with test data.
-func runOneToOneTestWithData(tb testing.TB, options *serverOptions,
+func runOneToOneTestWithData(
+	tb testing.TB,
+	options *serverOptions,
 	tests func(*testConnection, *testSession, string, imap.MailboxID),
 ) {
 	runOneToOneTestWithAuth(tb, options, func(c *testConnection, s *testSession) {
@@ -42,21 +40,26 @@ func runOneToOneTestWithData(tb testing.TB, options *serverOptions,
 }
 
 // runManyToOneTest runs a test with one account and multiple connections.
-func runManyToOneTest(tb testing.TB, options *serverOptions, connIDs []int, tests func(map[int]*testConnection, *testSession)) {
+func runManyToOneTest(
+	tb testing.TB,
+	options *serverOptions,
+	connIDs []int,
+	tests func(map[int]*testConnection, *testSession),
+) {
 	runTest(tb, options, connIDs, func(c map[int]*testConnection, s *testSession) {
 		tests(c, s)
 	})
 }
 
 // runManyToOneTestWithAuth runs a test with one account and multiple connections. Each connection is logged in.
-func runManyToOneTestWithAuth(tb testing.TB, options *serverOptions,
+func runManyToOneTestWithAuth(
+	tb testing.TB,
+	options *serverOptions,
 	connIDs []int, tests func(map[int]*testConnection, *testSession),
 ) {
 	runManyToOneTest(tb, options, connIDs, func(c map[int]*testConnection, s *testSession) {
 		for _, c := range c {
-			withTag(func(tag string) {
-				c.Cf("%v login %v %s", tag, options.defaultUsername(), options.defaultUserPassword()).OK(tag)
-			})
+			c.Login(options.defaultUsername(), string(options.defaultUserPassword()))
 		}
 
 		tests(c, s)
@@ -64,8 +67,11 @@ func runManyToOneTestWithAuth(tb testing.TB, options *serverOptions,
 }
 
 // runManyToOneTestWithData runs a test with one account and multiple connections. Apply mailbox is created with test data.
-func runManyToOneTestWithData(tb testing.TB, options *serverOptions,
-	connIDs []int, tests func(map[int]*testConnection, *testSession, string, imap.MailboxID),
+func runManyToOneTestWithData(
+	tb testing.TB,
+	options *serverOptions,
+	connIDs []int,
+	tests func(map[int]*testConnection, *testSession, string, imap.MailboxID),
 ) {
 	runManyToOneTestWithAuth(tb, options, connIDs, func(c map[int]*testConnection, s *testSession) {
 		withData(s, options.defaultUsername(), func(mbox string, mboxID imap.MailboxID) {
@@ -90,7 +96,12 @@ func runTest(tb testing.TB, options *serverOptions, connIDs []int, tests func(ma
 // -- IMAP client test helpers
 
 // runTestClient runs the mailserver and creates test connections to it using an imap client.
-func runTestClient(tb testing.TB, options *serverOptions, connIDs []int, tests func(map[int]*client.Client, *testSession)) {
+func runTestClient(
+	tb testing.TB,
+	options *serverOptions,
+	connIDs []int,
+	tests func(map[int]*client.Client, *testSession),
+) {
 	runServer(tb, options, func(s *testSession) {
 		withClients(tb, s, connIDs, func(clientMap map[int]*client.Client) {
 			tests(clientMap, s)
@@ -114,7 +125,11 @@ func runOneToOneTestClientWithAuth(tb testing.TB, options *serverOptions, test f
 }
 
 // runOneToOneTestClientWithData runs a test with one account and one connection using an imap client. Apply mailbox is created with test data.
-func runOneToOneTestClientWithData(tb testing.TB, options *serverOptions, test func(*client.Client, *testSession, string, imap.MailboxID)) {
+func runOneToOneTestClientWithData(
+	tb testing.TB,
+	options *serverOptions,
+	test func(*client.Client, *testSession, string, imap.MailboxID),
+) {
 	runOneToOneTestClientWithAuth(tb, options, func(client *client.Client, s *testSession) {
 		withData(s, options.defaultUsername(), func(mbox string, mboxID imap.MailboxID) {
 			_, err := client.Select(mbox, false)
