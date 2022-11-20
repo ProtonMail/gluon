@@ -17,10 +17,12 @@ import (
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
+	"github.com/bradenaw/juniper/xslices"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 )
 
 const defaultPeriod = time.Second
@@ -77,6 +79,12 @@ func (s *serverOptions) defaultUsername() string {
 
 func (s *serverOptions) defaultPassword() string {
 	return s.credentials[0].password
+}
+
+func (s *serverOptions) password(username string) string {
+	return s.credentials[xslices.IndexFunc(s.credentials, func(cred credentials) bool {
+		return slices.Contains(cred.usernames, username)
+	})].password
 }
 
 type serverOption interface {
