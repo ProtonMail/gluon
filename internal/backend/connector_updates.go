@@ -626,7 +626,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 // applyUIDValidityBumped applies a UIDValidityBumped event to the user.
 func (user *user) applyUIDValidityBumped(ctx context.Context, update *imap.UIDValidityBumped) error {
 	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		user.globalUIDValidity = user.globalUIDValidity.Add(1)
+		user.globalUIDValidity = update.UIDValidity
 
 		mailboxes, err := db.GetAllMailboxes(ctx, tx.Client())
 		if err != nil {
