@@ -103,7 +103,6 @@ func TestEnsureNewMailboxWithDeletedNameHasGreaterId(t *testing.T) {
 			newValidity = mailboxStatus.UidValidity
 			require.Greater(t, newValidity, oldValidity)
 		}
-
 	})
 }
 
