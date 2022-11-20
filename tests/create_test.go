@@ -106,8 +106,9 @@ func TestEnsureNewMailboxWithDeletedNameHasGreaterId(t *testing.T) {
 	})
 }
 
-func TestCreate_UIDValidity(t *testing.T) {
+func TestCreate_UIDValidity_Bumped(t *testing.T) {
 	runServer(t, defaultServerOptions(t), func(s *testSession) {
+		// Create some mailboxes; they'll have the initial UID validity of 1.
 		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
 			c.C("tag create a").OK("tag")
 			c.C("tag create b").OK("tag")
@@ -118,18 +119,12 @@ func TestCreate_UIDValidity(t *testing.T) {
 			c.C("tag select c").Sxe("UIDVALIDITY 1").OK("tag")
 		})
 
-		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
-			c.C("tag delete a").OK("tag")
-		})
+		// Delete the mailboxes.
+		s.withConnection(s.options.defaultUsername(), func(c *testConnection) { c.C("tag delete a").OK("tag") })
+		s.withConnection(s.options.defaultUsername(), func(c *testConnection) { c.C("tag delete b").OK("tag") })
+		s.withConnection(s.options.defaultUsername(), func(c *testConnection) { c.C("tag delete c").OK("tag") })
 
-		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
-			c.C("tag delete b").OK("tag")
-		})
-
-		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
-			c.C("tag delete c").OK("tag")
-		})
-
+		// Recreate the mailboxes; they'll have a new UID validity.
 		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
 			c.C("tag create a").OK("tag")
 			c.C("tag create b").OK("tag")
@@ -138,6 +133,19 @@ func TestCreate_UIDValidity(t *testing.T) {
 			c.C("tag select a").Sxe("UIDVALIDITY 2").OK("tag")
 			c.C("tag select b").Sxe("UIDVALIDITY 2").OK("tag")
 			c.C("tag select c").Sxe("UIDVALIDITY 2").OK("tag")
+		})
+
+		// Bump the global UID validity.
+		s.uidValidityBumped(s.options.defaultUsername())
+
+		// Ensure the UID validity has been bumped.
+		s.flush(s.options.defaultUsername())
+
+		// The mailboxes should all have a new UID validity.
+		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
+			c.C("tag select a").Sxe("UIDVALIDITY 3").OK("tag")
+			c.C("tag select b").Sxe("UIDVALIDITY 3").OK("tag")
+			c.C("tag select c").Sxe("UIDVALIDITY 3").OK("tag")
 		})
 	})
 }

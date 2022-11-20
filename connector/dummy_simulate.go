@@ -216,6 +216,10 @@ func (conn *Dummy) MessageDeleted(messageID imap.MessageID) error {
 	return nil
 }
 
+func (conn *Dummy) UIDValidityBumped() {
+	conn.pushUpdate(imap.NewUIDValidityBumped())
+}
+
 func (conn *Dummy) Flush() {
 	conn.ticker.Poll()
 }

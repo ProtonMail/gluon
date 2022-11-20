@@ -54,6 +54,9 @@ func (user *user) apply(ctx context.Context, update imap.Update) error {
 	case *imap.MessageUpdated:
 		return user.applyMessageUpdated(ctx, update)
 
+	case *imap.UIDValidityBumped:
+		return user.applyUIDValidityBumped(ctx, update)
+
 	case *imap.Noop:
 		return nil
 
@@ -616,6 +619,32 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 	if len(stateUpdates) != 0 {
 		user.queueStateUpdate(stateUpdates...)
 	}
+
+	return nil
+}
+
+// applyUIDValidityBumped applies a UIDValidityBumped event to the user.
+func (user *user) applyUIDValidityBumped(ctx context.Context, update *imap.UIDValidityBumped) error {
+	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		user.globalUIDValidity = user.globalUIDValidity.Add(1)
+
+		mailboxes, err := db.GetAllMailboxes(ctx, tx.Client())
+		if err != nil {
+			return err
+		}
+
+		for _, mailbox := range mailboxes {
+			if _, err := mailbox.Update().SetUIDValidity(user.globalUIDValidity).Save(ctx); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	user.queueStateUpdate(state.NewUIDValidityBumpedStateUpdate())
 
 	return nil
 }
