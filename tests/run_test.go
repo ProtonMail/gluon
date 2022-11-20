@@ -20,7 +20,7 @@ func runOneToOneTest(tb testing.TB, options *serverOptions, tests func(*testConn
 // runOneToOneTestWithAuth runs a test with one account and one connection. The connection is logged in.
 func runOneToOneTestWithAuth(tb testing.TB, options *serverOptions, tests func(*testConnection, *testSession)) {
 	runOneToOneTest(tb, options, func(c *testConnection, s *testSession) {
-		tests(c.Login(options.defaultUsername(), string(options.defaultUserPassword())), s)
+		tests(c.Login(options.defaultUsername(), options.defaultPassword()), s)
 	})
 }
 
@@ -33,7 +33,6 @@ func runOneToOneTestWithData(
 	runOneToOneTestWithAuth(tb, options, func(c *testConnection, s *testSession) {
 		withData(s, options.defaultUsername(), func(mbox string, mboxID imap.MailboxID) {
 			withTag(func(tag string) { c.Cf("%v select %v", tag, mbox).OK(tag) })
-
 			tests(c, s, mbox, mboxID)
 		})
 	})
@@ -59,7 +58,7 @@ func runManyToOneTestWithAuth(
 ) {
 	runManyToOneTest(tb, options, connIDs, func(c map[int]*testConnection, s *testSession) {
 		for _, c := range c {
-			c.Login(options.defaultUsername(), string(options.defaultUserPassword()))
+			c.Login(options.defaultUsername(), options.defaultPassword())
 		}
 
 		tests(c, s)
@@ -119,7 +118,7 @@ func runOneToOneTestClient(tb testing.TB, options *serverOptions, test func(*cli
 // runOneToOneTestClientWithAuth runs a test with one account and one connection using an imap client. The connection is logged in.
 func runOneToOneTestClientWithAuth(tb testing.TB, options *serverOptions, test func(*client.Client, *testSession)) {
 	runOneToOneTestClient(tb, options, func(client *client.Client, s *testSession) {
-		require.NoError(tb, client.Login(options.defaultUsername(), string(options.defaultUserPassword())))
+		require.NoError(tb, client.Login(options.defaultUsername(), string(options.defaultPassword())))
 		test(client, s)
 	})
 }
