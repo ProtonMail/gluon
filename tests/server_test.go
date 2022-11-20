@@ -33,7 +33,7 @@ var (
 
 type credentials struct {
 	usernames []string
-	password  []byte
+	password  string
 }
 
 var testServerVersionInfo = version.Info{
@@ -75,7 +75,7 @@ func (s *serverOptions) defaultUsername() string {
 	return s.credentials[0].usernames[0]
 }
 
-func (s *serverOptions) defaultUserPassword() []byte {
+func (s *serverOptions) defaultPassword() string {
 	return s.credentials[0].password
 }
 
@@ -169,7 +169,7 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 	options := &serverOptions{
 		credentials: []credentials{{
 			usernames: []string{"user"},
-			password:  []byte("pass"),
+			password:  "pass",
 		}},
 		delimiter:        "/",
 		loginJailTime:    time.Second,
@@ -242,7 +242,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	for _, creds := range options.credentials {
 		conn := options.connectorBuilder.New(
 			creds.usernames,
-			creds.password,
+			[]byte(creds.password),
 			defaultPeriod,
 			defaultFlags,
 			defaultPermanentFlags,
@@ -252,9 +252,10 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		// Force USER ID to be consistent.
 		userID := hex.EncodeToString(hash.SHA256([]byte(creds.usernames[0])))
 
-		err := server.LoadUser(ctx, conn, userID, []byte(creds.password))
-		require.NoError(tb, err)
+		// Load the user.
+		require.NoError(tb, server.LoadUser(ctx, conn, userID, []byte(creds.password)))
 
+		// Trigger a sync of the user's data.
 		require.NoError(tb, conn.Sync(ctx))
 
 		for _, username := range creds.usernames {
@@ -272,7 +273,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	require.NoError(tb, server.Serve(ctx, listener))
 
 	// Run the test against the server.
-	logging.DoAnnotated(ctx, func(ctx context.Context) {
+	logging.DoAnnotated(ctx, func(context.Context) {
 		tests(newTestSession(tb, listener, server, eventCh, userIDs, conns, dbPaths, options))
 	}, logging.Labels{
 		"Action": "Running gluon tests",
@@ -289,8 +290,6 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	require.NoError(tb, <-server.GetErrorCh())
 	require.NoError(tb, listener.Close())
 }
-
-// runServerWithPaths initializes and starts the mailserver.
 
 func withConnections(tb testing.TB, s *testSession, connIDs []int, tests func(map[int]*testConnection)) {
 	conns := make(map[int]*testConnection)
