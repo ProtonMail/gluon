@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 
 	goimap "github.com/emersion/go-imap"
@@ -113,6 +114,41 @@ func TestStoreSilent(t *testing.T) {
 		c[2].C(`B007 NOOP`)
 		c[2].S(`* 1 FETCH (FLAGS (flag1))`)
 		c[2].OK(`B007`)
+	})
+}
+
+func TestStoreReadUnread(t *testing.T) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+		c[1].C(`tag select inbox`).OK(`tag`)
+		c[2].C(`tag select inbox`).OK(`tag`)
+
+		for i := 1; i <= 10; i++ {
+			c[1].doAppend(`INBOX`, fmt.Sprintf(`To: %v@pm.me`, i)).expect("OK")
+
+			c[1].C(`tag noop`).OK(`tag`)
+			c[2].C(`tag noop`).OK(`tag`)
+		}
+
+		for i := 1; i <= 10; i++ {
+			// Begin IDLEing on session 2.
+			c[2].C(`tag idle`).Continue()
+
+			// Mark the message as read with session 1.
+			c[1].Cf(`tag UID STORE %v +FLAGS.SILENT (\Seen)`, i).OK(`tag`)
+
+			// Mark the message as read with session 1.
+			c[1].Cf(`tag UID STORE %v FLAGS.SILENT (\Seen)`, i).OK(`tag`)
+
+			// Wait for the untagged FETCH response on session 2.
+			c[2].S(fmt.Sprintf(`* %v FETCH (FLAGS (\Seen))`, i))
+
+			// End IDLEing on session 2.
+			c[2].C(`DONE`).OK(`tag`)
+
+			// Both sessions should see the message as read.
+			c[1].Cf(`tag UID FETCH %v (FLAGS)`, i).Sxe(`\Seen`).OK(`tag`)
+			c[2].Cf(`tag UID FETCH %v (FLAGS)`, i).Sxe(`\Seen`).OK(`tag`)
+		}
 	})
 }
 
