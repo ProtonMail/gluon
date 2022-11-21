@@ -233,7 +233,7 @@ func (u *messageFlagsSetStateUpdate) Apply(ctx context.Context, tx *ent.Tx, stat
 }
 
 func (u *messageFlagsSetStateUpdate) String() string {
-	return fmt.Sprintf("MessagFlagsSetStateUpdate: mbox = %v messages = %v flags=%v",
+	return fmt.Sprintf("MessageFlagsSetStateUpdate: mbox = %v messages = %v flags=%v",
 		u.mboxID.InternalID.ShortID(),
 		xslices.Map(u.messageIDs, func(id imap.InternalMessageID) string {
 			return id.ShortID()
