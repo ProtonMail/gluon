@@ -55,7 +55,7 @@ func indexOfNewLineAfterBoundary(data []byte) int {
 		return 0
 	}
 
-	//consume extra '\r's
+	// consume extra '\r's
 	index := 0
 	for ; index < dataLen && data[index] == '\r'; index++ {
 	}

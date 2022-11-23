@@ -10,9 +10,7 @@ const (
 	responseChannelBufferCount = "GLUON_RESPONSE_CHANNEL_BUFFER_COUNT"
 )
 
-var (
-	maxLineLength = 120
-)
+var maxLineLength = 120
 
 func init() {
 	if val, ok := os.LookupEnv(logIMAPLineLimit); ok {

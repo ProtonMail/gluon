@@ -10,10 +10,12 @@ import (
 	"github.com/emersion/go-imap/client"
 )
 
-var serverUrl = flag.String("server", "127.0.0.1:1143", "IMAP server address:port")
-var userName = flag.String("user-name", "user", "IMAP user name")
-var userPassword = flag.String("user-pwd", "password", "IMAP user password")
-var mbox = flag.String("mbox", "INBOX", "IMAP mailbox to append to")
+var (
+	serverUrl    = flag.String("server", "127.0.0.1:1143", "IMAP server address:port")
+	userName     = flag.String("user-name", "user", "IMAP user name")
+	userPassword = flag.String("user-pwd", "password", "IMAP user password")
+	mbox         = flag.String("mbox", "INBOX", "IMAP mailbox to append to")
+)
 
 func main() {
 	flag.Parse()

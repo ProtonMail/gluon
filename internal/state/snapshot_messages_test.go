@@ -12,12 +12,12 @@ import (
 func TestMessages(t *testing.T) {
 	msg := newMsgList(8)
 
-	msg.insert(ids.MessageIDPair{1, "1"}, 10, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.MessageIDPair{2, "2"}, 20, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.MessageIDPair{3, "3"}, 30, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.MessageIDPair{4, "4"}, 40, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.MessageIDPair{5, "5"}, 50, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.MessageIDPair{6, "6"}, 60, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(1, "1"), 10, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(2, "2"), 20, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(3, "3"), 30, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(4, "4"), 40, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(5, "5"), 50, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(6, "6"), 60, imap.NewFlagSet(imap.FlagSeen))
 
 	msg.remove(2)
 	msg.remove(4)
@@ -71,12 +71,12 @@ func TestMessages(t *testing.T) {
 func TestMessageUIDRange(t *testing.T) {
 	msg := newMsgList(8)
 
-	msg.insert(ids.MessageIDPair{1, "1"}, 10, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.MessageIDPair{2, "2"}, 20, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.MessageIDPair{3, "3"}, 30, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.MessageIDPair{4, "4"}, 40, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.MessageIDPair{5, "5"}, 50, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(ids.MessageIDPair{6, "6"}, 60, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(1, "1"), 10, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(2, "2"), 20, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(3, "3"), 30, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(4, "4"), 40, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(5, "5"), 50, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(6, "6"), 60, imap.NewFlagSet(imap.FlagSeen))
 
 	// UIDRange Higher than maximum
 	{
@@ -119,6 +119,10 @@ func TestMessageUIDRange(t *testing.T) {
 		require.Equal(t, result[0].UID, imap.UID(30))
 		require.Equal(t, result[1].UID, imap.UID(40))
 	}
+}
+
+func messageIDPair(internalID imap.InternalMessageID, remoteID imap.MessageID) ids.MessageIDPair {
+	return ids.MessageIDPair{InternalID: internalID, RemoteID: remoteID}
 }
 
 func must[T any](val T, ok bool) T {

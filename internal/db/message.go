@@ -155,7 +155,6 @@ func CreateAndAddMessageToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.I
 		SetMessage(message).
 		SetUID(mbox.UIDNext).
 		Save(ctx)
-
 	if err != nil {
 		return 0, imap.FlagSet{}, err
 	}

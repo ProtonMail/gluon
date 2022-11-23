@@ -2,6 +2,7 @@ package imap
 
 import (
 	"fmt"
+
 	"github.com/bradenaw/juniper/xslices"
 )
 

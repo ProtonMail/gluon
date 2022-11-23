@@ -1,9 +1,9 @@
 package rfc822
 
 import (
-	"github.com/bradenaw/juniper/xslices"
 	"testing"
 
+	"github.com/bradenaw/juniper/xslices"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

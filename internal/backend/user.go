@@ -170,7 +170,6 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 
 		return ids, nil
 	})
-
 	if err != nil {
 		return err
 	}

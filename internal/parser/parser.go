@@ -67,32 +67,36 @@ extern uintptr_t _wrap_parse_parser_e936be103708c9c2(swig_type_13 arg1, uintptr_
 */
 import "C"
 
-import "unsafe"
-import _ "runtime/cgo"
-import "sync"
-
+import (
+	_ "runtime/cgo"
+	"sync"
+	"unsafe"
+)
 
 type _ unsafe.Pointer
 
+var (
+	Swig_escape_always_false bool
+	Swig_escape_val          interface{}
+)
 
-
-var Swig_escape_always_false bool
-var Swig_escape_val interface{}
-
-
-type _swig_fnptr *byte
-type _swig_memberptr *byte
-
+type (
+	_swig_fnptr     *byte
+	_swig_memberptr *byte
+)
 
 type _ sync.Mutex
 
+type swig_gostring struct {
+	p uintptr
+	n int
+}
 
-type swig_gostring struct { p uintptr; n int }
 func swigCopyString(s string) string {
-  p := *(*swig_gostring)(unsafe.Pointer(&s))
-  r := string((*[0x7fffffff]byte)(unsafe.Pointer(p.p))[:p.n])
-  Swig_free(p.p)
-  return r
+	p := *(*swig_gostring)(unsafe.Pointer(&s))
+	r := string((*[0x7fffffff]byte)(unsafe.Pointer(p.p))[:p.n])
+	Swig_free(p.p)
+	return r
 }
 
 func Swig_free(arg1 uintptr) {
@@ -169,7 +173,7 @@ func (arg1 SwigcptrStringMap) Get(arg2 string) (_swig_ret string) {
 		Swig_escape_val = arg2
 	}
 	var swig_r_1 string
- swig_r_1 = swigCopyString(swig_r) 
+	swig_r_1 = swigCopyString(swig_r)
 	return swig_r_1
 }
 
@@ -247,7 +251,7 @@ func (arg1 SwigcptrParseResult) GetTag() (_swig_ret string) {
 	swig_r_p := C._wrap_ParseResult_tag_get_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))
 	swig_r = *(*string)(unsafe.Pointer(&swig_r_p))
 	var swig_r_1 string
- swig_r_1 = swigCopyString(swig_r) 
+	swig_r_1 = swigCopyString(swig_r)
 	return swig_r_1
 }
 
@@ -266,7 +270,7 @@ func (arg1 SwigcptrParseResult) GetCommand() (_swig_ret string) {
 	swig_r_p := C._wrap_ParseResult_command_get_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))
 	swig_r = *(*string)(unsafe.Pointer(&swig_r_p))
 	var swig_r_1 string
- swig_r_1 = swigCopyString(swig_r) 
+	swig_r_1 = swigCopyString(swig_r)
 	return swig_r_1
 }
 
@@ -285,7 +289,7 @@ func (arg1 SwigcptrParseResult) GetError() (_swig_ret string) {
 	swig_r_p := C._wrap_ParseResult_error_get_parser_e936be103708c9c2(C.uintptr_t(_swig_i_0))
 	swig_r = *(*string)(unsafe.Pointer(&swig_r_p))
 	var swig_r_1 string
- swig_r_1 = swigCopyString(swig_r) 
+	swig_r_1 = swigCopyString(swig_r)
 	return swig_r_1
 }
 
@@ -325,5 +329,3 @@ func Parse(arg1 string, arg2 StringMap, arg3 string) (_swig_ret ParseResult) {
 	}
 	return swig_r
 }
-
-
