@@ -5,7 +5,7 @@
 <p align="center">
 <a href="https://github.com/ProtonMail/gluon/actions/workflows/release.yml"><img src="https://github.com/ProtonMail/gluon/actions/workflows/release.yml/badge.svg?branch=master" alt="CI Status"></a>
 <a href="https://pkg.go.dev/github.com/ProtonMail/gluon"><img src="https://pkg.go.dev/badge/github.com/ProtonMail/gluon" alt="GoDoc"></a>
-<a href="https://goreportcard.com/report/ProtonMail/gluon"><img src="https://goreportcard.com/badge/ProtonMail/gluon" alt="Go Report Card"></a>
+<a href="https://goreportcard.com/report/github.com/ProtonMail/gluon"><img src="https://goreportcard.com/badge/github.com/ProtonMail/gluon" alt="Go Report Card"></a>
 <a href="LICENSE"><img src="https://img.shields.io/github/license/ProtonMail/gluon.svg" alt="License"></a>
 </p>
 
