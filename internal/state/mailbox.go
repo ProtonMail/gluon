@@ -2,6 +2,8 @@ package state
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -10,6 +12,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
@@ -149,7 +152,7 @@ func (m *Mailbox) GetMessagesWithoutFlagCount(flag string) int {
 	return m.snap.getMessagesWithoutFlagCount(flag)
 }
 
-func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
+func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
 	internalIDString, err := rfc822.GetHeaderValue(literal, ids.InternalIDKey)
 	if err != nil {
 		return 0, err
@@ -200,10 +203,29 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 	})
 }
 
+func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
+	uid, err := m.AppendRegular(ctx, literal, flags, date)
+	if err != nil {
+		// Failed to append to mailbox attempt to insert into recovery mailbox.
+		if err := m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+			return m.state.actionCreateRecoveredMessage(ctx, tx, literal, flags, date)
+		}); err != nil {
+			logrus.WithError(err).Error("Failed to insert message into recovery mailbox")
+			reporter.ExceptionWithContext(ctx, "Failed to insert message into recovery mailbox", reporter.Context{"error": err})
+		}
+	}
+
+	return uid, err
+}
+
 // Copy copies the messages represented by the given sequence set into the mailbox with the given name.
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are copied the response object will be nil.
 func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
+	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
+		return nil, fmt.Errorf("operation not allowed")
+	}
+
 	mbox, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return db.GetMailboxByName(ctx, client, name)
 	})
@@ -226,7 +248,11 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 	}
 
 	destUIDs, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
-		return m.state.actionAddMessagesToMailbox(ctx, tx, msgIDs, ids.NewMailboxIDPair(mbox), m.snap == m.state.snap)
+		if m.state.user.GetRecoveryMailboxID().InternalID == m.snap.mboxID.InternalID {
+			return m.state.actionCopyMessagesOutOfRecoveryMailbox(ctx, tx, msgIDs, ids.NewMailboxIDPair(mbox))
+		} else {
+			return m.state.actionAddMessagesToMailbox(ctx, tx, msgIDs, ids.NewMailboxIDPair(mbox), m.snap == m.state.snap)
+		}
 	})
 	if err != nil {
 		return nil, err
@@ -247,6 +273,10 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are moved the response object will be nil.
 func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
+	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
+		return nil, fmt.Errorf("operation not allowed")
+	}
+
 	mbox, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return db.GetMailboxByName(ctx, client, name)
 	})
@@ -269,7 +299,11 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 	}
 
 	destUIDs, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
-		return m.state.actionMoveMessages(ctx, tx, msgIDs, m.snap.mboxID, ids.NewMailboxIDPair(mbox))
+		if m.state.user.GetRecoveryMailboxID().InternalID == m.snap.mboxID.InternalID {
+			return m.state.actionMoveMessagesOutOfRecoveryMailbox(ctx, tx, msgIDs, ids.NewMailboxIDPair(mbox))
+		} else {
+			return m.state.actionMoveMessages(ctx, tx, msgIDs, m.snap.mboxID, ids.NewMailboxIDPair(mbox))
+		}
 	})
 	if err != nil {
 		return nil, err

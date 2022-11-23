@@ -79,7 +79,18 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 			return err
 		}
 
+		recoveryMailboxID := state.user.GetRecoveryMailboxID().InternalID
+		recoveryMBoxMessageCount, err := db.GetMailboxMessageCount(ctx, client, recoveryMailboxID)
+		if err != nil {
+			logrus.WithError(err).Error("Failed to get recovery mailbox message count, assuming empty")
+			recoveryMBoxMessageCount = 0
+		}
+
 		mailboxes = xslices.Filter(mailboxes, func(mailbox *ent.Mailbox) bool {
+			if mailbox.ID == recoveryMailboxID && recoveryMBoxMessageCount == 0 {
+				return false
+			}
+
 			return state.user.GetRemote().IsMailboxVisible(ctx, mailbox.RemoteID)
 		})
 
@@ -153,6 +164,10 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 }
 
 func (state *State) Create(ctx context.Context, name string) error {
+	if strings.HasPrefix(strings.ToLower(name), ids.GluonRecoveryMailboxNameLowerCase) {
+		return fmt.Errorf("operation not allowed")
+	}
+
 	if state.delimiter != "" {
 		if strings.HasPrefix(name, state.delimiter) {
 			return errors.New("invalid mailbox name: begins with hierarchy separator")
@@ -208,6 +223,10 @@ func (state *State) Create(ctx context.Context, name string) error {
 
 // Delete returns true if the mailbox that was deleted was the same as the one that was currently selected.
 func (state *State) Delete(ctx context.Context, name string) (bool, error) {
+	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
+		return false, fmt.Errorf("operation not allowed")
+	}
+
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return db.GetMailboxByName(ctx, client, name)
 	})
@@ -228,6 +247,10 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 	type Result struct {
 		MBox           *ent.Mailbox
 		MBoxesToCreate []string
+	}
+
+	if strings.EqualFold(oldName, ids.GluonRecoveryMailboxName) || strings.EqualFold(newName, ids.GluonRecoveryMailboxName) {
+		return fmt.Errorf("operation not allowed")
 	}
 
 	result, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (Result, error) {
@@ -374,6 +397,10 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 // and passes true into the function if the currently selected mailbox matches the requested mailbox.
 // It can only be used for appending.
 func (state *State) AppendOnlyMailbox(ctx context.Context, name string, fn func(AppendOnlyMailbox, bool) error) error {
+	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
+		return fmt.Errorf("operation not allowed")
+	}
+
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return db.GetMailboxByName(ctx, client, name)
 	})

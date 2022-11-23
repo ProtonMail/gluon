@@ -67,6 +67,10 @@ func (user *user) apply(ctx context.Context, update imap.Update) error {
 
 // applyMailboxCreated applies a MailboxCreated update.
 func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxCreated) error {
+	if update.Mailbox.ID == ids.GluonInternalRecoveryMailboxRemoteID {
+		return fmt.Errorf("attempting to create protected mailbox (recovery)")
+	}
+
 	if exists, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (bool, error) {
 		return db.MailboxExistsWithRemoteID(ctx, client, update.Mailbox.ID)
 	}); err != nil {
@@ -95,6 +99,10 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 
 // applyMailboxDeleted applies a MailboxDeleted update.
 func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxDeleted) error {
+	if update.MailboxID == ids.GluonInternalRecoveryMailboxRemoteID {
+		return fmt.Errorf("attempting to delete protected mailbox (recovery)")
+	}
+
 	internalMailboxID, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (imap.InternalMailboxID, error) {
 		return db.GetMailboxIDFromRemoteID(ctx, client, update.MailboxID)
 	})
@@ -132,6 +140,10 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 
 // applyMailboxUpdated applies a MailboxUpdated update.
 func (user *user) applyMailboxUpdated(ctx context.Context, update *imap.MailboxUpdated) error {
+	if update.MailboxID == ids.GluonInternalRecoveryMailboxRemoteID {
+		return fmt.Errorf("attempting to rename protected mailbox (recovery)")
+	}
+
 	if exists, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (bool, error) {
 		return db.MailboxExistsWithRemoteID(ctx, client, update.MailboxID)
 	}); err != nil {
@@ -158,6 +170,10 @@ func (user *user) applyMailboxUpdated(ctx context.Context, update *imap.MailboxU
 
 // applyMailboxIDChanged applies a MailboxIDChanged update.
 func (user *user) applyMailboxIDChanged(ctx context.Context, update *imap.MailboxIDChanged) error {
+	if update.InternalID == user.recoveryMailboxID {
+		return fmt.Errorf("attempting to change protected mailbox (recovery) remote ID")
+	}
+
 	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		if err := db.UpdateRemoteMailboxID(ctx, tx, update.InternalID, update.RemoteID); err != nil {
 			return err
@@ -179,6 +195,11 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 	if err := user.db.Read(ctx, func(ctx context.Context, client *ent.Client) error {
 		for _, message := range update.Messages {
+			if slices.Contains(message.MailboxIDs, ids.GluonInternalRecoveryMailboxRemoteID) {
+				logrus.Errorf("attempting to import messages into protected mailbox (recovery), skipping")
+				continue
+			}
+
 			internalID, ok := messagesToCreateFilter[message.Message.ID]
 			if !ok {
 				exists, err := db.HasMessageWithRemoteID(ctx, client, message.Message.ID)
@@ -279,6 +300,10 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 // applyMessageMailboxesUpdated applies a MessageMailboxesUpdated update.
 func (user *user) applyMessageMailboxesUpdated(ctx context.Context, update *imap.MessageMailboxesUpdated) error {
+	if slices.Contains(update.MailboxIDs, ids.GluonInternalRecoveryMailboxRemoteID) {
+		return fmt.Errorf("attempting to move messages into protected mailbox (recovery)")
+	}
+
 	if exists, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (bool, error) {
 		return db.MessageExistsWithRemoteID(ctx, client, update.MessageID)
 	}); err != nil {
