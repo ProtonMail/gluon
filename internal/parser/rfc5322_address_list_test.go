@@ -1,9 +1,10 @@
 package parser
 
 import (
-	"github.com/stretchr/testify/require"
 	"net/mail"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRFC5322AddressListSuccess(T *testing.T) {

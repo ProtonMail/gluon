@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/internal/parser"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -14,6 +13,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
+	"github.com/ProtonMail/gluon/internal/parser"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
@@ -107,8 +107,8 @@ func buildSearchData(ctx context.Context, m *Mailbox, op *buildSearchOpResult, m
 
 	if op.needsHeader {
 		headerBytes, _ := rfc822.Split(data.literal)
-		h, err := rfc822.NewHeader(headerBytes)
 
+		h, err := rfc822.NewHeader(headerBytes)
 		if err != nil {
 			return searchData{}, err
 		}

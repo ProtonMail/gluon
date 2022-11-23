@@ -9,8 +9,10 @@ import (
 	"github.com/emersion/go-imap/client"
 )
 
-var selectReadOnlyFlag = flag.Bool("imap-select-readonly", false, "If set to true, perform a read only select (examine).")
-var selectCallCountFlag = flag.Uint("imap-select-count", 1000, "Number of times to call select.")
+var (
+	selectReadOnlyFlag  = flag.Bool("imap-select-readonly", false, "If set to true, perform a read only select (examine).")
+	selectCallCountFlag = flag.Uint("imap-select-count", 1000, "Number of times to call select.")
+)
 
 type Select struct {
 	*stateTracker

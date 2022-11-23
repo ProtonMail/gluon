@@ -2,6 +2,7 @@ package imap
 
 import (
 	"fmt"
+
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
 )

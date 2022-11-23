@@ -1,12 +1,12 @@
 package imap
 
 import (
-	"github.com/ProtonMail/gluon/internal/parser"
-	"github.com/sirupsen/logrus"
 	"net/mail"
 	"strings"
 
+	"github.com/ProtonMail/gluon/internal/parser"
 	"github.com/ProtonMail/gluon/rfc822"
+	"github.com/sirupsen/logrus"
 )
 
 func Envelope(header *rfc822.Header) (string, error) {

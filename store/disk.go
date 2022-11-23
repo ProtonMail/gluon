@@ -4,12 +4,12 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"github.com/sirupsen/logrus"
 	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/sirupsen/logrus"
 )
 
 type onDiskStore struct {

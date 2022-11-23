@@ -2,12 +2,12 @@ package imap_benchmarks
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"time"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/flags"
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/utils"
 	"github.com/emersion/go-imap/client"
+	"github.com/google/uuid"
 )
 
 // BuildMailbox creates a mailbox of name `mailbox` and fills it up with `messageCount` random messages.
