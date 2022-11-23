@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"github.com/ProtonMail/gluon/internal/ids"
 	"testing"
 	"time"
 
@@ -24,8 +25,12 @@ func TestCounts(t *testing.T) {
 	})
 
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withDataDir(dir)), func(_ *client.Client, s *testSession) {
-		for _, count := range getEvent[events.UserAdded](s.eventCh).Counts {
-			require.Equal(t, 10, count)
+		for mbox, count := range getEvent[events.UserAdded](s.eventCh).Counts {
+			if mbox == ids.GluonInternalRecoveryMailboxRemoteID {
+				require.Equal(t, 0, count)
+			} else {
+				require.Equal(t, 10, count)
+			}
 		}
 	})
 }

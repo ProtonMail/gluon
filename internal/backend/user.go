@@ -10,6 +10,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
+	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/reporter"
@@ -38,6 +39,8 @@ type user struct {
 
 	messageIDCounter  uint64
 	globalUIDValidity imap.UID
+
+	recoveryMailboxID imap.InternalMailboxID
 }
 
 func newUser(
@@ -49,6 +52,24 @@ func newUser(
 	delimiter string,
 ) (*user, error) {
 	if err := database.Init(ctx); err != nil {
+		return nil, err
+	}
+
+	// Create recovery mailbox if it does not exist
+	recoveryMBox, err := db.WriteResult(ctx, database, func(ctx context.Context, tx *ent.Tx) (*ent.Mailbox, error) {
+		mboxFlags := imap.NewFlagSet(imap.FlagSeen, imap.FlagFlagged, imap.FlagDeleted)
+		mbox := imap.Mailbox{
+			ID:             ids.GluonInternalRecoveryMailboxRemoteID,
+			Name:           []string{ids.GluonRecoveryMailboxName},
+			Flags:          mboxFlags,
+			PermanentFlags: mboxFlags,
+			Attributes:     imap.NewFlagSet(imap.AttrNoInferiors),
+		}
+
+		return db.GetOrCreateMailbox(ctx, tx, mbox, delimiter, conn.GetUIDValidity())
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
@@ -74,6 +95,8 @@ func newUser(
 		updateQuitCh:      make(chan struct{}),
 		messageIDCounter:  uint64(highestMessageID),
 		globalUIDValidity: conn.GetUIDValidity(),
+
+		recoveryMailboxID: recoveryMBox.ID,
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {

@@ -225,6 +225,12 @@ func GetMailboxRecentCount(ctx context.Context, client *ent.Client, mbox *ent.Ma
 	return mbox.QueryUIDs().Where(uid.Recent(true)).Count(ctx)
 }
 
+func GetMailboxMessageCount(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (int, error) {
+	return client.UID.Query().Where(func(s *sql.Selector) {
+		s.Where(sql.EQ(uid.MailboxColumn, mboxID))
+	}).Count(ctx)
+}
+
 type SnapshotMessageResult struct {
 	InternalID imap.InternalMessageID `json:"uid_message"`
 	RemoteID   imap.MessageID         `json:"remote_id"`
@@ -316,6 +322,28 @@ func CreateMailboxIfNotExists(ctx context.Context, tx *ent.Tx, mbox imap.Mailbox
 	}
 
 	return nil
+}
+
+func GetOrCreateMailbox(ctx context.Context, tx *ent.Tx, mbox imap.Mailbox, delimiter string, uidValidity imap.UID) (*ent.Mailbox, error) {
+	mailbox, err := tx.Mailbox.Query().Where(mailbox.RemoteID(mbox.ID)).Only(ctx)
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			return nil, err
+		}
+	} else {
+		return mailbox, nil
+	}
+
+	return CreateMailbox(
+		ctx,
+		tx,
+		mbox.ID,
+		strings.Join(mbox.Name, delimiter),
+		mbox.Flags,
+		mbox.PermanentFlags,
+		mbox.Attributes,
+		uidValidity,
+	)
 }
 
 func FilterMailboxContains(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []ids.MessageIDPair) ([]imap.InternalMessageID, error) {

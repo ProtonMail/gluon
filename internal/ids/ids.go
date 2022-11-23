@@ -73,3 +73,7 @@ func SplitMailboxIDPairSlice(s []MailboxIDPair) ([]imap.InternalMailboxID, []ima
 
 	return internalMailboxIDs, mailboxIDs
 }
+
+const GluonRecoveryMailboxName = "Recovered Messages"
+const GluonRecoveryMailboxNameLowerCase = "recovered messages"
+const GluonInternalRecoveryMailboxRemoteID = imap.MailboxID("GLUON-INTERNAL-RECOVERY-MBOX")

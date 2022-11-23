@@ -235,6 +235,10 @@ func GetMessage(ctx context.Context, client *ent.Client, messageID imap.Internal
 	return client.Message.Query().Where(message.ID(messageID)).Only(ctx)
 }
 
+func GetImportedMessageData(ctx context.Context, client *ent.Client, messageID imap.InternalMessageID) (*ent.Message, error) {
+	return client.Message.Query().Where(message.ID(messageID)).WithFlags().Select(message.FieldDate).Only(ctx)
+}
+
 func GetMessageDateAndSize(ctx context.Context, client *ent.Client, messageID imap.InternalMessageID) (*ent.Message, error) {
 	return client.Message.Query().Where(message.ID(messageID)).Select(message.FieldSize, message.FieldDate).Only(ctx)
 }
@@ -532,6 +536,14 @@ func UpdateRemoteMessageID(ctx context.Context, tx *ent.Tx, internalID imap.Inte
 		Where(message.ID(internalID)).
 		SetRemoteID(remoteID).
 		Save(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func MarkMessageAsDeleted(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID) error {
+	if _, err := tx.Message.Update().Where(message.ID(messageID)).SetDeleted(true).Save(ctx); err != nil {
 		return err
 	}
 

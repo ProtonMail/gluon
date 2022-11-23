@@ -6,6 +6,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
+	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/store"
 )
 
@@ -23,11 +24,15 @@ type UserInterface interface {
 
 	GetStore() store.Store
 
-	QueueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update Update) error
+	QueueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update ...Update) error
 
 	ReleaseState(ctx context.Context, st *State) error
 
 	GetGlobalUIDValidity() imap.UID
 
 	SetGlobalUIDValidity(imap.UID)
+
+	GetRecoveryMailboxID() ids.MailboxIDPair
+
+	NextRecoveryMessageID() imap.InternalMessageID
 }
