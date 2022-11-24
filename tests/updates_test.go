@@ -91,6 +91,7 @@ func TestMessageCreatedIDLEUpdate(t *testing.T) {
 		// Create two messages externally.
 		s.messageCreatedFromFile("user", other, "testdata/multipart-mixed.eml")
 		s.messageCreatedFromFile("user", other, "testdata/afternoon-meeting.eml")
+		s.flush("user")
 
 		// Expect that we receive IDLE updates.
 		c.S(`* 2 EXISTS`, `* 2 RECENT`)
@@ -98,6 +99,7 @@ func TestMessageCreatedIDLEUpdate(t *testing.T) {
 		// Create two more messages externally.
 		s.messageCreatedFromFile("user", other, "testdata/multipart-mixed.eml")
 		s.messageCreatedFromFile("user", other, "testdata/afternoon-meeting.eml")
+		s.flush("user")
 
 		// Expect that we receive IDLE updates.
 		c.S(`* 4 EXISTS`, `* 4 RECENT`)
@@ -111,6 +113,7 @@ func TestMessageCreatedIDLEUpdate(t *testing.T) {
 		// Create two more messages externally.
 		s.messageCreatedFromFile("user", other, "testdata/multipart-mixed.eml")
 		s.messageCreatedFromFile("user", other, "testdata/afternoon-meeting.eml")
+		s.flush("user")
 
 		// Expect that we receive IDLE updates.
 		c.S(`* 6 EXISTS`, `* 2 RECENT`)
