@@ -32,3 +32,5 @@ add_subdirectory(grammar)
 add_subdirectory(proto)
 add_subdirectory(src)
 add_subdirectory(tests)
+
+#small comment to force-rebuild
