@@ -70,9 +70,11 @@ func (*Message) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case message.FieldID:
+			values[i] = new(imap.InternalMessageID)
 		case message.FieldDeleted:
 			values[i] = new(sql.NullBool)
-		case message.FieldID, message.FieldSize:
+		case message.FieldSize:
 			values[i] = new(sql.NullInt64)
 		case message.FieldRemoteID, message.FieldBody, message.FieldBodyStructure, message.FieldEnvelope:
 			values[i] = new(sql.NullString)
@@ -94,10 +96,10 @@ func (m *Message) assignValues(columns []string, values []interface{}) error {
 	for i := range columns {
 		switch columns[i] {
 		case message.FieldID:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
+			if value, ok := values[i].(*imap.InternalMessageID); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
-			} else if value.Valid {
-				m.ID = imap.InternalMessageID(value.Int64)
+			} else if value != nil {
+				m.ID = *value
 			}
 		case message.FieldRemoteID:
 			if value, ok := values[i].(*sql.NullString); !ok {

@@ -33,6 +33,4 @@ type UserInterface interface {
 	SetGlobalUIDValidity(imap.UID)
 
 	GetRecoveryMailboxID() ids.MailboxIDPair
-
-	NextRecoveryMessageID() imap.InternalMessageID
 }

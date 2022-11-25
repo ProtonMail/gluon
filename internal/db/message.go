@@ -305,7 +305,7 @@ func GetMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Context, client *ent.C
 			s.Join(msgTable).On(s.C(uid.MessageColumn), msgTable.C(message.FieldID))
 			s.LeftJoin(flagTable).On(s.C(uid.MessageColumn), flagTable.C(messageflag.MessagesColumn))
 			s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.In(s.C(uid.MessageColumn), xslices.Map(chunk, func(id imap.InternalMessageID) interface{} {
-				return uint64(id)
+				return id
 			})...)))
 			s.Select(msgTable.C(message.FieldRemoteID), sql.As(fmt.Sprintf("GROUP_CONCAT(%v)", flagTable.C(messageflag.FieldValue)), "flags"), s.C(uid.FieldRecent), s.C(uid.FieldDeleted), s.C(uid.FieldUID), s.C(uid.MessageColumn))
 			s.GroupBy(s.C(uid.MessageColumn))
@@ -590,7 +590,7 @@ func HasMessageWithRemoteID(ctx context.Context, client *ent.Client, id imap.Mes
 func GetMessageIDFromRemoteID(ctx context.Context, client *ent.Client, id imap.MessageID) (imap.InternalMessageID, error) {
 	message, err := client.Message.Query().Where(message.RemoteID(id)).Select(message.FieldID).Only(ctx)
 	if err != nil {
-		return 0, err
+		return imap.InternalMessageID{}, err
 	}
 
 	return message.ID, nil
@@ -642,11 +642,11 @@ func NewFlagSet(msgUID *ent.UID, flags []*ent.MessageFlag) imap.FlagSet {
 func GetHighestMessageID(ctx context.Context, client *ent.Client) (imap.InternalMessageID, error) {
 	message, err := client.Message.Query().Select(message.FieldID).Order(ent.Desc(message.FieldID)).Limit(1).All(ctx)
 	if err != nil {
-		return 0, err
+		return imap.InternalMessageID{}, err
 	}
 
 	if len(message) == 0 {
-		return 0, nil
+		return imap.InternalMessageID{}, nil
 	}
 
 	return message[0].ID, nil

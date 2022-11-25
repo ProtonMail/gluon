@@ -72,7 +72,7 @@ func (md *MessageDelete) sqlExec(ctx context.Context) (int, error) {
 		Node: &sqlgraph.NodeSpec{
 			Table: message.Table,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeUint64,
+				Type:   field.TypeUUID,
 				Column: message.FieldID,
 			},
 		},

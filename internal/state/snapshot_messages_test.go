@@ -12,58 +12,65 @@ import (
 func TestMessages(t *testing.T) {
 	msg := newMsgList(8)
 
-	msg.insert(messageIDPair(1, "1"), 10, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(2, "2"), 20, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(3, "3"), 30, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(4, "4"), 40, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(5, "5"), 50, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(6, "6"), 60, imap.NewFlagSet(imap.FlagSeen))
+	id1 := imap.NewInternalMessageID()
+	id2 := imap.NewInternalMessageID()
+	id3 := imap.NewInternalMessageID()
+	id4 := imap.NewInternalMessageID()
+	id5 := imap.NewInternalMessageID()
+	id6 := imap.NewInternalMessageID()
 
-	msg.remove(2)
-	msg.remove(4)
-	msg.remove(6)
+	msg.insert(messageIDPair(id1, "1"), 10, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id2, "2"), 20, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id3, "3"), 30, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id4, "4"), 40, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id5, "5"), 50, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id6, "6"), 60, imap.NewFlagSet(imap.FlagSeen))
+
+	msg.remove(id2)
+	msg.remove(id4)
+	msg.remove(id6)
 
 	{
 		require.Equal(t, 3, msg.len())
 	}
 
 	{
-		require.True(t, msg.has(1))
-		require.True(t, msg.has(3))
-		require.True(t, msg.has(5))
+		require.True(t, msg.has(id1))
+		require.True(t, msg.has(id3))
+		require.True(t, msg.has(id5))
 
-		require.False(t, msg.has(2))
-		require.False(t, msg.has(4))
-		require.False(t, msg.has(6))
+		require.False(t, msg.has(id2))
+		require.False(t, msg.has(id4))
+		require.False(t, msg.has(id6))
 	}
 
 	{
-		msg1, ok := msg.get(1)
+		msg1, ok := msg.get(id1)
 		require.True(t, ok)
 		require.Equal(t, imap.SeqID(1), msg1.Seq)
 		require.Equal(t, imap.UID(10), msg1.UID)
 
-		_, ok = msg.get(2)
+		_, ok = msg.get(id2)
 		require.False(t, ok)
 
-		msg3, ok := msg.get(3)
+		msg3, ok := msg.get(id3)
 		require.True(t, ok)
 		require.Equal(t, imap.SeqID(2), msg3.Seq)
 		require.Equal(t, imap.UID(30), msg3.UID)
 
-		_, ok = msg.get(4)
+		_, ok = msg.get(id4)
 		require.False(t, ok)
 
-		msg5, ok := msg.get(5)
+		msg5, ok := msg.get(id5)
 		require.True(t, ok)
 		require.Equal(t, imap.SeqID(3), msg5.Seq)
 		require.Equal(t, imap.UID(50), msg5.UID)
 	}
 
 	{
-		require.Equal(t, must(msg.get(1)), must(msg.seq(1)))
-		require.Equal(t, must(msg.get(3)), must(msg.seq(2)))
-		require.Equal(t, must(msg.get(5)), must(msg.seq(3)))
+		require.Equal(t, must(msg.get(id1)), must(msg.seq(1)))
+		require.Equal(t, must(msg.get(id3)), must(msg.seq(2)))
+		require.Equal(t, must(msg.get(id5)), must(msg.seq(3)))
 	}
 }
 
@@ -71,12 +78,19 @@ func TestMessages(t *testing.T) {
 func TestMessageUIDRange(t *testing.T) {
 	msg := newMsgList(8)
 
-	msg.insert(messageIDPair(1, "1"), 10, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(2, "2"), 20, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(3, "3"), 30, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(4, "4"), 40, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(5, "5"), 50, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(6, "6"), 60, imap.NewFlagSet(imap.FlagSeen))
+	id1 := imap.NewInternalMessageID()
+	id2 := imap.NewInternalMessageID()
+	id3 := imap.NewInternalMessageID()
+	id4 := imap.NewInternalMessageID()
+	id5 := imap.NewInternalMessageID()
+	id6 := imap.NewInternalMessageID()
+
+	msg.insert(messageIDPair(id1, "1"), 10, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id2, "2"), 20, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id3, "3"), 30, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id4, "4"), 40, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id5, "5"), 50, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id6, "6"), 60, imap.NewFlagSet(imap.FlagSeen))
 
 	// UIDRange Higher than maximum
 	{

@@ -11,7 +11,6 @@ import (
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/ids"
 	goimap "github.com/emersion/go-imap"
 	uidplus "github.com/emersion/go-imap-uidplus"
 	"github.com/emersion/go-imap/client"
@@ -337,24 +336,25 @@ func TestGODT2007AppendInternalIDPresentOnDeletedMessage(t *testing.T) {
 			// Check if the header is correctly set.
 			result := newFetchCommand(t, client).withItems("UID", "BODY[HEADER]").fetch("1")
 			result.forSeqNum(1, func(builder *validatorBuilder) {
-				builder.ignoreFlags().wantSection("BODY[HEADER]", fmt.Sprintf("%v: 1", ids.InternalIDKey), "To: foo@bar.com\r\n")
+				builder.ignoreFlags().wantSectionAndSkipGLUONHeaderOrPanic("BODY[HEADER]", "To: foo@bar.com\r\n")
 				builder.wantUID(1)
 			})
 			result.checkAndRequireMessageCount(1)
 		}
+		appendedMessage := fetchMessageBody(t, client, 1)
 
 		s.messageDeleted("user", messageID)
 		s.flush("user")
 
 		// Add the same message back with the same id
-		require.NoError(t, doAppendWithClient(client, mailboxName, fmt.Sprintf("%v: 1\r\nTo: foo@bar.com\r\n", ids.InternalIDKey), time.Now()))
+		require.NoError(t, doAppendWithClient(client, mailboxName, appendedMessage, time.Now()))
 
 		{
 			// The message should have been created with a new internal id
 			result := newFetchCommand(t, client).withItems("UID", "BODY[HEADER]").fetch("1")
 			result.forSeqNum(1, func(builder *validatorBuilder) {
 				// The header value appears twice because we don't delete existing headers, we only add new ones.
-				builder.ignoreFlags().wantSection("BODY[HEADER]", fmt.Sprintf("%v: 2", ids.InternalIDKey), fmt.Sprintf("%v: 1", ids.InternalIDKey), "To: foo@bar.com\r\n")
+				builder.ignoreFlags().wantSectionAndSkipGLUONHeaderOrPanic("BODY[HEADER]", appendedMessage)
 				builder.wantUID(2)
 			})
 			result.checkAndRequireMessageCount(1)

@@ -102,7 +102,7 @@ var (
 	}
 	// MessagesColumns holds the columns for the "messages" table.
 	MessagesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUint64, Increment: true},
+		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "remote_id", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "date", Type: field.TypeTime},
 		{Name: "size", Type: field.TypeInt},
@@ -133,7 +133,7 @@ var (
 	MessageFlagsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "value", Type: field.TypeString},
-		{Name: "message_flags", Type: field.TypeUint64, Nullable: true},
+		{Name: "message_flags", Type: field.TypeUUID, Nullable: true},
 	}
 	// MessageFlagsTable holds the schema information for the "message_flags" table.
 	MessageFlagsTable = &schema.Table{
@@ -156,7 +156,7 @@ var (
 		{Name: "deleted", Type: field.TypeBool, Default: false},
 		{Name: "recent", Type: field.TypeBool, Default: true},
 		{Name: "mailbox_ui_ds", Type: field.TypeUint64, Nullable: true},
-		{Name: "uid_message", Type: field.TypeUint64, Nullable: true},
+		{Name: "uid_message", Type: field.TypeUUID, Nullable: true},
 	}
 	// UIDsTable holds the schema information for the "ui_ds" table.
 	UIDsTable = &schema.Table{

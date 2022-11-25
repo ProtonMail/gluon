@@ -1,11 +1,11 @@
 package imap
 
 import (
-	"encoding/binary"
 	"fmt"
 	"strconv"
 
 	"github.com/ProtonMail/gluon/internal/utils"
+	"github.com/google/uuid"
 )
 
 type MailboxID string
@@ -20,7 +20,9 @@ func (m MessageID) ShortID() string {
 	return utils.ShortID(string(m))
 }
 
-type InternalMessageID uint64
+type InternalMessageID struct {
+	uuid.UUID
+}
 
 type InternalMailboxID uint64
 
@@ -29,7 +31,7 @@ func (i InternalMailboxID) ShortID() string {
 }
 
 func (i InternalMessageID) ShortID() string {
-	return strconv.FormatUint(uint64(i), 10)
+	return utils.ShortID(i.String())
 }
 
 func (i InternalMailboxID) String() string {
@@ -37,23 +39,20 @@ func (i InternalMailboxID) String() string {
 }
 
 func (i InternalMessageID) String() string {
-	return strconv.FormatUint(uint64(i), 10)
+	return i.UUID.String()
+}
+
+func NewInternalMessageID() InternalMessageID {
+	return InternalMessageID{UUID: uuid.New()}
 }
 
 func InternalMessageIDFromString(id string) (InternalMessageID, error) {
-	num, err := strconv.ParseUint(id, 10, 64)
+	num, err := uuid.Parse(id)
 	if err != nil {
-		return 0, fmt.Errorf("invalid message id:%w", err)
+		return InternalMessageID{}, fmt.Errorf("invalid message id:%w", err)
 	}
 
-	return InternalMessageID(num), nil
-}
-
-func (i InternalMessageID) ToBytes() []byte {
-	bytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bytes, uint64(i))
-
-	return bytes
+	return InternalMessageID{UUID: num}, nil
 }
 
 type UID uint32

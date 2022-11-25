@@ -80,7 +80,7 @@ func (*UID) scanValues(columns []string) ([]interface{}, error) {
 		case uid.ForeignKeys[0]: // mailbox_ui_ds
 			values[i] = new(sql.NullInt64)
 		case uid.ForeignKeys[1]: // uid_message
-			values[i] = new(sql.NullInt64)
+			values[i] = &sql.NullScanner{S: new(imap.InternalMessageID)}
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type UID", columns[i])
 		}
@@ -128,11 +128,11 @@ func (u *UID) assignValues(columns []string, values []interface{}) error {
 				*u.mailbox_ui_ds = imap.InternalMailboxID(value.Int64)
 			}
 		case uid.ForeignKeys[1]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
+			if value, ok := values[i].(*sql.NullScanner); !ok {
 				return fmt.Errorf("unexpected type %T for field uid_message", values[i])
 			} else if value.Valid {
 				u.uid_message = new(imap.InternalMessageID)
-				*u.uid_message = imap.InternalMessageID(value.Int64)
+				*u.uid_message = *value.S.(*imap.InternalMessageID)
 			}
 		}
 	}

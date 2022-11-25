@@ -210,7 +210,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 					continue
 				}
 
-				internalID = user.nextMessageID()
+				internalID = imap.NewInternalMessageID()
 
 				literal, err := rfc822.SetHeaderValue(message.Literal, ids.InternalIDKey, internalID.String())
 				if err != nil {
@@ -597,7 +597,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 			}
 			// create new entry
 			{
-				newInternalID := user.nextMessageID()
+				newInternalID := imap.NewInternalMessageID()
 				literal, err := rfc822.SetHeaderValue(update.Literal, ids.InternalIDKey, newInternalID.String())
 				if err != nil {
 					return fmt.Errorf("failed to set internal ID: %w", err)

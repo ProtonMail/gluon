@@ -31,7 +31,7 @@ func (*Create) Run(ctx context.Context, st store.Store) (*reporter.BenchmarkRun,
 
 		for i := uint(0); i < *flags.StoreItemCount; i++ {
 			dc.Start()
-			err := s.Set(imap.InternalMessageID(uint64(i)), data)
+			err := s.Set(imap.NewInternalMessageID(), data)
 			dc.Stop()
 
 			if err != nil {

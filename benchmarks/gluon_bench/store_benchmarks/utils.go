@@ -17,7 +17,7 @@ func CreateRandomState(st store.Store, count uint) ([]imap.InternalMessageID, er
 	data := make([]byte, *flags.StoreItemSize)
 
 	for i := uint(0); i < count; i++ {
-		uuid := imap.InternalMessageID(uint64(i))
+		uuid := imap.NewInternalMessageID()
 
 		if err := st.Set(uuid, data); err != nil {
 			return nil, err
