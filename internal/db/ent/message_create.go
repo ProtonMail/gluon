@@ -231,9 +231,12 @@ func (mc *MessageCreate) sqlSave(ctx context.Context) (*Message, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != _node.ID {
-		id := _spec.ID.Value.(int64)
-		_node.ID = imap.InternalMessageID(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(*imap.InternalMessageID); ok {
+			_node.ID = *id
+		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+			return nil, err
+		}
 	}
 	return _node, nil
 }
@@ -244,14 +247,14 @@ func (mc *MessageCreate) createSpec() (*Message, *sqlgraph.CreateSpec) {
 		_spec = &sqlgraph.CreateSpec{
 			Table: message.Table,
 			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeUint64,
+				Type:   field.TypeUUID,
 				Column: message.FieldID,
 			},
 		}
 	)
 	if id, ok := mc.mutation.ID(); ok {
 		_node.ID = id
-		_spec.ID.Value = id
+		_spec.ID.Value = &id
 	}
 	if value, ok := mc.mutation.RemoteID(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -391,10 +394,6 @@ func (mcb *MessageCreateBulk) Save(ctx context.Context) ([]*Message, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil && nodes[i].ID == 0 {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = imap.InternalMessageID(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})

@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestRecoveryMBoxNotVisibleWhenEmpty(t *testing.T) {
@@ -102,7 +103,7 @@ func TestRecoveryMBoxCanBeMovedOutOf(t *testing.T) {
 			// Check that message has the new internal ID header.
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", fmt.Sprintf("%v: 2", ids.InternalIDKey), "To: Test@test.com")
+				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", "To: Test@test.com")
 			}).checkAndRequireMessageCount(1)
 		}
 	})
@@ -141,7 +142,7 @@ func TestRecoveryMBoxCanBeCopiedOutOf(t *testing.T) {
 			// Check that message has the new internal ID header.
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", fmt.Sprintf("%v: 2", ids.InternalIDKey), "To: Test@test.com")
+				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", "To: Test@test.com")
 			}).checkAndRequireMessageCount(1)
 		}
 	})
@@ -220,9 +221,11 @@ func TestRecoveryMBoxCanBeCopiedOutOfDedup(t *testing.T) {
 			require.NoError(t, err)
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", fmt.Sprintf("%v: 2", ids.InternalIDKey), "To: Test@test.com")
+				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", "To: Test@test.com")
 			}).checkAndRequireMessageCount(1)
 		}
+
+		msgInInbox := fetchMessageBody(t, client, 1)
 
 		// Copy message out of recovery, triggers insert will return the same ID.
 		status, err := client.Select(ids.GluonRecoveryMailboxName, false)
@@ -243,7 +246,7 @@ func TestRecoveryMBoxCanBeCopiedOutOfDedup(t *testing.T) {
 			// Check that message has the new internal ID header.
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", fmt.Sprintf("%v: 2", ids.InternalIDKey), "To: Test@test.com")
+				builder.wantSection("BODY[]", msgInInbox)
 			}).checkAndRequireMessageCount(1)
 		}
 	})
@@ -270,9 +273,11 @@ func TestRecoveryMBoxCanBeMovedOutOfDedup(t *testing.T) {
 			require.NoError(t, err)
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", fmt.Sprintf("%v: 2", ids.InternalIDKey), "To: Test@test.com")
+				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", "To: Test@test.com")
 			}).checkAndRequireMessageCount(1)
 		}
+
+		msgInInbox := fetchMessageBody(t, client, 1)
 
 		// Copy message out of recovery, triggers insert will return the same ID.
 		status, err := client.Select(ids.GluonRecoveryMailboxName, false)
@@ -293,7 +298,7 @@ func TestRecoveryMBoxCanBeMovedOutOfDedup(t *testing.T) {
 			// Check that message has the new internal ID header.
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", fmt.Sprintf("%v: 2", ids.InternalIDKey), "To: Test@test.com")
+				builder.wantSection("BODY[]", msgInInbox)
 			}).checkAndRequireMessageCount(1)
 		}
 	})

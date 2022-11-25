@@ -153,7 +153,7 @@ func (mfu *MessageFlagUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeUint64,
+					Type:   field.TypeUUID,
 					Column: message.FieldID,
 				},
 			},
@@ -169,7 +169,7 @@ func (mfu *MessageFlagUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeUint64,
+					Type:   field.TypeUUID,
 					Column: message.FieldID,
 				},
 			},
@@ -352,7 +352,7 @@ func (mfuo *MessageFlagUpdateOne) sqlSave(ctx context.Context) (_node *MessageFl
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeUint64,
+					Type:   field.TypeUUID,
 					Column: message.FieldID,
 				},
 			},
@@ -368,7 +368,7 @@ func (mfuo *MessageFlagUpdateOne) sqlSave(ctx context.Context) (_node *MessageFl
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeUint64,
+					Type:   field.TypeUUID,
 					Column: message.FieldID,
 				},
 			},

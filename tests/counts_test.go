@@ -1,11 +1,11 @@
 package tests
 
 import (
-	"github.com/ProtonMail/gluon/internal/ids"
 	"testing"
 	"time"
 
 	"github.com/ProtonMail/gluon/events"
+	"github.com/ProtonMail/gluon/internal/ids"
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"

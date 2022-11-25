@@ -69,10 +69,10 @@ func (sc *stateConnectorImpl) CreateMessage(
 
 	msg, newLiteral, err := sc.connector.CreateMessage(ctx, mboxID, literal, flags, date)
 	if err != nil {
-		return 0, imap.Message{}, nil, err
+		return imap.InternalMessageID{}, imap.Message{}, nil, err
 	}
 
-	return sc.user.nextMessageID(), msg, newLiteral, nil
+	return imap.NewInternalMessageID(), msg, newLiteral, nil
 }
 
 func (sc *stateConnectorImpl) AddMessagesToMailbox(

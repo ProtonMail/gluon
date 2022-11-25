@@ -178,7 +178,7 @@ func (state *State) actionCreateRecoveredMessage(
 	flags imap.FlagSet,
 	date time.Time,
 ) error {
-	internalID := state.user.NextRecoveryMessageID()
+	internalID := imap.NewInternalMessageID()
 	remoteID := imap.MessageID(fmt.Sprintf("GLUON-RECOVERED-MESSAGE-%v", internalID))
 
 	parsedMessage, err := imap.NewParsedMessage(literal)

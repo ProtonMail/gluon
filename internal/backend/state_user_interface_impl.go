@@ -93,7 +93,3 @@ func (s *StateUserInterfaceImpl) GetRecoveryMailboxID() ids.MailboxIDPair {
 		RemoteID:   ids.GluonInternalRecoveryMailboxRemoteID,
 	}
 }
-
-func (s *StateUserInterfaceImpl) NextRecoveryMessageID() imap.InternalMessageID {
-	return s.u.nextMessageID()
-}

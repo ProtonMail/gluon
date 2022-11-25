@@ -10,6 +10,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/ids"
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -553,7 +554,7 @@ func afternoonMeetingMessageDataSize() uint32 {
 }
 
 func afternoonMeetingMessageDataSizeWithExtraHeader() uint32 {
-	return afternoonMeetingMessageDataSize() + uint32(len(ids.InternalIDKey)) + 5
+	return afternoonMeetingMessageDataSize() + uint32(len(ids.InternalIDKey)) + uint32(len(uuid.NewString())+4)
 }
 
 func fillAndSelectMailboxWithMultipleEntries(t *testing.T, client *client.Client) {

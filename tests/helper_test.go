@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -191,6 +192,19 @@ func createSeqSet(sequence string) *goimap.SeqSet {
 	}
 
 	return sequenceSet
+}
+
+func fetchMessageBody(tb testing.TB, cl *client.Client, seq uint32) string {
+	result := newFetchCommand(tb, cl).withItems("BODY[]").fetch(strconv.FormatUint(uint64(seq), 10))
+	section, err := goimap.ParseBodySectionName("BODY[]")
+	require.NoError(tb, err)
+
+	literal := getBodySection(result.messages[0], section)
+
+	bytes, err := io.ReadAll(literal)
+	require.NoError(tb, err)
+
+	return string(bytes)
 }
 
 // Helper to validate go-imap-client's message Envelope.
@@ -507,6 +521,21 @@ func skipGLUONHeader(message string) string {
 	return message
 }
 
+func skipGLUONHeaderOrPanic(message string) string {
+	if keyIndex := strings.Index(message, ids.InternalIDKey); keyIndex != -1 {
+		newLineIndex := strings.Index(message[keyIndex:], "\n")
+		if newLineIndex < 0 {
+			panic("Could not find terminating new line")
+		}
+
+		message = message[0:keyIndex] + message[keyIndex+newLineIndex+1:]
+	} else {
+		panic("Could not find Gluon header")
+	}
+
+	return message
+}
+
 func (vb *validatorBuilder) wantSection(sectionStr goimap.FetchItem, lines ...string) *validatorBuilder {
 	section, err := goimap.ParseBodySectionName(sectionStr)
 	if err != nil {
@@ -564,6 +593,23 @@ func (vb *validatorBuilder) wantSectionAndSkipGLUONHeader(sectionStr goimap.Fetc
 		bytes, err := io.ReadAll(literal)
 		require.NoError(t, err)
 		require.Equal(t, skipGLUONHeader(string(bytes)), strings.Join(expected, "\r\n"))
+	})
+
+	return vb
+}
+
+func (vb *validatorBuilder) wantSectionAndSkipGLUONHeaderOrPanic(sectionStr goimap.FetchItem, expected ...string) *validatorBuilder {
+	section, err := goimap.ParseBodySectionName(sectionStr)
+	if err != nil {
+		panic("Failed to parse section string")
+	}
+
+	vb.validateBody = append(vb.validateBody, func(t testing.TB, message *goimap.Message) {
+		literal := getBodySection(message, section)
+		require.NotNil(t, literal)
+		bytes, err := io.ReadAll(literal)
+		require.NoError(t, err)
+		require.Equal(t, skipGLUONHeaderOrPanic(string(bytes)), strings.Join(expected, "\r\n"))
 	})
 
 	return vb

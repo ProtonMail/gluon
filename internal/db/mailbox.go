@@ -347,16 +347,22 @@ func GetOrCreateMailbox(ctx context.Context, tx *ent.Tx, mbox imap.Mailbox, deli
 }
 
 func FilterMailboxContains(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []ids.MessageIDPair) ([]imap.InternalMessageID, error) {
-	var result []imap.InternalMessageID
+	type result struct {
+		InternalID imap.InternalMessageID `json:"uid_message"`
+	}
+
+	var r []result
 
 	if err := client.UID.Query().Where(func(s *sql.Selector) {
 		s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.In(uid.MessageColumn, xslices.Map(messageIDs, func(id ids.MessageIDPair) interface{} {
-			return uint64(id.InternalID)
+			return id.InternalID
 		})...)))
 		s.Select(uid.MessageColumn)
-	}).Select().Scan(ctx, &result); err != nil {
+	}).Select().Scan(ctx, &r); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return xslices.Map(r, func(r result) imap.InternalMessageID {
+		return r.InternalID
+	}), nil
 }

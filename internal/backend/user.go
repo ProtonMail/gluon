@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
@@ -37,7 +36,6 @@ type user struct {
 	updateWG     sync.WaitGroup
 	updateQuitCh chan struct{}
 
-	messageIDCounter  uint64
 	globalUIDValidity imap.UID
 
 	recoveryMailboxID imap.InternalMailboxID
@@ -68,15 +66,6 @@ func newUser(
 
 		return db.GetOrCreateMailbox(ctx, tx, mbox, delimiter, conn.GetUIDValidity())
 	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Get the last message ID from the database so we can resume our counter properly.
-	highestMessageID, err := db.ReadResult(ctx, database, func(ctx context.Context, client *ent.Client) (imap.InternalMessageID, error) {
-		return db.GetHighestMessageID(ctx, client)
-	})
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +82,6 @@ func newUser(
 
 		states:            make(map[state.StateID]*state.State),
 		updateQuitCh:      make(chan struct{}),
-		messageIDCounter:  uint64(highestMessageID),
 		globalUIDValidity: conn.GetUIDValidity(),
 
 		recoveryMailboxID: recoveryMBox.ID,
@@ -309,10 +297,6 @@ func (user *user) closeStates() {
 	for _, state := range user.states {
 		state.SignalClose()
 	}
-}
-
-func (user *user) nextMessageID() imap.InternalMessageID {
-	return imap.InternalMessageID(atomic.AddUint64(&user.messageIDCounter, 1))
 }
 
 func (user *user) cleanupStaleStoreData(ctx context.Context) error {

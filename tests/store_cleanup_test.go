@@ -24,7 +24,7 @@ func (t *TestStoreBuilder) New(dir, userID string, passphrase []byte) (store.Sto
 	}
 
 	testStoreBuilderTestIDs := []imap.InternalMessageID{
-		20414124, 234534834634, 13244367346734098, 2341234234234,
+		imap.NewInternalMessageID(), imap.NewInternalMessageID(), imap.NewInternalMessageID(), imap.NewInternalMessageID(),
 	}
 
 	for _, id := range testStoreBuilderTestIDs {

@@ -31,23 +31,35 @@ func TestOnDiskStore(t *testing.T) {
 }
 
 func testStore(t *testing.T, store store.Store) {
-	require.NoError(t, store.Set(1, []byte("literal1")))
-	require.NoError(t, store.Set(2, []byte("literal2")))
-	require.NoError(t, store.Set(3, []byte("literal3")))
+	id1 := imap.NewInternalMessageID()
+	id2 := imap.NewInternalMessageID()
+	id3 := imap.NewInternalMessageID()
 
-	require.Equal(t, []byte("literal1"), must(store.Get(1)))
-	require.Equal(t, []byte("literal2"), must(store.Get(2)))
-	require.Equal(t, []byte("literal3"), must(store.Get(3)))
+	require.NoError(t, store.Set(id1, []byte("literal1")))
+	require.NoError(t, store.Set(id2, []byte("literal2")))
+	require.NoError(t, store.Set(id3, []byte("literal3")))
+
+	require.Equal(t, []byte("literal1"), must(store.Get(id1)))
+	require.Equal(t, []byte("literal2"), must(store.Get(id2)))
+	require.Equal(t, []byte("literal3"), must(store.Get(id3)))
+
+	require.NoError(t, store.Delete(id1, id2, id3))
 }
 
 func testStoreList(t *testing.T, store store.Store) {
-	require.NoError(t, store.Set(1, []byte("literal1")))
-	require.NoError(t, store.Set(2, []byte("literal2")))
-	require.NoError(t, store.Set(3, []byte("literal3")))
+	id1 := imap.NewInternalMessageID()
+	id2 := imap.NewInternalMessageID()
+	id3 := imap.NewInternalMessageID()
+
+	require.NoError(t, store.Set(id1, []byte("literal1")))
+	require.NoError(t, store.Set(id2, []byte("literal2")))
+	require.NoError(t, store.Set(id3, []byte("literal3")))
 
 	list, err := store.List()
 	require.NoError(t, err)
-	require.ElementsMatch(t, list, []imap.InternalMessageID{1, 2, 3})
+	require.ElementsMatch(t, list, []imap.InternalMessageID{id1, id2, id3})
+
+	require.NoError(t, store.Delete(id1, id2, id3))
 }
 
 func must[T any](val T, err error) T {
