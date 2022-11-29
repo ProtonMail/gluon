@@ -41,6 +41,9 @@ func (d *DB) Write(ctx context.Context, fn func(context.Context, *ent.Tx) error)
 }
 
 func (d *DB) Close() error {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
 	return d.db.Close()
 }
 
@@ -94,7 +97,7 @@ func WriteResult[T any](ctx context.Context, db *DB, fn func(context.Context, *e
 }
 
 func getDatabaseConn(dir, userID string) string {
-	return fmt.Sprintf("file:%v?cache=shared&_fk=1", getDatabasePath(dir, userID))
+	return fmt.Sprintf("file:%v?cache=shared&_fk=1&_journal=WAL", getDatabasePath(dir, userID))
 }
 
 func getDatabasePath(dir, userID string) string {
