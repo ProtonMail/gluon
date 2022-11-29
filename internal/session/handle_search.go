@@ -27,7 +27,7 @@ func (s *Session) handleSearch(ctx context.Context, tag string, cmd *proto.Searc
 	case *proto.Search_Charset:
 		encoding, err := ianaindex.IANA.Encoding(charset.Charset)
 		if err != nil {
-			return response.No(tag).WithItems(response.ItemBadCharset()), nil //nolint:nilerr
+			return nil, response.No(tag).WithItems(response.ItemBadCharset())
 		}
 
 		decoder = encoding.NewDecoder()

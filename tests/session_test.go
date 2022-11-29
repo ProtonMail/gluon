@@ -57,6 +57,7 @@ type testSession struct {
 	listener    net.Listener
 	server      *gluon.Server
 	eventCh     <-chan events.Event
+	reporter    *testReporter
 	userIDs     map[string]string
 	conns       map[string]Connector
 	userDBPaths map[string]string
@@ -68,6 +69,7 @@ func newTestSession(
 	listener net.Listener,
 	server *gluon.Server,
 	eventCh <-chan events.Event,
+	reporter *testReporter,
 	userIDs map[string]string,
 	conns map[string]Connector,
 	userDBPaths map[string]string,
@@ -78,6 +80,7 @@ func newTestSession(
 		listener:    listener,
 		server:      server,
 		eventCh:     eventCh,
+		reporter:    reporter,
 		userIDs:     userIDs,
 		conns:       conns,
 		userDBPaths: userDBPaths,

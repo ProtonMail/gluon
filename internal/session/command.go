@@ -2,7 +2,9 @@ package session
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/maps"
@@ -35,10 +37,20 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 				return fmt.Sprintf("%v: '%s'", k, literals[k])
 			})...)
 
+			// If the input is not valid UTF-8, we drop the connection.
+			if !utf8.Valid(line) {
+				reporter.MessageWithContext(ctx,
+					"Received invalid UTF-8 command",
+					reporter.Context{"line (base 64)": base64.StdEncoding.EncodeToString(line)},
+				)
+
+				return
+			}
+
 			tag, cmd, err := parse(line, literals, del)
 			if err != nil {
 				reporter.MessageWithContext(ctx,
-					"Failed to parse imap command",
+					"Failed to parse IMAP command",
 					reporter.Context{"error": err},
 				)
 			} else if cmd.GetStartTLS() != nil {
