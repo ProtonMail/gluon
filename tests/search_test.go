@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/text/encoding/htmlindex"
 )
 
@@ -31,11 +33,18 @@ func TestSearchCharSetISO88591(t *testing.T) {
 		// Encode "ééé" as ISO-8859-1.
 		b := enc("ééé", "ISO-8859-1")
 
+		// Assert that b is no longer valid UTF-8.
+		require.False(t, utf8.Valid(b))
+
 		// Append a message with that as the body.
 		c.doAppend("inbox", "To: 1@pm.me\r\n\r\nééé").expect("OK")
 
-		// Search for it with ISO-8859-1 encoding.
+		// Search for it with ISO-8859-1 encoding (literal).
 		c.Cf(`TAG SEARCH CHARSET ISO-8859-1 BODY {%v}`, len(b)).Continue().Cb(b).S("* SEARCH 1").OK("TAG")
+
+		// Search for it with ISO-8859-1 encoding (direct).
+		// TODO(GODT-2165): This should work, but it doesn't.
+		// c.Cf(`TAG SEARCH CHARSET ISO-8859-1 BODY ` + string(b)).S("* SEARCH 1").OK("TAG")
 	})
 }
 
