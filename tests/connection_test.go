@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ProtonMail/gluon/internal/liner"
+	"github.com/ProtonMail/gluon/liner"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
