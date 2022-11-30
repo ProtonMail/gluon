@@ -105,12 +105,7 @@ func (state *State) actionCreateMessage(
 
 	{
 		// Handle the case where duplicate messages can return the same remote ID.
-		internalID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), res.ID)
-		if err != nil && !ent.IsNotFound(err) {
-			return 0, err
-		}
-
-		if err == nil {
+		if internalID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), res.ID); err == nil {
 			result, err := state.actionAddMessagesToMailbox(ctx,
 				tx,
 				[]ids.MessageIDPair{{InternalID: internalID, RemoteID: res.ID}},
@@ -122,6 +117,8 @@ func (state *State) actionCreateMessage(
 			}
 
 			return result[0].UID, nil
+		} else if !ent.IsNotFound(err) {
+			return 0, fmt.Errorf("failed to get message ID from remote ID: %w", err)
 		}
 	}
 
@@ -228,6 +225,8 @@ func (state *State) actionAddMessagesToMailbox(
 	mboxID ids.MailboxIDPair,
 	isMailboxSelected bool,
 ) ([]db.UIDWithFlags, error) {
+	var skipRemote bool
+
 	{
 		haveMessageIDs, err := db.FilterMailboxContains(ctx, tx.Client(), mboxID.InternalID, messageIDs)
 		if err != nil {
@@ -237,7 +236,9 @@ func (state *State) actionAddMessagesToMailbox(
 		if remMessageIDs := xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
 			return slices.Contains(haveMessageIDs, messageID.InternalID)
 		}); len(remMessageIDs) > 0 {
-			if err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxID); err != nil {
+			skipRemote = true
+
+			if err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxID, skipRemote); err != nil {
 				return nil, err
 			}
 		}
@@ -245,8 +246,10 @@ func (state *State) actionAddMessagesToMailbox(
 
 	internalIDs, remoteIDs := ids.SplitMessageIDPairSlice(messageIDs)
 
-	if err := state.user.GetRemote().AddMessagesToMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
-		return nil, err
+	if !skipRemote {
+		if err := state.user.GetRemote().AddMessagesToMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
+			return nil, err
+		}
 	}
 
 	// Messages can be added to a mailbox that is not selected.
@@ -448,10 +451,11 @@ func (state *State) actionRemoveMessagesFromMailboxUnchecked(
 	tx *ent.Tx,
 	messageIDs []ids.MessageIDPair,
 	mboxID ids.MailboxIDPair,
+	skipRemote bool,
 ) error {
 	internalIDs, remoteIDs := ids.SplitMessageIDPairSlice(messageIDs)
 
-	if mboxID.InternalID != state.user.GetRecoveryMailboxID().InternalID {
+	if !skipRemote && mboxID.InternalID != state.user.GetRecoveryMailboxID().InternalID {
 		if err := state.user.GetRemote().RemoveMessagesFromMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
 			return err
 		}
@@ -484,7 +488,7 @@ func (state *State) actionRemoveMessagesFromMailbox(
 		return nil
 	}
 
-	return state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, messageIDs, mboxID)
+	return state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, messageIDs, mboxID, false)
 }
 
 func (state *State) actionMoveMessages(
@@ -508,7 +512,7 @@ func (state *State) actionMoveMessages(
 		if remMessageIDs := xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
 			return slices.Contains(messageIDsToAdd, messageID.InternalID)
 		}); len(remMessageIDs) > 0 {
-			if err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxToID); err != nil {
+			if err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxToID, false); err != nil {
 				return nil, err
 			}
 		}
