@@ -153,53 +153,65 @@ func (m *Mailbox) GetMessagesWithoutFlagCount(flag string) int {
 }
 
 func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
-	internalIDString, err := rfc822.GetHeaderValue(literal, ids.InternalIDKey)
-	if err != nil {
-		return 0, err
-	}
-
-	if len(internalIDString) > 0 {
-		msgID, err := imap.InternalMessageIDFromString(internalIDString)
+	var appendIntoDrafts bool
+	// Force create message when appending to drafts so that IMAP clients can create new draft messages.
+	if !strings.EqualFold(m.mbox.Name, "Drafts") {
+		internalIDString, err := rfc822.GetHeaderValue(literal, ids.InternalIDKey)
 		if err != nil {
 			return 0, err
 		}
 
-		if message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
-			message, err := db.GetMessageWithIDWithDeletedFlag(ctx, client, msgID)
+		if len(internalIDString) > 0 {
+			msgID, err := imap.InternalMessageIDFromString(internalIDString)
 			if err != nil {
-				if ent.IsNotFound(err) {
-					return nil, nil
-				}
-
-				return nil, err
+				return 0, err
 			}
 
-			return message, nil
-		}); err != nil || message == nil {
-			logrus.WithError(err).Warn("The message has an unknown internal ID")
-		} else if !message.Deleted {
-			// Only shuffle around messages that haven't been marked for deletion.
-			if res, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
-				remoteID, err := db.GetMessageRemoteIDFromID(ctx, tx.Client(), msgID)
+			if message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
+				message, err := db.GetMessageWithIDWithDeletedFlag(ctx, client, msgID)
 				if err != nil {
+					if ent.IsNotFound(err) {
+						return nil, nil
+					}
+
 					return nil, err
 				}
 
-				return m.state.actionAddMessagesToMailbox(ctx, tx,
-					[]ids.MessageIDPair{{InternalID: msgID, RemoteID: remoteID}},
-					ids.NewMailboxIDPair(m.mbox),
-					m.snap == m.state.snap,
-				)
-			}); err != nil {
-				return 0, err
-			} else {
-				return res[0].UID, nil
+				return message, nil
+			}); err != nil || message == nil {
+				logrus.WithError(err).Warn("The message has an unknown internal ID")
+			} else if !message.Deleted {
+				// Only shuffle around messages that haven't been marked for deletion.
+				if res, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
+					remoteID, err := db.GetMessageRemoteIDFromID(ctx, tx.Client(), msgID)
+					if err != nil {
+						return nil, err
+					}
+
+					return m.state.actionAddMessagesToMailbox(ctx, tx,
+						[]ids.MessageIDPair{{InternalID: msgID, RemoteID: remoteID}},
+						ids.NewMailboxIDPair(m.mbox),
+						m.snap == m.state.snap,
+					)
+				}); err != nil {
+					return 0, err
+				} else {
+					return res[0].UID, nil
+				}
 			}
+		}
+	} else {
+		appendIntoDrafts = true
+		newLiteral, err := rfc822.EraseHeaderValue(literal, ids.InternalIDKey)
+		if err != nil {
+			logrus.WithError(err).Error("Failed to erase Gluon internal id from draft")
+		} else {
+			literal = newLiteral
 		}
 	}
 
 	return db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (imap.UID, error) {
-		return m.state.actionCreateMessage(ctx, tx, m.snap.mboxID, literal, flags, date, m.snap == m.state.snap)
+		return m.state.actionCreateMessage(ctx, tx, m.snap.mboxID, literal, flags, date, m.snap == m.state.snap, appendIntoDrafts)
 	})
 }
 
