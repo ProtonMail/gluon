@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/reporter"
 	"strings"
 	"time"
 
@@ -97,6 +98,7 @@ func (state *State) actionCreateMessage(
 	flags imap.FlagSet,
 	date time.Time,
 	isSelectedMailbox bool,
+	cameFromDrafts bool,
 ) (imap.UID, error) {
 	internalID, res, newLiteral, err := state.user.GetRemote().CreateMessage(ctx, mboxID.RemoteID, literal, flags, date)
 	if err != nil {
@@ -111,6 +113,11 @@ func (state *State) actionCreateMessage(
 		}
 
 		if err == nil {
+			if cameFromDrafts {
+				reporter.ExceptionWithContext(ctx, "Append to drafts must not return an existing RemoteID", nil)
+				return 0, fmt.Errorf("append to drafts returned an existing remote ID")
+			}
+
 			result, err := state.actionAddMessagesToMailbox(ctx,
 				tx,
 				[]ids.MessageIDPair{{InternalID: internalID, RemoteID: res.ID}},
