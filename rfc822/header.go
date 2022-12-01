@@ -386,6 +386,52 @@ func GetHeaderValue(literal []byte, key string) (string, error) {
 	return "", nil
 }
 
+// EraseHeaderValue removes the header from a literal.
+func EraseHeaderValue(literal []byte, key string) ([]byte, error) {
+	rawHeader, _ := Split(literal)
+
+	parser := newHeaderParser(rawHeader)
+
+	var (
+		foundEntry        bool
+		parsedHeaderEntry parsedHeaderEntry
+	)
+
+	for {
+		entry, err := parser.next()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			} else {
+				return nil, err
+			}
+		}
+
+		if !entry.hasKey() {
+			continue
+		}
+
+		if !strings.EqualFold(key, string(entry.getKey(rawHeader))) {
+			continue
+		}
+
+		foundEntry = true
+		parsedHeaderEntry = entry
+
+		break
+	}
+
+	result := make([]byte, 0, len(literal))
+	if !foundEntry {
+		result = append(result, literal...)
+	} else {
+		result = append(result, literal[0:parsedHeaderEntry.keyStart]...)
+		result = append(result, literal[parsedHeaderEntry.valueEnd:]...)
+	}
+
+	return result, nil
+}
+
 var (
 	ErrNonASCIIHeaderKey = fmt.Errorf("header key contains invalid characters")
 	ErrKeyNotFound       = fmt.Errorf("invalid header key")

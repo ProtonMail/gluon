@@ -324,3 +324,31 @@ func TestSetHeaderValueWithPrelude(t *testing.T) {
 	// Ensure the original data wasn't modified.
 	assert.Equal(t, literalBytes, []byte(literal))
 }
+
+func TestHeader_Erase(t *testing.T) {
+	literal := []byte("Subject: this is\r\n\ta multiline field\r\nFrom: duplicate entry\r\nReferences:\r\n\t <foo@bar.com>\r\n\r\n")
+	literalWithoutSubject := []byte("From: duplicate entry\r\nReferences:\r\n\t <foo@bar.com>\r\n\r\n")
+	literalWithoutFrom := []byte("Subject: this is\r\n\ta multiline field\r\nReferences:\r\n\t <foo@bar.com>\r\n\r\n")
+	literalWithoutReferences := []byte("Subject: this is\r\n\ta multiline field\r\nFrom: duplicate entry\r\n\r\n")
+
+	{
+		newLiteral, err := EraseHeaderValue(literal, "Subject")
+		require.NoError(t, err)
+		assert.Equal(t, literalWithoutSubject, newLiteral)
+	}
+	{
+		newLiteral, err := EraseHeaderValue(literal, "From")
+		require.NoError(t, err)
+		assert.Equal(t, literalWithoutFrom, newLiteral)
+	}
+	{
+		newLiteral, err := EraseHeaderValue(literal, "References")
+		require.NoError(t, err)
+		assert.Equal(t, literalWithoutReferences, newLiteral)
+	}
+	{
+		newLiteral, err := EraseHeaderValue(literal, "ThisKeyDoesNotExist")
+		require.NoError(t, err)
+		assert.Equal(t, literal, newLiteral)
+	}
+}
