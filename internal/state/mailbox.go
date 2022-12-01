@@ -19,7 +19,11 @@ import (
 )
 
 type Mailbox struct {
-	mbox *ent.Mailbox
+	id          ids.MailboxIDPair
+	name        string
+	subscribed  bool
+	uidValidity imap.UID
+	uidNext     imap.UID
 
 	state *State
 	snap  *snapshot
@@ -36,7 +40,11 @@ type AppendOnlyMailbox interface {
 
 func newMailbox(mbox *ent.Mailbox, state *State, snap *snapshot) *Mailbox {
 	return &Mailbox{
-		mbox: mbox,
+		id:          ids.NewMailboxIDPair(mbox),
+		name:        mbox.Name,
+		subscribed:  mbox.Subscribed,
+		uidValidity: mbox.UIDValidity,
+		uidNext:     mbox.UIDNext,
 
 		state: state,
 
@@ -47,7 +55,7 @@ func newMailbox(mbox *ent.Mailbox, state *State, snap *snapshot) *Mailbox {
 }
 
 func (m *Mailbox) Name() string {
-	return m.mbox.Name
+	return m.name
 }
 
 func (m *Mailbox) Selected() bool {
@@ -76,48 +84,33 @@ func (m *Mailbox) Count() int {
 }
 
 func (m *Mailbox) Flags(ctx context.Context) (imap.FlagSet, error) {
-	flags, err := m.mbox.QueryFlags().All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return imap.NewFlagSetFromSlice(xslices.Map(flags, func(flag *ent.MailboxFlag) string {
-		return flag.Value
-	})), nil
+	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
+		return db.GetMailboxFlags(ctx, client, m.id.InternalID)
+	})
 }
 
 func (m *Mailbox) PermanentFlags(ctx context.Context) (imap.FlagSet, error) {
-	permFlags, err := m.mbox.QueryPermanentFlags().All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return imap.NewFlagSetFromSlice(xslices.Map(permFlags, func(flag *ent.MailboxPermFlag) string {
-		return flag.Value
-	})), nil
+	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
+		return db.GetMailboxPermanentFlags(ctx, client, m.id.InternalID)
+	})
 }
 
 func (m *Mailbox) Attributes(ctx context.Context) (imap.FlagSet, error) {
-	attrs, err := m.mbox.QueryAttributes().All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return imap.NewFlagSetFromSlice(xslices.Map(attrs, func(flag *ent.MailboxAttr) string {
-		return flag.Value
-	})), nil
+	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
+		return db.GetMailboxAttributes(ctx, client, m.id.InternalID)
+	})
 }
 
 func (m *Mailbox) UIDNext() imap.UID {
-	return m.mbox.UIDNext
+	return m.uidNext
 }
 
 func (m *Mailbox) UIDValidity() imap.UID {
-	return m.mbox.UIDValidity
+	return m.uidValidity
 }
 
 func (m *Mailbox) Subscribed() bool {
-	return m.mbox.Subscribed
+	return m.subscribed
 }
 
 func (m *Mailbox) GetMessagesWithFlag(flag string) []imap.SeqID {
@@ -155,7 +148,7 @@ func (m *Mailbox) GetMessagesWithoutFlagCount(flag string) int {
 func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
 	var appendIntoDrafts bool
 	// Force create message when appending to drafts so that IMAP clients can create new draft messages.
-	if !strings.EqualFold(m.mbox.Name, "Drafts") {
+	if !strings.EqualFold(m.name, "Drafts") {
 		internalIDString, err := rfc822.GetHeaderValue(literal, ids.InternalIDKey)
 		if err != nil {
 			return 0, err
@@ -190,7 +183,7 @@ func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.
 
 					return m.state.actionAddMessagesToMailbox(ctx, tx,
 						[]ids.MessageIDPair{{InternalID: msgID, RemoteID: remoteID}},
-						ids.NewMailboxIDPair(m.mbox),
+						m.id,
 						m.snap == m.state.snap,
 					)
 				}); err != nil {
