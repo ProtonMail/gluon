@@ -366,3 +366,36 @@ func FilterMailboxContains(ctx context.Context, client *ent.Client, mboxID imap.
 		return r.InternalID
 	}), nil
 }
+
+func GetMailboxFlags(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (imap.FlagSet, error) {
+	mbox, err := client.Mailbox.Query().Where(mailbox.ID(mboxID)).WithFlags().Only(ctx)
+	if err != nil {
+		return imap.FlagSet{}, err
+	}
+
+	return imap.NewFlagSetFromSlice(xslices.Map(mbox.Edges.Flags, func(flag *ent.MailboxFlag) string {
+		return flag.Value
+	})), nil
+}
+
+func GetMailboxPermanentFlags(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (imap.FlagSet, error) {
+	mbox, err := client.Mailbox.Query().Where(mailbox.ID(mboxID)).WithPermanentFlags().Only(ctx)
+	if err != nil {
+		return imap.FlagSet{}, err
+	}
+
+	return imap.NewFlagSetFromSlice(xslices.Map(mbox.Edges.PermanentFlags, func(flag *ent.MailboxPermFlag) string {
+		return flag.Value
+	})), nil
+}
+
+func GetMailboxAttributes(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (imap.FlagSet, error) {
+	mbox, err := client.Mailbox.Query().Where(mailbox.ID(mboxID)).WithAttributes().Only(ctx)
+	if err != nil {
+		return imap.FlagSet{}, err
+	}
+
+	return imap.NewFlagSetFromSlice(xslices.Map(mbox.Edges.Attributes, func(flag *ent.MailboxAttr) string {
+		return flag.Value
+	})), nil
+}
