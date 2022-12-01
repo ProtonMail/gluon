@@ -147,8 +147,14 @@ func (m *Mailbox) GetMessagesWithoutFlagCount(flag string) int {
 
 func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
 	var appendIntoDrafts bool
+
+	attr, err := m.Attributes(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	// Force create message when appending to drafts so that IMAP clients can create new draft messages.
-	if !strings.EqualFold(m.name, "Drafts") {
+	if !attr.Contains(imap.AttrDrafts) {
 		internalIDString, err := rfc822.GetHeaderValue(literal, ids.InternalIDKey)
 		if err != nil {
 			return 0, err
