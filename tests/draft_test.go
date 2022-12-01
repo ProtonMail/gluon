@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"github.com/ProtonMail/gluon/imap"
 	"regexp"
 	"testing"
 	"time"
@@ -47,7 +48,7 @@ func TestDraftSavedAgain(t *testing.T) {
 	// Email client can save same message i.e.: it will delete old draft
 	// and append one with same content.
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
-		mailboxID := s.mailboxCreated("user", []string{"Drafts"})
+		mailboxID := s.mailboxCreatedWithAttributes("user", []string{"Drafts"}, imap.NewFlagSet(imap.AttrDrafts))
 
 		c.C("A002 SELECT Drafts").OK("A002")
 
