@@ -202,32 +202,31 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 			internalID, ok := messagesToCreateFilter[message.Message.ID]
 			if !ok {
-				exists, err := db.HasMessageWithRemoteID(ctx, client, message.Message.ID)
-				if err != nil {
+				messageID, err := db.GetMessageIDFromRemoteID(ctx, client, message.Message.ID)
+				if ent.IsNotFound(err) {
+					internalID = imap.NewInternalMessageID()
+
+					literal, err := rfc822.SetHeaderValue(message.Literal, ids.InternalIDKey, internalID.String())
+					if err != nil {
+						return fmt.Errorf("failed to set internal ID: %w", err)
+					}
+
+					request := &db.CreateMessageReq{
+						Message:    message.Message,
+						Literal:    literal,
+						Body:       message.ParsedMessage.Body,
+						Structure:  message.ParsedMessage.Structure,
+						Envelope:   message.ParsedMessage.Envelope,
+						InternalID: internalID,
+					}
+
+					messagesToCreate = append(messagesToCreate, request)
+					messagesToCreateFilter[message.Message.ID] = internalID
+				} else if err == nil {
+					internalID = messageID
+				} else {
 					return err
-				} else if exists {
-					// Message exists, can't be replaced
-					continue
 				}
-
-				internalID = imap.NewInternalMessageID()
-
-				literal, err := rfc822.SetHeaderValue(message.Literal, ids.InternalIDKey, internalID.String())
-				if err != nil {
-					return fmt.Errorf("failed to set internal ID: %w", err)
-				}
-
-				request := &db.CreateMessageReq{
-					Message:    message.Message,
-					Literal:    literal,
-					Body:       message.ParsedMessage.Body,
-					Structure:  message.ParsedMessage.Structure,
-					Envelope:   message.ParsedMessage.Envelope,
-					InternalID: internalID,
-				}
-
-				messagesToCreate = append(messagesToCreate, request)
-				messagesToCreateFilter[message.Message.ID] = internalID
 			}
 
 			for _, mboxID := range message.MailboxIDs {
@@ -289,8 +288,19 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		// Assign all the messages to the mailbox
 		for mboxID, msgList := range messageForMBox {
-			if _, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, msgList); err != nil {
+			inMailbox, err := db.FilterMailboxContainsInternalID(ctx, tx.Client(), mboxID, msgList)
+			if err != nil {
 				return err
+			}
+
+			toAdd := xslices.Filter(msgList, func(id imap.InternalMessageID) bool {
+				return !slices.Contains(inMailbox, id)
+			})
+
+			if len(toAdd) != 0 {
+				if _, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, toAdd); err != nil {
+					return err
+				}
 			}
 		}
 
