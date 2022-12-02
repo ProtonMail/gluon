@@ -71,7 +71,17 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 		return fmt.Errorf("attempting to create protected mailbox (recovery)")
 	}
 
+	if err := user.imapLimits.CheckUIDValidity(user.globalUIDValidity); err != nil {
+		return err
+	}
+
 	if exists, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (bool, error) {
+		if mailboxCount, err := db.GetMailboxCount(ctx, client); err != nil {
+			return false, err
+		} else if err := user.imapLimits.CheckMailBoxCount(mailboxCount); err != nil {
+			return false, err
+		}
+
 		return db.MailboxExistsWithRemoteID(ctx, client, update.Mailbox.ID)
 	}); err != nil {
 		return err
@@ -426,7 +436,7 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx *ent.Tx, messageID
 
 // applyMessagesAddedToMailbox adds the messages to the given mailbox.
 func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]db.UIDWithFlags, error) {
-	messageUIDs, update, err := state.AddMessagesToMailbox(ctx, tx, mboxID, messageIDs, nil)
+	messageUIDs, update, err := state.AddMessagesToMailbox(ctx, tx, mboxID, messageIDs, nil, user.imapLimits)
 	if err != nil {
 		return nil, err
 	}
@@ -636,7 +646,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 						return err
 					}
 
-					_, update, err := state.AddMessagesToMailbox(ctx, tx, internalMBoxID, []imap.InternalMessageID{newInternalID}, nil)
+					_, update, err := state.AddMessagesToMailbox(ctx, tx, internalMBoxID, []imap.InternalMessageID{newInternalID}, nil, user.imapLimits)
 					if err != nil {
 						return err
 					}

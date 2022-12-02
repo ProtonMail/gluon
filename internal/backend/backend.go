@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/limits"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -44,15 +45,18 @@ type Backend struct {
 	loginErrorCount int32
 	loginLock       sync.Mutex
 	loginWG         sync.WaitGroup
+
+	imapLimits limits.IMAP
 }
 
-func New(dir string, storeBuilder store.Builder, delim string, loginJailTime time.Duration) (*Backend, error) {
+func New(dir string, storeBuilder store.Builder, delim string, loginJailTime time.Duration, imapLimits limits.IMAP) (*Backend, error) {
 	return &Backend{
 		dir:           dir,
 		delim:         delim,
 		users:         make(map[string]*user),
 		storeBuilder:  storeBuilder,
 		loginJailTime: loginJailTime,
+		imapLimits:    imapLimits,
 	}, nil
 }
 
@@ -82,7 +86,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		return err
 	}
 
-	user, err := newUser(ctx, userID, db, conn, storeBuilder, b.delim)
+	user, err := newUser(ctx, userID, db, conn, storeBuilder, b.delim, b.imapLimits)
 	if err != nil {
 		return err
 	}

@@ -262,7 +262,7 @@ func (state *State) actionAddMessagesToMailbox(
 		st = state
 	}
 
-	messageUIDs, update, err := AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, st)
+	messageUIDs, update, err := AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, st, state.imapLimits)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +286,7 @@ func (state *State) actionAddRecoveredMessagesToMailbox(
 		return nil, nil, err
 	}
 
-	return AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, state)
+	return AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, state, state.imapLimits)
 }
 
 func (state *State) actionImportRecoveredMessage(
@@ -536,7 +536,7 @@ func (state *State) actionMoveMessages(
 		return nil, err
 	}
 
-	messageUIDs, updates, err := MoveMessagesFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs, state)
+	messageUIDs, updates, err := MoveMessagesFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs, state, state.imapLimits)
 	if err != nil {
 		return nil, err
 	}

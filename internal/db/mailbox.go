@@ -427,3 +427,30 @@ func IsMessageInMailbox(ctx context.Context, client *ent.Client, mboxID imap.Int
 		s.Select(uid.MessageColumn)
 	}).Exist(ctx)
 }
+
+func GetMailboxCount(ctx context.Context, client *ent.Client) (int, error) {
+	return client.Mailbox.Query().Count(ctx)
+}
+
+func GetMailboxUID(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (imap.UID, error) {
+	mbox, err := client.Mailbox.Query().Where(mailbox.ID(mboxID)).Select(mailbox.FieldUIDNext).Only(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return mbox.UIDNext, err
+}
+
+func GetMailboxMessageCountAndUID(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (int, imap.UID, error) {
+	messageCount, err := GetMailboxMessageCount(ctx, client, mboxID)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	uid, err := GetMailboxUID(ctx, client, mboxID)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return messageCount, uid, err
+}

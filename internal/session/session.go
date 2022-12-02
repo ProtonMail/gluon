@@ -18,6 +18,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/liner"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
@@ -82,6 +83,8 @@ type Session struct {
 
 	/// errorCount error counter
 	errorCount int
+
+	imapLimits limits.IMAP
 }
 
 func New(
