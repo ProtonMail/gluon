@@ -367,6 +367,27 @@ func FilterMailboxContains(ctx context.Context, client *ent.Client, mboxID imap.
 	}), nil
 }
 
+func FilterMailboxContainsInternalID(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]imap.InternalMessageID, error) {
+	type result struct {
+		InternalID imap.InternalMessageID `json:"uid_message"`
+	}
+
+	var r []result
+
+	if err := client.UID.Query().Where(func(s *sql.Selector) {
+		s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.In(uid.MessageColumn, xslices.Map(messageIDs, func(id imap.InternalMessageID) interface{} {
+			return id
+		})...)))
+		s.Select(uid.MessageColumn)
+	}).Select().Scan(ctx, &r); err != nil {
+		return nil, err
+	}
+
+	return xslices.Map(r, func(r result) imap.InternalMessageID {
+		return r.InternalID
+	}), nil
+}
+
 func GetMailboxFlags(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (imap.FlagSet, error) {
 	mbox, err := client.Mailbox.Query().Where(mailbox.ID(mboxID)).WithFlags().Only(ctx)
 	if err != nil {
@@ -398,4 +419,11 @@ func GetMailboxAttributes(ctx context.Context, client *ent.Client, mboxID imap.I
 	return imap.NewFlagSetFromSlice(xslices.Map(mbox.Edges.Attributes, func(flag *ent.MailboxAttr) string {
 		return flag.Value
 	})), nil
+}
+
+func IsMessageInMailbox(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageID imap.InternalMailboxID) (bool, error) {
+	return client.UID.Query().Where(func(s *sql.Selector) {
+		s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.EQ(uid.MessageColumn, messageID)))
+		s.Select(uid.MessageColumn)
+	}).Exist(ctx)
 }

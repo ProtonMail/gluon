@@ -77,6 +77,10 @@ func CreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*CreateMessageReq) 
 }
 
 func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, mboxID imap.InternalMailboxID) ([]UIDWithFlags, error) {
+	if len(messageIDs) == 0 {
+		return nil, nil
+	}
+
 	messageUIDs := make(map[imap.InternalMessageID]imap.UID)
 
 	mbox, err := tx.Mailbox.Query().Where(mailbox.ID(mboxID)).Select(mailbox.FieldUIDNext).Only(ctx)
@@ -99,8 +103,10 @@ func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, messageIDs []imap.Int
 
 	// Avoid too many SQL variables error.
 	for _, chunk := range xslices.Chunk(builders, ChunkLimit) {
-		if _, err := tx.UID.CreateBulk(chunk...).Save(ctx); err != nil {
+		if m, err := tx.UID.CreateBulk(chunk...).Save(ctx); err != nil {
 			return nil, err
+		} else if len(m) == 0 {
+			return nil, fmt.Errorf("no messages were added to the mailbox")
 		}
 	}
 
@@ -317,6 +323,10 @@ func GetMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Context, client *ent.C
 	slices.SortFunc(result, func(v1 UIDWithFlags, v2 UIDWithFlags) bool {
 		return v1.UID < v2.UID
 	})
+
+	if len(result) == 0 {
+		return nil, fmt.Errorf("result can never be null after UID bump")
+	}
 
 	return result, nil
 }
