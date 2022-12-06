@@ -115,12 +115,7 @@ func (u *targetedExists) handle(_ context.Context, snap *snapshot, stateID State
 		}
 	}
 
-	seq, err := snap.getMessageSeq(u.resp.messageID.InternalID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	res := []response.Response{response.Exists().WithCount(seq)}
+	res := []response.Response{response.Exists().WithCount(imap.SeqID(snap.messages.len()))}
 
 	var dbUpdate responderDBUpdate
 
