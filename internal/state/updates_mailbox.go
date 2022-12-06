@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/limits"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
@@ -19,7 +20,21 @@ func MoveMessagesFromMailbox(
 	mboxFromID, mboxToID imap.InternalMailboxID,
 	messageIDs []imap.InternalMessageID,
 	s *State,
+	imapLimits limits.IMAP,
 ) ([]db.UIDWithFlags, []Update, error) {
+	messageCount, uid, err := db.GetMailboxMessageCountAndUID(ctx, tx.Client(), mboxToID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := imapLimits.CheckMailBoxMessageCount(messageCount, len(messageIDs)); err != nil {
+		return nil, nil, err
+	}
+
+	if err := imapLimits.CheckUIDCount(uid, len(messageIDs)); err != nil {
+		return nil, nil, err
+	}
+
 	if mboxFromID != mboxToID {
 		if err := db.RemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxFromID); err != nil {
 			return nil, nil, err
@@ -50,7 +65,20 @@ func MoveMessagesFromMailbox(
 }
 
 // AddMessagesToMailbox adds the messages to the given mailbox.
-func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, s *State) ([]db.UIDWithFlags, Update, error) {
+func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, s *State, imapLimits limits.IMAP) ([]db.UIDWithFlags, Update, error) {
+	messageCount, uid, err := db.GetMailboxMessageCountAndUID(ctx, tx.Client(), mboxID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := imapLimits.CheckMailBoxMessageCount(messageCount, len(messageIDs)); err != nil {
+		return nil, nil, err
+	}
+
+	if err := imapLimits.CheckUIDCount(uid, len(messageIDs)); err != nil {
+		return nil, nil, err
+	}
+
 	messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxID)
 	if err != nil {
 		return nil, nil, err

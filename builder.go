@@ -2,6 +2,7 @@ package gluon
 
 import (
 	"crypto/tls"
+	"github.com/ProtonMail/gluon/limits"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,6 +30,7 @@ type serverBuilder struct {
 	storeBuilder       store.Builder
 	reporter           reporter.Reporter
 	disableParallelism bool
+	imapLimits         limits.IMAP
 }
 
 func newBuilder() (*serverBuilder, error) {
@@ -37,7 +39,8 @@ func newBuilder() (*serverBuilder, error) {
 		cmdExecProfBuilder: &profiling.NullCmdExecProfilerBuilder{},
 		storeBuilder:       &store.OnDiskStoreBuilder{},
 		reporter:           &reporter.NullReporter{},
-		idleBulkTime:       time.Duration(500 * time.Millisecond),
+		idleBulkTime:       500 * time.Millisecond,
+		imapLimits:         limits.DefaultLimits(),
 	}, nil
 }
 
@@ -60,6 +63,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 		builder.storeBuilder,
 		builder.delim,
 		builder.loginJailTime,
+		builder.imapLimits,
 	)
 	if err != nil {
 		return nil, err

@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/limits"
 	"sync"
 
 	"github.com/ProtonMail/gluon/connector"
@@ -39,6 +40,8 @@ type user struct {
 	globalUIDValidity imap.UID
 
 	recoveryMailboxID imap.InternalMailboxID
+
+	imapLimits limits.IMAP
 }
 
 func newUser(
@@ -48,6 +51,7 @@ func newUser(
 	conn connector.Connector,
 	store store.Store,
 	delimiter string,
+	imapLimits limits.IMAP,
 ) (*user, error) {
 	if err := database.Init(ctx); err != nil {
 		return nil, err
@@ -85,6 +89,8 @@ func newUser(
 		globalUIDValidity: conn.GetUIDValidity(),
 
 		recoveryMailboxID: recoveryMBox.ID,
+
+		imapLimits: imapLimits,
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
@@ -209,6 +215,7 @@ func (user *user) newState() (*state.State, error) {
 	newState := state.NewState(
 		newStateUserInterfaceImpl(user, newStateConnectorImpl(user)),
 		user.delimiter,
+		user.imapLimits,
 	)
 
 	user.states[newState.StateID] = newState

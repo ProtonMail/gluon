@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
+	"github.com/ProtonMail/gluon/limits"
 	"net"
 	"path/filepath"
 	"testing"
@@ -71,6 +72,7 @@ type serverOptions struct {
 	storeBuilder       store.Builder
 	connectorBuilder   connectorBuilder
 	disableParallelism bool
+	imapLimits         limits.IMAP
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -145,6 +147,14 @@ func (disableParallelism) apply(options *serverOptions) {
 	options.disableParallelism = true
 }
 
+type imapLimits struct {
+	limits limits.IMAP
+}
+
+func (m imapLimits) apply(options *serverOptions) {
+	options.imapLimits = m.limits
+}
+
 func withIdleBulkTime(idleBulkTime time.Duration) serverOption {
 	return &idleBulkTimeOption{idleBulkTime: idleBulkTime}
 }
@@ -173,6 +183,10 @@ func withDisableParallelism() serverOption {
 	return &disableParallelism{}
 }
 
+func withIMAPLimits(limits limits.IMAP) serverOption {
+	return &imapLimits{limits: limits}
+}
+
 func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
 	options := &serverOptions{
 		credentials: []credentials{{
@@ -185,6 +199,7 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 		idleBulkTime:     time.Duration(500 * time.Millisecond),
 		storeBuilder:     &store.OnDiskStoreBuilder{},
 		connectorBuilder: &dummyConnectorBuilder{},
+		imapLimits:       limits.DefaultLimits(),
 	}
 
 	for _, op := range modifiers {
@@ -231,6 +246,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		gluon.WithIdleBulkTime(options.idleBulkTime),
 		gluon.WithStoreBuilder(options.storeBuilder),
 		gluon.WithReporter(reporter),
+		gluon.WithIMAPLimits(options.imapLimits),
 	}
 
 	if options.disableParallelism {

@@ -2,6 +2,7 @@ package gluon
 
 import (
 	"crypto/tls"
+	limits2 "github.com/ProtonMail/gluon/limits"
 	"io"
 	"time"
 
@@ -176,4 +177,18 @@ func (withDisableParallelism) config(builder *serverBuilder) {
 
 func WithDisableParallelism() Option {
 	return &withDisableParallelism{}
+}
+
+type withIMAPLimits struct {
+	limits limits2.IMAP
+}
+
+func (w withIMAPLimits) config(builder *serverBuilder) {
+	builder.imapLimits = w.limits
+}
+
+func WithIMAPLimits(limits limits2.IMAP) Option {
+	return &withIMAPLimits{
+		limits: limits,
+	}
 }

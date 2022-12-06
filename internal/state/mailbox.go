@@ -146,6 +146,24 @@ func (m *Mailbox) GetMessagesWithoutFlagCount(flag string) int {
 }
 
 func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
+	if err := m.state.db().Read(ctx, func(ctx context.Context, client *ent.Client) error {
+		if messageCount, uid, err := db.GetMailboxMessageCountAndUID(ctx, client, m.snap.mboxID.InternalID); err != nil {
+			return err
+		} else {
+			if err := m.state.imapLimits.CheckMailBoxMessageCount(messageCount, 1); err != nil {
+				return err
+			}
+
+			if err := m.state.imapLimits.CheckUIDCount(uid, 1); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return 0, err
+	}
+
 	var appendIntoDrafts bool
 
 	attr, err := m.Attributes(ctx)

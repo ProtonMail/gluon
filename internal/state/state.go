@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ProtonMail/gluon/limits"
 	"strings"
 	"sync/atomic"
 
@@ -45,6 +46,8 @@ type State struct {
 
 	// invalid indicates whether this state became invalid and a clients needs to disconnect.
 	invalid bool
+
+	imapLimits limits.IMAP
 }
 
 var stateIDGenerator int64
@@ -53,7 +56,7 @@ func nextStateID() StateID {
 	return StateID(atomic.AddInt64(&stateIDGenerator, 1))
 }
 
-func NewState(user UserInterface, delimiter string) *State {
+func NewState(user UserInterface, delimiter string, imapLimits limits.IMAP) *State {
 	return &State{
 		user:         user,
 		StateID:      nextStateID(),
@@ -61,6 +64,7 @@ func NewState(user UserInterface, delimiter string) *State {
 		snap:         nil,
 		delimiter:    delimiter,
 		updatesQueue: queue.NewQueuedChannel[Update](32, 128),
+		imapLimits:   imapLimits,
 	}
 }
 
@@ -164,6 +168,10 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 }
 
 func (state *State) Create(ctx context.Context, name string) error {
+	if err := state.imapLimits.CheckUIDValidity(state.user.GetGlobalUIDValidity()); err != nil {
+		return err
+	}
+
 	if strings.HasPrefix(strings.ToLower(name), ids.GluonRecoveryMailboxNameLowerCase) {
 		return fmt.Errorf("operation not allowed")
 	}
@@ -179,6 +187,12 @@ func (state *State) Create(ctx context.Context, name string) error {
 	}
 
 	mboxesToCreate, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) ([]string, error) {
+		if mailboxCount, err := db.GetMailboxCount(ctx, client); err != nil {
+			return nil, err
+		} else if err := state.imapLimits.CheckMailBoxCount(mailboxCount); err != nil {
+			return nil, err
+		}
+
 		var mboxesToCreate []string
 		// If the mailbox name is suffixed with the server's hierarchy separator, remove the separator and still create
 		// the mailbox
