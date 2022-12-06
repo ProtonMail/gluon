@@ -28,6 +28,14 @@ TEST(AddressList, ParseSingleAddressList) {
           {{"BQA", "somebody@gmail.com"}},
       },
       {
+          "Something & Something <somebody@gmail.com>",
+          {{"Something & Something", "somebody@gmail.com"}},
+      },
+      {
+          "Something - Something <somebody@gmail.com>",
+          {{"Something - Something", "somebody@gmail.com"}},
+      },
+      {
           "user@example.com",
           {{"", "user@example.com"}},
       },
@@ -574,6 +582,7 @@ TEST(AddressList, Invalid) {
       R"(=?windows-1250?Q?Spr=E1vce_syst=E9mu?=)",
       R"("'user@domain.com.'")",
       R"(<this is not an email address>)",
+      R"("Mail Delivery System <>" <@>)",
   };
 
   for (const auto& input : inputs) {
