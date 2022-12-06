@@ -6,59 +6,27 @@ cases:
     clients: 1
     settings:
       - simple
-  - users: 10
-    clients: 10
-    settings:
-      - simple
-
-
-.OFF.cases:
+      - full
   - users: 1
     clients: 10
     settings:
-      - full
+      - simple
   - users: 1
     clients: 100
     settings:
       - simple
-      - full
-  - users: 1
-    clients: 1000
-    settings:
-      - simple
-      - full
-
   - users: 10
     clients: 10
     settings:
-      - full
+      - simple
   - users: 10
     clients: 100
     settings:
       - simple
-      - full
-
   - users: 100
     clients: 100
     settings:
       - simple
-      - full
-  - users: 100
-    clients: 1000
-    settings:
-      - simple
-      - full
-
-  - users: 1000
-    clients: 1000
-    settings:
-      - simple
-      - full
-  - users: 1000
-    clients: 10000
-    settings:
-      - simple
-      - full
 
 settings:
   simple:
