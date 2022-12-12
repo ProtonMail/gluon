@@ -15,7 +15,6 @@ var (
 		{Name: "name", Type: field.TypeString, Unique: true},
 		{Name: "uid_next", Type: field.TypeUint32, Default: 1},
 		{Name: "uid_validity", Type: field.TypeUint32, Default: 1},
-		{Name: "subscribed", Type: field.TypeBool, Default: true},
 	}
 	// MailboxesTable holds the schema information for the "mailboxes" table.
 	MailboxesTable = &schema.Table{
@@ -149,6 +148,36 @@ var (
 			},
 		},
 	}
+	// SubscriptionsColumns holds the columns for the "subscriptions" table.
+	SubscriptionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "mailbox_id", Type: field.TypeUint64, Unique: true},
+		{Name: "remote_id", Type: field.TypeString, Unique: true, Nullable: true},
+	}
+	// SubscriptionsTable holds the schema information for the "subscriptions" table.
+	SubscriptionsTable = &schema.Table{
+		Name:       "subscriptions",
+		Columns:    SubscriptionsColumns,
+		PrimaryKey: []*schema.Column{SubscriptionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "subscription_mailbox_id",
+				Unique:  false,
+				Columns: []*schema.Column{SubscriptionsColumns[2]},
+			},
+			{
+				Name:    "subscription_remote_id",
+				Unique:  false,
+				Columns: []*schema.Column{SubscriptionsColumns[3]},
+			},
+			{
+				Name:    "subscription_name",
+				Unique:  false,
+				Columns: []*schema.Column{SubscriptionsColumns[1]},
+			},
+		},
+	}
 	// UIDsColumns holds the columns for the "ui_ds" table.
 	UIDsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -193,6 +222,7 @@ var (
 		MailboxPermFlagsTable,
 		MessagesTable,
 		MessageFlagsTable,
+		SubscriptionsTable,
 		UIDsTable,
 	}
 )

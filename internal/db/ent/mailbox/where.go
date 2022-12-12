@@ -111,13 +111,6 @@ func UIDValidity(v imap.UID) predicate.Mailbox {
 	})
 }
 
-// Subscribed applies equality check predicate on the "Subscribed" field. It's identical to SubscribedEQ.
-func Subscribed(v bool) predicate.Mailbox {
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSubscribed), v))
-	})
-}
-
 // RemoteIDEQ applies the EQ predicate on the "RemoteID" field.
 func RemoteIDEQ(v imap.MailboxID) predicate.Mailbox {
 	vc := string(v)
@@ -478,20 +471,6 @@ func UIDValidityLTE(v imap.UID) predicate.Mailbox {
 	vc := uint32(v)
 	return predicate.Mailbox(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldUIDValidity), vc))
-	})
-}
-
-// SubscribedEQ applies the EQ predicate on the "Subscribed" field.
-func SubscribedEQ(v bool) predicate.Mailbox {
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldSubscribed), v))
-	})
-}
-
-// SubscribedNEQ applies the NEQ predicate on the "Subscribed" field.
-func SubscribedNEQ(v bool) predicate.Mailbox {
-	return predicate.Mailbox(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldSubscribed), v))
 	})
 }
 
