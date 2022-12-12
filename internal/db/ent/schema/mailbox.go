@@ -22,7 +22,6 @@ func (Mailbox) Fields() []ent.Field {
 		field.String("Name").Unique(),
 		field.Uint32("UIDNext").Default(1).GoType(imap.UID(0)),
 		field.Uint32("UIDValidity").Default(1).GoType(imap.UID(0)),
-		field.Bool("Subscribed").Default(true),
 	}
 }
 

@@ -24,6 +24,8 @@ type Tx struct {
 	Message *MessageClient
 	// MessageFlag is the client for interacting with the MessageFlag builders.
 	MessageFlag *MessageFlagClient
+	// Subscription is the client for interacting with the Subscription builders.
+	Subscription *SubscriptionClient
 	// UID is the client for interacting with the UID builders.
 	UID *UIDClient
 
@@ -167,6 +169,7 @@ func (tx *Tx) init() {
 	tx.MailboxPermFlag = NewMailboxPermFlagClient(tx.config)
 	tx.Message = NewMessageClient(tx.config)
 	tx.MessageFlag = NewMessageFlagClient(tx.config)
+	tx.Subscription = NewSubscriptionClient(tx.config)
 	tx.UID = NewUIDClient(tx.config)
 }
 

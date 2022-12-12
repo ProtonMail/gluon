@@ -24,5 +24,8 @@ type Message func(*sql.Selector)
 // MessageFlag is the predicate function for messageflag builders.
 type MessageFlag func(*sql.Selector)
 
+// Subscription is the predicate function for subscription builders.
+type Subscription func(*sql.Selector)
+
 // UID is the predicate function for uid builders.
 type UID func(*sql.Selector)

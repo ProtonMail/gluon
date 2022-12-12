@@ -30,6 +30,7 @@ type hooks struct {
 	MailboxPermFlag []ent.Hook
 	Message         []ent.Hook
 	MessageFlag     []ent.Hook
+	Subscription    []ent.Hook
 	UID             []ent.Hook
 }
 

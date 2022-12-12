@@ -100,20 +100,6 @@ func (mu *MailboxUpdate) AddUIDValidity(i imap.UID) *MailboxUpdate {
 	return mu
 }
 
-// SetSubscribed sets the "Subscribed" field.
-func (mu *MailboxUpdate) SetSubscribed(b bool) *MailboxUpdate {
-	mu.mutation.SetSubscribed(b)
-	return mu
-}
-
-// SetNillableSubscribed sets the "Subscribed" field if the given value is not nil.
-func (mu *MailboxUpdate) SetNillableSubscribed(b *bool) *MailboxUpdate {
-	if b != nil {
-		mu.SetSubscribed(*b)
-	}
-	return mu
-}
-
 // AddUIDIDs adds the "UIDs" edge to the UID entity by IDs.
 func (mu *MailboxUpdate) AddUIDIDs(ids ...int) *MailboxUpdate {
 	mu.mutation.AddUIDIDs(ids...)
@@ -381,13 +367,6 @@ func (mu *MailboxUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDValidity,
-		})
-	}
-	if value, ok := mu.mutation.Subscribed(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: mailbox.FieldSubscribed,
 		})
 	}
 	if mu.mutation.UIDsCleared() {
@@ -693,20 +672,6 @@ func (muo *MailboxUpdateOne) AddUIDValidity(i imap.UID) *MailboxUpdateOne {
 	return muo
 }
 
-// SetSubscribed sets the "Subscribed" field.
-func (muo *MailboxUpdateOne) SetSubscribed(b bool) *MailboxUpdateOne {
-	muo.mutation.SetSubscribed(b)
-	return muo
-}
-
-// SetNillableSubscribed sets the "Subscribed" field if the given value is not nil.
-func (muo *MailboxUpdateOne) SetNillableSubscribed(b *bool) *MailboxUpdateOne {
-	if b != nil {
-		muo.SetSubscribed(*b)
-	}
-	return muo
-}
-
 // AddUIDIDs adds the "UIDs" edge to the UID entity by IDs.
 func (muo *MailboxUpdateOne) AddUIDIDs(ids ...int) *MailboxUpdateOne {
 	muo.mutation.AddUIDIDs(ids...)
@@ -1004,13 +969,6 @@ func (muo *MailboxUpdateOne) sqlSave(ctx context.Context) (_node *Mailbox, err e
 			Type:   field.TypeUint32,
 			Value:  value,
 			Column: mailbox.FieldUIDValidity,
-		})
-	}
-	if value, ok := muo.mutation.Subscribed(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: mailbox.FieldSubscribed,
 		})
 	}
 	if muo.mutation.UIDsCleared() {
