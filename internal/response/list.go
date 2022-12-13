@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/emersion/go-imap/utf7"
 )
 
 type list struct {
@@ -43,10 +42,5 @@ func (r *list) String() string {
 		del = strconv.Quote(r.del)
 	}
 
-	enc, err := utf7.Encoding.NewEncoder().String(r.name)
-	if err != nil {
-		panic(err)
-	}
-
-	return fmt.Sprintf(`* LIST (%v) %v %v`, join(r.att.ToSlice()), del, strconv.Quote(enc))
+	return fmt.Sprintf(`* LIST (%v) %v %v`, join(r.att.ToSlice()), del, strconv.Quote(r.name))
 }

@@ -164,3 +164,16 @@ func TestLsubWithHiddenMailbox(t *testing.T) {
 		c.OK(`a`)
 	})
 }
+
+func TestLSubWithUtf8MailboxNames(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
+		s.mailboxCreated("user", []string{"mbox-öüäëæøå"})
+		s.flush("user")
+		c.C(`a LSUB "" "*"`)
+		c.S(
+			`* LSUB (\Unmarked) "." "INBOX"`,
+			`* LSUB (\Unmarked) "." "mbox-&APYA,ADkAOsA5gD4AOU-"`,
+		)
+		c.OK(`a`)
+	})
+}
