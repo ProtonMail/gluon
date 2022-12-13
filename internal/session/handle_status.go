@@ -49,7 +49,7 @@ func (s *Session) handleStatus(ctx context.Context, tag string, cmd *proto.Statu
 			}
 		}
 
-		ch <- response.Status().WithMailbox(nameUTF8).WithItems(items...)
+		ch <- response.Status().WithMailbox(cmd.GetMailbox()).WithItems(items...)
 
 		return nil
 	}); err != nil {

@@ -301,3 +301,16 @@ func TestListHiddenMailbox(t *testing.T) {
 		c.OK(`a`)
 	})
 }
+
+func TestListWithUtf8MailboxNames(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
+		s.mailboxCreated("user", []string{"mbox-öüäëæøå"})
+		s.flush("user")
+		c.C(`a list "" "*"`)
+		c.S(
+			`* LIST (\Unmarked) "." "INBOX"`,
+			`* LIST (\Unmarked) "." "mbox-&APYA,ADkAOsA5gD4AOU-"`,
+		)
+		c.OK(`a`)
+	})
+}

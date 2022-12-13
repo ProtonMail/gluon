@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -21,9 +22,13 @@ func (s *Session) handleList(ctx context.Context, tag string, cmd *proto.List, c
 
 	return s.state.List(ctx, cmd.GetReference(), nameUTF8, false, func(matches map[string]state.Match) error {
 		for _, match := range matches {
+			nameUtf7, err := utf7.Encoding.NewEncoder().String(match.Name)
+			if err != nil {
+				return fmt.Errorf("failed to convert name to utf7")
+			}
 			select {
 			case ch <- response.List().
-				WithName(match.Name).
+				WithName(nameUtf7).
 				WithDelimiter(match.Delimiter).
 				WithAttributes(match.Atts):
 

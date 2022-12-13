@@ -21,9 +21,13 @@ func (s *Session) handleLsub(ctx context.Context, tag string, cmd *proto.Lsub, c
 
 	return s.state.List(ctx, cmd.GetReference(), nameUTF8, true, func(matches map[string]state.Match) error {
 		for _, match := range matches {
+			nameUtf7, err := utf7.Encoding.NewEncoder().String(match.Name)
+			if err != nil {
+				panic(err)
+			}
 			select {
 			case ch <- response.Lsub().
-				WithName(match.Name).
+				WithName(nameUtf7).
 				WithDelimiter(match.Delimiter).
 				WithAttributes(match.Atts):
 
