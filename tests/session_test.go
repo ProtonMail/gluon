@@ -33,6 +33,8 @@ type Connector interface {
 	MailboxDeleted(imap.MailboxID) error
 	SetMailboxVisible(imap.MailboxID, bool)
 
+	SetAllowMessageCreateWithUnknownMailboxID(value bool)
+
 	MessageCreated(imap.Message, []byte, []imap.MailboxID) error
 	MessagesCreated([]imap.Message, [][]byte, [][]imap.MailboxID) error
 	MessageUpdated(imap.Message, []byte, []imap.MailboxID) error
@@ -137,6 +139,10 @@ func (s *testSession) mailboxCreated(user string, name []string, withData ...str
 	return s.mailboxCreatedWithAttributes(user, name, defaultAttributes, withData...)
 }
 
+func (s *testSession) setAllowMessageCreateWithUnknownMailboxID(user string, value bool) {
+	s.conns[s.userIDs[user]].SetAllowMessageCreateWithUnknownMailboxID(value)
+}
+
 func (s *testSession) mailboxDeleted(user string, id imap.MailboxID) {
 	require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxDeleted(id))
 }
@@ -197,6 +203,24 @@ func (s *testSession) mailboxCreatedCustom(user string, name []string, flags, pe
 	s.conns[s.userIDs[user]].Flush()
 
 	return mboxID
+}
+
+func (s *testSession) messageCreatedWithMailboxes(user string, mailboxIDs []imap.MailboxID, literal []byte, internalDate time.Time, flags ...string) imap.MessageID {
+	messageID := imap.MessageID(utils.NewRandomMessageID())
+
+	require.NoError(s.tb, s.conns[s.userIDs[user]].MessageCreated(
+		imap.Message{
+			ID:    messageID,
+			Flags: imap.NewFlagSetFromSlice(flags),
+			Date:  internalDate,
+		},
+		literal,
+		mailboxIDs,
+	))
+
+	s.conns[s.userIDs[user]].Flush()
+
+	return messageID
 }
 
 func (s *testSession) messageCreated(user string, mailboxID imap.MailboxID, literal []byte, internalDate time.Time, flags ...string) imap.MessageID {

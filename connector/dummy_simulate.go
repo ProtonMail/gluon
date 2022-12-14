@@ -79,7 +79,7 @@ func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs 
 		mboxIDs: mboxIDMap,
 	}
 
-	update := imap.NewMessagesCreated(&imap.MessageCreated{
+	update := imap.NewMessagesCreated(conn.allowMessageCreateWithUnknownMailboxID, &imap.MessageCreated{
 		Message:       message,
 		Literal:       literal,
 		MailboxIDs:    mboxIDs,
@@ -126,7 +126,7 @@ func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, m
 		})
 	}
 
-	conn.pushUpdate(imap.NewMessagesCreated(updates...))
+	conn.pushUpdate(imap.NewMessagesCreated(conn.allowMessageCreateWithUnknownMailboxID, updates...))
 
 	return nil
 }
@@ -223,4 +223,8 @@ func (conn *Dummy) UIDValidityBumped() {
 
 func (conn *Dummy) Flush() {
 	conn.ticker.Poll()
+}
+
+func (conn *Dummy) SetAllowMessageCreateWithUnknownMailboxID(value bool) {
+	conn.allowMessageCreateWithUnknownMailboxID = value
 }
