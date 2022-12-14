@@ -55,6 +55,8 @@ type Dummy struct {
 
 	// uidValidity holds the global UID validity.
 	uidValidity imap.UID
+
+	allowMessageCreateWithUnknownMailboxID bool
 }
 
 func NewDummy(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
@@ -162,7 +164,7 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.MailboxID, lit
 		date,
 	)
 
-	update := imap.NewMessagesCreated(&imap.MessageCreated{
+	update := imap.NewMessagesCreated(conn.allowMessageCreateWithUnknownMailboxID, &imap.MessageCreated{
 		Message:       message,
 		Literal:       literal,
 		MailboxIDs:    []imap.MailboxID{mboxID},
@@ -277,7 +279,7 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 		updates = append(updates, update)
 	}
 
-	update := imap.NewMessagesCreated(updates...)
+	update := imap.NewMessagesCreated(conn.allowMessageCreateWithUnknownMailboxID, updates...)
 	defer update.WaitContext(ctx)
 
 	conn.updateCh <- update

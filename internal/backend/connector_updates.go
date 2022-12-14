@@ -244,6 +244,13 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 				if !ok {
 					internalMBoxID, err := db.GetMailboxIDWithRemoteID(ctx, client, mboxID)
 					if err != nil {
+						// If a mailbox doesn't exist and we are allowed to skip move to next mailbox.
+						if update.IgnoreUnknownMailboxIDs {
+							logrus.WithField("MailboxID", mboxID.ShortID()).
+								WithField("MessageID", message.Message.ID.ShortID()).
+								Warn("Unknown Mailbox ID, skipping add to mailbox")
+							continue
+						}
 						return err
 					}
 
