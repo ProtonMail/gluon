@@ -19,6 +19,8 @@ const (
 	FieldUIDNext = "uid_next"
 	// FieldUIDValidity holds the string denoting the uidvalidity field in the database.
 	FieldUIDValidity = "uid_validity"
+	// FieldSubscribed holds the string denoting the subscribed field in the database.
+	FieldSubscribed = "subscribed"
 	// EdgeUIDs holds the string denoting the uids edge name in mutations.
 	EdgeUIDs = "UIDs"
 	// EdgeFlags holds the string denoting the flags edge name in mutations.
@@ -66,6 +68,7 @@ var Columns = []string{
 	FieldName,
 	FieldUIDNext,
 	FieldUIDValidity,
+	FieldSubscribed,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -83,4 +86,6 @@ var (
 	DefaultUIDNext imap.UID
 	// DefaultUIDValidity holds the default value on creation for the "UIDValidity" field.
 	DefaultUIDValidity imap.UID
+	// DefaultSubscribed holds the default value on creation for the "Subscribed" field.
+	DefaultSubscribed bool
 )

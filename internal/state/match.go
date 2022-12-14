@@ -18,23 +18,16 @@ type Match struct {
 	Atts      imap.FlagSet
 }
 
-type matchMailbox struct {
-	Name       string
-	Subscribed bool
-	// EntMBox should be set to nil if there is no such value.
-	EntMBox *ent.Mailbox
-}
-
 func getMatches(
 	ctx context.Context,
 	client *ent.Client,
-	allMailboxes []matchMailbox,
+	allMailboxes []*ent.Mailbox,
 	ref, pattern, delimiter string,
 	subscribed bool,
 ) (map[string]Match, error) {
 	matches := make(map[string]Match)
 
-	mailboxes := make(map[string]matchMailbox)
+	mailboxes := make(map[string]*ent.Mailbox)
 	for _, mbox := range allMailboxes {
 		mailboxes[mbox.Name] = mbox
 	}
@@ -60,7 +53,7 @@ func getMatches(
 			mbox, mailboxExists := mailboxes[matchedName]
 
 			match, isMatch, err := prepareMatch(
-				ctx, client, matchedName, &mbox,
+				ctx, client, matchedName, mbox,
 				pattern, delimiter,
 				mboxName == matchedName, mailboxExists, subscribed,
 			)
@@ -81,7 +74,7 @@ func prepareMatch(
 	ctx context.Context,
 	client *ent.Client,
 	matchedName string,
-	mbox *matchMailbox,
+	mbox *ent.Mailbox,
 	pattern, delimiter string,
 	isNotSuperior, mailboxExists, onlySubscribed bool,
 ) (Match, bool, error) {
@@ -102,30 +95,22 @@ func prepareMatch(
 		}, true, nil
 	}
 
-	var (
-		atts imap.FlagSet
-	)
+	atts := imap.NewFlagSetFromSlice(xslices.Map(
+		mbox.Edges.Attributes,
+		func(flag *ent.MailboxAttr) string {
+			return flag.Value
+		},
+	))
 
-	if mbox.EntMBox != nil {
-		atts = imap.NewFlagSetFromSlice(xslices.Map(
-			mbox.EntMBox.Edges.Attributes,
-			func(flag *ent.MailboxAttr) string {
-				return flag.Value
-			},
-		))
+	recent, err := db.GetMailboxRecentCount(ctx, client, mbox)
+	if err != nil {
+		return Match{}, false, err
+	}
 
-		recent, err := db.GetMailboxRecentCount(ctx, client, mbox.EntMBox)
-		if err != nil {
-			return Match{}, false, err
-		}
-
-		if recent > 0 {
-			atts.AddToSelf(imap.AttrMarked)
-		} else {
-			atts.AddToSelf(imap.AttrUnmarked)
-		}
+	if recent > 0 {
+		atts.AddToSelf(imap.AttrMarked)
 	} else {
-		atts = imap.NewFlagSet(imap.AttrNoSelect)
+		atts.AddToSelf(imap.AttrUnmarked)
 	}
 
 	return Match{

@@ -16,7 +16,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent/mailboxpermflag"
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
-	"github.com/ProtonMail/gluon/internal/db/ent/subscription"
 	"github.com/ProtonMail/gluon/internal/db/ent/uid"
 )
 
@@ -44,7 +43,6 @@ func columnChecker(table string) func(string) error {
 		mailboxpermflag.Table: mailboxpermflag.ValidColumn,
 		message.Table:         message.ValidColumn,
 		messageflag.Table:     messageflag.ValidColumn,
-		subscription.Table:    subscription.ValidColumn,
 		uid.Table:             uid.ValidColumn,
 	}
 	check, ok := checks[table]

@@ -98,47 +98,7 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 			return state.user.GetRemote().IsMailboxVisible(ctx, mailbox.RemoteID)
 		})
 
-		var subscriptions map[imap.InternalMailboxID]*ent.Subscription
-
-		if subscribed {
-			subscriptions, err = db.GetSubscriptionSet(ctx, client)
-			if err != nil {
-				return err
-			}
-		}
-
-		// Convert existing mailboxes over to match format.
-		matchMailboxes := make([]matchMailbox, 0, len(mailboxes))
-		for _, mbox := range mailboxes {
-			var subscribed bool
-			if _, ok := subscriptions[mbox.ID]; ok {
-				subscribed = true
-				delete(subscriptions, mbox.ID)
-			}
-
-			matchMailboxes = append(matchMailboxes, matchMailbox{
-				Name:       mbox.Name,
-				Subscribed: subscribed,
-				EntMBox:    mbox,
-			})
-		}
-
-		if subscribed {
-			// Insert any remaining mailboxes that have been deleted but are still subscribed.
-			for _, s := range subscriptions {
-				if !state.user.GetRemote().IsMailboxVisible(ctx, s.RemoteID) {
-					continue
-				}
-
-				matchMailboxes = append(matchMailboxes, matchMailbox{
-					Name:       s.Name,
-					Subscribed: true,
-					EntMBox:    nil,
-				})
-			}
-		}
-
-		matches, err := getMatches(ctx, client, matchMailboxes, ref, pattern, state.delimiter, subscribed)
+		matches, err := getMatches(ctx, client, mailboxes, ref, pattern, state.delimiter, subscribed)
 		if err != nil {
 			return err
 		}
@@ -386,53 +346,31 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 func (state *State) Subscribe(ctx context.Context, name string) error {
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		mbox, err := db.GetMailboxByName(ctx, client, name)
-		if err != nil {
-			return nil, ErrNoSuchMailbox
-		}
-
-		if _, err := db.GetSubscriptionWithMBoxID(ctx, client, mbox.ID); err != nil {
-			if ent.IsNotFound(err) {
-				return mbox, nil
-			}
-
-			return nil, ErrNoSuchMailbox
-		}
-
-		return nil, ErrAlreadySubscribed
+		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
-		return err
+		return ErrNoSuchMailbox
+	} else if mbox.Subscribed {
+		return ErrAlreadySubscribed
 	}
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return db.AddSubscription(ctx, tx, mbox.Name, ids.NewMailboxIDPair(mbox))
+		return mbox.Update().SetSubscribed(true).Exec(ctx)
 	})
 }
 
 func (state *State) Unsubscribe(ctx context.Context, name string) error {
-	mboxExists, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (bool, error) {
-		return db.MailboxExistsWithName(ctx, client, name)
+	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
 		return ErrNoSuchMailbox
+	} else if !mbox.Subscribed {
+		return ErrAlreadyUnsubscribed
 	}
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		count, err := db.DeleteSubscriptionWithName(ctx, tx, name)
-		if err != nil {
-			return err
-		}
-
-		if count == 0 {
-			if mboxExists {
-				return ErrAlreadyUnsubscribed
-			} else {
-				return ErrNoSuchMailbox
-			}
-		}
-
-		return nil
+		return mbox.Update().SetSubscribed(false).Exec(ctx)
 	})
 }
 

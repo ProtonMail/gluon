@@ -24,6 +24,8 @@ type Mailbox struct {
 	UIDNext imap.UID `json:"UIDNext,omitempty"`
 	// UIDValidity holds the value of the "UIDValidity" field.
 	UIDValidity imap.UID `json:"UIDValidity,omitempty"`
+	// Subscribed holds the value of the "Subscribed" field.
+	Subscribed bool `json:"Subscribed,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MailboxQuery when eager-loading is set.
 	Edges MailboxEdges `json:"edges"`
@@ -85,6 +87,8 @@ func (*Mailbox) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case mailbox.FieldSubscribed:
+			values[i] = new(sql.NullBool)
 		case mailbox.FieldID, mailbox.FieldUIDNext, mailbox.FieldUIDValidity:
 			values[i] = new(sql.NullInt64)
 		case mailbox.FieldRemoteID, mailbox.FieldName:
@@ -133,6 +137,12 @@ func (m *Mailbox) assignValues(columns []string, values []interface{}) error {
 				return fmt.Errorf("unexpected type %T for field UIDValidity", values[i])
 			} else if value.Valid {
 				m.UIDValidity = imap.UID(value.Int64)
+			}
+		case mailbox.FieldSubscribed:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field Subscribed", values[i])
+			} else if value.Valid {
+				m.Subscribed = value.Bool
 			}
 		}
 	}
@@ -193,6 +203,9 @@ func (m *Mailbox) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("UIDValidity=")
 	builder.WriteString(fmt.Sprintf("%v", m.UIDValidity))
+	builder.WriteString(", ")
+	builder.WriteString("Subscribed=")
+	builder.WriteString(fmt.Sprintf("%v", m.Subscribed))
 	builder.WriteByte(')')
 	return builder.String()
 }
