@@ -17,7 +17,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent/message"
 	"github.com/ProtonMail/gluon/internal/db/ent/messageflag"
 	"github.com/ProtonMail/gluon/internal/db/ent/predicate"
-	"github.com/ProtonMail/gluon/internal/db/ent/subscription"
 	"github.com/ProtonMail/gluon/internal/db/ent/uid"
 
 	"entgo.io/ent"
@@ -38,7 +37,6 @@ const (
 	TypeMailboxPermFlag = "MailboxPermFlag"
 	TypeMessage         = "Message"
 	TypeMessageFlag     = "MessageFlag"
-	TypeSubscription    = "Subscription"
 	TypeUID             = "UID"
 )
 
@@ -54,6 +52,7 @@ type MailboxMutation struct {
 	add_UIDNext            *imap.UID
 	_UIDValidity           *imap.UID
 	add_UIDValidity        *imap.UID
+	_Subscribed            *bool
 	clearedFields          map[string]struct{}
 	_UIDs                  map[int]struct{}
 	removed_UIDs           map[int]struct{}
@@ -373,6 +372,42 @@ func (m *MailboxMutation) ResetUIDValidity() {
 	m.add_UIDValidity = nil
 }
 
+// SetSubscribed sets the "Subscribed" field.
+func (m *MailboxMutation) SetSubscribed(b bool) {
+	m._Subscribed = &b
+}
+
+// Subscribed returns the value of the "Subscribed" field in the mutation.
+func (m *MailboxMutation) Subscribed() (r bool, exists bool) {
+	v := m._Subscribed
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubscribed returns the old "Subscribed" field's value of the Mailbox entity.
+// If the Mailbox object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MailboxMutation) OldSubscribed(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubscribed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubscribed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubscribed: %w", err)
+	}
+	return oldValue.Subscribed, nil
+}
+
+// ResetSubscribed resets all changes to the "Subscribed" field.
+func (m *MailboxMutation) ResetSubscribed() {
+	m._Subscribed = nil
+}
+
 // AddUIDIDs adds the "UIDs" edge to the UID entity by ids.
 func (m *MailboxMutation) AddUIDIDs(ids ...int) {
 	if m._UIDs == nil {
@@ -608,7 +643,7 @@ func (m *MailboxMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MailboxMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 5)
 	if m._RemoteID != nil {
 		fields = append(fields, mailbox.FieldRemoteID)
 	}
@@ -620,6 +655,9 @@ func (m *MailboxMutation) Fields() []string {
 	}
 	if m._UIDValidity != nil {
 		fields = append(fields, mailbox.FieldUIDValidity)
+	}
+	if m._Subscribed != nil {
+		fields = append(fields, mailbox.FieldSubscribed)
 	}
 	return fields
 }
@@ -637,6 +675,8 @@ func (m *MailboxMutation) Field(name string) (ent.Value, bool) {
 		return m.UIDNext()
 	case mailbox.FieldUIDValidity:
 		return m.UIDValidity()
+	case mailbox.FieldSubscribed:
+		return m.Subscribed()
 	}
 	return nil, false
 }
@@ -654,6 +694,8 @@ func (m *MailboxMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldUIDNext(ctx)
 	case mailbox.FieldUIDValidity:
 		return m.OldUIDValidity(ctx)
+	case mailbox.FieldSubscribed:
+		return m.OldSubscribed(ctx)
 	}
 	return nil, fmt.Errorf("unknown Mailbox field %s", name)
 }
@@ -690,6 +732,13 @@ func (m *MailboxMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUIDValidity(v)
+		return nil
+	case mailbox.FieldSubscribed:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubscribed(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Mailbox field %s", name)
@@ -787,6 +836,9 @@ func (m *MailboxMutation) ResetField(name string) error {
 		return nil
 	case mailbox.FieldUIDValidity:
 		m.ResetUIDValidity()
+		return nil
+	case mailbox.FieldSubscribed:
+		m.ResetSubscribed()
 		return nil
 	}
 	return fmt.Errorf("unknown Mailbox field %s", name)
@@ -3140,483 +3192,6 @@ func (m *MessageFlagMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown MessageFlag edge %s", name)
-}
-
-// SubscriptionMutation represents an operation that mutates the Subscription nodes in the graph.
-type SubscriptionMutation struct {
-	config
-	op            Op
-	typ           string
-	id            *int
-	_Name         *string
-	_MailboxID    *imap.InternalMailboxID
-	add_MailboxID *imap.InternalMailboxID
-	_RemoteID     *imap.MailboxID
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*Subscription, error)
-	predicates    []predicate.Subscription
-}
-
-var _ ent.Mutation = (*SubscriptionMutation)(nil)
-
-// subscriptionOption allows management of the mutation configuration using functional options.
-type subscriptionOption func(*SubscriptionMutation)
-
-// newSubscriptionMutation creates new mutation for the Subscription entity.
-func newSubscriptionMutation(c config, op Op, opts ...subscriptionOption) *SubscriptionMutation {
-	m := &SubscriptionMutation{
-		config:        c,
-		op:            op,
-		typ:           TypeSubscription,
-		clearedFields: make(map[string]struct{}),
-	}
-	for _, opt := range opts {
-		opt(m)
-	}
-	return m
-}
-
-// withSubscriptionID sets the ID field of the mutation.
-func withSubscriptionID(id int) subscriptionOption {
-	return func(m *SubscriptionMutation) {
-		var (
-			err   error
-			once  sync.Once
-			value *Subscription
-		)
-		m.oldValue = func(ctx context.Context) (*Subscription, error) {
-			once.Do(func() {
-				if m.done {
-					err = errors.New("querying old values post mutation is not allowed")
-				} else {
-					value, err = m.Client().Subscription.Get(ctx, id)
-				}
-			})
-			return value, err
-		}
-		m.id = &id
-	}
-}
-
-// withSubscription sets the old Subscription of the mutation.
-func withSubscription(node *Subscription) subscriptionOption {
-	return func(m *SubscriptionMutation) {
-		m.oldValue = func(context.Context) (*Subscription, error) {
-			return node, nil
-		}
-		m.id = &node.ID
-	}
-}
-
-// Client returns a new `ent.Client` from the mutation. If the mutation was
-// executed in a transaction (ent.Tx), a transactional client is returned.
-func (m SubscriptionMutation) Client() *Client {
-	client := &Client{config: m.config}
-	client.init()
-	return client
-}
-
-// Tx returns an `ent.Tx` for mutations that were executed in transactions;
-// it returns an error otherwise.
-func (m SubscriptionMutation) Tx() (*Tx, error) {
-	if _, ok := m.driver.(*txDriver); !ok {
-		return nil, errors.New("ent: mutation is not running in a transaction")
-	}
-	tx := &Tx{config: m.config}
-	tx.init()
-	return tx, nil
-}
-
-// ID returns the ID value in the mutation. Note that the ID is only available
-// if it was provided to the builder or after it was returned from the database.
-func (m *SubscriptionMutation) ID() (id int, exists bool) {
-	if m.id == nil {
-		return
-	}
-	return *m.id, true
-}
-
-// IDs queries the database and returns the entity ids that match the mutation's predicate.
-// That means, if the mutation is applied within a transaction with an isolation level such
-// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
-// or updated by the mutation.
-func (m *SubscriptionMutation) IDs(ctx context.Context) ([]int, error) {
-	switch {
-	case m.op.Is(OpUpdateOne | OpDeleteOne):
-		id, exists := m.ID()
-		if exists {
-			return []int{id}, nil
-		}
-		fallthrough
-	case m.op.Is(OpUpdate | OpDelete):
-		return m.Client().Subscription.Query().Where(m.predicates...).IDs(ctx)
-	default:
-		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
-	}
-}
-
-// SetName sets the "Name" field.
-func (m *SubscriptionMutation) SetName(s string) {
-	m._Name = &s
-}
-
-// Name returns the value of the "Name" field in the mutation.
-func (m *SubscriptionMutation) Name() (r string, exists bool) {
-	v := m._Name
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldName returns the old "Name" field's value of the Subscription entity.
-// If the Subscription object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SubscriptionMutation) OldName(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldName is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldName requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldName: %w", err)
-	}
-	return oldValue.Name, nil
-}
-
-// ResetName resets all changes to the "Name" field.
-func (m *SubscriptionMutation) ResetName() {
-	m._Name = nil
-}
-
-// SetMailboxID sets the "MailboxID" field.
-func (m *SubscriptionMutation) SetMailboxID(imi imap.InternalMailboxID) {
-	m._MailboxID = &imi
-	m.add_MailboxID = nil
-}
-
-// MailboxID returns the value of the "MailboxID" field in the mutation.
-func (m *SubscriptionMutation) MailboxID() (r imap.InternalMailboxID, exists bool) {
-	v := m._MailboxID
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldMailboxID returns the old "MailboxID" field's value of the Subscription entity.
-// If the Subscription object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SubscriptionMutation) OldMailboxID(ctx context.Context) (v imap.InternalMailboxID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldMailboxID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldMailboxID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldMailboxID: %w", err)
-	}
-	return oldValue.MailboxID, nil
-}
-
-// AddMailboxID adds imi to the "MailboxID" field.
-func (m *SubscriptionMutation) AddMailboxID(imi imap.InternalMailboxID) {
-	if m.add_MailboxID != nil {
-		*m.add_MailboxID += imi
-	} else {
-		m.add_MailboxID = &imi
-	}
-}
-
-// AddedMailboxID returns the value that was added to the "MailboxID" field in this mutation.
-func (m *SubscriptionMutation) AddedMailboxID() (r imap.InternalMailboxID, exists bool) {
-	v := m.add_MailboxID
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetMailboxID resets all changes to the "MailboxID" field.
-func (m *SubscriptionMutation) ResetMailboxID() {
-	m._MailboxID = nil
-	m.add_MailboxID = nil
-}
-
-// SetRemoteID sets the "RemoteID" field.
-func (m *SubscriptionMutation) SetRemoteID(ii imap.MailboxID) {
-	m._RemoteID = &ii
-}
-
-// RemoteID returns the value of the "RemoteID" field in the mutation.
-func (m *SubscriptionMutation) RemoteID() (r imap.MailboxID, exists bool) {
-	v := m._RemoteID
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldRemoteID returns the old "RemoteID" field's value of the Subscription entity.
-// If the Subscription object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SubscriptionMutation) OldRemoteID(ctx context.Context) (v imap.MailboxID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldRemoteID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldRemoteID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldRemoteID: %w", err)
-	}
-	return oldValue.RemoteID, nil
-}
-
-// ClearRemoteID clears the value of the "RemoteID" field.
-func (m *SubscriptionMutation) ClearRemoteID() {
-	m._RemoteID = nil
-	m.clearedFields[subscription.FieldRemoteID] = struct{}{}
-}
-
-// RemoteIDCleared returns if the "RemoteID" field was cleared in this mutation.
-func (m *SubscriptionMutation) RemoteIDCleared() bool {
-	_, ok := m.clearedFields[subscription.FieldRemoteID]
-	return ok
-}
-
-// ResetRemoteID resets all changes to the "RemoteID" field.
-func (m *SubscriptionMutation) ResetRemoteID() {
-	m._RemoteID = nil
-	delete(m.clearedFields, subscription.FieldRemoteID)
-}
-
-// Where appends a list predicates to the SubscriptionMutation builder.
-func (m *SubscriptionMutation) Where(ps ...predicate.Subscription) {
-	m.predicates = append(m.predicates, ps...)
-}
-
-// Op returns the operation name.
-func (m *SubscriptionMutation) Op() Op {
-	return m.op
-}
-
-// Type returns the node type of this mutation (Subscription).
-func (m *SubscriptionMutation) Type() string {
-	return m.typ
-}
-
-// Fields returns all fields that were changed during this mutation. Note that in
-// order to get all numeric fields that were incremented/decremented, call
-// AddedFields().
-func (m *SubscriptionMutation) Fields() []string {
-	fields := make([]string, 0, 3)
-	if m._Name != nil {
-		fields = append(fields, subscription.FieldName)
-	}
-	if m._MailboxID != nil {
-		fields = append(fields, subscription.FieldMailboxID)
-	}
-	if m._RemoteID != nil {
-		fields = append(fields, subscription.FieldRemoteID)
-	}
-	return fields
-}
-
-// Field returns the value of a field with the given name. The second boolean
-// return value indicates that this field was not set, or was not defined in the
-// schema.
-func (m *SubscriptionMutation) Field(name string) (ent.Value, bool) {
-	switch name {
-	case subscription.FieldName:
-		return m.Name()
-	case subscription.FieldMailboxID:
-		return m.MailboxID()
-	case subscription.FieldRemoteID:
-		return m.RemoteID()
-	}
-	return nil, false
-}
-
-// OldField returns the old value of the field from the database. An error is
-// returned if the mutation operation is not UpdateOne, or the query to the
-// database failed.
-func (m *SubscriptionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
-	switch name {
-	case subscription.FieldName:
-		return m.OldName(ctx)
-	case subscription.FieldMailboxID:
-		return m.OldMailboxID(ctx)
-	case subscription.FieldRemoteID:
-		return m.OldRemoteID(ctx)
-	}
-	return nil, fmt.Errorf("unknown Subscription field %s", name)
-}
-
-// SetField sets the value of a field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *SubscriptionMutation) SetField(name string, value ent.Value) error {
-	switch name {
-	case subscription.FieldName:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetName(v)
-		return nil
-	case subscription.FieldMailboxID:
-		v, ok := value.(imap.InternalMailboxID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetMailboxID(v)
-		return nil
-	case subscription.FieldRemoteID:
-		v, ok := value.(imap.MailboxID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetRemoteID(v)
-		return nil
-	}
-	return fmt.Errorf("unknown Subscription field %s", name)
-}
-
-// AddedFields returns all numeric fields that were incremented/decremented during
-// this mutation.
-func (m *SubscriptionMutation) AddedFields() []string {
-	var fields []string
-	if m.add_MailboxID != nil {
-		fields = append(fields, subscription.FieldMailboxID)
-	}
-	return fields
-}
-
-// AddedField returns the numeric value that was incremented/decremented on a field
-// with the given name. The second boolean return value indicates that this field
-// was not set, or was not defined in the schema.
-func (m *SubscriptionMutation) AddedField(name string) (ent.Value, bool) {
-	switch name {
-	case subscription.FieldMailboxID:
-		return m.AddedMailboxID()
-	}
-	return nil, false
-}
-
-// AddField adds the value to the field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *SubscriptionMutation) AddField(name string, value ent.Value) error {
-	switch name {
-	case subscription.FieldMailboxID:
-		v, ok := value.(imap.InternalMailboxID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddMailboxID(v)
-		return nil
-	}
-	return fmt.Errorf("unknown Subscription numeric field %s", name)
-}
-
-// ClearedFields returns all nullable fields that were cleared during this
-// mutation.
-func (m *SubscriptionMutation) ClearedFields() []string {
-	var fields []string
-	if m.FieldCleared(subscription.FieldRemoteID) {
-		fields = append(fields, subscription.FieldRemoteID)
-	}
-	return fields
-}
-
-// FieldCleared returns a boolean indicating if a field with the given name was
-// cleared in this mutation.
-func (m *SubscriptionMutation) FieldCleared(name string) bool {
-	_, ok := m.clearedFields[name]
-	return ok
-}
-
-// ClearField clears the value of the field with the given name. It returns an
-// error if the field is not defined in the schema.
-func (m *SubscriptionMutation) ClearField(name string) error {
-	switch name {
-	case subscription.FieldRemoteID:
-		m.ClearRemoteID()
-		return nil
-	}
-	return fmt.Errorf("unknown Subscription nullable field %s", name)
-}
-
-// ResetField resets all changes in the mutation for the field with the given name.
-// It returns an error if the field is not defined in the schema.
-func (m *SubscriptionMutation) ResetField(name string) error {
-	switch name {
-	case subscription.FieldName:
-		m.ResetName()
-		return nil
-	case subscription.FieldMailboxID:
-		m.ResetMailboxID()
-		return nil
-	case subscription.FieldRemoteID:
-		m.ResetRemoteID()
-		return nil
-	}
-	return fmt.Errorf("unknown Subscription field %s", name)
-}
-
-// AddedEdges returns all edge names that were set/added in this mutation.
-func (m *SubscriptionMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
-	return edges
-}
-
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
-// name in this mutation.
-func (m *SubscriptionMutation) AddedIDs(name string) []ent.Value {
-	return nil
-}
-
-// RemovedEdges returns all edge names that were removed in this mutation.
-func (m *SubscriptionMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
-	return edges
-}
-
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
-// the given name in this mutation.
-func (m *SubscriptionMutation) RemovedIDs(name string) []ent.Value {
-	return nil
-}
-
-// ClearedEdges returns all edge names that were cleared in this mutation.
-func (m *SubscriptionMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
-	return edges
-}
-
-// EdgeCleared returns a boolean which indicates if the edge with the given name
-// was cleared in this mutation.
-func (m *SubscriptionMutation) EdgeCleared(name string) bool {
-	return false
-}
-
-// ClearEdge clears the value of the edge with the given name. It returns an error
-// if that edge is not defined in the schema.
-func (m *SubscriptionMutation) ClearEdge(name string) error {
-	return fmt.Errorf("unknown Subscription unique edge %s", name)
-}
-
-// ResetEdge resets all changes to the edge with the given name in this mutation.
-// It returns an error if the edge is not defined in the schema.
-func (m *SubscriptionMutation) ResetEdge(name string) error {
-	return fmt.Errorf("unknown Subscription edge %s", name)
 }
 
 // UIDMutation represents an operation that mutates the UID nodes in the graph.

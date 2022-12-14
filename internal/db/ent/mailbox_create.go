@@ -72,6 +72,20 @@ func (mc *MailboxCreate) SetNillableUIDValidity(i *imap.UID) *MailboxCreate {
 	return mc
 }
 
+// SetSubscribed sets the "Subscribed" field.
+func (mc *MailboxCreate) SetSubscribed(b bool) *MailboxCreate {
+	mc.mutation.SetSubscribed(b)
+	return mc
+}
+
+// SetNillableSubscribed sets the "Subscribed" field if the given value is not nil.
+func (mc *MailboxCreate) SetNillableSubscribed(b *bool) *MailboxCreate {
+	if b != nil {
+		mc.SetSubscribed(*b)
+	}
+	return mc
+}
+
 // SetID sets the "id" field.
 func (mc *MailboxCreate) SetID(imi imap.InternalMailboxID) *MailboxCreate {
 	mc.mutation.SetID(imi)
@@ -223,6 +237,10 @@ func (mc *MailboxCreate) defaults() {
 		v := mailbox.DefaultUIDValidity
 		mc.mutation.SetUIDValidity(v)
 	}
+	if _, ok := mc.mutation.Subscribed(); !ok {
+		v := mailbox.DefaultSubscribed
+		mc.mutation.SetSubscribed(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -235,6 +253,9 @@ func (mc *MailboxCreate) check() error {
 	}
 	if _, ok := mc.mutation.UIDValidity(); !ok {
 		return &ValidationError{Name: "UIDValidity", err: errors.New(`ent: missing required field "Mailbox.UIDValidity"`)}
+	}
+	if _, ok := mc.mutation.Subscribed(); !ok {
+		return &ValidationError{Name: "Subscribed", err: errors.New(`ent: missing required field "Mailbox.Subscribed"`)}
 	}
 	return nil
 }
@@ -300,6 +321,14 @@ func (mc *MailboxCreate) createSpec() (*Mailbox, *sqlgraph.CreateSpec) {
 			Column: mailbox.FieldUIDValidity,
 		})
 		_node.UIDValidity = value
+	}
+	if value, ok := mc.mutation.Subscribed(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: mailbox.FieldSubscribed,
+		})
+		_node.Subscribed = value
 	}
 	if nodes := mc.mutation.UIDsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

@@ -42,6 +42,7 @@ func newMailbox(mbox *ent.Mailbox, state *State, snap *snapshot) *Mailbox {
 	return &Mailbox{
 		id:          ids.NewMailboxIDPair(mbox),
 		name:        mbox.Name,
+		subscribed:  mbox.Subscribed,
 		uidValidity: mbox.UIDValidity,
 		uidNext:     mbox.UIDNext,
 

@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/internal/db/ent/subscription"
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
@@ -60,18 +59,7 @@ func CreateMailbox(
 		create = create.SetRemoteID(mboxID)
 	}
 
-	mbox, err := create.Save(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if mboxID != ids.GluonInternalRecoveryMailboxRemoteID {
-		if err := AddSubscription(ctx, tx, mbox.Name, ids.NewMailboxIDPair(mbox)); err != nil {
-			return nil, err
-		}
-	}
-
-	return mbox, nil
+	return create.Save(ctx)
 }
 
 func MailboxExistsWithID(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (bool, error) {
@@ -100,10 +88,6 @@ func RenameMailboxWithRemoteID(ctx context.Context, tx *ent.Tx, mboxID imap.Mail
 		Where(mailbox.RemoteID(mboxID)).
 		SetName(name).
 		Save(ctx); err != nil {
-		return err
-	}
-
-	if _, err := tx.Subscription.Update().Where(subscription.RemoteID(mboxID)).SetName(name).Save(ctx); err != nil {
 		return err
 	}
 

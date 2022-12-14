@@ -24,6 +24,10 @@ func init() {
 	mailboxDescUIDValidity := mailboxFields[4].Descriptor()
 	// mailbox.DefaultUIDValidity holds the default value on creation for the UIDValidity field.
 	mailbox.DefaultUIDValidity = imap.UID(mailboxDescUIDValidity.Default.(uint32))
+	// mailboxDescSubscribed is the schema descriptor for Subscribed field.
+	mailboxDescSubscribed := mailboxFields[5].Descriptor()
+	// mailbox.DefaultSubscribed holds the default value on creation for the Subscribed field.
+	mailbox.DefaultSubscribed = mailboxDescSubscribed.Default.(bool)
 	messageFields := schema.Message{}.Fields()
 	_ = messageFields
 	// messageDescDeleted is the schema descriptor for Deleted field.
