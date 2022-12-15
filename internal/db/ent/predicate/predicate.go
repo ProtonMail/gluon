@@ -6,6 +6,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// DeletedSubscription is the predicate function for deletedsubscription builders.
+type DeletedSubscription func(*sql.Selector)
+
 // Mailbox is the predicate function for mailbox builders.
 type Mailbox func(*sql.Selector)
 

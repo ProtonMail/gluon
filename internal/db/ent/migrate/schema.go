@@ -8,6 +8,30 @@ import (
 )
 
 var (
+	// DeletedSubscriptionsColumns holds the columns for the "deleted_subscriptions" table.
+	DeletedSubscriptionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "remote_id", Type: field.TypeString, Unique: true},
+	}
+	// DeletedSubscriptionsTable holds the schema information for the "deleted_subscriptions" table.
+	DeletedSubscriptionsTable = &schema.Table{
+		Name:       "deleted_subscriptions",
+		Columns:    DeletedSubscriptionsColumns,
+		PrimaryKey: []*schema.Column{DeletedSubscriptionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "deletedsubscription_remote_id",
+				Unique:  false,
+				Columns: []*schema.Column{DeletedSubscriptionsColumns[2]},
+			},
+			{
+				Name:    "deletedsubscription_name",
+				Unique:  false,
+				Columns: []*schema.Column{DeletedSubscriptionsColumns[1]},
+			},
+		},
+	}
 	// MailboxesColumns holds the columns for the "mailboxes" table.
 	MailboxesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUint64, Increment: true},
@@ -187,6 +211,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		DeletedSubscriptionsTable,
 		MailboxesTable,
 		MailboxAttrsTable,
 		MailboxFlagsTable,

@@ -11,6 +11,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db/ent/migrate"
 
+	"github.com/ProtonMail/gluon/internal/db/ent/deletedsubscription"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailboxattr"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailboxflag"
@@ -29,6 +30,8 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// DeletedSubscription is the client for interacting with the DeletedSubscription builders.
+	DeletedSubscription *DeletedSubscriptionClient
 	// Mailbox is the client for interacting with the Mailbox builders.
 	Mailbox *MailboxClient
 	// MailboxAttr is the client for interacting with the MailboxAttr builders.
@@ -56,6 +59,7 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.DeletedSubscription = NewDeletedSubscriptionClient(c.config)
 	c.Mailbox = NewMailboxClient(c.config)
 	c.MailboxAttr = NewMailboxAttrClient(c.config)
 	c.MailboxFlag = NewMailboxFlagClient(c.config)
@@ -94,15 +98,16 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:             ctx,
-		config:          cfg,
-		Mailbox:         NewMailboxClient(cfg),
-		MailboxAttr:     NewMailboxAttrClient(cfg),
-		MailboxFlag:     NewMailboxFlagClient(cfg),
-		MailboxPermFlag: NewMailboxPermFlagClient(cfg),
-		Message:         NewMessageClient(cfg),
-		MessageFlag:     NewMessageFlagClient(cfg),
-		UID:             NewUIDClient(cfg),
+		ctx:                 ctx,
+		config:              cfg,
+		DeletedSubscription: NewDeletedSubscriptionClient(cfg),
+		Mailbox:             NewMailboxClient(cfg),
+		MailboxAttr:         NewMailboxAttrClient(cfg),
+		MailboxFlag:         NewMailboxFlagClient(cfg),
+		MailboxPermFlag:     NewMailboxPermFlagClient(cfg),
+		Message:             NewMessageClient(cfg),
+		MessageFlag:         NewMessageFlagClient(cfg),
+		UID:                 NewUIDClient(cfg),
 	}, nil
 }
 
@@ -120,22 +125,23 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:             ctx,
-		config:          cfg,
-		Mailbox:         NewMailboxClient(cfg),
-		MailboxAttr:     NewMailboxAttrClient(cfg),
-		MailboxFlag:     NewMailboxFlagClient(cfg),
-		MailboxPermFlag: NewMailboxPermFlagClient(cfg),
-		Message:         NewMessageClient(cfg),
-		MessageFlag:     NewMessageFlagClient(cfg),
-		UID:             NewUIDClient(cfg),
+		ctx:                 ctx,
+		config:              cfg,
+		DeletedSubscription: NewDeletedSubscriptionClient(cfg),
+		Mailbox:             NewMailboxClient(cfg),
+		MailboxAttr:         NewMailboxAttrClient(cfg),
+		MailboxFlag:         NewMailboxFlagClient(cfg),
+		MailboxPermFlag:     NewMailboxPermFlagClient(cfg),
+		Message:             NewMessageClient(cfg),
+		MessageFlag:         NewMessageFlagClient(cfg),
+		UID:                 NewUIDClient(cfg),
 	}, nil
 }
 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		Mailbox.
+//		DeletedSubscription.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -157,6 +163,7 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.DeletedSubscription.Use(hooks...)
 	c.Mailbox.Use(hooks...)
 	c.MailboxAttr.Use(hooks...)
 	c.MailboxFlag.Use(hooks...)
@@ -164,6 +171,96 @@ func (c *Client) Use(hooks ...Hook) {
 	c.Message.Use(hooks...)
 	c.MessageFlag.Use(hooks...)
 	c.UID.Use(hooks...)
+}
+
+// DeletedSubscriptionClient is a client for the DeletedSubscription schema.
+type DeletedSubscriptionClient struct {
+	config
+}
+
+// NewDeletedSubscriptionClient returns a client for the DeletedSubscription from the given config.
+func NewDeletedSubscriptionClient(c config) *DeletedSubscriptionClient {
+	return &DeletedSubscriptionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `deletedsubscription.Hooks(f(g(h())))`.
+func (c *DeletedSubscriptionClient) Use(hooks ...Hook) {
+	c.hooks.DeletedSubscription = append(c.hooks.DeletedSubscription, hooks...)
+}
+
+// Create returns a builder for creating a DeletedSubscription entity.
+func (c *DeletedSubscriptionClient) Create() *DeletedSubscriptionCreate {
+	mutation := newDeletedSubscriptionMutation(c.config, OpCreate)
+	return &DeletedSubscriptionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DeletedSubscription entities.
+func (c *DeletedSubscriptionClient) CreateBulk(builders ...*DeletedSubscriptionCreate) *DeletedSubscriptionCreateBulk {
+	return &DeletedSubscriptionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DeletedSubscription.
+func (c *DeletedSubscriptionClient) Update() *DeletedSubscriptionUpdate {
+	mutation := newDeletedSubscriptionMutation(c.config, OpUpdate)
+	return &DeletedSubscriptionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DeletedSubscriptionClient) UpdateOne(ds *DeletedSubscription) *DeletedSubscriptionUpdateOne {
+	mutation := newDeletedSubscriptionMutation(c.config, OpUpdateOne, withDeletedSubscription(ds))
+	return &DeletedSubscriptionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DeletedSubscriptionClient) UpdateOneID(id int) *DeletedSubscriptionUpdateOne {
+	mutation := newDeletedSubscriptionMutation(c.config, OpUpdateOne, withDeletedSubscriptionID(id))
+	return &DeletedSubscriptionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DeletedSubscription.
+func (c *DeletedSubscriptionClient) Delete() *DeletedSubscriptionDelete {
+	mutation := newDeletedSubscriptionMutation(c.config, OpDelete)
+	return &DeletedSubscriptionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DeletedSubscriptionClient) DeleteOne(ds *DeletedSubscription) *DeletedSubscriptionDeleteOne {
+	return c.DeleteOneID(ds.ID)
+}
+
+// DeleteOne returns a builder for deleting the given entity by its id.
+func (c *DeletedSubscriptionClient) DeleteOneID(id int) *DeletedSubscriptionDeleteOne {
+	builder := c.Delete().Where(deletedsubscription.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DeletedSubscriptionDeleteOne{builder}
+}
+
+// Query returns a query builder for DeletedSubscription.
+func (c *DeletedSubscriptionClient) Query() *DeletedSubscriptionQuery {
+	return &DeletedSubscriptionQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a DeletedSubscription entity by its id.
+func (c *DeletedSubscriptionClient) Get(ctx context.Context, id int) (*DeletedSubscription, error) {
+	return c.Query().Where(deletedsubscription.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DeletedSubscriptionClient) GetX(ctx context.Context, id int) *DeletedSubscription {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *DeletedSubscriptionClient) Hooks() []Hook {
+	return c.hooks.DeletedSubscription
 }
 
 // MailboxClient is a client for the Mailbox schema.
