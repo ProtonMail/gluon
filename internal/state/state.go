@@ -98,7 +98,45 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 			return state.user.GetRemote().IsMailboxVisible(ctx, mailbox.RemoteID)
 		})
 
-		matches, err := getMatches(ctx, client, mailboxes, ref, pattern, state.delimiter, subscribed)
+		var deletedSubscriptions map[imap.MailboxID]*ent.DeletedSubscription
+
+		if subscribed {
+			deletedSubscriptions, err = db.GetDeletedSubscriptionSet(ctx, client)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Convert existing mailboxes over to match format.
+		matchMailboxes := make([]matchMailbox, 0, len(mailboxes))
+		for _, mbox := range mailboxes {
+			delete(deletedSubscriptions, mbox.RemoteID)
+
+			if mbox.Subscribed {
+				matchMailboxes = append(matchMailboxes, matchMailbox{
+					Name:       mbox.Name,
+					Subscribed: subscribed,
+					EntMBox:    mbox,
+				})
+			}
+		}
+
+		if subscribed {
+			// Insert any remaining mailboxes that have been deleted but are still subscribed.
+			for _, s := range deletedSubscriptions {
+				if !state.user.GetRemote().IsMailboxVisible(ctx, s.RemoteID) {
+					continue
+				}
+
+				matchMailboxes = append(matchMailboxes, matchMailbox{
+					Name:       s.Name,
+					Subscribed: true,
+					EntMBox:    nil,
+				})
+			}
+		}
+
+		matches, err := getMatches(ctx, client, matchMailboxes, ref, pattern, state.delimiter, subscribed)
 		if err != nil {
 			return err
 		}
@@ -346,12 +384,19 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 func (state *State) Subscribe(ctx context.Context, name string) error {
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return db.GetMailboxByName(ctx, client, name)
+		mbox, err := db.GetMailboxByName(ctx, client, name)
+		if err != nil {
+			return nil, ErrNoSuchMailbox
+		}
+
+		if mbox.Subscribed {
+			return nil, ErrAlreadySubscribed
+		}
+
+		return mbox, nil
 	})
 	if err != nil {
-		return ErrNoSuchMailbox
-	} else if mbox.Subscribed {
-		return ErrAlreadySubscribed
+		return err
 	}
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
@@ -360,16 +405,23 @@ func (state *State) Subscribe(ctx context.Context, name string) error {
 }
 
 func (state *State) Unsubscribe(ctx context.Context, name string) error {
-	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return db.GetMailboxByName(ctx, client, name)
-	})
-	if err != nil {
-		return ErrNoSuchMailbox
-	} else if !mbox.Subscribed {
-		return ErrAlreadyUnsubscribed
-	}
-
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		mbox, err := db.GetMailboxByName(ctx, tx.Client(), name)
+		if err != nil {
+			// If mailbox does not exist, check that if it is present in the deleted subscription table
+			if count, err := db.RemoveDeletedSubscriptionWithName(ctx, tx, name); err != nil {
+				return err
+			} else if count == 0 {
+				return ErrNoSuchMailbox
+			} else {
+				return nil
+			}
+		}
+
+		if !mbox.Subscribed {
+			return ErrAlreadyUnsubscribed
+		}
+
 		return mbox.Update().SetSubscribed(false).Exec(ctx)
 	})
 }

@@ -24,13 +24,14 @@ type config struct {
 
 // hooks per client, for fast access.
 type hooks struct {
-	Mailbox         []ent.Hook
-	MailboxAttr     []ent.Hook
-	MailboxFlag     []ent.Hook
-	MailboxPermFlag []ent.Hook
-	Message         []ent.Hook
-	MessageFlag     []ent.Hook
-	UID             []ent.Hook
+	DeletedSubscription []ent.Hook
+	Mailbox             []ent.Hook
+	MailboxAttr         []ent.Hook
+	MailboxFlag         []ent.Hook
+	MailboxPermFlag     []ent.Hook
+	Message             []ent.Hook
+	MessageFlag         []ent.Hook
+	UID                 []ent.Hook
 }
 
 // Options applies the options on the config object.

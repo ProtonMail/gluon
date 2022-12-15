@@ -126,11 +126,7 @@ func TestLsubSubscribedNotExisting(t *testing.T) {
 		c.C(`tag DELETE foo`).OK(`tag`)
 
 		c.C(`A002 LSUB "" "foo"`)
-		// TODO GODT-1896: The server MUST NOT unilaterally remove an existing mailbox name
-		// from the subscription list even if a mailbox by that name no
-		// longer exists.
-		//
-		// c.S(`* LSUB (\Noselect) "." "foo"`)
+		c.S(`* LSUB (\Noselect) "." "foo"`)
 		c.OK(`A002`)
 	})
 }

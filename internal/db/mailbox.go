@@ -59,7 +59,18 @@ func CreateMailbox(
 		create = create.SetRemoteID(mboxID)
 	}
 
-	return create.Save(ctx)
+	mbox, err := create.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if mboxID != ids.GluonInternalRecoveryMailboxRemoteID {
+		if _, err := RemoveDeletedSubscriptionWithName(ctx, tx, mbox.Name); err != nil {
+			return nil, err
+		}
+	}
+
+	return mbox, nil
 }
 
 func MailboxExistsWithID(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (bool, error) {
@@ -102,7 +113,7 @@ func DeleteMailboxWithRemoteID(
 	mboxID imap.MailboxID,
 	curUIDValidity imap.UID,
 ) (imap.UID, error) {
-	mbox, err := tx.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Select(mailbox.FieldUIDValidity).Only(ctx)
+	mbox, err := tx.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Select(mailbox.FieldUIDValidity, mailbox.FieldSubscribed, mailbox.FieldName).Only(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -113,6 +124,12 @@ func DeleteMailboxWithRemoteID(
 		newUIDValidity = curUIDValidity.Add(1)
 	} else {
 		newUIDValidity = curUIDValidity
+	}
+
+	if mbox.Subscribed {
+		if err := AddDeletedSubscription(ctx, tx, mbox.Name, mboxID); err != nil {
+			return 0, err
+		}
 	}
 
 	if _, err := tx.Mailbox.Delete().Where(mailbox.RemoteID(mboxID)).Exec(ctx); err != nil {

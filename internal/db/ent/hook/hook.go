@@ -9,6 +9,19 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent"
 )
 
+// The DeletedSubscriptionFunc type is an adapter to allow the use of ordinary
+// function as DeletedSubscription mutator.
+type DeletedSubscriptionFunc func(context.Context, *ent.DeletedSubscriptionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DeletedSubscriptionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	mv, ok := m.(*ent.DeletedSubscriptionMutation)
+	if !ok {
+		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DeletedSubscriptionMutation", m)
+	}
+	return f(ctx, mv)
+}
+
 // The MailboxFunc type is an adapter to allow the use of ordinary
 // function as Mailbox mutator.
 type MailboxFunc func(context.Context, *ent.MailboxMutation) (ent.Value, error)
