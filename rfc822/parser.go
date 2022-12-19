@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io"
 	"mime/quotedprintable"
 )
@@ -32,7 +33,16 @@ func (section *Section) ContentType() (MIMEType, map[string]string, error) {
 		return "", nil, err
 	}
 
-	return ParseMIMEType(header.Get("Content-Type"))
+	contentType := header.Get("Content-Type")
+
+	mimeType, values, err := ParseMIMEType(contentType)
+	if err != nil {
+		logrus.Warnf("Message contains invalid mime type: %v", contentType)
+
+		return "", nil, nil //nolint:nilerr
+	}
+
+	return mimeType, values, nil
 }
 
 func (section *Section) Header() []byte {
