@@ -3,6 +3,7 @@ package rfc822
 import (
 	"mime"
 	"strings"
+	"unicode"
 )
 
 // ParseMediaType parses a MIME media type.
@@ -43,7 +44,14 @@ func ParseMIMEType(val string) (MIMEType, map[string]string, error) {
 		val = string(TextPlain)
 	}
 
-	mimeType, mimeParams, err := ParseMediaType(val)
+	sanitized := strings.Map(func(r rune) rune {
+		if r > unicode.MaxASCII {
+			return -1
+		}
+		return r
+	}, val)
+
+	mimeType, mimeParams, err := ParseMediaType(sanitized)
 	if err != nil {
 		return "", nil, err
 	}
