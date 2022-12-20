@@ -39,7 +39,8 @@ func (a *Append) Setup(ctx context.Context, addr net.Addr) error {
 }
 
 func (a *Append) TearDown(ctx context.Context, addr net.Addr) error {
-	return a.cleanupWithAddr(addr)
+	//return a.cleanupWithAddr(addr)
+	return nil
 }
 
 func (a *Append) Run(ctx context.Context, addr net.Addr) error {
