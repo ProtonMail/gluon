@@ -135,6 +135,91 @@ func TestMessageUIDRange(t *testing.T) {
 	}
 }
 
+func TestMessageRange1HigherThanMax(t *testing.T) {
+	msg := newMsgList(8)
+
+	id1 := imap.NewInternalMessageID()
+	id2 := imap.NewInternalMessageID()
+
+	msg.insert(messageIDPair(id1, "1"), 1, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id2, "2"), 2, imap.NewFlagSet(imap.FlagSeen))
+
+	seqSetInterval := [][]string{{"3", "*"}}
+
+	{
+		uidInterval, err := msg.resolveUIDInterval(seqSetInterval)
+		require.NoError(t, err)
+		seqInterval, err := msg.resolveSeqInterval(seqSetInterval)
+		require.NoError(t, err)
+
+		require.Equal(t, uidInterval, []UIDInterval{{begin: imap.UID(3), end: imap.UID(3)}})
+		require.Equal(t, seqInterval, []SeqInterval{{begin: imap.SeqID(3), end: imap.SeqID(3)}})
+	}
+
+	{
+		_, err := msg.getMessagesInSeqRange(seqSetInterval)
+		require.Error(t, err)
+	}
+	{
+		messages, err := msg.getMessagesInUIDRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Empty(t, messages)
+	}
+}
+
+func TestSnapListGetMessages(t *testing.T) {
+	msg := newMsgList(8)
+
+	id1 := imap.NewInternalMessageID()
+	id2 := imap.NewInternalMessageID()
+
+	msg.insert(messageIDPair(id1, "1"), 1, imap.NewFlagSet(imap.FlagSeen))
+	msg.insert(messageIDPair(id2, "2"), 2, imap.NewFlagSet(imap.FlagSeen))
+
+	{
+		seqSetInterval := [][]string{{"3", "*"}}
+		_, err := msg.getMessagesInSeqRange(seqSetInterval)
+		require.Error(t, err)
+
+		uidInterval, err := msg.getMessagesInUIDRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Empty(t, uidInterval)
+	}
+	{
+		seqSetInterval := [][]string{{"*", "3"}}
+		_, err := msg.getMessagesInSeqRange(seqSetInterval)
+		require.Error(t, err)
+
+		uidInterval, err := msg.getMessagesInUIDRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Empty(t, uidInterval)
+	}
+	{
+		seqSetInterval := [][]string{{"1", "*"}}
+		seqList, err := msg.getMessagesInSeqRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(seqList))
+		require.Equal(t, seqList[0].Seq, imap.SeqID(1))
+		require.Equal(t, seqList[1].Seq, imap.SeqID(2))
+
+		uidList, err := msg.getMessagesInUIDRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(uidList))
+		require.Equal(t, uidList[0].UID, imap.UID(1))
+		require.Equal(t, uidList[1].UID, imap.UID(2))
+	}
+	{
+		seqSetInterval := [][]string{{"2", "3"}}
+		_, err := msg.getMessagesInSeqRange(seqSetInterval)
+		require.Error(t, err)
+
+		uidList, err := msg.getMessagesInUIDRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(uidList))
+		require.Equal(t, uidList[0].UID, imap.UID(2))
+	}
+}
+
 func messageIDPair(internalID imap.InternalMessageID, remoteID imap.MessageID) ids.MessageIDPair {
 	return ids.MessageIDPair{InternalID: internalID, RemoteID: remoteID}
 }
