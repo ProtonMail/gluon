@@ -532,11 +532,12 @@ func (state *State) actionMoveMessages(
 
 	internalIDs, remoteIDs := ids.SplitMessageIDPairSlice(messagesIDsToMove)
 
-	if err := state.user.GetRemote().MoveMessagesFromMailbox(ctx, remoteIDs, mboxFromID.RemoteID, mboxToID.RemoteID); err != nil {
+	shouldRemoveOldMessages, err := state.user.GetRemote().MoveMessagesFromMailbox(ctx, remoteIDs, mboxFromID.RemoteID, mboxToID.RemoteID)
+	if err != nil {
 		return nil, err
 	}
 
-	messageUIDs, updates, err := MoveMessagesFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs, state, state.imapLimits)
+	messageUIDs, updates, err := MoveMessagesFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs, state, state.imapLimits, shouldRemoveOldMessages)
 	if err != nil {
 		return nil, err
 	}

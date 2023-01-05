@@ -338,7 +338,7 @@ func (r *disableRemoveFromMailboxConnector) MoveMessages(
 	_ []imap.MessageID,
 	_ imap.MailboxID,
 	_ imap.MailboxID,
-) error {
+) (bool, error) {
 	panic("Should not be called")
 }
 

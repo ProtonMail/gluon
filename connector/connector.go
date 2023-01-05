@@ -34,7 +34,8 @@ type Connector interface {
 	RemoveMessagesFromMailbox(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.MailboxID) error
 
 	// MoveMessages removes the given messages from one mailbox and adds them to the another mailbox.
-	MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) error
+	// Returns true if the original messages should be removed from mboxFromID (e.g: Distinguishing between labels and folders).
+	MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) (bool, error)
 
 	// MarkMessagesSeen sets the seen value of the given messages.
 	MarkMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error

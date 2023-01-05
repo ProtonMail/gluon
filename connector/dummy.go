@@ -206,7 +206,7 @@ func (conn *Dummy) RemoveMessagesFromMailbox(ctx context.Context, messageIDs []i
 	return nil
 }
 
-func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) error {
+func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) (bool, error) {
 	for _, messageID := range messageIDs {
 		conn.state.removeMessageFromMailbox(messageID, mboxFromID)
 		conn.state.addMessageToMailbox(messageID, mboxToID)
@@ -219,7 +219,7 @@ func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID
 		))
 	}
 
-	return nil
+	return true, nil
 }
 
 func (conn *Dummy) MarkMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error {
