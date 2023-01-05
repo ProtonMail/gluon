@@ -21,6 +21,7 @@ func MoveMessagesFromMailbox(
 	messageIDs []imap.InternalMessageID,
 	s *State,
 	imapLimits limits.IMAP,
+	removeOldMessages bool,
 ) ([]db.UIDWithFlags, []Update, error) {
 	messageCount, uid, err := db.GetMailboxMessageCountAndUID(ctx, tx.Client(), mboxToID)
 	if err != nil {
@@ -35,7 +36,7 @@ func MoveMessagesFromMailbox(
 		return nil, nil, err
 	}
 
-	if mboxFromID != mboxToID {
+	if mboxFromID != mboxToID && removeOldMessages {
 		if err := db.RemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxFromID); err != nil {
 			return nil, nil, err
 		}
@@ -57,8 +58,10 @@ func MoveMessagesFromMailbox(
 		stateUpdates = append(stateUpdates, newExistsStateUpdateWithExists(mboxToID, responders, s))
 	}
 
-	for _, messageID := range messageIDs {
-		stateUpdates = append(stateUpdates, NewMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxFromID, NewExpunge(messageID)))
+	if removeOldMessages {
+		for _, messageID := range messageIDs {
+			stateUpdates = append(stateUpdates, NewMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxFromID, NewExpunge(messageID)))
+		}
 	}
 
 	return messageUIDs, stateUpdates, nil

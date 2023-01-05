@@ -61,7 +61,7 @@ type Connector interface {
 		messageIDs []imap.MessageID,
 		mboxFromID imap.MailboxID,
 		mboxToID imap.MailboxID,
-	) error
+	) (bool, error)
 
 	// SetMessagesSeen marks the message with the given ID as seen or unseen.
 	SetMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error

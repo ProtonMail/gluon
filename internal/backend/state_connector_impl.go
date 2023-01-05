@@ -100,7 +100,7 @@ func (sc *stateConnectorImpl) MoveMessagesFromMailbox(
 	messageIDs []imap.MessageID,
 	mboxFromID imap.MailboxID,
 	mboxToID imap.MailboxID,
-) error {
+) (bool, error) {
 	ctx = sc.newContextWithMetadata(ctx)
 
 	return sc.connector.MoveMessages(ctx, messageIDs, mboxFromID, mboxToID)
