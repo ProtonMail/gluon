@@ -2,10 +2,10 @@ package gluon
 
 import (
 	"crypto/tls"
-	limits2 "github.com/ProtonMail/gluon/limits"
 	"io"
 	"time"
 
+	limits2 "github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
@@ -150,11 +150,23 @@ type withDataDir struct {
 }
 
 func (w *withDataDir) config(builder *serverBuilder) {
-	builder.dir = w.path
+	builder.dataDir = w.path
 }
 
 func WithDataDir(path string) Option {
 	return &withDataDir{path: path}
+}
+
+type withDatabaseDir struct {
+	path string
+}
+
+func (w *withDatabaseDir) config(builder *serverBuilder) {
+	builder.databaseDir = w.path
+}
+
+func WithDatabaseDir(path string) Option {
+	return &withDatabaseDir{path: path}
 }
 
 type withReporter struct {

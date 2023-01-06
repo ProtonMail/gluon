@@ -2,7 +2,6 @@ package gluon
 
 import (
 	"crypto/tls"
-	"github.com/ProtonMail/gluon/limits"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/session"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
@@ -18,7 +18,8 @@ import (
 )
 
 type serverBuilder struct {
-	dir                string
+	dataDir            string
+	databaseDir        string
 	delim              string
 	loginJailTime      time.Duration
 	tlsConfig          *tls.Config
@@ -45,21 +46,35 @@ func newBuilder() (*serverBuilder, error) {
 }
 
 func (builder *serverBuilder) build() (*Server, error) {
-	if builder.dir == "" {
+	if builder.dataDir == "" {
 		dir, err := os.MkdirTemp("", "gluon-*")
 		if err != nil {
 			return nil, err
 		}
 
-		builder.dir = dir
+		builder.dataDir = dir
 	}
 
-	if err := os.MkdirAll(builder.dir, 0o700); err != nil {
+	if err := os.MkdirAll(builder.dataDir, 0o700); err != nil {
+		return nil, err
+	}
+
+	if builder.databaseDir == "" {
+		dir, err := os.MkdirTemp("", "gluon-*")
+		if err != nil {
+			return nil, err
+		}
+
+		builder.databaseDir = dir
+	}
+
+	if err := os.MkdirAll(builder.databaseDir, 0o700); err != nil {
 		return nil, err
 	}
 
 	backend, err := backend.New(
-		filepath.Join(builder.dir, "backend"),
+		filepath.Join(builder.dataDir, "backend"),
+		filepath.Join(builder.databaseDir, "backend"),
 		builder.storeBuilder,
 		builder.delim,
 		builder.loginJailTime,
@@ -70,7 +85,8 @@ func (builder *serverBuilder) build() (*Server, error) {
 	}
 
 	return &Server{
-		dir:                builder.dir,
+		dataDir:            builder.dataDir,
+		databaseDir:        builder.databaseDir,
 		backend:            backend,
 		sessions:           make(map[int]*session.Session),
 		serveErrCh:         queue.NewQueuedChannel[error](1, 1),
