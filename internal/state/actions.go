@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ProtonMail/gluon/reporter"
+	"github.com/sirupsen/logrus"
 	"strings"
 	"time"
 
@@ -117,6 +118,8 @@ func (state *State) actionCreateMessage(
 				reporter.ExceptionWithContext(ctx, "Append to drafts must not return an existing RemoteID", nil)
 				return 0, fmt.Errorf("append to drafts returned an existing remote ID")
 			}
+
+			logrus.Debugf("Deduped message detected, adding existing %v message to mailbox instead.", internalID.ShortID())
 
 			result, err := state.actionAddMessagesToMailbox(ctx,
 				tx,
