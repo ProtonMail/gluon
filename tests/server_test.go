@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"github.com/ProtonMail/gluon/limits"
 	"net"
 	"path/filepath"
 	"testing"
@@ -15,6 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/hash"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
@@ -68,6 +68,7 @@ type serverOptions struct {
 	delimiter          string
 	loginJailTime      time.Duration
 	dataDir            string
+	databaseDir        string
 	idleBulkTime       time.Duration
 	storeBuilder       store.Builder
 	connectorBuilder   connectorBuilder
@@ -115,6 +116,14 @@ type dataDirOption struct {
 
 func (opt *dataDirOption) apply(options *serverOptions) {
 	options.dataDir = opt.dir
+}
+
+type databaseDirOption struct {
+	dir string
+}
+
+func (opt *databaseDirOption) apply(options *serverOptions) {
+	options.databaseDir = opt.dir
 }
 
 type credentialsSeverOption struct {
@@ -196,6 +205,7 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 		delimiter:        "/",
 		loginJailTime:    time.Second,
 		dataDir:          tb.TempDir(),
+		databaseDir:      tb.TempDir(),
 		idleBulkTime:     time.Duration(500 * time.Millisecond),
 		storeBuilder:     &store.OnDiskStoreBuilder{},
 		connectorBuilder: &dummyConnectorBuilder{},
@@ -225,6 +235,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 
 	gluonOptions := []gluon.Option{
 		gluon.WithDataDir(options.dataDir),
+		gluon.WithDatabaseDir(options.dataDir),
 		gluon.WithDelimiter(options.delimiter),
 		gluon.WithLoginJailTime(options.loginJailTime),
 		gluon.WithTLS(&tls.Config{
@@ -291,7 +302,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		}
 
 		conns[userID] = conn
-		dbPaths[userID] = filepath.Join(server.GetDataPath(), "backend", "db", fmt.Sprintf("%v.db", userID))
+		dbPaths[userID] = filepath.Join(server.GetDatabasePath(), "backend", "db", fmt.Sprintf("%v.db", userID))
 	}
 
 	listener, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))

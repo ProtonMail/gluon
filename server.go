@@ -31,8 +31,11 @@ import (
 
 // Server is the gluon IMAP server.
 type Server struct {
-	// dir holds the path to all of Gluon's data.
-	dir string
+	// dataDir is the directory in which backend files should be stored.
+	dataDir string
+
+	// databaseDir is the directory in which database files should be stored.
+	databaseDir string
 
 	// backend provides the server with access to the IMAP backend.
 	backend *backend.Backend
@@ -235,7 +238,12 @@ func (s *Server) GetVersionInfo() version.Info {
 
 // GetDataPath returns the path in which gluon stores its data.
 func (s *Server) GetDataPath() string {
-	return s.dir
+	return s.dataDir
+}
+
+// GetDatabasePath returns the path in which gluon stores its data.
+func (s *Server) GetDatabasePath() string {
+	return s.databaseDir
 }
 
 // Close closes the server.

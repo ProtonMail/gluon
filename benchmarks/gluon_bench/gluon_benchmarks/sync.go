@@ -44,6 +44,7 @@ func (s *Sync) Setup(ctx context.Context, benchmarkDir string) error {
 
 	opts := []gluon.Option{
 		gluon.WithDataDir(benchmarkDir),
+		gluon.WithDatabaseDir(benchmarkDir),
 		gluon.WithLogger(loggerIn, loggerOut),
 	}
 
