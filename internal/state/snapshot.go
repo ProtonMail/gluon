@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/reporter"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -33,11 +34,14 @@ func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *en
 	}
 
 	for _, snapshotMessage := range snapshotMessages {
-		snap.messages.insert(
+		if err := snap.messages.insert(
 			ids.MessageIDPair{InternalID: snapshotMessage.InternalID, RemoteID: snapshotMessage.RemoteID},
 			snapshotMessage.UID,
 			snapshotMessage.GetFlagSet(),
-		)
+		); err != nil {
+			reporter.ExceptionWithContext(ctx, "Failed to insert message into new snapshot", reporter.Context{"error": err})
+			return nil, err
+		}
 	}
 
 	return snap, nil
@@ -256,13 +260,11 @@ func (snap *snapshot) getMessagesWithoutFlagCount(flag string) int {
 }
 
 func (snap *snapshot) appendMessage(messageID ids.MessageIDPair, uid imap.UID, flags imap.FlagSet) error {
-	snap.messages.insert(
+	return snap.messages.insert(
 		messageID,
 		uid,
 		flags,
 	)
-
-	return nil
 }
 
 func (snap *snapshot) appendMessageFromOtherState(messageID ids.MessageIDPair, uid imap.UID, flags imap.FlagSet) error {

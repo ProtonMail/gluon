@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/reporter"
 	"sync"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -93,7 +94,7 @@ type targetedExists struct {
 	originStateSet bool
 }
 
-func (u *targetedExists) handle(_ context.Context, snap *snapshot, stateID StateID) ([]response.Response, responderDBUpdate, error) {
+func (u *targetedExists) handle(ctx context.Context, snap *snapshot, stateID StateID) ([]response.Response, responderDBUpdate, error) {
 	if snap.hasMessage(u.resp.messageID.InternalID) {
 		return nil, nil, nil
 	}
@@ -107,6 +108,7 @@ func (u *targetedExists) handle(_ context.Context, snap *snapshot, stateID State
 
 	if u.originStateSet && u.originStateID == stateID {
 		if err := snap.appendMessage(u.resp.messageID, u.resp.messageUID, flags); err != nil {
+			reporter.ExceptionWithContext(ctx, "Failed to append message to snap via targetedExists", reporter.Context{"error": err})
 			return nil, nil, err
 		}
 	} else {
