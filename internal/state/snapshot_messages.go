@@ -9,6 +9,8 @@ import (
 	"strconv"
 )
 
+var ErrOutOfOrderUIDInsertion = fmt.Errorf("UIDs must be strictly ascending")
+
 // snapMsg is a single message inside a snapshot.
 type snapMsg struct {
 	ID        ids.MessageIDPair
@@ -45,9 +47,9 @@ func (list *snapMsgList) binarySearchByUID(uid imap.UID) (int, bool) {
 	return index, ok
 }
 
-func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
+func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) error {
 	if len(list.msg) > 0 && list.msg[len(list.msg)-1].UID >= msgUID {
-		panic("UIDs must be strictly ascending")
+		return ErrOutOfOrderUIDInsertion
 	}
 
 	snapMsg := &snapMsg{
@@ -60,6 +62,8 @@ func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags 
 	list.msg = append(list.msg, snapMsg)
 
 	list.idx[msgID.InternalID] = snapMsg
+
+	return nil
 }
 
 func (list *snapMsgList) insertOutOfOrder(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
