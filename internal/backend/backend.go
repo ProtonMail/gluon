@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -251,9 +250,9 @@ func (b *Backend) getUserID(ctx context.Context, username string, password []byt
 }
 
 func (b *Backend) getStoreDir() string {
-	return filepath.Join(b.dataDir, "store")
+	return b.dataDir
 }
 
 func (b *Backend) getDBDir() string {
-	return filepath.Join(b.databaseDir, "db")
+	return b.databaseDir
 }
