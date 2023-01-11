@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"io"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/ProtonMail/gluon/internal/backend"
@@ -73,8 +72,8 @@ func (builder *serverBuilder) build() (*Server, error) {
 	}
 
 	backend, err := backend.New(
-		filepath.Join(builder.dataDir, "backend"),
-		filepath.Join(builder.databaseDir, "backend"),
+		builder.dataDir,
+		builder.databaseDir,
 		builder.storeBuilder,
 		builder.delim,
 		builder.loginJailTime,

@@ -204,8 +204,8 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 		}},
 		delimiter:        "/",
 		loginJailTime:    time.Second,
-		dataDir:          tb.TempDir(),
-		databaseDir:      tb.TempDir(),
+		dataDir:          filepath.Join(tb.TempDir(), "backend", "store"),
+		databaseDir:      filepath.Join(tb.TempDir(), "backend", "db"),
 		idleBulkTime:     time.Duration(500 * time.Millisecond),
 		storeBuilder:     &store.OnDiskStoreBuilder{},
 		connectorBuilder: &dummyConnectorBuilder{},
@@ -302,7 +302,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		}
 
 		conns[userID] = conn
-		dbPaths[userID] = filepath.Join(server.GetDatabasePath(), "backend", "db", fmt.Sprintf("%v.db", userID))
+		dbPaths[userID] = filepath.Join(server.GetDatabasePath(), fmt.Sprintf("%v.db", userID))
 	}
 
 	listener, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))
