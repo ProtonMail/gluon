@@ -560,8 +560,6 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 }
 
 func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageUpdated) error {
-	var stateUpdates []state.Update
-
 	log := logrus.WithField("message updated", update.Message.ID.ShortID())
 
 	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
@@ -595,11 +593,24 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		}
 
 		if bytes.Equal(onDiskLiteral, updateLiteral) {
-			log.Debug("Message not updated as there are no changes to literals")
-			return nil
+			log.Debug("Message not updated as there are no changes to literals, assigning mailboxes only")
+
+			targetMailboxes := make([]imap.InternalMailboxID, 0, len(update.MailboxIDs))
+
+			for _, mbox := range update.MailboxIDs {
+				internalMBoxID, err := db.GetMailboxIDFromRemoteID(ctx, tx.Client(), mbox)
+				if err != nil {
+					return err
+				}
+
+				targetMailboxes = append(targetMailboxes, internalMBoxID)
+			}
+
+			return user.setMessageMailboxes(ctx, tx, internalMessageID, targetMailboxes)
 		} else {
 			log.Debug("Message has new literal, applying update")
 
+			var stateUpdates []state.Update
 			{
 				// delete the message and remove from the mailboxes.
 				mailboxes, err := db.GetMessageMailboxIDs(ctx, tx.Client(), internalMessageID)
@@ -661,15 +672,15 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 					stateUpdates = append(stateUpdates, update)
 				}
 			}
+
+			if len(stateUpdates) != 0 {
+				user.queueStateUpdate(stateUpdates...)
+			}
 		}
 
 		return nil
 	}); err != nil {
 		return err
-	}
-
-	if len(stateUpdates) != 0 {
-		user.queueStateUpdate(stateUpdates...)
 	}
 
 	return nil
