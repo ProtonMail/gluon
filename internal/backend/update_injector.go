@@ -62,6 +62,8 @@ func (u *updateInjector) forward(ctx context.Context, updateCh <-chan imap.Updat
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case update, ok := <-updateCh:
 			if !ok {
 				return
@@ -76,14 +78,14 @@ func (u *updateInjector) forward(ctx context.Context, updateCh <-chan imap.Updat
 }
 
 // send the update on the updates channel, optionally blocking until it has been processed.
-func (u *updateInjector) send(ctx context.Context, update imap.Update, withBlock ...bool) {
+func (u *updateInjector) send(ctx context.Context, update imap.Update) {
 	select {
 	case <-u.forwardQuitCh:
 		return
 
 	case u.updatesCh <- update:
-		if len(withBlock) > 0 && withBlock[0] {
-			update.WaitContext(ctx)
-		}
+
+	case <-ctx.Done():
+		return
 	}
 }

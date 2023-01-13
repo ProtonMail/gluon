@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"github.com/sirupsen/logrus"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ProtonMail/gluon/constants"
@@ -57,6 +60,8 @@ type Dummy struct {
 	uidValidity imap.UID
 
 	allowMessageCreateWithUnknownMailboxID bool
+
+	updatesAllowedToFail int32
 }
 
 func NewDummy(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
@@ -77,7 +82,16 @@ func NewDummy(usernames []string, password []byte, period time.Duration, flags, 
 	go func() {
 		conn.ticker.Tick(func(time.Time) {
 			for _, update := range conn.popUpdates() {
-				defer update.Wait()
+				defer func() {
+					err, ok := update.Wait()
+					if ok && err != nil {
+						if atomic.LoadInt32(&conn.updatesAllowedToFail) == 0 {
+							panic(fmt.Sprintf("Failed to apply update %v: %v", update.String(), err))
+						} else {
+							logrus.Errorf("Failed to apply update %v: %v", update.String(), err)
+						}
+					}
+				}()
 
 				select {
 				case conn.updateCh <- update:
@@ -263,9 +277,13 @@ func (conn *Dummy) SetUIDValidity(newUIDValidity imap.UID) error {
 func (conn *Dummy) Sync(ctx context.Context) error {
 	for _, mailbox := range conn.state.getMailboxes() {
 		update := imap.NewMailboxCreated(mailbox)
-		defer update.WaitContext(ctx)
 
 		conn.updateCh <- update
+
+		err, ok := update.WaitContext(ctx)
+		if ok && err != nil {
+			return fmt.Errorf("failed to apply update %v:%w", update.String(), err)
+		}
 	}
 
 	var updates []*imap.MessageCreated
@@ -280,9 +298,13 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 	}
 
 	update := imap.NewMessagesCreated(conn.allowMessageCreateWithUnknownMailboxID, updates...)
-	defer update.WaitContext(ctx)
 
 	conn.updateCh <- update
+
+	err, ok := update.WaitContext(ctx)
+	if ok && err != nil {
+		return fmt.Errorf("failed to apply update %v:%w", update.String(), err)
+	}
 
 	return nil
 }
@@ -418,4 +440,15 @@ func (conn *Dummy) validateName(name []string) (bool, error) {
 	}
 
 	return exclusive, nil
+}
+
+func (conn *Dummy) SetUpdatesAllowedToFail(value bool) {
+	var v int32
+	if value {
+		v = 1
+	} else {
+		v = 0
+	}
+
+	atomic.StoreInt32(&conn.updatesAllowedToFail, v)
 }
