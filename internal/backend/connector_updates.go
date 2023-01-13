@@ -19,50 +19,54 @@ import (
 
 // apply an incoming update originating from the connector.
 func (user *user) apply(ctx context.Context, update imap.Update) error {
-	defer update.Done()
-
 	logrus.WithField("update", update).WithField("user-id", user.userID).Debug("Applying update")
 
-	switch update := update.(type) {
-	case *imap.MailboxCreated:
-		return user.applyMailboxCreated(ctx, update)
+	err := func() error {
+		switch update := update.(type) {
+		case *imap.MailboxCreated:
+			return user.applyMailboxCreated(ctx, update)
 
-	case *imap.MailboxDeleted:
-		return user.applyMailboxDeleted(ctx, update)
+		case *imap.MailboxDeleted:
+			return user.applyMailboxDeleted(ctx, update)
 
-	case *imap.MailboxUpdated:
-		return user.applyMailboxUpdated(ctx, update)
+		case *imap.MailboxUpdated:
+			return user.applyMailboxUpdated(ctx, update)
 
-	case *imap.MailboxIDChanged:
-		return user.applyMailboxIDChanged(ctx, update)
+		case *imap.MailboxIDChanged:
+			return user.applyMailboxIDChanged(ctx, update)
 
-	case *imap.MessagesCreated:
-		return user.applyMessagesCreated(ctx, update)
+		case *imap.MessagesCreated:
+			return user.applyMessagesCreated(ctx, update)
 
-	case *imap.MessageMailboxesUpdated:
-		return user.applyMessageMailboxesUpdated(ctx, update)
+		case *imap.MessageMailboxesUpdated:
+			return user.applyMessageMailboxesUpdated(ctx, update)
 
-	case *imap.MessageFlagsUpdated:
-		return user.applyMessageFlagsUpdated(ctx, update)
+		case *imap.MessageFlagsUpdated:
+			return user.applyMessageFlagsUpdated(ctx, update)
 
-	case *imap.MessageIDChanged:
-		return user.applyMessageIDChanged(ctx, update)
+		case *imap.MessageIDChanged:
+			return user.applyMessageIDChanged(ctx, update)
 
-	case *imap.MessageDeleted:
-		return user.applyMessageDeleted(ctx, update)
+		case *imap.MessageDeleted:
+			return user.applyMessageDeleted(ctx, update)
 
-	case *imap.MessageUpdated:
-		return user.applyMessageUpdated(ctx, update)
+		case *imap.MessageUpdated:
+			return user.applyMessageUpdated(ctx, update)
 
-	case *imap.UIDValidityBumped:
-		return user.applyUIDValidityBumped(ctx, update)
+		case *imap.UIDValidityBumped:
+			return user.applyUIDValidityBumped(ctx, update)
 
-	case *imap.Noop:
-		return nil
+		case *imap.Noop:
+			return nil
 
-	default:
-		return fmt.Errorf("bad update")
-	}
+		default:
+			return fmt.Errorf("bad update")
+		}
+	}()
+
+	update.Done(err)
+
+	return err
 }
 
 // applyMailboxCreated applies a MailboxCreated update.
@@ -71,17 +75,7 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 		return fmt.Errorf("attempting to create protected mailbox (recovery)")
 	}
 
-	if err := user.imapLimits.CheckUIDValidity(user.globalUIDValidity); err != nil {
-		return err
-	}
-
 	if exists, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (bool, error) {
-		if mailboxCount, err := db.GetMailboxCount(ctx, client); err != nil {
-			return false, err
-		} else if err := user.imapLimits.CheckMailBoxCount(mailboxCount); err != nil {
-			return false, err
-		}
-
 		return db.MailboxExistsWithRemoteID(ctx, client, update.Mailbox.ID)
 	}); err != nil {
 		return err
@@ -89,7 +83,17 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 		return nil
 	}
 
+	if err := user.imapLimits.CheckUIDValidity(user.globalUIDValidity); err != nil {
+		return err
+	}
+
 	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		if mailboxCount, err := db.GetMailboxCount(ctx, tx.Client()); err != nil {
+			return err
+		} else if err := user.imapLimits.CheckMailBoxCount(mailboxCount); err != nil {
+			return err
+		}
+
 		if _, err := db.CreateMailbox(
 			ctx,
 			tx,

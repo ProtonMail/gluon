@@ -28,7 +28,7 @@ func TestDummyConnector_validateUpdate(t *testing.T) {
 
 	go func() {
 		for update := range conn.GetUpdates() {
-			update.Done()
+			update.Done(nil)
 		}
 	}()
 

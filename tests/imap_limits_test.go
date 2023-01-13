@@ -46,6 +46,7 @@ func TestMaxUIDLimitRespected_Append(t *testing.T) {
 
 func TestMaxMessageLimitRespected_Copy(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withIMAPLimits(testIMAPLimits())), func(client *client.Client, session *testSession) {
+		session.setUpdatesAllowedToFail("user", true)
 		require.NoError(t, client.Create("mbox1"))
 		require.NoError(t, doAppendWithClient(client, "mbox1", "To: Foo@bar.com", time.Now()))
 		require.NoError(t, doAppendWithClient(client, "INBOX", "To: Bar@bar.com", time.Now()))
@@ -57,6 +58,7 @@ func TestMaxMessageLimitRespected_Copy(t *testing.T) {
 
 func TestMaxUIDLimitRespected_Copy(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withIMAPLimits(testIMAPLimits())), func(client *client.Client, session *testSession) {
+		session.setUpdatesAllowedToFail("user", true)
 		require.NoError(t, client.Create("mbox1"))
 		require.NoError(t, doAppendWithClient(client, "mbox1", "To: Foo@bar.com", time.Now()))
 		require.NoError(t, doAppendWithClient(client, "INBOX", "To: Bar@bar.com", time.Now()))
@@ -76,6 +78,7 @@ func TestMaxUIDLimitRespected_Copy(t *testing.T) {
 
 func TestMaxMessageLimitRespected_Move(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withIMAPLimits(testIMAPLimits())), func(client *client.Client, session *testSession) {
+		session.setUpdatesAllowedToFail("user", true)
 		require.NoError(t, client.Create("mbox1"))
 		require.NoError(t, doAppendWithClient(client, "mbox1", "To: Foo@bar.com", time.Now()))
 		require.NoError(t, doAppendWithClient(client, "INBOX", "To: Bar@bar.com", time.Now()))
@@ -87,6 +90,7 @@ func TestMaxMessageLimitRespected_Move(t *testing.T) {
 
 func TestMaxUIDLimitRespected_Move(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withIMAPLimits(testIMAPLimits())), func(client *client.Client, session *testSession) {
+		session.setUpdatesAllowedToFail("user", true)
 		require.NoError(t, client.Create("mbox1"))
 		require.NoError(t, doAppendWithClient(client, "mbox1", "To: Foo@bar.com", time.Now()))
 		require.NoError(t, doAppendWithClient(client, "INBOX", "To: Bar@bar.com", time.Now()))
@@ -106,6 +110,7 @@ func TestMaxUIDLimitRespected_Move(t *testing.T) {
 
 func TestMaxUIDValidityLimitRespected(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withIMAPLimits(testIMAPLimits())), func(client *client.Client, session *testSession) {
+		session.setUpdatesAllowedToFail("user", true)
 		require.NoError(t, client.Create("mbox1"))
 		require.NoError(t, client.Delete("mbox1"))
 		require.Error(t, client.Create("mbox2"))

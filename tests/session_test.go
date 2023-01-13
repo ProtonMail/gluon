@@ -51,6 +51,8 @@ type Connector interface {
 	Sync(context.Context) error
 
 	Flush()
+
+	SetUpdatesAllowedToFail(bool)
 }
 
 type testSession struct {
@@ -359,6 +361,10 @@ func (s *testSession) uidValidityBumped(user string) {
 
 func (s *testSession) flush(user string) {
 	s.conns[s.userIDs[user]].Flush()
+}
+
+func (s *testSession) setUpdatesAllowedToFail(user string, value bool) {
+	s.conns[s.userIDs[user]].SetUpdatesAllowedToFail(value)
 }
 
 func forMessageInMBox(rr io.Reader, fn func(messageDelimiter, literal []byte)) error {

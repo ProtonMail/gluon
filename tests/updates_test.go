@@ -313,6 +313,7 @@ func TestBatchMessageAddedWithMultipleFlags(t *testing.T) {
 func TestMessageCreatedWithIgnoreMissingMailbox(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(c *client.Client, s *testSession) {
 		mailboxID := s.mailboxCreated("user", []string{"mbox"})
+		s.setUpdatesAllowedToFail("user", true)
 		{
 			// First round fails as a missing mailbox is not allowed.
 			s.messageCreatedWithMailboxes("user", []imap.MailboxID{mailboxID, "THIS MAILBOX DOES NOT EXISTS"}, []byte("To: Test"), time.Now())
