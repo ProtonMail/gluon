@@ -47,8 +47,14 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 					setSeen = true
 				}
 
+				if attribute.Keyword == proto.FetchKeyword_FetchKWRFC822 ||
+					attribute.Keyword == proto.FetchKeyword_FetchKWRFC822Header ||
+					attribute.Keyword == proto.FetchKeyword_FetchKWRFC822Text {
+					needsLiteral = true
+				}
+
 				op := func(snapMessage snapMsgWithSeq, message *ent.Message, literal []byte) (response.Item, error) {
-					return m.fetchKeyword(snapMessage, message, attribute.Keyword)
+					return m.fetchKeyword(snapMessage, message, attribute.Keyword, literal)
 				}
 
 				operations = append(operations, op)
@@ -162,7 +168,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 	return nil
 }
 
-func (m *Mailbox) fetchKeyword(msg snapMsgWithSeq, message *ent.Message, keyword proto.FetchKeyword) (response.Item, error) {
+func (m *Mailbox) fetchKeyword(msg snapMsgWithSeq, message *ent.Message, keyword proto.FetchKeyword, literal []byte) (response.Item, error) {
 	switch keyword {
 	case proto.FetchKeyword_FetchKWEnvelope:
 		return response.ItemEnvelope(message.Envelope), nil
@@ -174,16 +180,16 @@ func (m *Mailbox) fetchKeyword(msg snapMsgWithSeq, message *ent.Message, keyword
 		return response.ItemInternalDate(message.Date), nil
 
 	case proto.FetchKeyword_FetchKWRFC822:
-		return m.fetchRFC822(msg.ID.InternalID)
+		return m.fetchRFC822(literal)
 
 	case proto.FetchKeyword_FetchKWRFC822Header:
-		return m.fetchRFC822Header(msg.ID.InternalID)
+		return m.fetchRFC822Header(literal)
 
 	case proto.FetchKeyword_FetchKWRFC822Size:
 		return response.ItemRFC822Size(message.Size), nil
 
 	case proto.FetchKeyword_FetchKWRFC822Text:
-		return m.fetchRFC822Text(msg.ID.InternalID)
+		return m.fetchRFC822Text(literal)
 
 	case proto.FetchKeyword_FetchKWBody:
 		return response.ItemBody(message.Body), nil
@@ -199,32 +205,17 @@ func (m *Mailbox) fetchKeyword(msg snapMsgWithSeq, message *ent.Message, keyword
 	}
 }
 
-func (m *Mailbox) fetchRFC822(messageID imap.InternalMessageID) (response.Item, error) {
-	literal, err := m.state.getLiteral(messageID)
-	if err != nil {
-		return nil, err
-	}
-
+func (m *Mailbox) fetchRFC822(literal []byte) (response.Item, error) {
 	return response.ItemRFC822Literal(literal), nil
 }
 
-func (m *Mailbox) fetchRFC822Header(messageID imap.InternalMessageID) (response.Item, error) {
-	literal, err := m.state.getLiteral(messageID)
-	if err != nil {
-		return nil, err
-	}
-
+func (m *Mailbox) fetchRFC822Header(literal []byte) (response.Item, error) {
 	section := rfc822.Parse(literal)
 
 	return response.ItemRFC822Header(section.Header()), nil
 }
 
-func (m *Mailbox) fetchRFC822Text(messageID imap.InternalMessageID) (response.Item, error) {
-	literal, err := m.state.getLiteral(messageID)
-	if err != nil {
-		return nil, err
-	}
-
+func (m *Mailbox) fetchRFC822Text(literal []byte) (response.Item, error) {
 	section := rfc822.Parse(literal)
 
 	return response.ItemRFC822Text(section.Body()), nil
