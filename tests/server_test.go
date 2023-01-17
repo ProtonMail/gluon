@@ -235,7 +235,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 
 	gluonOptions := []gluon.Option{
 		gluon.WithDataDir(options.dataDir),
-		gluon.WithDatabaseDir(options.dataDir),
+		gluon.WithDatabaseDir(options.databaseDir),
 		gluon.WithDelimiter(options.delimiter),
 		gluon.WithLoginJailTime(options.loginJailTime),
 		gluon.WithTLS(&tls.Config{
