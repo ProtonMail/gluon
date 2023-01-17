@@ -111,7 +111,7 @@ func (m *Mailbox) Fetch(ctx context.Context, seq *proto.SequenceSet, attributes 
 		var literal []byte
 
 		if needsLiteral {
-			l, err := m.state.getLiteral(msg.ID.InternalID)
+			l, err := m.state.getLiteral(ctx, msg.ID)
 			if err != nil {
 				return err
 			}

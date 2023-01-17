@@ -97,7 +97,7 @@ func buildSearchData(ctx context.Context, m *Mailbox, op *buildSearchOpResult, m
 	}
 
 	if op.needsLiteral {
-		l, err := m.state.getLiteral(message.ID.InternalID)
+		l, err := m.state.getLiteral(ctx, message.ID)
 		if err != nil {
 			return searchData{}, err
 		}

@@ -95,6 +95,10 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, b []byte) error {
 		b = enc
 	}
 
+	if err := os.MkdirAll(c.path, 0o700); err != nil {
+		return err
+	}
+
 	return os.WriteFile(
 		filepath.Join(c.path, messageID.String()),
 		c.gcm.Seal(nonce, nonce, b, nil),

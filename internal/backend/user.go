@@ -25,7 +25,7 @@ type user struct {
 
 	connector      connector.Connector
 	updateInjector *updateInjector
-	store          store.Store
+	store          *store.WriteControlledStore
 	delimiter      string
 
 	db *db.DB
@@ -49,7 +49,7 @@ func newUser(
 	userID string,
 	database *db.DB,
 	conn connector.Connector,
-	store store.Store,
+	st store.Store,
 	delimiter string,
 	imapLimits limits.IMAP,
 ) (*user, error) {
@@ -79,7 +79,7 @@ func newUser(
 
 		connector:      conn,
 		updateInjector: newUpdateInjector(conn, userID),
-		store:          store,
+		store:          store.NewWriteControlledStore(st),
 		delimiter:      delimiter,
 
 		db: database,

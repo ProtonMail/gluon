@@ -41,6 +41,10 @@ type Connector interface {
 		date time.Time,
 	) (imap.InternalMessageID, imap.Message, []byte, error)
 
+	// GetMessageLiteral retrieves the message literal from the connector.
+	// Note: this can get called from different go routines.
+	GetMessageLiteral(ctx context.Context, id imap.MessageID) ([]byte, error)
+
 	// AddMessagesToMailbox adds the message with the given ID to the mailbox with the given ID.
 	AddMessagesToMailbox(
 		ctx context.Context,

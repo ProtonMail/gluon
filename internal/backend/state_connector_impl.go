@@ -75,6 +75,12 @@ func (sc *stateConnectorImpl) CreateMessage(
 	return imap.NewInternalMessageID(), msg, newLiteral, nil
 }
 
+func (sc *stateConnectorImpl) GetMessageLiteral(ctx context.Context, id imap.MessageID) ([]byte, error) {
+	ctx = sc.newContextWithMetadata(ctx)
+
+	return sc.connector.GetMessageLiteral(ctx, id)
+}
+
 func (sc *stateConnectorImpl) AddMessagesToMailbox(
 	ctx context.Context,
 	messageIDs []imap.MessageID,
