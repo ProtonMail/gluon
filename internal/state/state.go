@@ -621,8 +621,32 @@ func (state *State) endIdle() {
 	state.idleCh = nil
 }
 
-func (state *State) getLiteral(messageID imap.InternalMessageID) ([]byte, error) {
-	return state.user.GetStore().Get(messageID)
+func (state *State) getLiteral(ctx context.Context, messageID ids.MessageIDPair) ([]byte, error) {
+	var literal []byte
+
+	storeLiteral, firstErr := state.user.GetStore().Get(messageID.InternalID)
+	if firstErr != nil {
+		logrus.Debugf("Failed load %v from store, attempting to download from connector", messageID.InternalID.ShortID())
+
+		connectorLiteral, err := state.user.GetRemote().GetMessageLiteral(ctx, messageID.RemoteID)
+		if err != nil {
+			logrus.Errorf("Failed to download message from connector: %v", err)
+			return nil, fmt.Errorf("message failed to load from cache (%v), failed to download from connector: %w", firstErr, err)
+		}
+
+		if err := state.user.GetStore().Set(messageID.InternalID, connectorLiteral); err != nil {
+			logrus.Errorf("Failed to store download message from connector: %v", err)
+			return nil, fmt.Errorf("message failed to load from cache (%v), failed to store new downloaded message: %w", firstErr, err)
+		}
+
+		logrus.Debugf("Message %v downloaded and stored ", messageID.InternalID.ShortID())
+
+		literal = connectorLiteral
+	} else {
+		literal = storeLiteral
+	}
+
+	return literal, nil
 }
 
 func (state *State) flushResponses(ctx context.Context, permitExpunge bool) ([]response.Response, error) {

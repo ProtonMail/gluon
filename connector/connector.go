@@ -15,6 +15,10 @@ type Connector interface {
 	// CreateMailbox creates a mailbox with the given name.
 	CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error)
 
+	// GetMessageLiteral is intended to be used by Gluon when, for some reason, the local cached data no longer exists.
+	// Note: this can get called from different go routines.
+	GetMessageLiteral(ctx context.Context, id imap.MessageID) ([]byte, error)
+
 	// IsMailboxVisible can be used to hide mailboxes from connected clients.
 	IsMailboxVisible(ctx context.Context, mboxID imap.MailboxID) bool
 

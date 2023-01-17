@@ -145,7 +145,7 @@ func (state *State) actionCreateMessage(
 		return 0, fmt.Errorf("failed to set internal ID: %w", err)
 	}
 
-	if err := state.user.GetStore().Set(internalID, literalWithHeader); err != nil {
+	if err := state.user.GetStore().SetUnchecked(internalID, literalWithHeader); err != nil {
 		return 0, fmt.Errorf("failed to store message literal: %w", err)
 	}
 
@@ -196,7 +196,7 @@ func (state *State) actionCreateRecoveredMessage(
 		return err
 	}
 
-	if err := state.user.GetStore().Set(internalID, literal); err != nil {
+	if err := state.user.GetStore().SetUnchecked(internalID, literal); err != nil {
 		return fmt.Errorf("failed to store message literal: %w", err)
 	}
 
@@ -343,7 +343,7 @@ func (state *State) actionImportRecoveredMessage(
 		return ids.MessageIDPair{}, false, fmt.Errorf("failed to set internal ID: %w", err)
 	}
 
-	if err := state.user.GetStore().Set(internalID, literalWithHeader); err != nil {
+	if err := state.user.GetStore().SetUnchecked(internalID, literalWithHeader); err != nil {
 		return ids.MessageIDPair{}, false, fmt.Errorf("failed to store message literal: %w", err)
 	}
 

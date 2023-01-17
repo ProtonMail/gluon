@@ -38,7 +38,7 @@ func (s *StateUserInterfaceImpl) GetRemote() state.Connector {
 	return s.c
 }
 
-func (s *StateUserInterfaceImpl) GetStore() store.Store {
+func (s *StateUserInterfaceImpl) GetStore() *store.WriteControlledStore {
 	return s.u.store
 }
 

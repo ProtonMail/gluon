@@ -22,7 +22,7 @@ type UserInterface interface {
 
 	GetRemote() Connector
 
-	GetStore() store.Store
+	GetStore() *store.WriteControlledStore
 
 	QueueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update ...Update) error
 

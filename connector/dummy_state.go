@@ -171,6 +171,18 @@ func (state *dummyState) getLiteral(messageID imap.MessageID) []byte {
 	return state.messages[messageID].literal
 }
 
+func (state *dummyState) tryGetLiteral(messageID imap.MessageID) ([]byte, error) {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	v, ok := state.messages[messageID]
+	if !ok {
+		return nil, ErrNoSuchMessage
+	}
+
+	return v.literal, nil
+}
+
 func (state *dummyState) createMessage(
 	mboxID imap.MailboxID,
 	literal []byte,
