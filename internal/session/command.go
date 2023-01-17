@@ -37,14 +37,19 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 				return fmt.Sprintf("%v: '%s'", k, literals[k])
 			})...)
 
-			// If the input is not valid UTF-8, we drop the connection.
+			// If the input is not valid UTF-8, we attempt to handle it as an upgrade to TLS.
+			// If that fails, we report the error to sentry and return.
 			if !utf8.Valid(line) {
-				reporter.MessageWithContext(ctx,
-					"Received invalid UTF-8 command",
-					reporter.Context{"line (base 64)": base64.StdEncoding.EncodeToString(line)},
-				)
+				if err := s.handleUpgrade(line); err != nil {
+					reporter.MessageWithContext(ctx,
+						"Received invalid UTF-8 command",
+						reporter.Context{"line (base 64)": base64.StdEncoding.EncodeToString(line)},
+					)
 
-				return
+					return
+				}
+
+				continue
 			}
 
 			tag, cmd, err := parse(line, literals, del)
@@ -55,7 +60,7 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 				)
 			} else if cmd.GetStartTLS() != nil {
 				// TLS needs to be handled here to ensure that next command read is over the TLS connection.
-				if err = s.handleStartTLS(tag, cmd.GetStartTLS()); err != nil {
+				if err = s.handleStartTLS(tag); err != nil {
 					return
 				} else {
 					continue

@@ -113,6 +113,13 @@ func (s *testSession) newClient() *client.Client {
 	return client
 }
 
+func (s *testSession) newClientTLS() *client.Client {
+	client, err := client.DialTLS(s.listener.Addr().String(), nil)
+	require.NoError(s.tb, err)
+
+	return client
+}
+
 func (s *testSession) withUserDB(user string, fn func(client *ent.Client, ctx context.Context)) error {
 	path, ok := s.userDBPaths[s.userIDs[user]]
 	if !ok {
