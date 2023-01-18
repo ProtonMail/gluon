@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
+	"github.com/ProtonMail/gluon/reporter"
 	"net"
 	"path/filepath"
 	"testing"
@@ -74,6 +75,7 @@ type serverOptions struct {
 	connectorBuilder   connectorBuilder
 	disableParallelism bool
 	imapLimits         limits.IMAP
+	reporter           reporter.Reporter
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -164,6 +166,14 @@ func (m imapLimits) apply(options *serverOptions) {
 	options.imapLimits = m.limits
 }
 
+type reporterOption struct {
+	reporter reporter.Reporter
+}
+
+func (r reporterOption) apply(options *serverOptions) {
+	options.reporter = r.reporter
+}
+
 func withIdleBulkTime(idleBulkTime time.Duration) serverOption {
 	return &idleBulkTimeOption{idleBulkTime: idleBulkTime}
 }
@@ -194,6 +204,10 @@ func withDisableParallelism() serverOption {
 
 func withIMAPLimits(limits limits.IMAP) serverOption {
 	return &imapLimits{limits: limits}
+}
+
+func withReporter(reporter reporter.Reporter) serverOption {
+	return &reporterOption{reporter: reporter}
 }
 
 func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
@@ -262,6 +276,10 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 
 	if options.disableParallelism {
 		gluonOptions = append(gluonOptions, gluon.WithDisableParallelism())
+	}
+
+	if options.reporter != nil {
+		gluonOptions = append(gluonOptions, gluon.WithReporter(options.reporter))
 	}
 
 	// Create a new gluon server.
