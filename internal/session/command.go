@@ -37,19 +37,14 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 				return fmt.Sprintf("%v: '%s'", k, literals[k])
 			})...)
 
-			// If the input is not valid UTF-8, we attempt to handle it as an upgrade to TLS.
-			// If that fails, we report the error to sentry and return.
+			// If the input is not valid UTF-8, we report the error to sentry and return.
 			if !utf8.Valid(line) {
-				if err := s.handleUpgrade(line); err != nil {
-					reporter.MessageWithContext(ctx,
-						"Received invalid UTF-8 command",
-						reporter.Context{"line (base 64)": base64.StdEncoding.EncodeToString(line)},
-					)
+				reporter.MessageWithContext(ctx,
+					"Received invalid UTF-8 command",
+					reporter.Context{"line (base 64)": base64.StdEncoding.EncodeToString(line)},
+				)
 
-					return
-				}
-
-				continue
+				return
 			}
 
 			tag, cmd, err := parse(line, literals, del)

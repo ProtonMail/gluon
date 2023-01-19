@@ -16,6 +16,7 @@ require (
 	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
 	go.uber.org/goleak v1.1.12
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
 	golang.org/x/text v0.3.7
 	google.golang.org/protobuf v1.27.1
@@ -24,6 +25,7 @@ require (
 
 require (
 	ariga.io/atlas v0.5.1-0.20220717122844-8593d7eb1a8e // indirect
+	github.com/aaw/maybe_tls v0.0.0-20160803104303-89c499bcc6aa // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

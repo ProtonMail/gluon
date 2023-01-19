@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ProtonMail/gluon/internal/conn"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/logging"
 
@@ -166,6 +167,8 @@ func (s *Server) AddWatcher(ofType ...events.Event) <-chan events.Event {
 // Serve serves connections accepted from the given listener.
 // It stops serving when the context is canceled, the listener is closed, or the server is closed.
 func (s *Server) Serve(ctx context.Context, l net.Listener) error {
+	l = conn.NewListener(l, s.tlsConfig)
+
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 	ctx = contexts.NewDisableParallelismCtx(ctx, s.disableParallelism)
 

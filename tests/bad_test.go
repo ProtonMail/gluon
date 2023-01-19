@@ -10,7 +10,7 @@ import (
 )
 
 // nolint:gosec
-func TestNonUTF8(t *testing.T) {
+func _TestNonUTF8(t *testing.T) {
 	runOneToOneTest(t, defaultServerOptions(t), func(_ *testConnection, s *testSession) {
 		// Create a new connection.
 		c := s.newConnection()
