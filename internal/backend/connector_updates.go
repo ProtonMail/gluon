@@ -527,11 +527,19 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 
 	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		if err := db.MarkMessageAsDeletedWithRemoteID(ctx, tx, update.MessageID); err != nil {
+			if ent.IsNotFound(err) {
+				return nil
+			}
+
 			return err
 		}
 
 		internalMessageID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), update.MessageID)
 		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil
+			}
+
 			return err
 		}
 
