@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/ProtonMail/gluon/internal/utils"
+	"github.com/bradenaw/juniper/parallel"
+	"runtime"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -298,11 +300,20 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	// This way we can keep the database consistent.
 	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, chunk := range xslices.Chunk(messagesToCreate, db.ChunkLimit) {
-			// Create messages in the store
-			for _, msg := range chunk {
-				if err := user.store.Set(msg.InternalID, msg.Literal); err != nil {
+			// Create messages in the store in parallel
+			numStoreRoutines := runtime.NumCPU() / 2
+			if numStoreRoutines < len(chunk) {
+				numStoreRoutines = len(chunk)
+			}
+			if err := parallel.DoContext(ctx, numStoreRoutines, len(chunk), func(ctx context.Context, i int) error {
+				msg := chunk[i]
+				if err := user.store.SetUnchecked(msg.InternalID, msg.Literal); err != nil {
 					return fmt.Errorf("failed to store message literal: %w", err)
 				}
+
+				return nil
+			}); err != nil {
+				return err
 			}
 
 			// Create message in the database
