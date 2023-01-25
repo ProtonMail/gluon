@@ -311,6 +311,18 @@ func (h *Header) applyOffset(start *headerEntry, offset int) {
 // SetHeaderValue is a helper method that sets a header value in a message literal.
 // It does not check whether the existing value already exists.
 func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
+	var b bytes.Buffer
+
+	if err := SetHeaderValueInto(literal, key, val, &b); err != nil {
+		return nil, err
+	}
+
+	return b.Bytes(), nil
+}
+
+// SetHeaderValueInto is a helper method that sets a header value in a message literal.
+// It does not check whether the existing value already exists.
+func SetHeaderValueInto(literal []byte, key, val string, buffer *bytes.Buffer) error {
 	rawHeader, body := Split(literal)
 
 	parser := newHeaderParser(rawHeader)
@@ -327,7 +339,7 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 			if errors.Is(err, io.EOF) {
 				break
 			} else {
-				return nil, err
+				return err
 			}
 		}
 
@@ -342,18 +354,19 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 	key = textproto.CanonicalMIMEHeaderKey(key)
 	data := joinLine([]byte(key), []byte(val))
 
-	result := make([]byte, 0, len(data)+len(literal))
+	buffer.Grow(len(data) + len(literal))
+
 	if !foundFirstEntry {
-		result = append(result, rawHeader...)
-		result = append(result, data...)
-		result = append(result, body...)
+		buffer.Write(rawHeader)
+		buffer.Write(data)
+		buffer.Write(body)
 	} else {
-		result = append(result, literal[0:parsedHeaderEntry.keyStart]...)
-		result = append(result, data...)
-		result = append(result, literal[parsedHeaderEntry.keyStart:]...)
+		buffer.Write(literal[0:parsedHeaderEntry.keyStart])
+		buffer.Write(data)
+		buffer.Write(literal[parsedHeaderEntry.keyStart:])
 	}
 
-	return result, nil
+	return nil
 }
 
 // GetHeaderValue is a helper method that queries a header value in a message literal.
