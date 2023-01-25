@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -207,6 +208,13 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	messageForMBox := make(map[imap.InternalMailboxID][]imap.InternalMessageID)
 	mboxInternalIDMap := make(map[imap.MailboxID]imap.InternalMailboxID)
 
+	buffersToRelease := make([]*bytes.Buffer, 0, len(update.Messages))
+	defer func() {
+		for _, v := range buffersToRelease {
+			utils.ReleasePooledBuffer(v)
+		}
+	}()
+
 	if err := user.db.Read(ctx, func(ctx context.Context, client *ent.Client) error {
 		for _, message := range update.Messages {
 			if slices.Contains(message.MailboxIDs, ids.GluonInternalRecoveryMailboxRemoteID) {
@@ -220,14 +228,16 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 				if ent.IsNotFound(err) {
 					internalID = imap.NewInternalMessageID()
 
-					literal, err := rfc822.SetHeaderValue(message.Literal, ids.InternalIDKey, internalID.String())
-					if err != nil {
+					buffer := utils.AllocPooledBuffer()
+					buffersToRelease = append(buffersToRelease, buffer)
+
+					if err := rfc822.SetHeaderValueInto(message.Literal, ids.InternalIDKey, internalID.String(), buffer); err != nil {
 						return fmt.Errorf("failed to set internal ID: %w", err)
 					}
 
 					request := &db.CreateMessageReq{
 						Message:    message.Message,
-						Literal:    literal,
+						Literal:    buffer.Bytes(),
 						Body:       message.ParsedMessage.Body,
 						Structure:  message.ParsedMessage.Structure,
 						Envelope:   message.ParsedMessage.Envelope,
@@ -593,11 +603,13 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		updateLiteral := update.Literal
 		if id, err := rfc822.GetHeaderValue(updateLiteral, ids.InternalIDKey); err == nil {
 			if len(id) == 0 {
-				newLiteral, err := rfc822.SetHeaderValue(updateLiteral, ids.InternalIDKey, internalMessageID.String())
-				if err != nil {
+				buffer := utils.AllocPooledBuffer()
+				defer utils.ReleasePooledBuffer(buffer)
+
+				if err := rfc822.SetHeaderValueInto(updateLiteral, ids.InternalIDKey, internalMessageID.String(), buffer); err != nil {
 					log.WithError(err).Debug("failed to set header key, using update literal")
 				} else {
-					updateLiteral = newLiteral
+					updateLiteral = buffer.Bytes()
 				}
 			}
 		} else {
@@ -648,14 +660,17 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 			// create new entry
 			{
 				newInternalID := imap.NewInternalMessageID()
-				literal, err := rfc822.SetHeaderValue(update.Literal, ids.InternalIDKey, newInternalID.String())
-				if err != nil {
+
+				buffer := utils.AllocPooledBuffer()
+				defer utils.ReleasePooledBuffer(buffer)
+
+				if err := rfc822.SetHeaderValueInto(update.Literal, ids.InternalIDKey, newInternalID.String(), buffer); err != nil {
 					return fmt.Errorf("failed to set internal ID: %w", err)
 				}
 
 				request := &db.CreateMessageReq{
 					Message:    update.Message,
-					Literal:    literal,
+					Literal:    buffer.Bytes(),
 					Body:       update.ParsedMessage.Body,
 					Structure:  update.ParsedMessage.Structure,
 					Envelope:   update.ParsedMessage.Envelope,
@@ -666,7 +681,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 					return err
 				}
 
-				if err := user.store.Set(newInternalID, literal); err != nil {
+				if err := user.store.Set(newInternalID, buffer.Bytes()); err != nil {
 					return err
 				}
 

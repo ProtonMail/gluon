@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/sirupsen/logrus"
 	"strings"
@@ -140,10 +141,14 @@ func (state *State) actionCreateMessage(
 		return 0, err
 	}
 
-	literalWithHeader, err := rfc822.SetHeaderValue(newLiteral, ids.InternalIDKey, internalID.String())
-	if err != nil {
+	buffer := utils.AllocPooledBuffer()
+	defer utils.ReleasePooledBuffer(buffer)
+
+	if err := rfc822.SetHeaderValueInto(newLiteral, ids.InternalIDKey, internalID.String(), buffer); err != nil {
 		return 0, fmt.Errorf("failed to set internal ID: %w", err)
 	}
+
+	literalWithHeader := buffer.Bytes()
 
 	if err := state.user.GetStore().SetUnchecked(internalID, literalWithHeader); err != nil {
 		return 0, fmt.Errorf("failed to store message literal: %w", err)
@@ -338,10 +343,14 @@ func (state *State) actionImportRecoveredMessage(
 		return ids.MessageIDPair{}, false, err
 	}
 
-	literalWithHeader, err := rfc822.SetHeaderValue(newLiteral, ids.InternalIDKey, internalID.String())
-	if err != nil {
+	buffer := utils.AllocPooledBuffer()
+	defer utils.ReleasePooledBuffer(buffer)
+
+	if err := rfc822.SetHeaderValueInto(newLiteral, ids.InternalIDKey, internalID.String(), buffer); err != nil {
 		return ids.MessageIDPair{}, false, fmt.Errorf("failed to set internal ID: %w", err)
 	}
+
+	literalWithHeader := buffer.Bytes()
 
 	if err := state.user.GetStore().SetUnchecked(internalID, literalWithHeader); err != nil {
 		return ids.MessageIDPair{}, false, fmt.Errorf("failed to store message literal: %w", err)
