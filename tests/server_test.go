@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"github.com/ProtonMail/gluon/reporter"
 	"net"
 	"path/filepath"
 	"testing"
@@ -17,6 +16,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/hash"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
 	"github.com/bradenaw/juniper/xslices"
@@ -310,7 +310,8 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		userID := hex.EncodeToString(hash.SHA256([]byte(creds.usernames[0])))
 
 		// Load the user.
-		require.NoError(tb, server.LoadUser(ctx, conn, userID, []byte(creds.password)))
+		_, err := server.LoadUser(ctx, conn, userID, []byte(creds.password))
+		require.NoError(tb, err)
 
 		// Trigger a sync of the user's data.
 		require.NoError(tb, conn.Sync(ctx))

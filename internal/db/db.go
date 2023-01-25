@@ -2,7 +2,9 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -96,27 +98,48 @@ func WriteResult[T any](ctx context.Context, db *DB, fn func(context.Context, *e
 	return result, nil
 }
 
-func getDatabaseConn(dir, userID string) string {
-	return fmt.Sprintf("file:%v?cache=shared&_fk=1&_journal=WAL", getDatabasePath(dir, userID))
+func getDatabaseConn(dir, userID, path string) string {
+	return fmt.Sprintf("file:%v?cache=shared&_fk=1&_journal=WAL", path)
 }
 
 func getDatabasePath(dir, userID string) string {
 	return filepath.Join(dir, fmt.Sprintf("%v.db", userID))
 }
 
-func NewDB(dir, userID string) (*DB, error) {
+// NewDB creates a new database instance.
+// If the database does not exist, it will be created and the second return value will be true.
+func NewDB(dir, userID string) (*DB, bool, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	client, err := ent.Open(dialect.SQLite, getDatabaseConn(dir, userID))
+	path := getDatabasePath(dir, userID)
+
+	// Check if the database already exists.
+	exists, err := pathExists(path)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return &DB{db: client}, nil
+	client, err := ent.Open(dialect.SQLite, getDatabaseConn(dir, userID, path))
+	if err != nil {
+		return nil, false, err
+	}
+
+	return &DB{db: client}, !exists, nil
 }
 
 func DeleteDB(dir, userID string) error {
 	return os.Remove(getDatabasePath(dir, userID))
+}
+
+// pathExists returns whether the given file exists.
+func pathExists(path string) (bool, error) {
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
