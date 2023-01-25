@@ -102,29 +102,32 @@ func New(withOpt ...Option) (*Server, error) {
 }
 
 // AddUser creates a new user and generates new unique ID for this user.
-// If you have an existing userID, please use LoadUser instead.
+// If the user already exists, an error is returned (use LoadUser instead).
 func (s *Server) AddUser(ctx context.Context, conn connector.Connector, passphrase []byte) (string, error) {
 	userID := s.backend.NewUserID()
 
-	if err := s.LoadUser(ctx, conn, userID, passphrase); err != nil {
+	if isNew, err := s.LoadUser(ctx, conn, userID, passphrase); err != nil {
 		return "", err
+	} else if !isNew {
+		return "", errors.New("user already exists")
 	}
 
 	return userID, nil
 }
 
 // LoadUser adds an existing user using a previously crated unique user ID.
-// If you don't have an existing userID, please use AddUser instead.
-func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, passphrase []byte) error {
+// It returns true if the user was newly created, false if it already existed.
+func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, passphrase []byte) (bool, error) {
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 
-	if err := s.backend.AddUser(ctx, userID, conn, passphrase); err != nil {
-		return fmt.Errorf("failed to add user: %w", err)
+	isNew, err := s.backend.AddUser(ctx, userID, conn, passphrase)
+	if err != nil {
+		return false, fmt.Errorf("failed to add user: %w", err)
 	}
 
 	counts, err := s.backend.GetMailboxMessageCounts(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to get counts: %w", err)
+		return false, fmt.Errorf("failed to get counts: %w", err)
 	}
 
 	s.publish(events.UserAdded{
@@ -132,7 +135,7 @@ func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID 
 		Counts: counts,
 	})
 
-	return nil
+	return isNew, nil
 }
 
 // RemoveUser removes a user from gluon.
