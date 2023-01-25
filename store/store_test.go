@@ -10,24 +10,15 @@ import (
 )
 
 func TestOnDiskStore(t *testing.T) {
-	for name, cmp := range map[string]store.Compressor{
-		"noop": nil,
-		"gzip": &store.GZipCompressor{},
-		"zlib": &store.ZLibCompressor{},
-	} {
-		t.Run(name, func(t *testing.T) {
-			store, err := store.NewOnDiskStore(
-				t.TempDir(),
-				[]byte("pass"),
-				store.WithCompressor(cmp),
-				store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
-			)
-			require.NoError(t, err)
+	store, err := store.NewOnDiskStore(
+		t.TempDir(),
+		[]byte("pass"),
+		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+	)
+	require.NoError(t, err)
 
-			testStore(t, store)
-			testStoreList(t, store)
-		})
-	}
+	testStore(t, store)
+	testStoreList(t, store)
 }
 
 func testStore(t *testing.T, store store.Store) {

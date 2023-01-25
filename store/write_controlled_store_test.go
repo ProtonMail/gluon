@@ -16,7 +16,6 @@ func TestWriteControlledStore(t *testing.T) {
 	st, err := NewOnDiskStore(
 		t.TempDir(),
 		[]byte("pass"),
-		WithCompressor(nil),
 	)
 	require.NoError(t, err)
 
