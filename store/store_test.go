@@ -33,6 +33,31 @@ func TestStore_DecryptFailedOnFilesBiggerThanBlockSize(t *testing.T) {
 	require.NoError(t, store.Delete(id))
 }
 
+func BenchmarkStoreRead(t *testing.B) {
+	store, err := store.NewOnDiskStore(
+		t.TempDir(),
+		[]byte("pass"),
+		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+	)
+	require.NoError(t, err)
+
+	data := make([]byte, 15*1024*1204)
+	{
+		_, err := rand.Read(data) //nolint:gosec
+		require.NoError(t, err)
+	}
+
+	id := imap.NewInternalMessageID()
+	require.NoError(t, store.Set(id, bytes.NewReader(data)))
+
+	t.ResetTimer()
+
+	for i := 0; i < t.N; i++ {
+		_, err := store.Get(id)
+		require.NoError(t, err)
+	}
+}
+
 func TestOnDiskStore(t *testing.T) {
 	store, err := store.NewOnDiskStore(
 		t.TempDir(),
