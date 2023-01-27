@@ -33,13 +33,13 @@ func TestWriteControlledStore(t *testing.T) {
 
 			switch i % 3 {
 			case 0:
-				require.NoError(t, st.Set(id1, []byte("literal1")))
+				require.NoError(t, st.Set(id1, bytes.NewReader([]byte("literal1"))))
 				id = id1
 			case 1:
-				require.NoError(t, st.Set(id2, []byte("literal2")))
+				require.NoError(t, st.Set(id2, bytes.NewReader([]byte("literal2"))))
 				id = id2
 			case 2:
-				require.NoError(t, st.Set(id3, []byte("literal3")))
+				require.NoError(t, st.Set(id3, bytes.NewReader([]byte("literal3"))))
 				id = id3
 			}
 

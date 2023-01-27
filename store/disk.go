@@ -51,7 +51,7 @@ func NewOnDiskStore(path string, pass []byte, opt ...Option) (Store, error) {
 
 const BlockSize = 4096
 
-func (c *onDiskStore) Set(messageID imap.InternalMessageID, b []byte) error {
+func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error {
 	if err := os.MkdirAll(c.path, 0o700); err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, b []byte) error {
 	compressor := lz4.NewWriter(writer)
 
 	go func() {
-		_, err := compressor.ReadFrom(bytes.NewReader(b))
+		_, err := compressor.ReadFrom(in)
 		compressor.Close()
 		writer.CloseWithError(err)
 	}()
@@ -161,6 +161,7 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 
 		readBuffer := make([]byte, encryptedBlockSize)
 		decryptBuffer := make([]byte, BlockSize)
+		totalBytesRead := 0
 
 		for {
 			// Read up to encryptedBlockSize bytes from disk.
@@ -178,7 +179,7 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 
 			decrypted, err := c.gcm.Open(decryptBuffer, nonce, readBuffer[0:bytesRead], nil)
 			if err != nil {
-				writer.CloseWithError(fmt.Errorf("failed to decypt block: %w", err))
+				writer.CloseWithError(fmt.Errorf("failed to decrypt block (offset:%v): %w", totalBytesRead, err))
 				return
 			}
 
@@ -189,6 +190,8 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 				writer.CloseWithError(err)
 				return
 			}
+
+			totalBytesRead += bytesRead
 		}
 	}()
 
@@ -273,5 +276,5 @@ func (*OnDiskStoreBuilder) Delete(path, userID string) error {
 }
 
 func getEncryptedBlockSize(aead cipher.AEAD, blockSize int) int {
-	return blockSize + aead.Overhead() + aead.NonceSize()
+	return blockSize + aead.Overhead()
 }

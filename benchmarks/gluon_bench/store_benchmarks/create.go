@@ -1,6 +1,7 @@
 package store_benchmarks
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
@@ -31,7 +32,7 @@ func (*Create) Run(ctx context.Context, st store.Store) (*reporter.BenchmarkRun,
 
 		for i := uint(0); i < *flags.StoreItemCount; i++ {
 			dc.Start()
-			err := s.Set(imap.NewInternalMessageID(), data)
+			err := s.Set(imap.NewInternalMessageID(), bytes.NewReader(data))
 			dc.Stop()
 
 			if err != nil {

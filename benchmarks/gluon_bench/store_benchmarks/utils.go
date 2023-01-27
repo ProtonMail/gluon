@@ -1,6 +1,7 @@
 package store_benchmarks
 
 import (
+	"bytes"
 	"context"
 	"sync"
 	"time"
@@ -19,7 +20,7 @@ func CreateRandomState(st store.Store, count uint) ([]imap.InternalMessageID, er
 	for i := uint(0); i < count; i++ {
 		uuid := imap.NewInternalMessageID()
 
-		if err := st.Set(uuid, data); err != nil {
+		if err := st.Set(uuid, bytes.NewReader(data)); err != nil {
 			return nil, err
 		}
 
