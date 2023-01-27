@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -640,7 +641,7 @@ func (state *State) getLiteral(ctx context.Context, messageID ids.MessageIDPair)
 			return nil, fmt.Errorf("failed to set internal ID on downloaded message: %w", err)
 		}
 
-		if err := state.user.GetStore().Set(messageID.InternalID, literalWithHeader); err != nil {
+		if err := state.user.GetStore().Set(messageID.InternalID, bytes.NewReader(literalWithHeader)); err != nil {
 			logrus.Errorf("Failed to store download message from connector: %v", err)
 			return nil, fmt.Errorf("message failed to load from cache (%v), failed to store new downloaded message: %w", firstErr, err)
 		}

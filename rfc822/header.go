@@ -311,18 +311,26 @@ func (h *Header) applyOffset(start *headerEntry, offset int) {
 // SetHeaderValue is a helper method that sets a header value in a message literal.
 // It does not check whether the existing value already exists.
 func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
+	reader, size, err := SetHeaderValueNoMemCopy(literal, key, val)
+	if err != nil {
+		return nil, err
+	}
+
 	var b bytes.Buffer
 
-	if err := SetHeaderValueInto(literal, key, val, &b); err != nil {
+	b.Grow(size)
+
+	if _, err := b.ReadFrom(reader); err != nil {
 		return nil, err
 	}
 
 	return b.Bytes(), nil
 }
 
-// SetHeaderValueInto is a helper method that sets a header value in a message literal.
-// It does not check whether the existing value already exists.
-func SetHeaderValueInto(literal []byte, key, val string, buffer *bytes.Buffer) error {
+// SetHeaderValueNoMemCopy is the same as SetHeaderValue, except it does not allocate memory to modify the input literal.
+// Instead, it returns an io.MultiReader that combines the sub-slices in the correct order. This enables us to only
+// allocate memory for the new header field while re-using the old literal.
+func SetHeaderValueNoMemCopy(literal []byte, key, val string) (io.Reader, int, error) {
 	rawHeader, body := Split(literal)
 
 	parser := newHeaderParser(rawHeader)
@@ -339,7 +347,7 @@ func SetHeaderValueInto(literal []byte, key, val string, buffer *bytes.Buffer) e
 			if errors.Is(err, io.EOF) {
 				break
 			} else {
-				return err
+				return nil, 0, err
 			}
 		}
 
@@ -354,19 +362,18 @@ func SetHeaderValueInto(literal []byte, key, val string, buffer *bytes.Buffer) e
 	key = textproto.CanonicalMIMEHeaderKey(key)
 	data := joinLine([]byte(key), []byte(val))
 
-	buffer.Grow(len(data) + len(literal))
-
 	if !foundFirstEntry {
-		buffer.Write(rawHeader)
-		buffer.Write(data)
-		buffer.Write(body)
-	} else {
-		buffer.Write(literal[0:parsedHeaderEntry.keyStart])
-		buffer.Write(data)
-		buffer.Write(literal[parsedHeaderEntry.keyStart:])
+		return io.MultiReader(bytes.NewReader(rawHeader), bytes.NewReader(data), bytes.NewReader(body)), len(rawHeader) + len(data) + len(body), nil
 	}
 
-	return nil
+	part1 := literal[0:parsedHeaderEntry.keyStart]
+	part2 := literal[parsedHeaderEntry.keyStart:]
+
+	return io.MultiReader(
+		bytes.NewReader(part1),
+		bytes.NewReader(data),
+		bytes.NewReader(part2),
+	), len(part1) + len(part2) + len(data), nil
 }
 
 // GetHeaderValue is a helper method that queries a header value in a message literal.

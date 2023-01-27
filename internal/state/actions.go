@@ -1,9 +1,9 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/sirupsen/logrus"
 	"strings"
@@ -141,26 +141,22 @@ func (state *State) actionCreateMessage(
 		return 0, err
 	}
 
-	buffer := utils.AllocPooledBuffer()
-	defer utils.ReleasePooledBuffer(buffer)
-
-	if err := rfc822.SetHeaderValueInto(newLiteral, ids.InternalIDKey, internalID.String(), buffer); err != nil {
+	literalWithHeader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(newLiteral, ids.InternalIDKey, internalID.String())
+	if err != nil {
 		return 0, fmt.Errorf("failed to set internal ID: %w", err)
 	}
-
-	literalWithHeader := buffer.Bytes()
 
 	if err := state.user.GetStore().SetUnchecked(internalID, literalWithHeader); err != nil {
 		return 0, fmt.Errorf("failed to store message literal: %w", err)
 	}
 
 	req := db.CreateMessageReq{
-		Message:    res,
-		Literal:    literalWithHeader,
-		Body:       parsedMessage.Body,
-		Structure:  parsedMessage.Structure,
-		Envelope:   parsedMessage.Envelope,
-		InternalID: internalID,
+		Message:     res,
+		LiteralSize: literalSize,
+		Body:        parsedMessage.Body,
+		Structure:   parsedMessage.Structure,
+		Envelope:    parsedMessage.Envelope,
+		InternalID:  internalID,
 	}
 
 	messageUID, flagSet, err := db.CreateAndAddMessageToMailbox(ctx, tx, mboxID.InternalID, &req)
@@ -201,7 +197,7 @@ func (state *State) actionCreateRecoveredMessage(
 		return err
 	}
 
-	if err := state.user.GetStore().SetUnchecked(internalID, literal); err != nil {
+	if err := state.user.GetStore().SetUnchecked(internalID, bytes.NewReader(literal)); err != nil {
 		return fmt.Errorf("failed to store message literal: %w", err)
 	}
 
@@ -211,11 +207,11 @@ func (state *State) actionCreateRecoveredMessage(
 			Flags: flags,
 			Date:  date,
 		},
-		Literal:    literal,
-		Body:       parsedMessage.Body,
-		Structure:  parsedMessage.Structure,
-		Envelope:   parsedMessage.Envelope,
-		InternalID: internalID,
+		LiteralSize: len(literal),
+		Body:        parsedMessage.Body,
+		Structure:   parsedMessage.Structure,
+		Envelope:    parsedMessage.Envelope,
+		InternalID:  internalID,
 	}
 
 	recoveryMBoxID := state.user.GetRecoveryMailboxID()
@@ -343,26 +339,22 @@ func (state *State) actionImportRecoveredMessage(
 		return ids.MessageIDPair{}, false, err
 	}
 
-	buffer := utils.AllocPooledBuffer()
-	defer utils.ReleasePooledBuffer(buffer)
-
-	if err := rfc822.SetHeaderValueInto(newLiteral, ids.InternalIDKey, internalID.String(), buffer); err != nil {
+	literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(newLiteral, ids.InternalIDKey, internalID.String())
+	if err != nil {
 		return ids.MessageIDPair{}, false, fmt.Errorf("failed to set internal ID: %w", err)
 	}
 
-	literalWithHeader := buffer.Bytes()
-
-	if err := state.user.GetStore().SetUnchecked(internalID, literalWithHeader); err != nil {
+	if err := state.user.GetStore().SetUnchecked(internalID, literalReader); err != nil {
 		return ids.MessageIDPair{}, false, fmt.Errorf("failed to store message literal: %w", err)
 	}
 
 	req := db.CreateMessageReq{
-		Message:    res,
-		Literal:    literalWithHeader,
-		Body:       parsedMessage.Body,
-		Structure:  parsedMessage.Structure,
-		Envelope:   parsedMessage.Envelope,
-		InternalID: internalID,
+		Message:     res,
+		LiteralSize: literalSize,
+		Body:        parsedMessage.Body,
+		Structure:   parsedMessage.Structure,
+		Envelope:    parsedMessage.Envelope,
+		InternalID:  internalID,
 	}
 
 	if _, err := db.CreateMessages(ctx, tx, &req); err != nil {
