@@ -2,6 +2,7 @@ package store
 
 import (
 	"github.com/ProtonMail/gluon/imap"
+	"io"
 	"sync"
 	"sync/atomic"
 )
@@ -76,20 +77,20 @@ func (w *WriteControlledStore) Get(messageID imap.InternalMessageID) ([]byte, er
 	return w.impl.Get(messageID)
 }
 
-func (w *WriteControlledStore) Set(messageID imap.InternalMessageID, literal []byte) error {
+func (w *WriteControlledStore) Set(messageID imap.InternalMessageID, reader io.Reader) error {
 	syncRef := w.acquireSyncRef(messageID)
 	defer w.releaseSyncRef(messageID, syncRef)
 
 	syncRef.lock.Lock()
 	defer syncRef.lock.Unlock()
 
-	return w.impl.Set(messageID, literal)
+	return w.impl.Set(messageID, reader)
 }
 
 // SetUnchecked allows the user to bypass lock access. This will only work if you can guarantee that the data being
 // set does not previously exit (e.g: New message).
-func (w *WriteControlledStore) SetUnchecked(messageID imap.InternalMessageID, literal []byte) error {
-	return w.impl.Set(messageID, literal)
+func (w *WriteControlledStore) SetUnchecked(messageID imap.InternalMessageID, reader io.Reader) error {
+	return w.impl.Set(messageID, reader)
 }
 
 func (w *WriteControlledStore) Delete(messageID ...imap.InternalMessageID) error {
