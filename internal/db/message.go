@@ -20,12 +20,12 @@ import (
 const ChunkLimit = 1000
 
 type CreateMessageReq struct {
-	Message    imap.Message
-	InternalID imap.InternalMessageID
-	Literal    []byte
-	Body       string
-	Structure  string
-	Envelope   string
+	Message     imap.Message
+	InternalID  imap.InternalMessageID
+	LiteralSize int
+	Body        string
+	Structure   string
+	Envelope    string
 }
 
 func CreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*CreateMessageReq) ([]*ent.Message, error) {
@@ -51,7 +51,7 @@ func CreateMessages(ctx context.Context, tx *ent.Tx, reqs ...*CreateMessageReq) 
 			SetBody(req.Body).
 			SetBodyStructure(req.Structure).
 			SetEnvelope(req.Envelope).
-			SetSize(len(req.Literal)).
+			SetSize(req.LiteralSize).
 			AddFlags(flags[req.InternalID]...)
 
 		if len(req.Message.ID) != 0 {
@@ -144,7 +144,7 @@ func CreateAndAddMessageToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.I
 		SetBody(req.Body).
 		SetBodyStructure(req.Structure).
 		SetEnvelope(req.Envelope).
-		SetSize(len(req.Literal)).
+		SetSize(req.LiteralSize).
 		AddFlags(flags...)
 
 	if len(req.Message.ID) != 0 {

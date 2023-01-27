@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/bradenaw/juniper/parallel"
+	"io"
 	"runtime"
 	"strings"
 
@@ -204,18 +204,16 @@ func (user *user) applyMailboxIDChanged(ctx context.Context, update *imap.Mailbo
 
 // applyMessagesCreated applies a MessagesCreated update.
 func (user *user) applyMessagesCreated(ctx context.Context, update *imap.MessagesCreated) error {
+	type DBRequestWithLiteral struct {
+		db.CreateMessageReq
+		reader io.Reader
+	}
+
 	// collect all unique messages to create
-	messagesToCreate := make([]*db.CreateMessageReq, 0, len(update.Messages))
+	messagesToCreate := make([]*DBRequestWithLiteral, 0, len(update.Messages))
 	messagesToCreateFilter := make(map[imap.MessageID]imap.InternalMessageID, len(update.Messages)/2)
 	messageForMBox := make(map[imap.InternalMailboxID][]imap.InternalMessageID)
 	mboxInternalIDMap := make(map[imap.MailboxID]imap.InternalMailboxID)
-
-	buffersToRelease := make([]*bytes.Buffer, 0, len(update.Messages))
-	defer func() {
-		for _, v := range buffersToRelease {
-			utils.ReleasePooledBuffer(v)
-		}
-	}()
 
 	if err := user.db.Read(ctx, func(ctx context.Context, client *ent.Client) error {
 		for _, message := range update.Messages {
@@ -230,20 +228,21 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 				if ent.IsNotFound(err) {
 					internalID = imap.NewInternalMessageID()
 
-					buffer := utils.AllocPooledBuffer()
-					buffersToRelease = append(buffersToRelease, buffer)
-
-					if err := rfc822.SetHeaderValueInto(message.Literal, ids.InternalIDKey, internalID.String(), buffer); err != nil {
+					literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(message.Literal, ids.InternalIDKey, internalID.String())
+					if err != nil {
 						return fmt.Errorf("failed to set internal ID: %w", err)
 					}
 
-					request := &db.CreateMessageReq{
-						Message:    message.Message,
-						Literal:    buffer.Bytes(),
-						Body:       message.ParsedMessage.Body,
-						Structure:  message.ParsedMessage.Structure,
-						Envelope:   message.ParsedMessage.Envelope,
-						InternalID: internalID,
+					request := &DBRequestWithLiteral{
+						CreateMessageReq: db.CreateMessageReq{
+							Message:     message.Message,
+							LiteralSize: literalSize,
+							Body:        message.ParsedMessage.Body,
+							Structure:   message.ParsedMessage.Structure,
+							Envelope:    message.ParsedMessage.Envelope,
+							InternalID:  internalID,
+						},
+						reader: literalReader,
 					}
 
 					messagesToCreate = append(messagesToCreate, request)
@@ -301,13 +300,13 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, chunk := range xslices.Chunk(messagesToCreate, db.ChunkLimit) {
 			// Create messages in the store in parallel
-			numStoreRoutines := runtime.NumCPU() / 2
+			numStoreRoutines := runtime.NumCPU() / 4
 			if numStoreRoutines < len(chunk) {
 				numStoreRoutines = len(chunk)
 			}
 			if err := parallel.DoContext(ctx, numStoreRoutines, len(chunk), func(ctx context.Context, i int) error {
 				msg := chunk[i]
-				if err := user.store.SetUnchecked(msg.InternalID, msg.Literal); err != nil {
+				if err := user.store.SetUnchecked(msg.InternalID, msg.reader); err != nil {
 					return fmt.Errorf("failed to store message literal: %w", err)
 				}
 
@@ -317,7 +316,9 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 			}
 
 			// Create message in the database
-			if _, err := db.CreateMessages(ctx, tx, chunk...); err != nil {
+			if _, err := db.CreateMessages(ctx, tx, xslices.Map(chunk, func(req *DBRequestWithLiteral) *db.CreateMessageReq {
+				return &req.CreateMessageReq
+			})...); err != nil {
 				return err
 			}
 		}
@@ -614,13 +615,11 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		updateLiteral := update.Literal
 		if id, err := rfc822.GetHeaderValue(updateLiteral, ids.InternalIDKey); err == nil {
 			if len(id) == 0 {
-				buffer := utils.AllocPooledBuffer()
-				defer utils.ReleasePooledBuffer(buffer)
-
-				if err := rfc822.SetHeaderValueInto(updateLiteral, ids.InternalIDKey, internalMessageID.String(), buffer); err != nil {
+				l, err := rfc822.SetHeaderValue(updateLiteral, ids.InternalIDKey, internalMessageID.String())
+				if err != nil {
 					log.WithError(err).Debug("failed to set header key, using update literal")
 				} else {
-					updateLiteral = buffer.Bytes()
+					updateLiteral = l
 				}
 			}
 		} else {
@@ -672,27 +671,25 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 			{
 				newInternalID := imap.NewInternalMessageID()
 
-				buffer := utils.AllocPooledBuffer()
-				defer utils.ReleasePooledBuffer(buffer)
-
-				if err := rfc822.SetHeaderValueInto(update.Literal, ids.InternalIDKey, newInternalID.String(), buffer); err != nil {
+				literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(update.Literal, ids.InternalIDKey, newInternalID.String())
+				if err != nil {
 					return fmt.Errorf("failed to set internal ID: %w", err)
 				}
 
 				request := &db.CreateMessageReq{
-					Message:    update.Message,
-					Literal:    buffer.Bytes(),
-					Body:       update.ParsedMessage.Body,
-					Structure:  update.ParsedMessage.Structure,
-					Envelope:   update.ParsedMessage.Envelope,
-					InternalID: newInternalID,
+					Message:     update.Message,
+					LiteralSize: literalSize,
+					Body:        update.ParsedMessage.Body,
+					Structure:   update.ParsedMessage.Structure,
+					Envelope:    update.ParsedMessage.Envelope,
+					InternalID:  newInternalID,
 				}
 
 				if _, err := db.CreateMessages(ctx, tx, request); err != nil {
 					return err
 				}
 
-				if err := user.store.Set(newInternalID, buffer.Bytes()); err != nil {
+				if err := user.store.Set(newInternalID, literalReader); err != nil {
 					return err
 				}
 
