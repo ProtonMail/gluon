@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ProtonMail/gluon/limits"
+	"github.com/ProtonMail/gluon/rfc822"
 	"strings"
 	"sync/atomic"
 
@@ -634,14 +635,19 @@ func (state *State) getLiteral(ctx context.Context, messageID ids.MessageIDPair)
 			return nil, fmt.Errorf("message failed to load from cache (%v), failed to download from connector: %w", firstErr, err)
 		}
 
-		if err := state.user.GetStore().Set(messageID.InternalID, connectorLiteral); err != nil {
+		literalWithHeader, err := rfc822.SetHeaderValue(connectorLiteral, ids.InternalIDKey, messageID.InternalID.String())
+		if err != nil {
+			return nil, fmt.Errorf("failed to set internal ID on downloaded message: %w", err)
+		}
+
+		if err := state.user.GetStore().Set(messageID.InternalID, literalWithHeader); err != nil {
 			logrus.Errorf("Failed to store download message from connector: %v", err)
 			return nil, fmt.Errorf("message failed to load from cache (%v), failed to store new downloaded message: %w", firstErr, err)
 		}
 
 		logrus.Debugf("Message %v downloaded and stored ", messageID.InternalID.ShortID())
 
-		literal = connectorLiteral
+		literal = literalWithHeader
 	} else {
 		literal = storeLiteral
 	}

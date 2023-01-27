@@ -30,7 +30,7 @@ func TestFetchWhenFileDeletedFromCache(t *testing.T) {
 		newFetchCommand(t, client).withItems(goimap.FetchRFC822).fetch("1").forSeqNum(1, func(validator *validatorBuilder) {
 			validator.ignoreFlags()
 			validator.wantSectionString(goimap.FetchRFC822, func(t testing.TB, literal string) {
-				messageFromSection := skipGLUONHeader(literal)
+				messageFromSection := skipGLUONHeaderOrPanic(literal)
 				require.Equal(t, fullMessage, messageFromSection)
 			})
 		}).checkAndRequireMessageCount(1)
