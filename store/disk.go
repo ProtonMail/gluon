@@ -49,7 +49,7 @@ func NewOnDiskStore(path string, pass []byte, opt ...Option) (Store, error) {
 	return store, nil
 }
 
-const BlockSize = 4096
+const BlockSize = 64 * 4096
 
 func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error {
 	if err := os.MkdirAll(c.path, 0o700); err != nil {
@@ -79,6 +79,9 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error 
 	defer writer.Close()
 
 	compressor := lz4.NewWriter(writer)
+	if err := compressor.Apply(lz4.BlockSizeOption(lz4.Block64Kb), lz4.ChecksumOption(false)); err != nil {
+		return fmt.Errorf("failed to set compressor options: %w", err)
+	}
 
 	go func() {
 		_, err := compressor.ReadFrom(in)
