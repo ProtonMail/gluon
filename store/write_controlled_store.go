@@ -19,13 +19,18 @@ type WriteControlledStore struct {
 
 	lock       sync.Mutex
 	entryTable map[imap.InternalMessageID]*syncRef
-	lockPool   []*syncRef
+	lockPool   sync.Pool
 }
 
 func NewWriteControlledStore(impl Store) *WriteControlledStore {
 	return &WriteControlledStore{
 		impl:       impl,
 		entryTable: make(map[imap.InternalMessageID]*syncRef),
+		lockPool: sync.Pool{
+			New: func() any {
+				return &syncRef{counter: 1}
+			},
+		},
 	}
 }
 
@@ -35,19 +40,15 @@ func (w *WriteControlledStore) acquireSyncRef(id imap.InternalMessageID) *syncRe
 
 	v, ok := w.entryTable[id]
 	if !ok {
-		var s *syncRef
-
-		if len(w.lockPool) != 0 {
-			s = w.lockPool[0]
-			s.counter = 1
-			w.lockPool = w.lockPool[1:]
-		} else {
-			s = &syncRef{counter: 1}
+		v, ok := w.lockPool.Get().(*syncRef)
+		if !ok {
+			panic("invalid Type Cast")
 		}
 
-		w.entryTable[id] = s
+		v.counter = 1
+		w.entryTable[id] = v
 
-		return s
+		return v
 	}
 
 	atomic.AddInt32(&v.counter, 1)
@@ -62,7 +63,7 @@ func (w *WriteControlledStore) releaseSyncRef(id imap.InternalMessageID, ref *sy
 
 		if atomic.LoadInt32(&ref.counter) <= 0 {
 			delete(w.entryTable, id)
-			w.lockPool = append(w.lockPool, ref)
+			w.lockPool.Put(ref)
 		}
 	}
 }
