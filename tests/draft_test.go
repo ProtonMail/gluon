@@ -53,6 +53,7 @@ func TestDraftSavedAgain(t *testing.T) {
 		c.C("A002 SELECT Drafts").OK("A002")
 
 		_ = s.messageCreated("user", mailboxID, []byte("To: 3@3.pm"), time.Now())
+		s.flush("user")
 
 		c.C("A002 NOOP")
 		c.S("* 1 EXISTS")
