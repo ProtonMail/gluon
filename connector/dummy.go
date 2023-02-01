@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ticker"
 	"github.com/bradenaw/juniper/xslices"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
 

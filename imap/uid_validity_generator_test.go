@@ -1,12 +1,13 @@
 package imap
 
 import (
+	"testing"
+	"time"
+
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
-	"testing"
-	"time"
 )
 
 func TestEpochUIDValidityGenerator_Generate(t *testing.T) {

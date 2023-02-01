@@ -1,13 +1,14 @@
 package tests
 
 import (
+	"testing"
+	"time"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/limits"
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func testIMAPLimits() limits.IMAP {

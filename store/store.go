@@ -1,8 +1,9 @@
 package store
 
 import (
-	"github.com/ProtonMail/gluon/imap"
 	"io"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 type Store interface {

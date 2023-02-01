@@ -2,11 +2,12 @@ package state
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
-	"strconv"
 )
 
 var ErrOutOfOrderUIDInsertion = fmt.Errorf("UIDs must be strictly ascending")

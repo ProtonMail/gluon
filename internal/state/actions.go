@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/reporter"
-	"github.com/sirupsen/logrus"
 	"strings"
 	"time"
 
@@ -13,8 +11,10 @@ import (
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
 

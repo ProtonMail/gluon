@@ -7,13 +7,14 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/ProtonMail/gluon/imap"
-	"github.com/pierrec/lz4/v4"
-	"github.com/sirupsen/logrus"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/ProtonMail/gluon/imap"
+	"github.com/pierrec/lz4/v4"
+	"github.com/sirupsen/logrus"
 )
 
 type onDiskStore struct {

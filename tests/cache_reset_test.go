@@ -1,13 +1,14 @@
 package tests
 
 import (
+	"os"
+	"testing"
+	"time"
+
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
-	"time"
 )
 
 func TestFetchWhenFileDeletedFromCache(t *testing.T) {

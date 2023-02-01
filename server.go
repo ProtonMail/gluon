@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/ProtonMail/gluon/imap"
 	"io"
 	"net"
 	"sync"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/session"

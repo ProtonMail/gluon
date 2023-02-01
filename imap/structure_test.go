@@ -74,7 +74,7 @@ hey there bro
 	require.Equal(t, expected, parsed.Body)
 }
 
-func TestParseInvalidCharsInContenType(t* testing.T) {
+func TestParseInvalidCharsInContenType(t *testing.T) {
 	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com> 
 To:  Ned Freed <ned@innosoft.com> 
 Subject: Sample message 
@@ -118,7 +118,7 @@ This is the epilogue.  It is also to be ignored.
 	require.NotNil(t, parsed)
 }
 
-func TestParseInvalidMimeType(t* testing.T) {
+func TestParseInvalidMimeType(t *testing.T) {
 	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com> 
 To:  Ned Freed <ned@innosoft.com> 
 Subject: Sample message 

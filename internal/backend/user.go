@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/limits"
 	"sync"
 
 	"github.com/ProtonMail/gluon/connector"
@@ -12,6 +11,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
