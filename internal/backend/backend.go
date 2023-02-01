@@ -73,7 +73,7 @@ func (b *Backend) GetDelimiter() string {
 
 // AddUser adds a new user to the backend.
 // It returns true if the user's database was created, false if it already existed.
-func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Connector, passphrase []byte) (bool, error) {
+func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Connector, passphrase []byte, uidValidityGenerator imap.UIDValidityGenerator) (bool, error) {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
@@ -91,7 +91,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		return false, err
 	}
 
-	user, err := newUser(ctx, userID, db, conn, storeBuilder, b.delim, b.imapLimits)
+	user, err := newUser(ctx, userID, db, conn, storeBuilder, b.delim, b.imapLimits, uidValidityGenerator)
 	if err != nil {
 		return false, err
 	}

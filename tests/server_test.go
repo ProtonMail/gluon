@@ -65,17 +65,18 @@ func (*dummyConnectorBuilder) New(usernames []string, password []byte, period ti
 }
 
 type serverOptions struct {
-	credentials        []credentials
-	delimiter          string
-	loginJailTime      time.Duration
-	dataDir            string
-	databaseDir        string
-	idleBulkTime       time.Duration
-	storeBuilder       store.Builder
-	connectorBuilder   connectorBuilder
-	disableParallelism bool
-	imapLimits         limits.IMAP
-	reporter           reporter.Reporter
+	credentials          []credentials
+	delimiter            string
+	loginJailTime        time.Duration
+	dataDir              string
+	databaseDir          string
+	idleBulkTime         time.Duration
+	storeBuilder         store.Builder
+	connectorBuilder     connectorBuilder
+	disableParallelism   bool
+	imapLimits           limits.IMAP
+	reporter             reporter.Reporter
+	uidValidityGenerator imap.UIDValidityGenerator
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -174,6 +175,14 @@ func (r reporterOption) apply(options *serverOptions) {
 	options.reporter = r.reporter
 }
 
+type uidValidityGeneratorOption struct {
+	generator imap.UIDValidityGenerator
+}
+
+func (u uidValidityGeneratorOption) apply(options *serverOptions) {
+	options.uidValidityGenerator = u.generator
+}
+
 func withIdleBulkTime(idleBulkTime time.Duration) serverOption {
 	return &idleBulkTimeOption{idleBulkTime: idleBulkTime}
 }
@@ -208,6 +217,10 @@ func withIMAPLimits(limits limits.IMAP) serverOption {
 
 func withReporter(reporter reporter.Reporter) serverOption {
 	return &reporterOption{reporter: reporter}
+}
+
+func withUIDValidityGenerator(generator imap.UIDValidityGenerator) serverOption {
+	return &uidValidityGeneratorOption{generator: generator}
 }
 
 func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
@@ -280,6 +293,10 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 
 	if options.reporter != nil {
 		gluonOptions = append(gluonOptions, gluon.WithReporter(options.reporter))
+	}
+
+	if options.uidValidityGenerator != nil {
+		gluonOptions = append(gluonOptions, gluon.WithUIDValidityGenerator(options.uidValidityGenerator))
 	}
 
 	// Create a new gluon server.

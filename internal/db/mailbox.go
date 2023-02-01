@@ -111,32 +111,23 @@ func DeleteMailboxWithRemoteID(
 	ctx context.Context,
 	tx *ent.Tx,
 	mboxID imap.MailboxID,
-	curUIDValidity imap.UID,
-) (imap.UID, error) {
-	mbox, err := tx.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Select(mailbox.FieldUIDValidity, mailbox.FieldSubscribed, mailbox.FieldName).Only(ctx)
+) error {
+	mbox, err := tx.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Select(mailbox.FieldSubscribed, mailbox.FieldName).Only(ctx)
 	if err != nil {
-		return 0, err
-	}
-
-	var newUIDValidity imap.UID
-
-	if mbox.UIDValidity == curUIDValidity {
-		newUIDValidity = curUIDValidity.Add(1)
-	} else {
-		newUIDValidity = curUIDValidity
+		return err
 	}
 
 	if mbox.Subscribed {
 		if err := AddDeletedSubscription(ctx, tx, mbox.Name, mboxID); err != nil {
-			return 0, err
+			return err
 		}
 	}
 
 	if _, err := tx.Mailbox.Delete().Where(mailbox.RemoteID(mboxID)).Exec(ctx); err != nil {
-		return 0, err
+		return err
 	}
 
-	return newUIDValidity, nil
+	return nil
 }
 
 func UpdateRemoteMailboxID(ctx context.Context, tx *ent.Tx, internalID imap.InternalMailboxID, remoteID imap.MailboxID) error {

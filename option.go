@@ -5,6 +5,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/ProtonMail/gluon/imap"
 	limits2 "github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
@@ -203,4 +204,16 @@ func WithIMAPLimits(limits limits2.IMAP) Option {
 	return &withIMAPLimits{
 		limits: limits,
 	}
+}
+
+type withUIDValidityGenerator struct {
+	generator imap.UIDValidityGenerator
+}
+
+func (w withUIDValidityGenerator) config(builder *serverBuilder) {
+	builder.uidValidityGenerator = w.generator
+}
+
+func WithUIDValidityGenerator(generator imap.UIDValidityGenerator) Option {
+	return &withUIDValidityGenerator{generator: generator}
 }

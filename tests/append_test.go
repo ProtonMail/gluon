@@ -55,7 +55,7 @@ func TestAppendWithUidPlus(t *testing.T) {
 		messagePath = "testdata/afternoon-meeting.eml"
 	)
 
-	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withUIDValidityGenerator(imap.NewFixedUIDValidityGenerator(imap.UID(1)))), func(client *client.Client, _ *testSession) {
 		const validityUid = uint32(1)
 
 		require.NoError(t, client.Create(mailboxName))

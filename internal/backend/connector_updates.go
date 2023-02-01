@@ -86,7 +86,12 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 		return nil
 	}
 
-	if err := user.imapLimits.CheckUIDValidity(user.globalUIDValidity); err != nil {
+	uidValidity, err := user.uidValidityGenerator.Generate()
+	if err != nil {
+		return err
+	}
+
+	if err := user.imapLimits.CheckUIDValidity(uidValidity); err != nil {
 		return err
 	}
 
@@ -105,7 +110,7 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 			update.Mailbox.Flags,
 			update.Mailbox.PermanentFlags,
 			update.Mailbox.Attributes,
-			user.globalUIDValidity,
+			uidValidity,
 		); err != nil {
 			return err
 		}
@@ -132,20 +137,7 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 	}
 
 	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		newUIDValidity, err := db.DeleteMailboxWithRemoteID(ctx, tx, update.MailboxID, user.globalUIDValidity)
-		if err != nil {
-			return err
-		}
-
-		if newUIDValidity != user.globalUIDValidity {
-			user.globalUIDValidity = newUIDValidity
-
-			if err := user.connector.SetUIDValidity(newUIDValidity); err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return db.DeleteMailboxWithRemoteID(ctx, tx, update.MailboxID)
 	}); err != nil {
 		return err
 	}
@@ -724,15 +716,18 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 // applyUIDValidityBumped applies a UIDValidityBumped event to the user.
 func (user *user) applyUIDValidityBumped(ctx context.Context, update *imap.UIDValidityBumped) error {
 	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		user.globalUIDValidity = update.UIDValidity
-
 		mailboxes, err := db.GetAllMailboxes(ctx, tx.Client())
 		if err != nil {
 			return err
 		}
 
 		for _, mailbox := range mailboxes {
-			if _, err := mailbox.Update().SetUIDValidity(user.globalUIDValidity).Save(ctx); err != nil {
+			uidValidity, err := user.uidValidityGenerator.Generate()
+			if err != nil {
+				return err
+			}
+
+			if _, err := mailbox.Update().SetUIDValidity(uidValidity).Save(ctx); err != nil {
 				return err
 			}
 		}

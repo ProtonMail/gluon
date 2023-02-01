@@ -28,9 +28,7 @@ type UserInterface interface {
 
 	ReleaseState(ctx context.Context, st *State) error
 
-	GetGlobalUIDValidity() imap.UID
-
-	SetGlobalUIDValidity(imap.UID)
-
 	GetRecoveryMailboxID() ids.MailboxIDPair
+
+	GenerateUIDValidity() (imap.UID, error)
 }
