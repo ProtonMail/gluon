@@ -1,12 +1,13 @@
 package tests
 
 import (
+	"testing"
+	"unicode/utf8"
+
 	"github.com/ProtonMail/gluon/reporter/mock_reporter"
 	"github.com/emersion/go-imap/client"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"unicode/utf8"
 )
 
 func TestSSLConnectionOverStartTLS(t *testing.T) {

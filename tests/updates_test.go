@@ -1,13 +1,13 @@
 package tests
 
 import (
-	"github.com/emersion/go-imap/client"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/utils"
+	"github.com/emersion/go-imap/client"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMessageCreatedUpdate(t *testing.T) {

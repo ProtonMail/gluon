@@ -1,10 +1,11 @@
 package store
 
 import (
-	"github.com/ProtonMail/gluon/imap"
 	"io"
 	"sync"
 	"sync/atomic"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 type syncRef struct {

@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io"
 	"mime/quotedprintable"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Section struct {

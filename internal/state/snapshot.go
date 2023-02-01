@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"github.com/ProtonMail/gluon/reporter"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -11,6 +10,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/bradenaw/juniper/xslices"
 )
 

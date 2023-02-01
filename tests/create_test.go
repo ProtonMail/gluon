@@ -2,9 +2,9 @@ package tests
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap"
 	"testing"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"
 )

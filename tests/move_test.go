@@ -3,14 +3,14 @@ package tests
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/connector"
-	goimap "github.com/emersion/go-imap"
-	"github.com/emersion/go-imap/client"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
+	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
+	goimap "github.com/emersion/go-imap"
+	"github.com/emersion/go-imap/client"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMove(t *testing.T) {

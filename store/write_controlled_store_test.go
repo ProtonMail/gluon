@@ -2,10 +2,11 @@ package store
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/imap"
-	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
+
+	"github.com/ProtonMail/gluon/imap"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWriteControlledStore(t *testing.T) {

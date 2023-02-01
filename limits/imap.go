@@ -3,8 +3,9 @@ package limits
 import (
 	"errors"
 	"fmt"
-	"github.com/ProtonMail/gluon/imap"
 	"math"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 // IMAP contains configurable upper limits that can be enforced by the Gluon server.
