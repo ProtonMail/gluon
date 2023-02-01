@@ -217,8 +217,7 @@ func (conn *Dummy) MessageDeleted(messageID imap.MessageID) error {
 }
 
 func (conn *Dummy) UIDValidityBumped() {
-	conn.uidValidity += 1
-	conn.pushUpdate(imap.NewUIDValidityBumped(conn.uidValidity))
+	conn.pushUpdate(imap.NewUIDValidityBumped())
 }
 
 func (conn *Dummy) Flush() {

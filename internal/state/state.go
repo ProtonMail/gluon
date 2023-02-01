@@ -208,7 +208,12 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 }
 
 func (state *State) Create(ctx context.Context, name string) error {
-	if err := state.imapLimits.CheckUIDValidity(state.user.GetGlobalUIDValidity()); err != nil {
+	uidValidity, err := state.user.GenerateUIDValidity()
+	if err != nil {
+		return err
+	}
+
+	if err := state.imapLimits.CheckUIDValidity(uidValidity); err != nil {
 		return err
 	}
 
@@ -266,7 +271,7 @@ func (state *State) Create(ctx context.Context, name string) error {
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, mboxName := range mboxesToCreate {
-			if err := state.actionCreateMailbox(ctx, tx, mboxName); err != nil {
+			if err := state.actionCreateMailbox(ctx, tx, mboxName, uidValidity); err != nil {
 				return err
 			}
 		}
@@ -344,12 +349,17 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, m := range result.MBoxesToCreate {
+			uidValidity, err := state.user.GenerateUIDValidity()
+			if err != nil {
+				return err
+			}
+
 			res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(m, state.delimiter))
 			if err != nil {
 				return err
 			}
 
-			if err := db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, state.user.GetGlobalUIDValidity()); err != nil {
+			if err := db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, uidValidity); err != nil {
 				return err
 			}
 		}
@@ -585,7 +595,12 @@ func (state *State) markInvalid() {
 
 // renameInbox creates a new mailbox and moves everything there.
 func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mailbox, newName string) error {
-	mbox, err := state.actionCreateAndGetMailbox(ctx, tx, newName)
+	uidValidity, err := state.user.GenerateUIDValidity()
+	if err != nil {
+		return err
+	}
+
+	mbox, err := state.actionCreateAndGetMailbox(ctx, tx, newName, uidValidity)
 	if err != nil {
 		return err
 	}

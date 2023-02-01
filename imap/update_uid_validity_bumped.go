@@ -6,18 +6,14 @@ type UIDValidityBumped struct {
 	updateBase
 
 	*updateWaiter
-
-	UIDValidity UID
 }
 
-func NewUIDValidityBumped(validity UID) *UIDValidityBumped {
+func NewUIDValidityBumped() *UIDValidityBumped {
 	return &UIDValidityBumped{
 		updateWaiter: newUpdateWaiter(),
-
-		UIDValidity: validity,
 	}
 }
 
 func (u *UIDValidityBumped) String() string {
-	return fmt.Sprintf("UIDValidityBumped: %v", u.UIDValidity)
+	return fmt.Sprintf("UIDValidityBumped")
 }

@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"fmt"
+	"github.com/ProtonMail/gluon/imap"
 	"testing"
 
 	"github.com/emersion/go-imap/client"
@@ -107,16 +109,23 @@ func TestEnsureNewMailboxWithDeletedNameHasGreaterId(t *testing.T) {
 }
 
 func TestCreate_UIDValidity_Bumped(t *testing.T) {
-	runServer(t, defaultServerOptions(t), func(s *testSession) {
+	uidValidityGenerator := imap.NewIncrementalUIDValidityGenerator()
+	runServer(t, defaultServerOptions(t, withUIDValidityGenerator(uidValidityGenerator)), func(s *testSession) {
+
+		currentUIDValidity := uidValidityGenerator.GetValue()
+
 		// Create some mailboxes; they'll have the initial UID validity of 1.
 		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
 			c.C("tag create a").OK("tag")
 			c.C("tag create b").OK("tag")
 			c.C("tag create c").OK("tag")
 
-			c.C("tag select a").Sxe("UIDVALIDITY 1").OK("tag")
-			c.C("tag select b").Sxe("UIDVALIDITY 1").OK("tag")
-			c.C("tag select c").Sxe("UIDVALIDITY 1").OK("tag")
+			currentUIDValidity++
+			c.C("tag select a").Sxe(fmt.Sprintf("UIDVALIDITY %v", currentUIDValidity)).OK("tag")
+			currentUIDValidity++
+			c.C("tag select b").Sxe(fmt.Sprintf("UIDVALIDITY %v", currentUIDValidity)).OK("tag")
+			currentUIDValidity++
+			c.C("tag select c").Sxe(fmt.Sprintf("UIDVALIDITY %v", currentUIDValidity)).OK("tag")
 		})
 
 		// Delete the mailboxes.
@@ -130,9 +139,12 @@ func TestCreate_UIDValidity_Bumped(t *testing.T) {
 			c.C("tag create b").OK("tag")
 			c.C("tag create c").OK("tag")
 
-			c.C("tag select a").Sxe("UIDVALIDITY 2").OK("tag")
-			c.C("tag select b").Sxe("UIDVALIDITY 2").OK("tag")
-			c.C("tag select c").Sxe("UIDVALIDITY 2").OK("tag")
+			currentUIDValidity++
+			c.C("tag select a").Sxe(fmt.Sprintf("UIDVALIDITY %v", currentUIDValidity)).OK("tag")
+			currentUIDValidity++
+			c.C("tag select b").Sxe(fmt.Sprintf("UIDVALIDITY %v", currentUIDValidity)).OK("tag")
+			currentUIDValidity++
+			c.C("tag select c").Sxe(fmt.Sprintf("UIDVALIDITY %v", currentUIDValidity)).OK("tag")
 		})
 
 		// Bump the global UID validity.
@@ -143,9 +155,12 @@ func TestCreate_UIDValidity_Bumped(t *testing.T) {
 
 		// The mailboxes should all have a new UID validity.
 		s.withConnection(s.options.defaultUsername(), func(c *testConnection) {
-			c.C("tag select a").Sxe("UIDVALIDITY 3").OK("tag")
-			c.C("tag select b").Sxe("UIDVALIDITY 3").OK("tag")
-			c.C("tag select c").Sxe("UIDVALIDITY 3").OK("tag")
+			currentUIDValidity = 14
+			c.C("tag select a").Sxe(fmt.Sprintf("UIDVALIDITY %v", currentUIDValidity)).OK("tag")
+			currentUIDValidity++
+			c.C("tag select b").Sxe(fmt.Sprintf("UIDVALIDITY %v", currentUIDValidity)).OK("tag")
+			currentUIDValidity++
+			c.C("tag select c").Sxe(fmt.Sprintf("UIDVALIDITY %v", currentUIDValidity)).OK("tag")
 		})
 	})
 }

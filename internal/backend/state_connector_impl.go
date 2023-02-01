@@ -124,10 +124,6 @@ func (sc *stateConnectorImpl) SetMessagesFlagged(ctx context.Context, messageIDs
 	return sc.connector.MarkMessagesFlagged(ctx, messageIDs, flagged)
 }
 
-func (sc *stateConnectorImpl) SetUIDValidity(uidValidity imap.UID) error {
-	return sc.connector.SetUIDValidity(uidValidity)
-}
-
 func (sc *stateConnectorImpl) IsMailboxVisible(ctx context.Context, id imap.MailboxID) bool {
 	return sc.connector.IsMailboxVisible(ctx, id)
 }

@@ -56,9 +56,6 @@ type Dummy struct {
 	// hiddenMailboxes holds mailboxes that are hidden from the user.
 	hiddenMailboxes map[imap.MailboxID]struct{}
 
-	// uidValidity holds the global UID validity.
-	uidValidity imap.UID
-
 	allowMessageCreateWithUnknownMailboxID bool
 
 	updatesAllowedToFail int32
@@ -76,7 +73,6 @@ func NewDummy(usernames []string, password []byte, period time.Duration, flags, 
 		updateQuitCh:    make(chan struct{}),
 		ticker:          ticker.New(period),
 		hiddenMailboxes: make(map[imap.MailboxID]struct{}),
-		uidValidity:     1,
 	}
 
 	go func() {
@@ -264,16 +260,6 @@ func (conn *Dummy) MarkMessagesFlagged(ctx context.Context, messageIDs []imap.Me
 			conn.state.isFlagged(messageID),
 		))
 	}
-
-	return nil
-}
-
-func (conn *Dummy) GetUIDValidity() imap.UID {
-	return conn.uidValidity
-}
-
-func (conn *Dummy) SetUIDValidity(newUIDValidity imap.UID) error {
-	conn.uidValidity = newUIDValidity
 
 	return nil
 }

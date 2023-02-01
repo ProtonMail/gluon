@@ -64,8 +64,8 @@ func NewIMAPLimits(maxMailboxCount uint32, maxMessageCount uint32, maxUID imap.U
 	return IMAP{
 		maxMailboxCount:           int(maxMailboxCount),
 		maxMessageCountPerMailbox: int(maxMessageCount),
-		maxUIDValidity:            int(maxUID),
-		maxUID:                    int(maxUIDValidity),
+		maxUIDValidity:            int(maxUIDValidity),
+		maxUID:                    int(maxUID),
 	}
 }
 

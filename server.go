@@ -6,18 +6,18 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/ProtonMail/gluon/imap"
 	"io"
 	"net"
 	"sync"
 	"time"
 
-	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/logging"
-
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/session"
+	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
@@ -85,6 +85,8 @@ type Server struct {
 
 	// disableParallelism indicates whether the server is allowed to parallelize certain IMAP commands.
 	disableParallelism bool
+
+	uidValidityGenerator imap.UIDValidityGenerator
 }
 
 // New creates a new server with the given options.
@@ -120,7 +122,7 @@ func (s *Server) AddUser(ctx context.Context, conn connector.Connector, passphra
 func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, passphrase []byte) (bool, error) {
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 
-	isNew, err := s.backend.AddUser(ctx, userID, conn, passphrase)
+	isNew, err := s.backend.AddUser(ctx, userID, conn, passphrase, s.uidValidityGenerator)
 	if err != nil {
 		return false, fmt.Errorf("failed to add user: %w", err)
 	}

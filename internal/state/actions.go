@@ -18,7 +18,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, name string) (*ent.Mailbox, error) {
+func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, name string, uidValidity imap.UID) (*ent.Mailbox, error) {
 	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 			res.Flags,
 			res.PermanentFlags,
 			res.Attributes,
-			state.user.GetGlobalUIDValidity(),
+			uidValidity,
 		)
 		if err != nil {
 			return nil, err
@@ -50,13 +50,13 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 	return db.GetMailboxByRemoteID(ctx, tx.Client(), res.ID)
 }
 
-func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name string) error {
+func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name string, uidValidity imap.UID) error {
 	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
 	if err != nil {
 		return err
 	}
 
-	return db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, state.user.GetGlobalUIDValidity())
+	return db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, uidValidity)
 }
 
 func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID ids.MailboxIDPair) error {
@@ -64,17 +64,8 @@ func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 		return err
 	}
 
-	newUIDValidity, err := db.DeleteMailboxWithRemoteID(ctx, tx, mboxID.RemoteID, state.user.GetGlobalUIDValidity())
-	if err != nil {
+	if err := db.DeleteMailboxWithRemoteID(ctx, tx, mboxID.RemoteID); err != nil {
 		return err
-	}
-
-	if newUIDValidity != state.user.GetGlobalUIDValidity() {
-		state.user.SetGlobalUIDValidity(newUIDValidity)
-
-		if err := state.user.GetRemote().SetUIDValidity(newUIDValidity); err != nil {
-			return err
-		}
 	}
 
 	return state.user.QueueOrApplyStateUpdate(ctx, tx, NewMailboxDeletedStateUpdate(mboxID.InternalID))

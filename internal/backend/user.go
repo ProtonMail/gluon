@@ -37,11 +37,11 @@ type user struct {
 	updateWG     sync.WaitGroup
 	updateQuitCh chan struct{}
 
-	globalUIDValidity imap.UID
-
 	recoveryMailboxID imap.InternalMailboxID
 
 	imapLimits limits.IMAP
+
+	uidValidityGenerator imap.UIDValidityGenerator
 }
 
 func newUser(
@@ -52,6 +52,7 @@ func newUser(
 	st store.Store,
 	delimiter string,
 	imapLimits limits.IMAP,
+	uidValidityGenerator imap.UIDValidityGenerator,
 ) (*user, error) {
 	if err := database.Init(ctx); err != nil {
 		return nil, err
@@ -59,6 +60,11 @@ func newUser(
 
 	// Create recovery mailbox if it does not exist
 	recoveryMBox, err := db.WriteResult(ctx, database, func(ctx context.Context, tx *ent.Tx) (*ent.Mailbox, error) {
+		uidValidity, err := uidValidityGenerator.Generate()
+		if err != nil {
+			return nil, err
+		}
+
 		mboxFlags := imap.NewFlagSet(imap.FlagSeen, imap.FlagFlagged, imap.FlagDeleted)
 		mbox := imap.Mailbox{
 			ID:             ids.GluonInternalRecoveryMailboxRemoteID,
@@ -68,7 +74,7 @@ func newUser(
 			Attributes:     imap.NewFlagSet(imap.AttrNoInferiors),
 		}
 
-		return db.GetOrCreateMailbox(ctx, tx, mbox, delimiter, conn.GetUIDValidity())
+		return db.GetOrCreateMailbox(ctx, tx, mbox, delimiter, uidValidity)
 	})
 	if err != nil {
 		return nil, err
@@ -84,13 +90,14 @@ func newUser(
 
 		db: database,
 
-		states:            make(map[state.StateID]*state.State),
-		updateQuitCh:      make(chan struct{}),
-		globalUIDValidity: conn.GetUIDValidity(),
+		states:       make(map[state.StateID]*state.State),
+		updateQuitCh: make(chan struct{}),
 
 		recoveryMailboxID: recoveryMBox.ID,
 
 		imapLimits: imapLimits,
+
+		uidValidityGenerator: uidValidityGenerator,
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
