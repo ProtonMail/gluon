@@ -28,6 +28,11 @@ func (s *Session) handleLogin(ctx context.Context, tag string, cmd *proto.Login,
 
 	state, err := s.backend.GetState(ctx, cmd.GetUsername(), cmd.GetPassword(), s.sessionID)
 	if err != nil {
+		s.eventCh <- events.LoginFailed{
+			SessionID: s.sessionID,
+			Username:  cmd.GetUsername(),
+		}
+
 		return err
 	}
 
