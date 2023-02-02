@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/wait"
 	"github.com/stretchr/testify/require"
 )
@@ -112,7 +113,7 @@ func TestLoginTooManyAttemps(t *testing.T) {
 	})
 }
 
-func TestLoginTooManyAttempsMany(t *testing.T) {
+func TestLoginTooManyAttemptsMany(t *testing.T) {
 	runManyToOneTest(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		// 3 attempts.
 		c[1].C("A001 login user badpass").NO("A001")
@@ -133,6 +134,24 @@ func TestLoginTooManyAttempsMany(t *testing.T) {
 		}
 
 		wg.Wait()
+	})
+}
+
+func TestLoginEvents(t *testing.T) {
+	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		require.IsType(t, events.UserAdded{}, <-s.eventCh)
+		require.IsType(t, events.ListenerAdded{}, <-s.eventCh)
+		require.IsType(t, events.SessionAdded{}, <-s.eventCh)
+
+		c.C("A001 login baduser badpass").NO("A001")
+		failedEvent, ok := (<-s.eventCh).(events.LoginFailed)
+		require.True(t, ok)
+		require.Equal(t, failedEvent.Username, "baduser")
+
+		c.C("A002 login user pass").OK("A002")
+		loginEvent, ok := (<-s.eventCh).(events.Login)
+		require.True(t, ok)
+		require.Equal(t, loginEvent.UserID, s.userIDs["user"])
 	})
 }
 
