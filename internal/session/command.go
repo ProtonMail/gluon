@@ -5,10 +5,10 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"unicode/utf8"
 
 	"github.com/bradenaw/juniper/xslices"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
 
 	"github.com/ProtonMail/gluon/internal/parser/proto"
@@ -74,6 +74,7 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 			} else if cmd.GetStartTLS() != nil {
 				// TLS needs to be handled here to ensure that next command read is over the TLS connection.
 				if err = s.handleStartTLS(tag, cmd.GetStartTLS()); err != nil {
+					logrus.WithError(err).Error("Cannot upgrade connection")
 					return
 				} else {
 					continue
