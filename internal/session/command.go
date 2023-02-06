@@ -74,7 +74,7 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 			} else if cmd.GetStartTLS() != nil {
 				// TLS needs to be handled here to ensure that next command read is over the TLS connection.
 				if err = s.handleStartTLS(tag, cmd.GetStartTLS()); err != nil {
-					logrus.WithError(err).Error("Cannot update connection")
+					logrus.WithError(err).Error("Cannot upgrade connection")
 					return
 				} else {
 					continue
