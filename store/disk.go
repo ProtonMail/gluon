@@ -221,7 +221,7 @@ func (c *onDiskStore) Delete(messageIDs ...imap.InternalMessageID) error {
 	}
 
 	for _, messageID := range messageIDs {
-		if err := os.RemoveAll(filepath.Join(c.path, messageID.String())); err != nil {
+		if err := os.Remove(filepath.Join(c.path, messageID.String())); err != nil {
 			return err
 		}
 	}
