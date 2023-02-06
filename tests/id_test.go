@@ -3,6 +3,7 @@ package tests
 import (
 	"testing"
 
+	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/stretchr/testify/require"
@@ -38,5 +39,15 @@ func TestIdContextLookup(t *testing.T) {
 		wantID := imap.NewIMAPIDFromKeyMap(map[string]string{"foo": "bar"})
 
 		require.Equal(t, wantID, s.conns[s.userIDs["user"]].GetLastRecordedIMAPID())
+	})
+}
+
+func TestIdEvent(t *testing.T) {
+	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		c.C(`A001 ID ("name" "foo" "version" "bar")`).OK(`A001`)
+
+		imapID := getEvent[events.IMAPID](s.eventCh).IMAPID
+		require.Equal(t, "foo", imapID.Name)
+		require.Equal(t, "bar", imapID.Version)
 	})
 }
