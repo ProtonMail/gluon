@@ -53,8 +53,8 @@ type Dummy struct {
 	queue     []imap.Update
 	queueLock sync.Mutex
 
-	// hiddenMailboxes holds mailboxes that are hidden from the user.
-	hiddenMailboxes map[imap.MailboxID]struct{}
+	// hiddenMailboxes holds the visibility status of the mailboxes. Mailboxes not listed are considered visible.
+	mailboxVisibilities map[imap.MailboxID]imap.MailboxVisibility
 
 	allowMessageCreateWithUnknownMailboxID bool
 
@@ -63,16 +63,16 @@ type Dummy struct {
 
 func NewDummy(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
 	conn := &Dummy{
-		state:           newDummyState(flags, permFlags, attrs),
-		usernames:       usernames,
-		password:        password,
-		flags:           flags,
-		permFlags:       permFlags,
-		attrs:           attrs,
-		updateCh:        make(chan imap.Update, constants.ChannelBufferCount),
-		updateQuitCh:    make(chan struct{}),
-		ticker:          ticker.New(period),
-		hiddenMailboxes: make(map[imap.MailboxID]struct{}),
+		state:               newDummyState(flags, permFlags, attrs),
+		usernames:           usernames,
+		password:            password,
+		flags:               flags,
+		permFlags:           permFlags,
+		attrs:               attrs,
+		updateCh:            make(chan imap.Update, constants.ChannelBufferCount),
+		updateQuitCh:        make(chan struct{}),
+		ticker:              ticker.New(period),
+		mailboxVisibilities: make(map[imap.MailboxID]imap.MailboxVisibility),
 	}
 
 	go func() {
@@ -316,18 +316,17 @@ func (conn *Dummy) ClearUpdates() {
 	conn.popUpdates()
 }
 
-func (conn *Dummy) IsMailboxVisible(_ context.Context, id imap.MailboxID) bool {
-	_, ok := conn.hiddenMailboxes[id]
+func (conn *Dummy) GetMailboxVisibility(_ context.Context, id imap.MailboxID) imap.MailboxVisibility {
+	visibility, ok := conn.mailboxVisibilities[id]
+	if !ok {
+		return imap.Visible
+	}
 
-	return !ok
+	return visibility
 }
 
-func (conn *Dummy) SetMailboxVisible(id imap.MailboxID, visible bool) {
-	if !visible {
-		conn.hiddenMailboxes[id] = struct{}{}
-	} else {
-		delete(conn.hiddenMailboxes, id)
-	}
+func (conn *Dummy) SetMailboxVisibility(id imap.MailboxID, visibility imap.MailboxVisibility) {
+	conn.mailboxVisibilities[id] = visibility
 }
 
 func (conn *Dummy) pushUpdate(update imap.Update) {

@@ -19,8 +19,8 @@ type Connector interface {
 	// Note: this can get called from different go routines.
 	GetMessageLiteral(ctx context.Context, id imap.MessageID) ([]byte, error)
 
-	// IsMailboxVisible can be used to hide mailboxes from connected clients.
-	IsMailboxVisible(ctx context.Context, mboxID imap.MailboxID) bool
+	// GetMailboxVisibility can be used to retrieve the visibility of mailboxes for connected clients.
+	GetMailboxVisibility(ctx context.Context, mboxID imap.MailboxID) imap.MailboxVisibility
 
 	// UpdateMailboxName sets the name of the mailbox with the given ID.
 	UpdateMailboxName(ctx context.Context, mboxID imap.MailboxID, newName []string) error

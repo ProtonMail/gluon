@@ -143,10 +143,10 @@ func TestLsubWithHiddenMailbox(t *testing.T) {
 
 		{
 			connector := s.conns[s.userIDs["user"]]
-			connector.SetMailboxVisible(m1, false)
-			connector.SetMailboxVisible(m2, false)
-			connector.SetMailboxVisible(m3, false)
-			connector.SetMailboxVisible(m4, false)
+			connector.SetMailboxVisibility(m1, imap.Hidden)
+			connector.SetMailboxVisibility(m2, imap.Hidden)
+			connector.SetMailboxVisibility(m3, imap.Hidden)
+			connector.SetMailboxVisibility(m4, imap.HiddenIfEmpty)
 		}
 
 		{
