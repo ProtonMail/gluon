@@ -73,6 +73,6 @@ type Connector interface {
 	// SetMessagesFlagged marks the message with the given ID as seen or unseen.
 	SetMessagesFlagged(ctx context.Context, messageIDs []imap.MessageID, flagged bool) error
 
-	// IsMailboxVisible checks whether a mailbox is visible to a client.
-	IsMailboxVisible(ctx context.Context, id imap.MailboxID) bool
+	// GetMailboxVisibility retrieves the visibility status of a mailbox for a client.
+	GetMailboxVisibility(ctx context.Context, id imap.MailboxID) imap.MailboxVisibility
 }

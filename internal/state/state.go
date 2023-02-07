@@ -97,7 +97,22 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 				return false
 			}
 
-			return state.user.GetRemote().IsMailboxVisible(ctx, mailbox.RemoteID)
+			switch visibility := state.user.GetRemote().GetMailboxVisibility(ctx, mailbox.RemoteID); visibility {
+			case imap.Hidden:
+				return false
+			case imap.Visible:
+				return true
+			case imap.HiddenIfEmpty:
+				count, err := db.GetMailboxMessageCount(ctx, client, mailbox.ID)
+				if err != nil {
+					logrus.WithError(err).Error("Failed to get recovery mailbox message count, assuming not empty")
+					return true
+				}
+				return count > 0
+			default:
+				logrus.Errorf("Unknown IMAP Mailbox visibility %v", visibility)
+				return true
+			}
 		})
 
 		var deletedSubscriptions map[imap.MailboxID]*ent.DeletedSubscription
@@ -126,7 +141,7 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 		if subscribed {
 			// Insert any remaining mailboxes that have been deleted but are still subscribed.
 			for _, s := range deletedSubscriptions {
-				if !state.user.GetRemote().IsMailboxVisible(ctx, s.RemoteID) {
+				if state.user.GetRemote().GetMailboxVisibility(ctx, s.RemoteID) != imap.Visible {
 					continue
 				}
 

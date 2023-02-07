@@ -124,8 +124,8 @@ func (sc *stateConnectorImpl) SetMessagesFlagged(ctx context.Context, messageIDs
 	return sc.connector.MarkMessagesFlagged(ctx, messageIDs, flagged)
 }
 
-func (sc *stateConnectorImpl) IsMailboxVisible(ctx context.Context, id imap.MailboxID) bool {
-	return sc.connector.IsMailboxVisible(ctx, id)
+func (sc *stateConnectorImpl) GetMailboxVisibility(ctx context.Context, id imap.MailboxID) imap.MailboxVisibility {
+	return sc.connector.GetMailboxVisibility(ctx, id)
 }
 
 func (sc *stateConnectorImpl) getMetadataValue(key string) any {

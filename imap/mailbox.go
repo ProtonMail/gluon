@@ -9,3 +9,11 @@ type Mailbox struct {
 }
 
 const Inbox = "INBOX"
+
+type MailboxVisibility int
+
+const (
+	Hidden MailboxVisibility = iota
+	Visible
+	HiddenIfEmpty
+)

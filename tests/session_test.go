@@ -31,7 +31,7 @@ type Connector interface {
 
 	MailboxCreated(imap.Mailbox) error
 	MailboxDeleted(imap.MailboxID) error
-	SetMailboxVisible(imap.MailboxID, bool)
+	SetMailboxVisibility(imap.MailboxID, imap.MailboxVisibility)
 
 	SetAllowMessageCreateWithUnknownMailboxID(value bool)
 
