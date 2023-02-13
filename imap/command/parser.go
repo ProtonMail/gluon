@@ -27,6 +27,7 @@ func NewParserWithLiteralContinuationCb(s *parser.Scanner, cb func() error) *Par
 		commands: map[string]Builder{
 			"list":   &ListCommandParser{},
 			"append": &AppendCommandParser{},
+			"search": &SearchCommandParser{},
 		},
 	}
 }
@@ -90,10 +91,6 @@ func (p *Parser) parseCommand() (Payload, error) {
 	}
 
 	p.lastCmd = string(commandBytes)
-
-	if err := p.parser.Consume(parser.TokenTypeSP, "expected space after command"); err != nil {
-		return nil, err
-	}
 
 	builder, ok := p.commands[p.lastCmd]
 	if !ok {
