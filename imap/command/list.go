@@ -22,6 +22,10 @@ type ListCommandParser struct{}
 
 func (ListCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 	// list            = "LIST" SP mailbox SP list-mailbox
+	if err := p.Consume(parser.TokenTypeSP, "expected space after command"); err != nil {
+		return nil, err
+	}
+
 	mailbox, err := p.ParseMailbox()
 	if err != nil {
 		return nil, err

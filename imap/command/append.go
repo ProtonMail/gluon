@@ -37,6 +37,10 @@ func (l AppendCommand) HasDateTime() bool {
 type AppendCommandParser struct{}
 
 func (AppendCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+	if err := p.Consume(parser.TokenTypeSP, "expected space after command"); err != nil {
+		return nil, err
+	}
+
 	mailbox, err := p.ParseMailbox()
 	if err != nil {
 		return nil, err

@@ -169,3 +169,50 @@ func ParseTime(p *parser.Parser) (int, int, int, error) {
 
 	return hour, min, sec, nil
 }
+
+func ParseDate(p *parser.Parser) (time.Time, error) {
+	hasQuotes, err := p.Matches(parser.TokenTypeDQuote)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	date, err := ParseDateText(p)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	if hasQuotes {
+		if err := p.Consume(parser.TokenTypeDQuote, `expected closing "`); err != nil {
+			return time.Time{}, err
+		}
+	}
+
+	return date, nil
+}
+
+func ParseDateText(p *parser.Parser) (time.Time, error) {
+	day, err := p.ParseNumberN(2)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	if err := p.Consume(parser.TokenTypeMinus, "expected - after year"); err != nil {
+		return time.Time{}, err
+	}
+
+	month, err := ParseDateMonth(p)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	if err := p.Consume(parser.TokenTypeMinus, "expected - after month"); err != nil {
+		return time.Time{}, err
+	}
+
+	year, err := ParseDateYear(p)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC), nil
+}

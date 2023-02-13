@@ -18,6 +18,14 @@ func toIMAPLine(string ...string) []byte {
 	return result
 }
 
+func testParseCommand(lines ...string) (Command, error) {
+	input := toIMAPLine(lines...)
+	s := parser.NewScanner(bytes.NewReader(input))
+	p := NewParser(s)
+
+	return p.Parse()
+}
+
 func TestParser_InvalidTag(t *testing.T) {
 	input := []byte(`+tag LIST "" "*"`)
 	s := parser.NewScanner(bytes.NewReader(input))
