@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type StartTLSCommand struct{}
@@ -17,6 +17,6 @@ func (l StartTLSCommand) SanitizedString() string {
 
 type StartTLSCommandParser struct{}
 
-func (StartTLSCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (StartTLSCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	return &StartTLSCommand{}, nil
 }

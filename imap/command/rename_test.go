@@ -2,14 +2,14 @@ package command
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestParser_RenameCommand(t *testing.T) {
 	input := toIMAPLine(`tag RENAME Foo Bar`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "tag", Payload: &RenameCommand{

@@ -2,15 +2,15 @@ package command
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/imap/parser"
 	cppParser "github.com/ProtonMail/gluon/internal/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestParser_ListCommandQuoted(t *testing.T) {
 	input := toIMAPLine(`tag LIST "" "*"`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "tag", Payload: &ListCommand{
@@ -27,7 +27,7 @@ func TestParser_ListCommandQuoted(t *testing.T) {
 
 func TestParser_ListCommandSpecialAsterisk(t *testing.T) {
 	input := toIMAPLine(`tag LIST "foo" *`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "tag", Payload: &ListCommand{
@@ -44,7 +44,7 @@ func TestParser_ListCommandSpecialAsterisk(t *testing.T) {
 
 func TestParser_ListCommandSpecialPercentage(t *testing.T) {
 	input := toIMAPLine(`tag LIST "bar" %`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "tag", Payload: &ListCommand{
@@ -61,7 +61,7 @@ func TestParser_ListCommandSpecialPercentage(t *testing.T) {
 
 func TestParser_ListCommandLiteral(t *testing.T) {
 	input := toIMAPLine(`tag LIST {5}`, `"bar" %`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	continuationCalled := false
 	p := NewParserWithLiteralContinuationCb(s, func() error {
 		continuationCalled = true
@@ -84,7 +84,7 @@ func BenchmarkParser_ListCommand(b *testing.B) {
 	input := toIMAPLine(`tag LIST "bar" %`)
 
 	for i := 0; i < b.N; i++ {
-		s := parser.NewScanner(bytes.NewReader(input))
+		s := rfcparser.NewScanner(bytes.NewReader(input))
 		p := NewParser(s)
 
 		_, err := p.Parse()

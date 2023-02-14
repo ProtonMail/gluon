@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type CapabilityCommand struct{}
@@ -17,6 +17,6 @@ func (l CapabilityCommand) SanitizedString() string {
 
 type CapabilityCommandParser struct{}
 
-func (CapabilityCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (CapabilityCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	return &CapabilityCommand{}, nil
 }

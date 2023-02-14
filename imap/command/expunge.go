@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type ExpungeCommand struct{}
@@ -17,6 +17,6 @@ func (l ExpungeCommand) SanitizedString() string {
 
 type ExpungeCommandParser struct{}
 
-func (ExpungeCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (ExpungeCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	return &ExpungeCommand{}, nil
 }

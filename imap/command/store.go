@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 )
 
 type StoreAction int
@@ -48,12 +48,12 @@ func (s StoreCommand) SanitizedString() string {
 
 type StoreCommandParser struct{}
 
-func (StoreCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (StoreCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	//nolint:dupword
 	// store           = "STORE" SP sequence-set SP store-att-flags
 	// store-att-flags = (["+" / "-"] "FLAGS" [".SILENT"]) SP
 	//                  (flag-list / (flag *(SP flag)))
-	if err := p.Consume(parser.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
@@ -62,16 +62,16 @@ func (StoreCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	if err := p.Consume(parser.TokenTypeSP, "expected space after sequence set"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after sequence set"); err != nil {
 		return nil, err
 	}
 
 	var action StoreAction
 
-	if ok, err := p.Matches(parser.TokenTypePlus); err != nil {
+	if ok, err := p.Matches(rfcparser2.TokenTypePlus); err != nil {
 		return nil, err
 	} else if !ok {
-		if ok, err := p.Matches(parser.TokenTypeMinus); err != nil {
+		if ok, err := p.Matches(rfcparser2.TokenTypeMinus); err != nil {
 			return nil, err
 		} else if ok {
 			action = StoreActionRemFlags
@@ -88,7 +88,7 @@ func (StoreCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 
 	var silent bool
 
-	if ok, err := p.Matches(parser.TokenTypePeriod); err != nil {
+	if ok, err := p.Matches(rfcparser2.TokenTypePeriod); err != nil {
 		return nil, err
 	} else if ok {
 		if err := p.ConsumeBytesFold('S', 'I', 'L', 'E', 'N', 'T'); err != nil {
@@ -98,7 +98,7 @@ func (StoreCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 		silent = true
 	}
 
-	if err := p.Consume(parser.TokenTypeSP, "expected space after FLAGS"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after FLAGS"); err != nil {
 		return nil, err
 	}
 
@@ -115,7 +115,7 @@ func (StoreCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 	}, nil
 }
 
-func parseStoreFlags(p *parser.Parser) ([]string, error) {
+func parseStoreFlags(p *rfcparser2.Parser) ([]string, error) {
 	//                  (flag-list / (flag *(SP flag)))
 	fl, ok, err := TryParseFlagList(p)
 	if err != nil {
@@ -138,7 +138,7 @@ func parseStoreFlags(p *parser.Parser) ([]string, error) {
 
 	// remaining.
 	for {
-		if ok, err := p.Matches(parser.TokenTypeSP); err != nil {
+		if ok, err := p.Matches(rfcparser2.TokenTypeSP); err != nil {
 			return nil, err
 		} else if !ok {
 			break

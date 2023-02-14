@@ -2,7 +2,7 @@ package command
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/encoding/htmlindex"
 	"testing"
@@ -23,7 +23,7 @@ func TestParser_SearchCommandAll(t *testing.T) {
 	}}
 
 	input := toIMAPLine(`tag SEARCH ALL`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	cmd, err := p.Parse()

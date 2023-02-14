@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type NoopCommand struct{}
@@ -17,6 +17,6 @@ func (l NoopCommand) SanitizedString() string {
 
 type NoopCommandParser struct{}
 
-func (NoopCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (NoopCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	return &NoopCommand{}, nil
 }

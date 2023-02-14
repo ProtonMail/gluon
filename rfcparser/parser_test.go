@@ -1,4 +1,4 @@
-package parser
+package rfcparser
 
 import (
 	"bytes"

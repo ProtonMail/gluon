@@ -2,14 +2,14 @@ package command
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestParser_DoneCommand(t *testing.T) {
 	input := toIMAPLine(`DONE`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "", Payload: &DoneCommand{}}
@@ -23,7 +23,7 @@ func TestParser_DoneCommand(t *testing.T) {
 
 func TestParser_DoneCommandAfterTagIsError(t *testing.T) {
 	input := toIMAPLine(`tag DONE`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 	_, err := p.Parse()
 	require.Error(t, err)

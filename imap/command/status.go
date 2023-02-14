@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 	"github.com/bradenaw/juniper/xslices"
 	"strings"
 )
@@ -51,10 +51,10 @@ func (s StatusCommand) SanitizedString() string {
 
 type StatusCommandParser struct{}
 
-func (StatusCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (StatusCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	//status          = "STATUS" SP mailbox SP
 	//                  "(" status-att *(SP status-att) ")"
-	if err := p.Consume(parser.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
@@ -63,11 +63,11 @@ func (StatusCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	if err := p.Consume(parser.TokenTypeSP, "expected space after mailbox"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after mailbox"); err != nil {
 		return nil, err
 	}
 
-	if err := p.Consume(parser.TokenTypeLParen, "expected ( for status attributes start"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeLParen, "expected ( for status attributes start"); err != nil {
 		return nil, err
 	}
 
@@ -85,7 +85,7 @@ func (StatusCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 
 	// Remaining.
 	for {
-		if ok, err := p.Matches(parser.TokenTypeSP); err != nil {
+		if ok, err := p.Matches(rfcparser2.TokenTypeSP); err != nil {
 			return nil, err
 		} else if !ok {
 			break
@@ -99,7 +99,7 @@ func (StatusCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 		attributes = append(attributes, attr)
 	}
 
-	if err := p.Consume(parser.TokenTypeRParen, "expected ) for status attributes end"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeRParen, "expected ) for status attributes end"); err != nil {
 		return nil, err
 	}
 
@@ -109,10 +109,10 @@ func (StatusCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 	}, nil
 }
 
-func parseStatusAttribute(p *parser.Parser) (StatusAttribute, error) {
+func parseStatusAttribute(p *rfcparser2.Parser) (StatusAttribute, error) {
 	//status-att      = "MESSAGES" / "RECENT" / "UIDNEXT" / "UIDVALIDITY" /
 	//                   "UNSEEN"
-	attribute, err := p.CollectBytesWhileMatches(parser.TokenTypeChar)
+	attribute, err := p.CollectBytesWhileMatches(rfcparser2.TokenTypeChar)
 	if err != nil {
 		return 0, err
 	}

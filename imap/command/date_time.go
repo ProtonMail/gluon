@@ -2,13 +2,13 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 	"time"
 )
 
-func ParseDateTime(p *parser.Parser) (time.Time, error) {
+func ParseDateTime(p *rfcparser2.Parser) (time.Time, error) {
 	//  date-time       = DQUOTE date-day-fixed "-" date-month "-" date-year SP time SP zone DQUOTE
-	if err := p.Consume(parser.TokenTypeDQuote, `Expected '"' at start of date time`); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeDQuote, `Expected '"' at start of date time`); err != nil {
 		return time.Time{}, err
 	}
 
@@ -17,7 +17,7 @@ func ParseDateTime(p *parser.Parser) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	if err := p.Consume(parser.TokenTypeMinus, `Expected '-' after date day`); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeMinus, `Expected '-' after date day`); err != nil {
 		return time.Time{}, err
 	}
 
@@ -26,7 +26,7 @@ func ParseDateTime(p *parser.Parser) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	if err := p.Consume(parser.TokenTypeMinus, `Expected '-' after date month`); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeMinus, `Expected '-' after date month`); err != nil {
 		return time.Time{}, err
 	}
 
@@ -35,7 +35,7 @@ func ParseDateTime(p *parser.Parser) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	if err := p.Consume(parser.TokenTypeSP, `Expected space after date year`); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, `Expected space after date year`); err != nil {
 		return time.Time{}, err
 	}
 
@@ -44,7 +44,7 @@ func ParseDateTime(p *parser.Parser) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	if err := p.Consume(parser.TokenTypeSP, `Expected space after date time`); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, `Expected space after date time`); err != nil {
 		return time.Time{}, err
 	}
 
@@ -53,23 +53,23 @@ func ParseDateTime(p *parser.Parser) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	if err := p.Consume(parser.TokenTypeDQuote, `Expected '"' at end of date time`); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeDQuote, `Expected '"' at end of date time`); err != nil {
 		return time.Time{}, err
 	}
 
 	return time.Date(dateYear, dateMonth, dateDay, timeHour, timeMin, timeSec, 0, timeZone), nil
 }
 
-func ParseDateDayFixed(p *parser.Parser) (int, error) {
+func ParseDateDayFixed(p *rfcparser2.Parser) (int, error) {
 	// date-day-fixed  = (SP DIGIT) / 2DIGIT
-	if ok, err := p.Matches(parser.TokenTypeSP); err != nil {
+	if ok, err := p.Matches(rfcparser2.TokenTypeSP); err != nil {
 		return 0, err
 	} else if ok {
-		if err := p.Consume(parser.TokenTypeDigit, "expected digit after space separated date day"); err != nil {
+		if err := p.Consume(rfcparser2.TokenTypeDigit, "expected digit after space separated date day"); err != nil {
 			return 0, err
 		}
 
-		return parser.ByteToInt(p.PreviousToken().Value), nil
+		return rfcparser2.ByteToInt(p.PreviousToken().Value), nil
 	}
 
 	return p.ParseNumberN(2)
@@ -90,11 +90,11 @@ var dateMonthToInt = map[string]time.Month{
 	"Dec": time.December,
 }
 
-func ParseDateMonth(p *parser.Parser) (time.Month, error) {
+func ParseDateMonth(p *rfcparser2.Parser) (time.Month, error) {
 	month := make([]byte, 3)
 
 	for i := 0; i < 3; i++ {
-		if err := p.Consume(parser.TokenTypeChar, "unexpected character for date month"); err != nil {
+		if err := p.Consume(rfcparser2.TokenTypeChar, "unexpected character for date month"); err != nil {
 			return 0, err
 		}
 
@@ -109,17 +109,17 @@ func ParseDateMonth(p *parser.Parser) (time.Month, error) {
 	return v, nil
 }
 
-func ParseDateYear(p *parser.Parser) (int, error) {
+func ParseDateYear(p *rfcparser2.Parser) (int, error) {
 	return p.ParseNumberN(4)
 }
 
-func ParseZone(p *parser.Parser) (*time.Location, error) {
+func ParseZone(p *rfcparser2.Parser) (*time.Location, error) {
 	multiplier := 1
 
-	if ok, err := p.Matches(parser.TokenTypePlus); err != nil {
+	if ok, err := p.Matches(rfcparser2.TokenTypePlus); err != nil {
 		return nil, err
 	} else if !ok {
-		if ok, err := p.Matches(parser.TokenTypeMinus); err != nil {
+		if ok, err := p.Matches(rfcparser2.TokenTypeMinus); err != nil {
 			return nil, err
 		} else if ok {
 			multiplier = -1
@@ -143,13 +143,13 @@ func ParseZone(p *parser.Parser) (*time.Location, error) {
 	return time.FixedZone("zone", zone), nil
 }
 
-func ParseTime(p *parser.Parser) (int, int, int, error) {
+func ParseTime(p *rfcparser2.Parser) (int, int, int, error) {
 	hour, err := p.ParseNumberN(2)
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
-	if err := p.Consume(parser.TokenTypeColon, "expected colon after hour component"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeColon, "expected colon after hour component"); err != nil {
 		return 0, 0, 0, err
 	}
 
@@ -158,7 +158,7 @@ func ParseTime(p *parser.Parser) (int, int, int, error) {
 		return 0, 0, 0, err
 	}
 
-	if err := p.Consume(parser.TokenTypeColon, "expected colon after minute component"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeColon, "expected colon after minute component"); err != nil {
 		return 0, 0, 0, err
 	}
 
@@ -170,8 +170,8 @@ func ParseTime(p *parser.Parser) (int, int, int, error) {
 	return hour, min, sec, nil
 }
 
-func ParseDate(p *parser.Parser) (time.Time, error) {
-	hasQuotes, err := p.Matches(parser.TokenTypeDQuote)
+func ParseDate(p *rfcparser2.Parser) (time.Time, error) {
+	hasQuotes, err := p.Matches(rfcparser2.TokenTypeDQuote)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -182,7 +182,7 @@ func ParseDate(p *parser.Parser) (time.Time, error) {
 	}
 
 	if hasQuotes {
-		if err := p.Consume(parser.TokenTypeDQuote, `expected closing "`); err != nil {
+		if err := p.Consume(rfcparser2.TokenTypeDQuote, `expected closing "`); err != nil {
 			return time.Time{}, err
 		}
 	}
@@ -190,13 +190,13 @@ func ParseDate(p *parser.Parser) (time.Time, error) {
 	return date, nil
 }
 
-func ParseDateText(p *parser.Parser) (time.Time, error) {
+func ParseDateText(p *rfcparser2.Parser) (time.Time, error) {
 	day, err := p.ParseNumberN(2)
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	if err := p.Consume(parser.TokenTypeMinus, "expected - after year"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeMinus, "expected - after year"); err != nil {
 		return time.Time{}, err
 	}
 
@@ -205,7 +205,7 @@ func ParseDateText(p *parser.Parser) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	if err := p.Consume(parser.TokenTypeMinus, "expected - after month"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeMinus, "expected - after month"); err != nil {
 		return time.Time{}, err
 	}
 
