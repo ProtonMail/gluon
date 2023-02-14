@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type LogoutCommand struct{}
@@ -17,6 +17,6 @@ func (l LogoutCommand) SanitizedString() string {
 
 type LogoutCommandParser struct{}
 
-func (LogoutCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (LogoutCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	return &LogoutCommand{}, nil
 }

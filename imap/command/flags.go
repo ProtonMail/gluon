@@ -2,12 +2,12 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 	"strings"
 )
 
-func TryParseFlagList(p *parser.Parser) ([]string, bool, error) {
-	if !p.Check(parser.TokenTypeLParen) {
+func TryParseFlagList(p *rfcparser2.Parser) ([]string, bool, error) {
+	if !p.Check(rfcparser2.TokenTypeLParen) {
 		return nil, false, nil
 	}
 
@@ -16,11 +16,11 @@ func TryParseFlagList(p *parser.Parser) ([]string, bool, error) {
 	return flags, true, err
 }
 
-func ParseFlagList(p *parser.Parser) ([]string, error) {
+func ParseFlagList(p *rfcparser2.Parser) ([]string, error) {
 	// flag-list       = "(" [flag *(SP flag)] ")"
 	var flags []string
 
-	if err := p.Consume(parser.TokenTypeLParen, "Expected '(' at start of flag list"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeLParen, "Expected '(' at start of flag list"); err != nil {
 		return nil, err
 	}
 
@@ -33,7 +33,7 @@ func ParseFlagList(p *parser.Parser) ([]string, error) {
 	}
 
 	for {
-		if ok, err := p.Matches(parser.TokenTypeSP); err != nil {
+		if ok, err := p.Matches(rfcparser2.TokenTypeSP); err != nil {
 			return nil, err
 		} else if !ok {
 			break
@@ -47,14 +47,14 @@ func ParseFlagList(p *parser.Parser) ([]string, error) {
 		flags = append(flags, flag)
 	}
 
-	if err := p.Consume(parser.TokenTypeRParen, "Expected ')' at end of flag list"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeRParen, "Expected ')' at end of flag list"); err != nil {
 		return nil, err
 	}
 
 	return flags, nil
 }
 
-func ParseFlag(p *parser.Parser) (string, error) {
+func ParseFlag(p *rfcparser2.Parser) (string, error) {
 	/*
 	 flag            = "\Answered" / "\Flagged" / "\Deleted" /
 	                   "\Seen" / "\Draft" / flag-keyword / flag-extension
@@ -70,7 +70,7 @@ func ParseFlag(p *parser.Parser) (string, error) {
 
 	 flag-keyword    = atom
 	*/
-	hasBackslash, err := p.Matches(parser.TokenTypeBackslash)
+	hasBackslash, err := p.Matches(rfcparser2.TokenTypeBackslash)
 	if err != nil {
 		return "", err
 	}

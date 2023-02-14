@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 	"github.com/bradenaw/juniper/xslices"
 	"strings"
 	"time"
@@ -40,7 +40,7 @@ func (s SearchCommand) SanitizedString() string {
 
 type SearchCommandParser struct{}
 
-func (scp *SearchCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (scp *SearchCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	//search          = "SEARCH" [SP "CHARSET" SP astring] 1*(SP search-key)
 	//                     ; CHARSET argument to MUST be registered with IANA
 	var keys []SearchKey
@@ -54,7 +54,7 @@ func (scp *SearchCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 	}
 
 	if keyword == "charset" {
-		if err := p.Consume(parser.TokenTypeSP, "expected space after charset"); err != nil {
+		if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after charset"); err != nil {
 			return nil, err
 		}
 
@@ -75,7 +75,7 @@ func (scp *SearchCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 	}
 
 	for {
-		if !p.Check(parser.TokenTypeSP) {
+		if !p.Check(rfcparser2.TokenTypeSP) {
 			break
 		}
 
@@ -97,7 +97,7 @@ func (scp *SearchCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 	}, nil
 }
 
-func parseSearchKey(p *parser.Parser) (SearchKey, error) {
+func parseSearchKey(p *rfcparser2.Parser) (SearchKey, error) {
 	keyword, err := readSearchKeyword(p)
 	if err != nil {
 		return nil, err
@@ -106,12 +106,12 @@ func parseSearchKey(p *parser.Parser) (SearchKey, error) {
 	return handleSearchKey(keyword, p)
 }
 
-func readSearchKeyword(p *parser.Parser) (string, error) {
-	if err := p.Consume(parser.TokenTypeSP, "expected space"); err != nil {
+func readSearchKeyword(p *rfcparser2.Parser) (string, error) {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space"); err != nil {
 		return "", err
 	}
 
-	keyword, err := p.CollectBytesWhileMatches(parser.TokenTypeChar)
+	keyword, err := p.CollectBytesWhileMatches(rfcparser2.TokenTypeChar)
 	if err != nil {
 		return "", err
 	}
@@ -119,7 +119,7 @@ func readSearchKeyword(p *parser.Parser) (string, error) {
 	return strings.ToLower(string(keyword)), nil
 }
 
-func handleSearchKey(keyword string, p *parser.Parser) (SearchKey, error) {
+func handleSearchKey(keyword string, p *rfcparser2.Parser) (SearchKey, error) {
 	/*
 	  search-key      = "ALL" / "ANSWERED" / "BCC" SP astring /
 	                    "BEFORE" SP date / "BODY" SP astring /
@@ -368,32 +368,32 @@ func handleSearchKey(keyword string, p *parser.Parser) (SearchKey, error) {
 	}
 }
 
-func parseStringKeyAString(p *parser.Parser) (string, error) {
-	if err := p.Consume(parser.TokenTypeSP, "expected space"); err != nil {
+func parseStringKeyAString(p *rfcparser2.Parser) (string, error) {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space"); err != nil {
 		return "", err
 	}
 
 	return p.ParseAString()
 }
 
-func parseStringKeyNumber(p *parser.Parser) (int, error) {
-	if err := p.Consume(parser.TokenTypeSP, "expected space"); err != nil {
+func parseStringKeyNumber(p *rfcparser2.Parser) (int, error) {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space"); err != nil {
 		return 0, err
 	}
 
 	return p.ParseNumber()
 }
 
-func parseStringKeyDate(p *parser.Parser) (time.Time, error) {
-	if err := p.Consume(parser.TokenTypeSP, "expected space"); err != nil {
+func parseStringKeyDate(p *rfcparser2.Parser) (time.Time, error) {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space"); err != nil {
 		return time.Time{}, err
 	}
 
 	return ParseDate(p)
 }
 
-func parseStringKeyAtom(p *parser.Parser) (string, error) {
-	if err := p.Consume(parser.TokenTypeSP, "expected space"); err != nil {
+func parseStringKeyAtom(p *rfcparser2.Parser) (string, error) {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space"); err != nil {
 		return "", err
 	}
 

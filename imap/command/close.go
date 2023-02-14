@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type CloseCommand struct{}
@@ -17,6 +17,6 @@ func (l CloseCommand) SanitizedString() string {
 
 type CloseCommandParser struct{}
 
-func (CloseCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (CloseCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	return &CloseCommand{}, nil
 }

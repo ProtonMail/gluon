@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 )
 
 type LoginCommand struct {
@@ -20,11 +20,11 @@ func (l LoginCommand) SanitizedString() string {
 
 type LoginCommandParser struct{}
 
-func (LoginCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (LoginCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	// login           = "LOGIN" SP userid SP password
 	// userid          = astring
 	// password        = astring
-	if err := p.Consume(parser.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
@@ -33,7 +33,7 @@ func (LoginCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	if err := p.Consume(parser.TokenTypeSP, "expected space after userid"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after userid"); err != nil {
 		return nil, err
 	}
 

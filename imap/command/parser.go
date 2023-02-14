@@ -2,29 +2,29 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 	"strings"
 )
 
 type Builder interface {
-	FromParser(p *parser.Parser) (Payload, error)
+	FromParser(p *rfcparser2.Parser) (Payload, error)
 }
 
 // Parser parses IMAP Commands.
 type Parser struct {
-	parser   *parser.Parser
+	parser   *rfcparser2.Parser
 	commands map[string]Builder
 	lastTag  string
 	lastCmd  string
 }
 
-func NewParser(s *parser.Scanner) *Parser {
+func NewParser(s *rfcparser2.Scanner) *Parser {
 	return NewParserWithLiteralContinuationCb(s, nil)
 }
 
-func NewParserWithLiteralContinuationCb(s *parser.Scanner, cb func() error) *Parser {
+func NewParserWithLiteralContinuationCb(s *rfcparser2.Scanner, cb func() error) *Parser {
 	return &Parser{
-		parser: parser.NewParserWithLiteralContinuationCb(s, cb),
+		parser: rfcparser2.NewParserWithLiteralContinuationCb(s, cb),
 		commands: map[string]Builder{
 			"list":        &ListCommandParser{},
 			"append":      &AppendCommandParser{},
@@ -94,7 +94,7 @@ func (p *Parser) Parse() (Command, error) {
 	result.Tag = tag
 	p.lastTag = tag
 
-	if err := p.parser.Consume(parser.TokenTypeSP, "Expected space after tag"); err != nil {
+	if err := p.parser.Consume(rfcparser2.TokenTypeSP, "Expected space after tag"); err != nil {
 		return result, err
 	}
 
@@ -116,10 +116,10 @@ func (p *Parser) parseCommand() (Payload, error) {
 	var commandBytes []byte
 
 	for {
-		if ok, err := p.parser.Matches(parser.TokenTypeChar); err != nil {
+		if ok, err := p.parser.Matches(rfcparser2.TokenTypeChar); err != nil {
 			return nil, err
 		} else if ok {
-			commandBytes = append(commandBytes, parser.ByteToLower(p.parser.PreviousToken().Value))
+			commandBytes = append(commandBytes, rfcparser2.ByteToLower(p.parser.PreviousToken().Value))
 		} else {
 			break
 		}
@@ -137,8 +137,8 @@ func (p *Parser) parseCommand() (Payload, error) {
 
 func (p *Parser) parseTag() (string, error) {
 	// tag             = 1*<any ASTRING-CHAR except "+">
-	isTagChar := func(tt parser.TokenType) bool {
-		return parser.IsAStringChar(tt) && tt != parser.TokenTypePlus
+	isTagChar := func(tt rfcparser2.TokenType) bool {
+		return rfcparser2.IsAStringChar(tt) && tt != rfcparser2.TokenTypePlus
 	}
 
 	if err := p.parser.ConsumeWith(isTagChar, "Invalid tag char detected"); err != nil {

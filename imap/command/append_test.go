@@ -3,8 +3,8 @@ package command
 import (
 	"bytes"
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
 	cppParser "github.com/ProtonMail/gluon/internal/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
@@ -25,7 +25,7 @@ func buildAppendDateTime(year int, month time.Month, day int, hour int, min int,
 
 func TestParser_AppendCommandWithAllFields(t *testing.T) {
 	input := toIMAPLine(`A003 APPEND saved-messages (\Seen) "15-Nov-1984 13:37:01 +0730" {23}`, `My message body is here`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "A003", Payload: &AppendCommand{
@@ -44,7 +44,7 @@ func TestParser_AppendCommandWithAllFields(t *testing.T) {
 
 func TestParser_AppendCommandWithLiteralOnly(t *testing.T) {
 	input := toIMAPLine(`A003 APPEND saved-messages {23}`, `My message body is here`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "A003", Payload: &AppendCommand{
@@ -61,7 +61,7 @@ func TestParser_AppendCommandWithLiteralOnly(t *testing.T) {
 
 func TestParser_AppendCommandWithFlagAndLiteral(t *testing.T) {
 	input := toIMAPLine(`A003 APPEND saved-messages (\Seen) {23}`, `My message body is here`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "A003", Payload: &AppendCommand{
@@ -79,7 +79,7 @@ func TestParser_AppendCommandWithFlagAndLiteral(t *testing.T) {
 
 func TestParser_AppendCommandWithDateTimeAndLiteral(t *testing.T) {
 	input := toIMAPLine(`A003 APPEND saved-messages "15-Nov-1984 13:37:01 +0730" {23}`, `My message body is here`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "A003", Payload: &AppendCommand{
@@ -99,7 +99,7 @@ func TestParser_AppendWithUTF8Literal(t *testing.T) {
 	const literal = `割ゃちとた紀別チノホコ隠面ノネシ披畑つ筋型菊ラ済百チユネ報能げほべえ一王ユサ禁未シムカ学康ほル退今ずはぞゃ宿理古えべにあ。民さぱをだ意宇りう医6通海ヘクヲ点71丈2社つぴげわ中知多ッ場親られ見要クラ著喜栄潟ぼゆラけ。著災ンう三育府能に汁裁ラヤユ哉能ルサレ開30被ちゃ英死オイ教禁能ふてっせ社化選市へす。`
 	input := toIMAPLine(fmt.Sprintf("A003 APPEND saved-messages (\\Seen) {%v}", len(literal)), literal)
 
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "A003", Payload: &AppendCommand{
@@ -117,7 +117,7 @@ func BenchmarkParser_Append(b *testing.B) {
 	input := toIMAPLine(`A003 APPEND saved-messages (\Seen) {23}`, `My message body is here`)
 
 	for i := 0; i < b.N; i++ {
-		s := parser.NewScanner(bytes.NewReader(input))
+		s := rfcparser.NewScanner(bytes.NewReader(input))
 		p := NewParser(s)
 
 		_, err := p.Parse()

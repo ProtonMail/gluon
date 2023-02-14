@@ -2,7 +2,7 @@ package command
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -28,7 +28,7 @@ func TestParseSeqSet(t *testing.T) {
 		},
 	}
 
-	p := parser.NewParser(parser.NewScanner(bytes.NewReader(input)))
+	p := rfcparser2.NewParser(rfcparser2.NewScanner(bytes.NewReader(input)))
 	// Advance at least once to prepare first token.
 	err := p.Advance()
 	require.NoError(t, err)

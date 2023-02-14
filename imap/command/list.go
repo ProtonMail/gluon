@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 )
 
 type ListCommand struct {
@@ -20,9 +20,9 @@ func (l ListCommand) SanitizedString() string {
 
 type ListCommandParser struct{}
 
-func (ListCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (ListCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	// list            = "LIST" SP mailbox SP list-mailbox
-	if err := p.Consume(parser.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
@@ -31,7 +31,7 @@ func (ListCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	if err := p.Consume(parser.TokenTypeSP, "expected space after mailbox"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after mailbox"); err != nil {
 		return nil, err
 	}
 
@@ -46,7 +46,7 @@ func (ListCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 	}, nil
 }
 
-func parseListMailbox(p *parser.Parser) (string, error) {
+func parseListMailbox(p *rfcparser2.Parser) (string, error) {
 	/*
 	  list-mailbox    = 1*list-char / string
 
@@ -54,8 +54,8 @@ func parseListMailbox(p *parser.Parser) (string, error) {
 
 	  list-wildcards  = "%" / "*"
 	*/
-	isListChar := func(tt parser.TokenType) bool {
-		return parser.IsAtomChar(tt) || parser.IsRespSpecial(tt) || tt == parser.TokenTypePercent || tt == parser.TokenTypeAsterisk
+	isListChar := func(tt rfcparser2.TokenType) bool {
+		return rfcparser2.IsAtomChar(tt) || rfcparser2.IsRespSpecial(tt) || tt == rfcparser2.TokenTypePercent || tt == rfcparser2.TokenTypeAsterisk
 	}
 
 	if ok, err := p.MatchesWith(isListChar); err != nil {

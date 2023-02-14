@@ -2,15 +2,15 @@ package command
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/imap/parser"
 	cppParser "github.com/ProtonMail/gluon/internal/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestParser_FetchCommandAll(t *testing.T) {
 	input := toIMAPLine(`tag FETCH 1 ALL`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "tag", Payload: &FetchCommand{
@@ -394,7 +394,7 @@ func BenchmarkParser_Fetch(b *testing.B) {
 	input := toIMAPLine(`tag FETCH 2:4 (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY.PEEK[1.3.TEXT]<50.100>)`)
 
 	for i := 0; i < b.N; i++ {
-		s := parser.NewScanner(bytes.NewReader(input))
+		s := rfcparser.NewScanner(bytes.NewReader(input))
 		p := NewParser(s)
 
 		_, err := p.Parse()

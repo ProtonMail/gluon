@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type UnselectCommand struct{}
@@ -17,6 +17,6 @@ func (l UnselectCommand) SanitizedString() string {
 
 type UnselectCommandParser struct{}
 
-func (UnselectCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (UnselectCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	return &UnselectCommand{}, nil
 }

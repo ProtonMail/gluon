@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 )
 
 type SelectCommand struct {
@@ -19,9 +19,9 @@ func (l SelectCommand) SanitizedString() string {
 
 type SelectCommandParser struct{}
 
-func (SelectCommandParser) FromParser(p *parser.Parser) (Payload, error) {
+func (SelectCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	// select          = "SELECT" SP mailbox
-	if err := p.Consume(parser.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 

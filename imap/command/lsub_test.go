@@ -2,14 +2,14 @@ package command
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/imap/parser"
+	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestParser_LSubCommand(t *testing.T) {
 	input := toIMAPLine(`tag LSUB "" "*"`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "tag", Payload: &LSubCommand{
@@ -26,7 +26,7 @@ func TestParser_LSubCommand(t *testing.T) {
 
 func TestParser_LSubCommandSpecialAsterisk(t *testing.T) {
 	input := toIMAPLine(`tag LSUB "foo" *`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "tag", Payload: &LSubCommand{
@@ -43,7 +43,7 @@ func TestParser_LSubCommandSpecialAsterisk(t *testing.T) {
 
 func TestParser_LSubCommandSpecialPercentage(t *testing.T) {
 	input := toIMAPLine(`tag LSUB "bar" %`)
-	s := parser.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	expected := Command{Tag: "tag", Payload: &LSubCommand{

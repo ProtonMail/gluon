@@ -2,7 +2,7 @@ package command
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/imap/parser"
+	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -14,7 +14,7 @@ func TestParser_ParseFlagList(t *testing.T) {
 	}
 
 	for input, expected := range values {
-		p := parser.NewParser(parser.NewScanner(bytes.NewReader([]byte(input))))
+		p := rfcparser2.NewParser(rfcparser2.NewScanner(bytes.NewReader([]byte(input))))
 		require.NoError(t, p.Advance())
 		v, err := ParseFlagList(p)
 		require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestParser_ParseFlagListInvalid(t *testing.T) {
 		[]byte(`(\Foo`),
 	}
 	for _, i := range inputs {
-		p := parser.NewParser(parser.NewScanner(bytes.NewReader([]byte(i))))
+		p := rfcparser2.NewParser(rfcparser2.NewScanner(bytes.NewReader([]byte(i))))
 		require.NoError(t, p.Advance())
 
 		_, err := ParseFlagList(p)
