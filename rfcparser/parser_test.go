@@ -50,7 +50,7 @@ func TestParser_ParseQuoted(t *testing.T) {
 		p := newTestParser([]byte(input))
 		v, err := p.ParseQuoted()
 		require.NoError(t, err)
-		require.Equal(t, expected, v)
+		require.Equal(t, expected, v.Value)
 	}
 }
 
@@ -80,7 +80,7 @@ func TestParser_ParseString(t *testing.T) {
 		p := newTestParser([]byte(input))
 		v, err := p.ParseString()
 		require.NoError(t, err)
-		require.Equal(t, expected, v)
+		require.Equal(t, expected, v.Value)
 	}
 }
 
@@ -114,6 +114,6 @@ func TestParser_ParseAString(t *testing.T) {
 		p := newTestParser([]byte(input))
 		v, err := p.ParseAString()
 		require.NoError(t, err)
-		require.Equal(t, expected, v)
+		require.Equal(t, expected, v.Value)
 	}
 }

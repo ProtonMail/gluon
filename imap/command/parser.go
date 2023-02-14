@@ -82,7 +82,7 @@ func (p *Parser) Parse() (Command, error) {
 	}
 
 	// Done command does not have a tag.
-	if strings.ToLower(tag) == "done" {
+	if strings.ToLower(tag.Value) == "done" {
 		p.lastCmd = "done"
 
 		return Command{
@@ -91,8 +91,8 @@ func (p *Parser) Parse() (Command, error) {
 		}, nil
 	}
 
-	result.Tag = tag
-	p.lastTag = tag
+	result.Tag = tag.Value
+	p.lastTag = tag.Value
 
 	if err := p.parser.Consume(rfcparser2.TokenTypeSP, "Expected space after tag"); err != nil {
 		return result, err
@@ -115,6 +115,8 @@ func (p *Parser) Parse() (Command, error) {
 func (p *Parser) parseCommand() (Payload, error) {
 	var commandBytes []byte
 
+	commandOffset := p.parser.CurrentToken().Offset
+
 	for {
 		if ok, err := p.parser.Matches(rfcparser2.TokenTypeChar); err != nil {
 			return nil, err
@@ -129,26 +131,26 @@ func (p *Parser) parseCommand() (Payload, error) {
 
 	builder, ok := p.commands[p.lastCmd]
 	if !ok {
-		return nil, fmt.Errorf("unknown command '%v'", p.lastCmd)
+		return nil, p.parser.MakeErrorAtOffset(fmt.Sprintf("unknown command '%v'", p.lastCmd), commandOffset)
 	}
 
 	return builder.FromParser(p.parser)
 }
 
-func (p *Parser) parseTag() (string, error) {
+func (p *Parser) parseTag() (rfcparser2.String, error) {
 	// tag             = 1*<any ASTRING-CHAR except "+">
 	isTagChar := func(tt rfcparser2.TokenType) bool {
 		return rfcparser2.IsAStringChar(tt) && tt != rfcparser2.TokenTypePlus
 	}
 
 	if err := p.parser.ConsumeWith(isTagChar, "Invalid tag char detected"); err != nil {
-		return "", err
+		return rfcparser2.String{}, err
 	}
 
 	tag, err := p.parser.CollectBytesWhileMatchesWithPrevWith(isTagChar)
 	if err != nil {
-		return "", err
+		return rfcparser2.String{}, err
 	}
 
-	return string(tag), err
+	return tag.IntoString(), err
 }

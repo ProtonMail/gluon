@@ -31,6 +31,6 @@ func (UnsubscribeCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error
 	}
 
 	return &UnsubscribeCommand{
-		Mailbox: mailbox,
+		Mailbox: mailbox.Value,
 	}, nil
 }

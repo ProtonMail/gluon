@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type ListCommand struct {
@@ -20,9 +20,9 @@ func (l ListCommand) SanitizedString() string {
 
 type ListCommandParser struct{}
 
-func (ListCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
+func (ListCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	// list            = "LIST" SP mailbox SP list-mailbox
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
@@ -31,7 +31,7 @@ func (ListCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after mailbox"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after mailbox"); err != nil {
 		return nil, err
 	}
 
@@ -41,12 +41,12 @@ func (ListCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	}
 
 	return &ListCommand{
-		Mailbox:     mailbox,
-		ListMailbox: listMailbox,
+		Mailbox:     mailbox.Value,
+		ListMailbox: listMailbox.Value,
 	}, nil
 }
 
-func parseListMailbox(p *rfcparser2.Parser) (string, error) {
+func parseListMailbox(p *rfcparser.Parser) (rfcparser.String, error) {
 	/*
 	  list-mailbox    = 1*list-char / string
 
@@ -54,20 +54,20 @@ func parseListMailbox(p *rfcparser2.Parser) (string, error) {
 
 	  list-wildcards  = "%" / "*"
 	*/
-	isListChar := func(tt rfcparser2.TokenType) bool {
-		return rfcparser2.IsAtomChar(tt) || rfcparser2.IsRespSpecial(tt) || tt == rfcparser2.TokenTypePercent || tt == rfcparser2.TokenTypeAsterisk
+	isListChar := func(tt rfcparser.TokenType) bool {
+		return rfcparser.IsAtomChar(tt) || rfcparser.IsRespSpecial(tt) || tt == rfcparser.TokenTypePercent || tt == rfcparser.TokenTypeAsterisk
 	}
 
 	if ok, err := p.MatchesWith(isListChar); err != nil {
-		return "", err
+		return rfcparser.String{}, err
 	} else if !ok {
 		return p.ParseString()
 	}
 
 	listMailbox, err := p.CollectBytesWhileMatchesWithPrevWith(isListChar)
 	if err != nil {
-		return "", err
+		return rfcparser.String{}, err
 	}
 
-	return string(listMailbox), nil
+	return listMailbox.IntoString(), nil
 }

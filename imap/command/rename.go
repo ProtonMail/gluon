@@ -41,7 +41,7 @@ func (RenameCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	}
 
 	return &RenameCommand{
-		From: mailboxFrom,
-		To:   mailboxTo,
+		From: mailboxFrom.Value,
+		To:   mailboxTo.Value,
 	}, nil
 }

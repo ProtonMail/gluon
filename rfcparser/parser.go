@@ -20,6 +20,30 @@ type Error struct {
 	Message string
 }
 
+type Bytes struct {
+	Value  []byte
+	Offset int
+}
+
+func (c Bytes) IntoString() String {
+	return String{
+		Value:  string(c.Value),
+		Offset: c.Offset,
+	}
+}
+
+type String struct {
+	Value  string
+	Offset int
+}
+
+func (c String) ToLower() String {
+	return String{
+		Value:  strings.ToLower(c.Value),
+		Offset: c.Offset,
+	}
+}
+
 func (p *Error) Error() string {
 	return fmt.Sprintf("[Error offset=%v]: %v", p.Token.Offset, p.Message)
 }
@@ -52,7 +76,7 @@ func NewParserWithLiteralContinuationCb(s *Scanner, f func() error) *Parser {
 }
 
 // ParseAString parses an astring according to RFC3501.
-func (p *Parser) ParseAString() (string, error) {
+func (p *Parser) ParseAString() (String, error) {
 	/*
 		astring         = 1*ASTRING-CHAR / string
 	*/
@@ -62,32 +86,35 @@ func (p *Parser) ParseAString() (string, error) {
 
 	astring, err := p.CollectBytesWhileMatchesWith(IsAStringChar)
 	if err != nil {
-		return "", err
+		return String{}, err
 	}
 
-	return string(astring), nil
+	return astring.IntoString(), nil
 }
 
 // ParseString parses a string according to RFC3501.
-func (p *Parser) ParseString() (string, error) {
+func (p *Parser) ParseString() (String, error) {
 	/*
 		string          = quoted / literal
 	*/
 	if p.Check(TokenTypeDQuote) {
 		return p.ParseQuoted()
 	} else if p.Check(TokenTypeLCurly) {
+		startOffset := p.currentToken.Offset
+
 		l, err := p.ParseLiteral()
 		if err != nil {
-			return "", err
+			return String{}, err
 		}
-		return string(l), err
+
+		return String{Value: string(l), Offset: startOffset}, err
 	}
 
-	return "", fmt.Errorf("unexpected character, expected start of quote or literal")
+	return String{}, p.MakeError("unexpected character, expected start of quote or literal")
 }
 
 // ParseQuoted parses a quoted string.
-func (p *Parser) ParseQuoted() (string, error) {
+func (p *Parser) ParseQuoted() (String, error) {
 	/*
 		quoted          = DQUOTE *QUOTED-CHAR DQUOTE
 
@@ -95,22 +122,24 @@ func (p *Parser) ParseQuoted() (string, error) {
 		                  "\" quoted-specials
 	*/
 	if err := p.Consume(TokenTypeDQuote, `Expected '"' for quoted start`); err != nil {
-		return "", err
+		return String{}, err
 	}
 
 	var quoted []byte
 
+	startOffset := p.currentToken.Offset
+
 	for {
 		if ok, err := p.MatchesWith(IsQuotedChar); err != nil {
-			return "", err
+			return String{}, err
 		} else if ok {
 			quoted = append(quoted, p.previousToken.Value)
 		} else {
 			if ok, err := p.Matches(TokenTypeBackslash); err != nil {
-				return "", err
+				return String{}, err
 			} else if ok {
 				if err := p.ConsumeWith(IsQuotedSpecial, `Expected '\' or '"' after '\' in quoted`); err != nil {
-					return "", err
+					return String{}, err
 				}
 				quoted = append(quoted, p.previousToken.Value)
 			} else {
@@ -120,10 +149,10 @@ func (p *Parser) ParseQuoted() (string, error) {
 	}
 
 	if err := p.Consume(TokenTypeDQuote, `Expected '"' for quoted end`); err != nil {
-		return "", err
+		return String{}, err
 	}
 
-	return string(quoted), nil
+	return String{Value: string(quoted), Offset: startOffset}, nil
 }
 
 // ParseLiteral parses a literal as defined in RFC3501.
@@ -177,15 +206,15 @@ func (p *Parser) ParseLiteral() ([]byte, error) {
 }
 
 // ParseMailbox parses a mailbox name as defined in RFC 3501.
-func (p *Parser) ParseMailbox() (string, error) {
+func (p *Parser) ParseMailbox() (String, error) {
 	// mailbox = "INBOX" / astring
 	astring, err := p.ParseAString()
 	if err != nil {
-		return "", err
+		return String{}, err
 	}
 
-	if strings.EqualFold(astring, "INBOX") {
-		return "INBOX", nil
+	if strings.EqualFold(astring.Value, "INBOX") {
+		astring.Value = "INBOX"
 	}
 
 	return astring, nil
@@ -249,7 +278,7 @@ func (p *Parser) ParseAtom() (string, error) {
 		return "", err
 	}
 
-	return string(atom), nil
+	return string(atom.Value), nil
 }
 
 // Check if the next token matches the given input.
@@ -362,7 +391,7 @@ func (p *Parser) Advance() error {
 
 // CollectBytesWhileMatchesWithPrev collects bytes from the token scanner while tokens match the given token type.
 // This function INCLUDES the previous token consumed before this call.
-func (p *Parser) CollectBytesWhileMatchesWithPrev(tokenType TokenType) ([]byte, error) {
+func (p *Parser) CollectBytesWhileMatchesWithPrev(tokenType TokenType) (Bytes, error) {
 	return p.CollectBytesWhileMatchesWithPrevWith(func(tt TokenType) bool {
 		return tt == tokenType
 	})
@@ -370,12 +399,13 @@ func (p *Parser) CollectBytesWhileMatchesWithPrev(tokenType TokenType) ([]byte, 
 
 // CollectBytesWhileMatchesWithPrevWith collects bytes from the token scanner while tokens match the given condition.
 // This function INCLUDES the previous token consumed before this call.
-func (p *Parser) CollectBytesWhileMatchesWithPrevWith(f func(tokenType TokenType) bool) ([]byte, error) {
+func (p *Parser) CollectBytesWhileMatchesWithPrevWith(f func(tokenType TokenType) bool) (Bytes, error) {
 	value := []byte{p.previousToken.Value}
+	startOffset := p.previousToken.Offset
 
 	for {
 		if ok, err := p.MatchesWith(f); err != nil {
-			return nil, err
+			return Bytes{}, err
 		} else if ok {
 			value = append(value, p.previousToken.Value)
 		} else {
@@ -383,12 +413,12 @@ func (p *Parser) CollectBytesWhileMatchesWithPrevWith(f func(tokenType TokenType
 		}
 	}
 
-	return value, nil
+	return Bytes{Value: value, Offset: startOffset}, nil
 }
 
 // CollectBytesWhileMatches collects bytes from the token scanner while tokens match the given token type. This function
 // DOES NOT INCLUDE the previous token consumed before this call.
-func (p *Parser) CollectBytesWhileMatches(tokenType TokenType) ([]byte, error) {
+func (p *Parser) CollectBytesWhileMatches(tokenType TokenType) (Bytes, error) {
 	return p.CollectBytesWhileMatchesWith(func(tt TokenType) bool {
 		return tt == tokenType
 	})
@@ -396,12 +426,14 @@ func (p *Parser) CollectBytesWhileMatches(tokenType TokenType) ([]byte, error) {
 
 // CollectBytesWhileMatchesWith collects bytes from the token scanner while tokens match the given condition. This
 // function DOES NOT INCLUDE the previous token consumed before this call.
-func (p *Parser) CollectBytesWhileMatchesWith(f func(tokenType TokenType) bool) ([]byte, error) {
+func (p *Parser) CollectBytesWhileMatchesWith(f func(tokenType TokenType) bool) (Bytes, error) {
 	var value []byte
+
+	startOffset := p.currentToken.Offset
 
 	for {
 		if ok, err := p.MatchesWith(f); err != nil {
-			return nil, err
+			return Bytes{}, err
 		} else if ok {
 			value = append(value, p.previousToken.Value)
 		} else {
@@ -409,7 +441,7 @@ func (p *Parser) CollectBytesWhileMatchesWith(f func(tokenType TokenType) bool) 
 		}
 	}
 
-	return value, nil
+	return Bytes{Value: value, Offset: startOffset}, nil
 }
 
 // ResetOffsetCounter resets the token offset back to 0.
@@ -428,6 +460,15 @@ func (p *Parser) CurrentToken() Token {
 func (p *Parser) MakeError(err string) error {
 	return &Error{
 		Token:   p.previousToken,
+		Message: err,
+	}
+}
+
+func (p *Parser) MakeErrorAtOffset(err string, offset int) error {
+	return &Error{
+		Token: Token{
+			Offset: offset,
+		},
 		Message: err,
 	}
 }

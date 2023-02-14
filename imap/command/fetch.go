@@ -84,7 +84,7 @@ func parseFetchAttributeName(p *rfcparser2.Parser) (string, error) {
 		return "", err
 	}
 
-	return strings.ToLower(string(att)), nil
+	return strings.ToLower(string(att.Value)), nil
 }
 
 func parseFetchAttributes(p *rfcparser2.Parser) ([]FetchAttribute, error) {
@@ -329,7 +329,7 @@ func parseSectionText(p *rfcparser2.Parser) (BodySection, error) {
 		return nil, err
 	}
 
-	textStr := strings.ToLower(string(text))
+	textStr := strings.ToLower(string(text.Value))
 
 	if textStr == "mime" {
 		return &BodySectionMIME{}, nil
@@ -344,7 +344,7 @@ func parseSectionMsgText(p *rfcparser2.Parser) (BodySection, error) {
 		return nil, err
 	}
 
-	textStr := strings.ToLower(string(text))
+	textStr := strings.ToLower(string(text.Value))
 
 	return handleSectionMessageText(textStr, p)
 }
@@ -421,7 +421,7 @@ func collectBodySectionText(p *rfcparser2.Parser) (string, error) {
 		return "", err
 	}
 
-	return strings.ToLower(string(text)), nil
+	return strings.ToLower(string(text.Value)), nil
 }
 
 func parseHeaderList(p *rfcparser2.Parser) ([]string, error) {
@@ -437,7 +437,7 @@ func parseHeaderList(p *rfcparser2.Parser) ([]string, error) {
 			return nil, err
 		}
 
-		result = append(result, header)
+		result = append(result, header.Value)
 	}
 
 	for {
@@ -452,7 +452,7 @@ func parseHeaderList(p *rfcparser2.Parser) ([]string, error) {
 			return nil, err
 		}
 
-		result = append(result, header)
+		result = append(result, header.Value)
 	}
 
 	if err := p.Consume(rfcparser2.TokenTypeRParen, "expected ) for header list end"); err != nil {

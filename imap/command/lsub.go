@@ -41,7 +41,7 @@ func (LSubCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	}
 
 	return &LSubCommand{
-		Mailbox:     mailbox,
-		LSubMailbox: listMailbox,
+		Mailbox:     mailbox.Value,
+		LSubMailbox: listMailbox.Value,
 	}, nil
 }
