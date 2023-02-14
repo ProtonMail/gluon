@@ -117,7 +117,7 @@ func (StoreCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 
 func parseStoreFlags(p *parser.Parser) ([]string, error) {
 	//                  (flag-list / (flag *(SP flag)))
-	fl, ok, err := p.TryParseFlagList()
+	fl, ok, err := TryParseFlagList(p)
 	if err != nil {
 		return nil, err
 	} else if ok {
@@ -128,7 +128,7 @@ func parseStoreFlags(p *parser.Parser) ([]string, error) {
 
 	// first flag.
 	{
-		f, err := p.ParseFlag()
+		f, err := ParseFlag(p)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +144,7 @@ func parseStoreFlags(p *parser.Parser) ([]string, error) {
 			break
 		}
 
-		f, err := p.ParseFlag()
+		f, err := ParseFlag(p)
 		if err != nil {
 			return nil, err
 		}

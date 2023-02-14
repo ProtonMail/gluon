@@ -53,7 +53,7 @@ func (AppendCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 	var appendFlags []string
 
 	// check if we have flags.
-	flagList, hasFlagList, err := p.TryParseFlagList()
+	flagList, hasFlagList, err := TryParseFlagList(p)
 	if err != nil {
 		return nil, err
 	} else if hasFlagList {
