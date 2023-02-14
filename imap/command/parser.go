@@ -48,6 +48,7 @@ func NewParserWithLiteralContinuationCb(s *parser.Scanner, cb func() error) *Par
 			"unsubscribe": &UnsubscribeCommandParser{},
 			"rename":      &RenameCommandParser{},
 			"lsub":        &LSubCommandParser{},
+			"login":       &LoginCommandParser{},
 		},
 	}
 }
