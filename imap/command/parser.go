@@ -50,6 +50,8 @@ func NewParserWithLiteralContinuationCb(s *parser.Scanner, cb func() error) *Par
 			"lsub":        &LSubCommandParser{},
 			"login":       &LoginCommandParser{},
 			"store":       &StoreCommandParser{},
+			"copy":        &CopyCommandParser{},
+			"move":        &MoveCommandParser{},
 		},
 	}
 }
