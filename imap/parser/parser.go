@@ -378,6 +378,36 @@ func (p *Parser) ConsumeWith(f func(token TokenType) bool, message string) error
 	return p.MakeError(message)
 }
 
+// ConsumeBytes will advance if the next token value matches the given sequence.
+func (p *Parser) ConsumeBytes(chars []byte) error {
+	for _, c := range chars {
+		if p.currentToken.Value != c {
+			return p.MakeError(fmt.Sprintf("expected byte value %x", c))
+		}
+
+		if err := p.Advance(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ConsumeBytesFold behaves the same as ConsumeBytes, but case insensitive for characters.
+func (p *Parser) ConsumeBytesFold(chars []byte) error {
+	for _, c := range chars {
+		if ByteToLower(p.currentToken.Value) != ByteToLower(c) {
+			return p.MakeError(fmt.Sprintf("expected byte value %x", c))
+		}
+
+		if err := p.Advance(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // MatchesWith will advance the scanner to the next token and return true if the current token matches the given
 // condition.
 func (p *Parser) MatchesWith(f func(tokenType TokenType) bool) (bool, error) {
