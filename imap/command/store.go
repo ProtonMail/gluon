@@ -82,7 +82,7 @@ func (StoreCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 		action = StoreActionAddFlags
 	}
 
-	if err := p.ConsumeBytesFold([]byte{'F', 'L', 'A', 'G', 'S'}); err != nil {
+	if err := p.ConsumeBytesFold('F', 'L', 'A', 'G', 'S'); err != nil {
 		return nil, err
 	}
 
@@ -91,7 +91,7 @@ func (StoreCommandParser) FromParser(p *parser.Parser) (Payload, error) {
 	if ok, err := p.Matches(parser.TokenTypePeriod); err != nil {
 		return nil, err
 	} else if ok {
-		if err := p.ConsumeBytesFold([]byte{'S', 'I', 'L', 'E', 'N', 'T'}); err != nil {
+		if err := p.ConsumeBytesFold('S', 'I', 'L', 'E', 'N', 'T'); err != nil {
 			return nil, err
 		}
 
