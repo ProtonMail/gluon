@@ -31,6 +31,6 @@ func (SelectCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	}
 
 	return &SelectCommand{
-		Mailbox: mailbox,
+		Mailbox: mailbox.Value,
 	}, nil
 }

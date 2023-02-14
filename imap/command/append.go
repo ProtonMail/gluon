@@ -88,7 +88,7 @@ func (AppendCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	}
 
 	return &AppendCommand{
-		Mailbox:  mailbox,
+		Mailbox:  mailbox.Value,
 		Literal:  literal,
 		Flags:    appendFlags,
 		DateTime: dateTime,

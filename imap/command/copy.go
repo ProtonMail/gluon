@@ -42,6 +42,6 @@ func (CopyCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 
 	return &CopyCommand{
 		SeqSet:  seqSet,
-		Mailbox: mailbox,
+		Mailbox: mailbox.Value,
 	}, nil
 }

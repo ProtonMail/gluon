@@ -4,7 +4,6 @@ import (
 	"fmt"
 	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 	"github.com/bradenaw/juniper/xslices"
-	"strings"
 )
 
 type StatusAttribute int
@@ -104,7 +103,7 @@ func (StatusCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	}
 
 	return &StatusCommand{
-		Mailbox:    mailbox,
+		Mailbox:    mailbox.Value,
 		Attributes: attributes,
 	}, nil
 }
@@ -117,8 +116,8 @@ func parseStatusAttribute(p *rfcparser2.Parser) (StatusAttribute, error) {
 		return 0, err
 	}
 
-	attributeStr := strings.ToLower(string(attribute))
-	switch attributeStr {
+	attributeStr := attribute.IntoString().ToLower()
+	switch attributeStr.Value {
 	case "messages":
 		return StatusAttributeMessages, nil
 	case "recent":
@@ -130,6 +129,6 @@ func parseStatusAttribute(p *rfcparser2.Parser) (StatusAttribute, error) {
 	case "unseen":
 		return StatusAttributeUnseen, nil
 	default:
-		return 0, fmt.Errorf("unknown status attribute '%v'", attributeStr)
+		return 0, p.MakeErrorAtOffset(fmt.Sprintf("unknown status attribute '%v'", attributeStr), attributeStr.Offset)
 	}
 }

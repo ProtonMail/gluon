@@ -31,6 +31,6 @@ func (DeleteCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	}
 
 	return &DeleteCommand{
-		Mailbox: mailbox,
+		Mailbox: mailbox.Value,
 	}, nil
 }

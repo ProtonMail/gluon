@@ -43,7 +43,7 @@ func (LoginCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	}
 
 	return &LoginCommand{
-		UserID:   user,
-		Password: password,
+		UserID:   user.Value,
+		Password: password.Value,
 	}, nil
 }

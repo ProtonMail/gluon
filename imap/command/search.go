@@ -4,7 +4,6 @@ import (
 	"fmt"
 	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
 	"github.com/bradenaw/juniper/xslices"
-	"strings"
 	"time"
 )
 
@@ -53,7 +52,7 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error
 		return nil, err
 	}
 
-	if keyword == "charset" {
+	if keyword.Value == "charset" {
 		if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after charset"); err != nil {
 			return nil, err
 		}
@@ -63,7 +62,7 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error
 			return nil, err
 		}
 
-		charset = encoding
+		charset = encoding.Value
 	} else {
 		// Not charset, perform handling of the keword
 		key, err := handleSearchKey(keyword, p)
@@ -106,20 +105,20 @@ func parseSearchKey(p *rfcparser2.Parser) (SearchKey, error) {
 	return handleSearchKey(keyword, p)
 }
 
-func readSearchKeyword(p *rfcparser2.Parser) (string, error) {
+func readSearchKeyword(p *rfcparser2.Parser) (rfcparser2.String, error) {
 	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space"); err != nil {
-		return "", err
+		return rfcparser2.String{}, err
 	}
 
 	keyword, err := p.CollectBytesWhileMatches(rfcparser2.TokenTypeChar)
 	if err != nil {
-		return "", err
+		return rfcparser2.String{}, err
 	}
 
-	return strings.ToLower(string(keyword)), nil
+	return keyword.IntoString().ToLower(), nil
 }
 
-func handleSearchKey(keyword string, p *rfcparser2.Parser) (SearchKey, error) {
+func handleSearchKey(keyword rfcparser2.String, p *rfcparser2.Parser) (SearchKey, error) {
 	/*
 	  search-key      = "ALL" / "ANSWERED" / "BCC" SP astring /
 	                    "BEFORE" SP date / "BODY" SP astring /
@@ -138,7 +137,7 @@ func handleSearchKey(keyword string, p *rfcparser2.Parser) (SearchKey, error) {
 	                    "SENTSINCE" SP date / "SMALLER" SP number /
 	                    "UID" SP sequence-set / "UNDRAFT" / sequence-set /
 	                    "(" search-key *(SP search-key) ")"     	*/
-	switch keyword {
+	switch keyword.Value {
 	case "all":
 		return &SearchKeyAll{}, nil
 
@@ -364,7 +363,7 @@ func handleSearchKey(keyword string, p *rfcparser2.Parser) (SearchKey, error) {
 		return &SearchKeyUndraft{}, nil
 
 	default:
-		return nil, fmt.Errorf("unknown search key '%v'", string(keyword))
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown search key '%v'", keyword.Value), keyword.Offset)
 	}
 }
 
@@ -373,7 +372,12 @@ func parseStringKeyAString(p *rfcparser2.Parser) (string, error) {
 		return "", err
 	}
 
-	return p.ParseAString()
+	astring, err := p.ParseAString()
+	if err != nil {
+		return "", err
+	}
+
+	return astring.Value, nil
 }
 
 func parseStringKeyNumber(p *rfcparser2.Parser) (int, error) {
