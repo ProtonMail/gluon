@@ -3,6 +3,7 @@ package command
 import (
 	"fmt"
 	"github.com/ProtonMail/gluon/imap/parser"
+	"strings"
 )
 
 type Builder interface {
@@ -25,10 +26,19 @@ func NewParserWithLiteralContinuationCb(s *parser.Scanner, cb func() error) *Par
 	return &Parser{
 		parser: parser.NewParserWithLiteralContinuationCb(s, cb),
 		commands: map[string]Builder{
-			"list":   &ListCommandParser{},
-			"append": &AppendCommandParser{},
-			"search": &SearchCommandParser{},
-			"fetch":  &FetchCommandParser{},
+			"list":       &ListCommandParser{},
+			"append":     &AppendCommandParser{},
+			"search":     &SearchCommandParser{},
+			"fetch":      &FetchCommandParser{},
+			"capability": &CapabilityCommandParser{},
+			"idle":       &IdleCommandParser{},
+			"noop":       &NoopCommandParser{},
+			"logout":     &LogoutCommandParser{},
+			"check":      &CheckCommandParser{},
+			"close":      &CloseCommandParser{},
+			"expunge":    &ExpungeCommandParser{},
+			"unselect":   &UnselectCommandParser{},
+			"starttls":   &StartTLSCommandParser{},
 		},
 	}
 }
@@ -55,6 +65,16 @@ func (p *Parser) Parse() (Command, error) {
 	tag, err := p.parseTag()
 	if err != nil {
 		return result, err
+	}
+
+	// Done command does not have a tag.
+	if strings.ToLower(tag) == "done" {
+		p.lastCmd = "done"
+
+		return Command{
+			Tag:     "",
+			Payload: &DoneCommand{},
+		}, nil
 	}
 
 	result.Tag = tag
