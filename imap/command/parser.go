@@ -39,6 +39,7 @@ func NewParserWithLiteralContinuationCb(s *parser.Scanner, cb func() error) *Par
 			"expunge":    &ExpungeCommandParser{},
 			"unselect":   &UnselectCommandParser{},
 			"starttls":   &StartTLSCommandParser{},
+			"status":     &StatusCommandParser{},
 		},
 	}
 }
