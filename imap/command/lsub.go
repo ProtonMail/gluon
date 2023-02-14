@@ -26,7 +26,7 @@ func (LSubCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	mailbox, err := p.ParseMailbox()
+	mailbox, err := ParseMailbox(p)
 	if err != nil {
 		return nil, err
 	}
