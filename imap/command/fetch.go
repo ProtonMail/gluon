@@ -170,28 +170,8 @@ func handleFetchAttribute(name string, p *parser.Parser) (FetchAttribute, error)
 }
 
 func handleRFC822FetchAttribute(p *parser.Parser) (FetchAttribute, error) {
-	if err := p.Consume(parser.TokenTypeDigit, "expected digit after RFC"); err != nil {
+	if err := p.ConsumeBytesFold('8', '2', '2'); err != nil {
 		return nil, err
-	}
-
-	if p.PreviousToken().Value != '8' {
-		return nil, p.MakeError("expected value '8' after RFC")
-	}
-
-	if err := p.Consume(parser.TokenTypeDigit, "expected digit after RFC8"); err != nil {
-		return nil, err
-	}
-
-	if p.PreviousToken().Value != '2' {
-		return nil, p.MakeError("expected value '2' after RFC8")
-	}
-
-	if err := p.Consume(parser.TokenTypeDigit, "expected digit after RFC82"); err != nil {
-		return nil, err
-	}
-
-	if p.PreviousToken().Value != '2' {
-		return nil, p.MakeError("expected value '2' after RFC82")
 	}
 
 	if err := p.Consume(parser.TokenTypePeriod, "expected '.' after RFC822 fetch attribute"); err != nil {
@@ -226,13 +206,8 @@ func handleBodyFetchAttribute(p *parser.Parser) (FetchAttribute, error) {
 	if ok, err := p.Matches(parser.TokenTypePeriod); err != nil {
 		return nil, err
 	} else if ok {
-		attribute, err := parseFetchAttributeName(p)
-		if err != nil {
+		if err := p.ConsumeBytesFold('P', 'E', 'E', 'K'); err != nil {
 			return nil, err
-		}
-
-		if attribute != "peek" {
-			return nil, fmt.Errorf("expected 'PEEK' after 'BODY.'")
 		}
 
 		readOnly = true

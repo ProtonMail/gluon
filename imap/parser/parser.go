@@ -379,7 +379,7 @@ func (p *Parser) ConsumeWith(f func(token TokenType) bool, message string) error
 }
 
 // ConsumeBytes will advance if the next token value matches the given sequence.
-func (p *Parser) ConsumeBytes(chars []byte) error {
+func (p *Parser) ConsumeBytes(chars ...byte) error {
 	for _, c := range chars {
 		if p.currentToken.Value != c {
 			return p.MakeError(fmt.Sprintf("expected byte value %x", c))
@@ -394,7 +394,7 @@ func (p *Parser) ConsumeBytes(chars []byte) error {
 }
 
 // ConsumeBytesFold behaves the same as ConsumeBytes, but case insensitive for characters.
-func (p *Parser) ConsumeBytesFold(chars []byte) error {
+func (p *Parser) ConsumeBytesFold(chars ...byte) error {
 	for _, c := range chars {
 		if ByteToLower(p.currentToken.Value) != ByteToLower(c) {
 			return p.MakeError(fmt.Sprintf("expected byte value %x", c))
