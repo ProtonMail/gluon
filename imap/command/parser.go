@@ -28,6 +28,7 @@ func NewParserWithLiteralContinuationCb(s *parser.Scanner, cb func() error) *Par
 			"list":   &ListCommandParser{},
 			"append": &AppendCommandParser{},
 			"search": &SearchCommandParser{},
+			"fetch":  &FetchCommandParser{},
 		},
 	}
 }
