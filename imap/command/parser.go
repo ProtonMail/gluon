@@ -52,6 +52,7 @@ func NewParserWithLiteralContinuationCb(s *parser.Scanner, cb func() error) *Par
 			"store":       &StoreCommandParser{},
 			"copy":        &CopyCommandParser{},
 			"move":        &MoveCommandParser{},
+			"uid":         NewUIDCommandParser(),
 		},
 	}
 }
