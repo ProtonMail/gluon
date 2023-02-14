@@ -26,7 +26,7 @@ func (RenameCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	mailboxFrom, err := p.ParseMailbox()
+	mailboxFrom, err := ParseMailbox(p)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func (RenameCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	mailboxTo, err := p.ParseMailbox()
+	mailboxTo, err := ParseMailbox(p)
 	if err != nil {
 		return nil, err
 	}

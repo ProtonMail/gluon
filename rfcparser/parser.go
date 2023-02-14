@@ -205,21 +205,6 @@ func (p *Parser) ParseLiteral() ([]byte, error) {
 	return literal, nil
 }
 
-// ParseMailbox parses a mailbox name as defined in RFC 3501.
-func (p *Parser) ParseMailbox() (String, error) {
-	// mailbox = "INBOX" / astring
-	astring, err := p.ParseAString()
-	if err != nil {
-		return String{}, err
-	}
-
-	if strings.EqualFold(astring.Value, "INBOX") {
-		astring.Value = "INBOX"
-	}
-
-	return astring, nil
-}
-
 // ParseNumber parses a non decimal number without any signs.
 func (p *Parser) ParseNumber() (int, error) {
 	if err := p.Consume(TokenTypeDigit, "expected valid digit for number"); err != nil {
