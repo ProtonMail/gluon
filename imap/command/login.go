@@ -5,16 +5,16 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type LoginCommand struct {
+type Login struct {
 	UserID   string
 	Password string
 }
 
-func (l LoginCommand) String() string {
+func (l Login) String() string {
 	return fmt.Sprintf("LOGIN '%v' '%v'", l.UserID, l.Password)
 }
 
-func (l LoginCommand) SanitizedString() string {
+func (l Login) SanitizedString() string {
 	return fmt.Sprintf("LOGIN '%v' <PASSWORD>", sanitizeString(l.UserID))
 }
 
@@ -42,7 +42,7 @@ func (LoginCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &LoginCommand{
+	return &Login{
 		UserID:   user.Value,
 		Password: password.Value,
 	}, nil

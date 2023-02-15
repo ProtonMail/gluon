@@ -8,7 +8,7 @@ import (
 )
 
 func TestParser_StatusCommandRecent(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StatusCommand{
+	expected := Command{Tag: "tag", Payload: &Status{
 		Mailbox:    "INBOX",
 		Attributes: []StatusAttribute{StatusAttributeRecent},
 	}}
@@ -25,7 +25,7 @@ func TestParser_StatusCommandRecent(t *testing.T) {
 }
 
 func TestParser_StatusCommandMessages(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StatusCommand{
+	expected := Command{Tag: "tag", Payload: &Status{
 		Mailbox:    "Foo",
 		Attributes: []StatusAttribute{StatusAttributeRecent},
 	}}
@@ -36,7 +36,7 @@ func TestParser_StatusCommandMessages(t *testing.T) {
 }
 
 func TestParser_StatusCommandUIDNext(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StatusCommand{
+	expected := Command{Tag: "tag", Payload: &Status{
 		Mailbox:    "Foo",
 		Attributes: []StatusAttribute{StatusAttributeUIDNext},
 	}}
@@ -47,7 +47,7 @@ func TestParser_StatusCommandUIDNext(t *testing.T) {
 }
 
 func TestParser_StatusCommandUIDValidity(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StatusCommand{
+	expected := Command{Tag: "tag", Payload: &Status{
 		Mailbox:    "Foo",
 		Attributes: []StatusAttribute{StatusAttributeUIDValidity},
 	}}
@@ -58,7 +58,7 @@ func TestParser_StatusCommandUIDValidity(t *testing.T) {
 }
 
 func TestParser_StatusCommandUnseen(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StatusCommand{
+	expected := Command{Tag: "tag", Payload: &Status{
 		Mailbox:    "Foo",
 		Attributes: []StatusAttribute{StatusAttributeUnseen},
 	}}
@@ -69,7 +69,7 @@ func TestParser_StatusCommandUnseen(t *testing.T) {
 }
 
 func TestParser_StatusCommandMultiple(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StatusCommand{
+	expected := Command{Tag: "tag", Payload: &Status{
 		Mailbox:    "Foo",
 		Attributes: []StatusAttribute{StatusAttributeUnseen, StatusAttributeRecent},
 	}}

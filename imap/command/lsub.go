@@ -5,16 +5,16 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type LSubCommand struct {
+type LSub struct {
 	Mailbox     string
 	LSubMailbox string
 }
 
-func (l LSubCommand) String() string {
+func (l LSub) String() string {
 	return fmt.Sprintf("LSUB '%v' '%v'", l.Mailbox, l.LSubMailbox)
 }
 
-func (l LSubCommand) SanitizedString() string {
+func (l LSub) SanitizedString() string {
 	return l.String()
 }
 
@@ -40,7 +40,7 @@ func (LSubCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &LSubCommand{
+	return &LSub{
 		Mailbox:     mailbox.Value,
 		LSubMailbox: listMailbox.Value,
 	}, nil

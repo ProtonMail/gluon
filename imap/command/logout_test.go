@@ -12,7 +12,7 @@ func TestParser_LogoutCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &LogoutCommand{}}
+	expected := Command{Tag: "tag", Payload: &Logout{}}
 
 	cmd, err := p.Parse()
 	require.NoError(t, err)

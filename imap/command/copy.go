@@ -5,16 +5,16 @@ import (
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
-type CopyCommand struct {
+type Copy struct {
 	SeqSet  []SeqRange
 	Mailbox string
 }
 
-func (l CopyCommand) String() string {
+func (l Copy) String() string {
 	return fmt.Sprintf("COPY %v '%v'", l.SeqSet, l.Mailbox)
 }
 
-func (l CopyCommand) SanitizedString() string {
+func (l Copy) SanitizedString() string {
 	return fmt.Sprintf("COPY %v '%v'", l.SeqSet, sanitizeString(l.Mailbox))
 }
 
@@ -40,7 +40,7 @@ func (CopyCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &CopyCommand{
+	return &Copy{
 		SeqSet:  seqSet,
 		Mailbox: mailbox.Value,
 	}, nil

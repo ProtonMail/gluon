@@ -12,7 +12,7 @@ func TestParser_StartTLSCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &StartTLSCommand{}}
+	expected := Command{Tag: "tag", Payload: &StartTLS{}}
 
 	cmd, err := p.Parse()
 	require.NoError(t, err)

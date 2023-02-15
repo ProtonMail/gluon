@@ -5,15 +5,15 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type UnsubscribeCommand struct {
+type Unsubscribe struct {
 	Mailbox string
 }
 
-func (l UnsubscribeCommand) String() string {
+func (l Unsubscribe) String() string {
 	return fmt.Sprintf("UNSUBSCRIBE '%v'", l.Mailbox)
 }
 
-func (l UnsubscribeCommand) SanitizedString() string {
+func (l Unsubscribe) SanitizedString() string {
 	return fmt.Sprintf("UNSUBSCRIBE '%v'", sanitizeString(l.Mailbox))
 }
 
@@ -30,7 +30,7 @@ func (UnsubscribeCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 		return nil, err
 	}
 
-	return &UnsubscribeCommand{
+	return &Unsubscribe{
 		Mailbox: mailbox.Value,
 	}, nil
 }

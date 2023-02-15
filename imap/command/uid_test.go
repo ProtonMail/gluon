@@ -14,8 +14,8 @@ func TestParser_UIDCommandCopy(t *testing.T) {
 
 	expected := Command{
 		Tag: "tag",
-		Payload: &UIDCommand{
-			Command: &CopyCommand{
+		Payload: &UID{
+			Command: &Copy{
 				Mailbox: "INBOX",
 				SeqSet:  []SeqRange{{Begin: 1, End: SeqNumValueAsterisk}},
 			},
@@ -32,8 +32,8 @@ func TestParser_UIDCommandCopy(t *testing.T) {
 func TestParser_UIDCommandMove(t *testing.T) {
 	expected := Command{
 		Tag: "tag",
-		Payload: &UIDCommand{
-			Command: &MoveCommand{
+		Payload: &UID{
+			Command: &Move{
 				Mailbox: "INBOX",
 				SeqSet:  []SeqRange{{Begin: 1, End: SeqNumValueAsterisk}},
 			},
@@ -48,8 +48,8 @@ func TestParser_UIDCommandMove(t *testing.T) {
 func TestParser_UIDCommandStore(t *testing.T) {
 	expected := Command{
 		Tag: "tag",
-		Payload: &UIDCommand{
-			Command: &StoreCommand{
+		Payload: &UID{
+			Command: &Store{
 				SeqSet: []SeqRange{{
 					Begin: 1,
 					End:   1,
@@ -82,8 +82,8 @@ func TestParser_UIDCommandExpunge(t *testing.T) {
 func TestParser_UIDCommandFetch(t *testing.T) {
 	expected := Command{
 		Tag: "tag",
-		Payload: &UIDCommand{
-			Command: &FetchCommand{
+		Payload: &UID{
+			Command: &Fetch{
 				SeqSet: []SeqRange{{Begin: 1, End: 1}},
 				Attributes: []FetchAttribute{
 					&FetchAttributeFast{},
@@ -100,8 +100,8 @@ func TestParser_UIDCommandFetch(t *testing.T) {
 func TestParser_UIDCommandSearch(t *testing.T) {
 	expected := Command{
 		Tag: "tag",
-		Payload: &UIDCommand{
-			Command: &SearchCommand{
+		Payload: &UID{
+			Command: &Search{
 				Charset: "",
 				Keys: []SearchKey{
 					&SearchKeyAnswered{},

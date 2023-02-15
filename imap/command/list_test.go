@@ -13,7 +13,7 @@ func TestParser_ListCommandQuoted(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &ListCommand{
+	expected := Command{Tag: "tag", Payload: &List{
 		Mailbox:     "",
 		ListMailbox: "*",
 	}}
@@ -30,7 +30,7 @@ func TestParser_ListCommandSpecialAsterisk(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &ListCommand{
+	expected := Command{Tag: "tag", Payload: &List{
 		Mailbox:     "foo",
 		ListMailbox: "*",
 	}}
@@ -47,7 +47,7 @@ func TestParser_ListCommandSpecialPercentage(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &ListCommand{
+	expected := Command{Tag: "tag", Payload: &List{
 		Mailbox:     "bar",
 		ListMailbox: "%",
 	}}
@@ -67,7 +67,7 @@ func TestParser_ListCommandLiteral(t *testing.T) {
 		continuationCalled = true
 		return nil
 	})
-	expected := Command{Tag: "tag", Payload: &ListCommand{
+	expected := Command{Tag: "tag", Payload: &List{
 		Mailbox:     `"bar"`,
 		ListMailbox: "%",
 	}}

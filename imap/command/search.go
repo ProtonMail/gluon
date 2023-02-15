@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type SearchCommand struct {
+type Search struct {
 	Charset string
 	Keys    []SearchKey
 }
@@ -17,7 +17,7 @@ type SearchKey interface {
 	SanitizedString() string
 }
 
-func (s SearchCommand) String() string {
+func (s Search) String() string {
 	charsetStr := "NONE"
 	if len(s.Charset) != 0 {
 		charsetStr = s.Charset
@@ -26,7 +26,7 @@ func (s SearchCommand) String() string {
 	return fmt.Sprintf("SEARCH CHARSET=%v %v", charsetStr, s.Keys)
 }
 
-func (s SearchCommand) SanitizedString() string {
+func (s Search) SanitizedString() string {
 	charsetStr := "NONE"
 	if len(s.Charset) != 0 {
 		charsetStr = s.Charset
@@ -90,7 +90,7 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 		return nil, fmt.Errorf("no search keys specified")
 	}
 
-	return &SearchCommand{
+	return &Search{
 		Charset: charset,
 		Keys:    keys,
 	}, nil

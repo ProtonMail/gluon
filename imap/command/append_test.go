@@ -28,7 +28,7 @@ func TestParser_AppendCommandWithAllFields(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "A003", Payload: &AppendCommand{
+	expected := Command{Tag: "A003", Payload: &Append{
 		Mailbox:  "saved-messages",
 		Flags:    []string{`\Seen`},
 		Literal:  []byte("My message body is here"),
@@ -47,7 +47,7 @@ func TestParser_AppendCommandWithLiteralOnly(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "A003", Payload: &AppendCommand{
+	expected := Command{Tag: "A003", Payload: &Append{
 		Mailbox: "saved-messages",
 		Literal: []byte("My message body is here"),
 	}}
@@ -64,7 +64,7 @@ func TestParser_AppendCommandWithFlagAndLiteral(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "A003", Payload: &AppendCommand{
+	expected := Command{Tag: "A003", Payload: &Append{
 		Mailbox: "saved-messages",
 		Flags:   []string{`\Seen`},
 		Literal: []byte("My message body is here"),
@@ -82,7 +82,7 @@ func TestParser_AppendCommandWithDateTimeAndLiteral(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "A003", Payload: &AppendCommand{
+	expected := Command{Tag: "A003", Payload: &Append{
 		Mailbox:  "saved-messages",
 		Literal:  []byte("My message body is here"),
 		DateTime: buildAppendDateTime(1984, time.November, 15, 13, 37, 1, 07, 30, false),
@@ -102,7 +102,7 @@ func TestParser_AppendWithUTF8Literal(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "A003", Payload: &AppendCommand{
+	expected := Command{Tag: "A003", Payload: &Append{
 		Mailbox: "saved-messages",
 		Flags:   []string{`\Seen`},
 		Literal: []byte(literal),

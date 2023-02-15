@@ -5,15 +5,15 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type CreateCommand struct {
+type Create struct {
 	Mailbox string
 }
 
-func (l CreateCommand) String() string {
+func (l Create) String() string {
 	return fmt.Sprintf("CREATE '%v'", l.Mailbox)
 }
 
-func (l CreateCommand) SanitizedString() string {
+func (l Create) SanitizedString() string {
 	return fmt.Sprintf("CREATE '%v'", sanitizeString(l.Mailbox))
 }
 
@@ -30,7 +30,7 @@ func (CreateCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &CreateCommand{
+	return &Create{
 		Mailbox: mailbox.Value,
 	}, nil
 }

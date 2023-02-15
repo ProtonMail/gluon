@@ -12,7 +12,7 @@ func TestParser_SelectCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &SelectCommand{
+	expected := Command{Tag: "tag", Payload: &Select{
 		Mailbox: "INBOX",
 	}}
 

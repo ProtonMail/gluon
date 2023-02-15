@@ -12,7 +12,7 @@ func TestParser_RenameCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &RenameCommand{
+	expected := Command{Tag: "tag", Payload: &Rename{
 		From: "Foo",
 		To:   "Bar",
 	}}

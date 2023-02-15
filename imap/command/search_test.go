@@ -15,7 +15,7 @@ func buildSearchTestDate(year int, month time.Month, day int) time.Time {
 }
 
 func TestParser_SearchCommandAll(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyAll{},
@@ -34,7 +34,7 @@ func TestParser_SearchCommandAll(t *testing.T) {
 }
 
 func TestParser_SearchCommandWithCharset(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "UTF-8",
 		Keys: []SearchKey{
 			&SearchKeyAll{},
@@ -52,7 +52,7 @@ func TestParser_SearchCommandWithCharsetInWrongLocation(t *testing.T) {
 }
 
 func TestParser_SearchCommandAnswered(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyAnswered{},
@@ -65,7 +65,7 @@ func TestParser_SearchCommandAnswered(t *testing.T) {
 }
 
 func TestParser_SearchCommandBCC(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyBCC{Value: "foobar"},
@@ -78,7 +78,7 @@ func TestParser_SearchCommandBCC(t *testing.T) {
 }
 
 func TestParser_SearchCommandBefore(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyBefore{Value: buildSearchTestDate(2009, time.January, 01)},
@@ -91,7 +91,7 @@ func TestParser_SearchCommandBefore(t *testing.T) {
 }
 
 func TestParser_SearchCommandBody(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyBody{Value: "foobar"},
@@ -104,7 +104,7 @@ func TestParser_SearchCommandBody(t *testing.T) {
 }
 
 func TestParser_SearchCommandCC(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyCC{Value: "foobar"},
@@ -117,7 +117,7 @@ func TestParser_SearchCommandCC(t *testing.T) {
 }
 
 func TestParser_SearchCommandDeleted(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyDeleted{},
@@ -130,7 +130,7 @@ func TestParser_SearchCommandDeleted(t *testing.T) {
 }
 
 func TestParser_SearchCommandFlagged(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyFlagged{},
@@ -143,7 +143,7 @@ func TestParser_SearchCommandFlagged(t *testing.T) {
 }
 
 func TestParser_SearchCommandFrom(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyFrom{Value: "foobar"},
@@ -156,7 +156,7 @@ func TestParser_SearchCommandFrom(t *testing.T) {
 }
 
 func TestParser_SearchCommandKeyword(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyKeyword{Value: "foobar"},
@@ -169,7 +169,7 @@ func TestParser_SearchCommandKeyword(t *testing.T) {
 }
 
 func TestParser_SearchCommandNew(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyNew{},
@@ -182,7 +182,7 @@ func TestParser_SearchCommandNew(t *testing.T) {
 }
 
 func TestParser_SearchCommandOld(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyOld{},
@@ -195,7 +195,7 @@ func TestParser_SearchCommandOld(t *testing.T) {
 }
 
 func TestParser_SearchCommandRecent(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyRecent{},
@@ -208,7 +208,7 @@ func TestParser_SearchCommandRecent(t *testing.T) {
 }
 
 func TestParser_SearchCommandOn(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyOn{Value: buildSearchTestDate(2009, time.January, 01)},
@@ -221,7 +221,7 @@ func TestParser_SearchCommandOn(t *testing.T) {
 }
 
 func TestParser_SearchCommandSince(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeySince{Value: buildSearchTestDate(2009, time.January, 01)},
@@ -234,7 +234,7 @@ func TestParser_SearchCommandSince(t *testing.T) {
 }
 
 func TestParser_SearchCommandSubject(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeySubject{Value: "foobar"},
@@ -247,7 +247,7 @@ func TestParser_SearchCommandSubject(t *testing.T) {
 }
 
 func TestParser_SearchCommandText(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyText{Value: "foobar"},
@@ -260,7 +260,7 @@ func TestParser_SearchCommandText(t *testing.T) {
 }
 
 func TestParser_SearchCommandTo(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyTo{Value: "foobar"},
@@ -273,7 +273,7 @@ func TestParser_SearchCommandTo(t *testing.T) {
 }
 
 func TestParser_SearchCommandUnanswered(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyUnanswered{},
@@ -286,7 +286,7 @@ func TestParser_SearchCommandUnanswered(t *testing.T) {
 }
 
 func TestParser_SearchCommandUndeleted(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyUndeleted{},
@@ -299,7 +299,7 @@ func TestParser_SearchCommandUndeleted(t *testing.T) {
 }
 
 func TestParser_SearchCommandUnflagged(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyUnflagged{},
@@ -312,7 +312,7 @@ func TestParser_SearchCommandUnflagged(t *testing.T) {
 }
 
 func TestParser_SearchCommandUnseen(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyUnseen{},
@@ -325,7 +325,7 @@ func TestParser_SearchCommandUnseen(t *testing.T) {
 }
 
 func TestParser_SearchCommandUnkeyword(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyUnkeyword{Value: "foobar"},
@@ -338,7 +338,7 @@ func TestParser_SearchCommandUnkeyword(t *testing.T) {
 }
 
 func TestParser_SearchCommandDraft(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyDraft{},
@@ -351,7 +351,7 @@ func TestParser_SearchCommandDraft(t *testing.T) {
 }
 
 func TestParser_SearchCommandHeader(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyHeader{Field: "field", Value: "foobar"},
@@ -364,7 +364,7 @@ func TestParser_SearchCommandHeader(t *testing.T) {
 }
 
 func TestParser_SearchLarger(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyLarger{Value: 1024},
@@ -377,7 +377,7 @@ func TestParser_SearchLarger(t *testing.T) {
 }
 
 func TestParser_SearchNot(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyNot{
@@ -392,7 +392,7 @@ func TestParser_SearchNot(t *testing.T) {
 }
 
 func TestParser_SearchOr(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyOr{
@@ -408,7 +408,7 @@ func TestParser_SearchOr(t *testing.T) {
 }
 
 func TestParser_SearchSentBefore(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeySentBefore{Value: buildSearchTestDate(2009, time.January, 1)},
@@ -421,7 +421,7 @@ func TestParser_SearchSentBefore(t *testing.T) {
 }
 
 func TestParser_SearchSentOn(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeySentOn{Value: buildSearchTestDate(2009, time.January, 1)},
@@ -434,7 +434,7 @@ func TestParser_SearchSentOn(t *testing.T) {
 }
 
 func TestParser_SearchSentSince(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeySentSince{Value: buildSearchTestDate(2009, time.January, 1)},
@@ -447,7 +447,7 @@ func TestParser_SearchSentSince(t *testing.T) {
 }
 
 func TestParser_SearchSmaller(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeySmaller{Value: 512},
@@ -460,7 +460,7 @@ func TestParser_SearchSmaller(t *testing.T) {
 }
 
 func TestParser_SearchUID(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyUID{Value: 512},
@@ -473,7 +473,7 @@ func TestParser_SearchUID(t *testing.T) {
 }
 
 func TestParser_SearchUndraft(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyUndraft{},
@@ -486,7 +486,7 @@ func TestParser_SearchUndraft(t *testing.T) {
 }
 
 func TestParser_SearchMultipleKeys(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
 			&SearchKeyUndraft{},
@@ -501,7 +501,7 @@ func TestParser_SearchMultipleKeys(t *testing.T) {
 }
 
 func TestParser_SearchUtf8String(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "UTF-8",
 		Keys: []SearchKey{
 			&SearchKeySubject{Value: "割ゃちとた紀別チノホコ隠面ノ"},
@@ -522,7 +522,7 @@ func TestParser_Search_ISO_8859_1_String(t *testing.T) {
 	require.False(t, utf8.Valid(text))
 	require.False(t, utf8.Valid(textWithQuotes))
 
-	expected := Command{Tag: "tag", Payload: &SearchCommand{
+	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "ISO-8859-1",
 		Keys: []SearchKey{
 			&SearchKeySubject{Value: string(text)},

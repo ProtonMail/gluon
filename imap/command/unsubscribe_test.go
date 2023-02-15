@@ -12,7 +12,7 @@ func TestParser_UnsubscribeCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &UnsubscribeCommand{
+	expected := Command{Tag: "tag", Payload: &Unsubscribe{
 		Mailbox: "INBOX",
 	}}
 

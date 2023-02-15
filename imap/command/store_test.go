@@ -12,7 +12,7 @@ func TestParser_StoreCommandSetFlags(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &StoreCommand{
+	expected := Command{Tag: "tag", Payload: &Store{
 		SeqSet: []SeqRange{{
 			Begin: 1,
 			End:   1,
@@ -30,7 +30,7 @@ func TestParser_StoreCommandSetFlags(t *testing.T) {
 }
 
 func TestParser_StoreCommandAddFlags(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StoreCommand{
+	expected := Command{Tag: "tag", Payload: &Store{
 		SeqSet: []SeqRange{{
 			Begin: 1,
 			End:   1,
@@ -46,7 +46,7 @@ func TestParser_StoreCommandAddFlags(t *testing.T) {
 }
 
 func TestParser_StoreCommandRemoveFlags(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StoreCommand{
+	expected := Command{Tag: "tag", Payload: &Store{
 		SeqSet: []SeqRange{{
 			Begin: 1,
 			End:   1,
@@ -62,7 +62,7 @@ func TestParser_StoreCommandRemoveFlags(t *testing.T) {
 }
 
 func TestParser_StoreCommandSilent(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StoreCommand{
+	expected := Command{Tag: "tag", Payload: &Store{
 		SeqSet: []SeqRange{{
 			Begin: 1,
 			End:   1,
@@ -78,7 +78,7 @@ func TestParser_StoreCommandSilent(t *testing.T) {
 }
 
 func TestParser_StoreCommandMultipleFlags(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StoreCommand{
+	expected := Command{Tag: "tag", Payload: &Store{
 		SeqSet: []SeqRange{{
 			Begin: 1,
 			End:   1,
@@ -94,7 +94,7 @@ func TestParser_StoreCommandMultipleFlags(t *testing.T) {
 }
 
 func TestParser_StoreCommandMultipleFlagsWithParen(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &StoreCommand{
+	expected := Command{Tag: "tag", Payload: &Store{
 		SeqSet: []SeqRange{{
 			Begin: 1,
 			End:   1,

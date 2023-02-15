@@ -5,18 +5,18 @@ import (
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
-type NoopCommand struct{}
+type Noop struct{}
 
-func (l NoopCommand) String() string {
+func (l Noop) String() string {
 	return fmt.Sprintf("NOOP")
 }
 
-func (l NoopCommand) SanitizedString() string {
+func (l Noop) SanitizedString() string {
 	return l.String()
 }
 
 type NoopCommandParser struct{}
 
 func (NoopCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
-	return &NoopCommand{}, nil
+	return &Noop{}, nil
 }

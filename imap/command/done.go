@@ -4,12 +4,12 @@ import (
 	"fmt"
 )
 
-type DoneCommand struct{}
+type Done struct{}
 
-func (l DoneCommand) String() string {
+func (l Done) String() string {
 	return fmt.Sprintf("DONE")
 }
 
-func (l DoneCommand) SanitizedString() string {
+func (l Done) SanitizedString() string {
 	return l.String()
 }

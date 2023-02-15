@@ -33,18 +33,18 @@ func (s StatusAttribute) String() string {
 	}
 }
 
-type StatusCommand struct {
+type Status struct {
 	Mailbox    string
 	Attributes []StatusAttribute
 }
 
-func (s StatusCommand) String() string {
+func (s Status) String() string {
 	return fmt.Sprintf("Status '%v' '%v'", s.Mailbox, xslices.Map(s.Attributes, func(s StatusAttribute) string {
 		return s.String()
 	}))
 }
 
-func (s StatusCommand) SanitizedString() string {
+func (s Status) SanitizedString() string {
 	return s.String()
 }
 
@@ -102,7 +102,7 @@ func (StatusCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &StatusCommand{
+	return &Status{
 		Mailbox:    mailbox.Value,
 		Attributes: attributes,
 	}, nil

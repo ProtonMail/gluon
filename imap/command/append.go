@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-type AppendCommand struct {
+type Append struct {
 	Mailbox  string
 	Flags    []string
 	DateTime time.Time
 	Literal  []byte
 }
 
-func (l AppendCommand) String() string {
+func (l Append) String() string {
 	return fmt.Sprintf("APPEND '%v' Flags='%v' DateTime='%v' Literal=%v",
 		l.Mailbox,
 		l.Flags,
@@ -22,7 +22,7 @@ func (l AppendCommand) String() string {
 	)
 }
 
-func (l AppendCommand) SanitizedString() string {
+func (l Append) SanitizedString() string {
 	return fmt.Sprintf("APPEND '%v' Flags='%v' DateTime='%v'",
 		sanitizeString(l.Mailbox),
 		l.Flags,
@@ -30,7 +30,7 @@ func (l AppendCommand) SanitizedString() string {
 	)
 }
 
-func (l AppendCommand) HasDateTime() bool {
+func (l Append) HasDateTime() bool {
 	return l.DateTime != time.Time{}
 }
 
@@ -87,7 +87,7 @@ func (AppendCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &AppendCommand{
+	return &Append{
 		Mailbox:  mailbox.Value,
 		Literal:  literal,
 		Flags:    appendFlags,
