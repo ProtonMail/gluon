@@ -92,6 +92,19 @@ func TestParser_FetchCommandInternalDate(t *testing.T) {
 	require.Equal(t, expected, cmd)
 }
 
+func TestParser_FetchCommandRFC822(t *testing.T) {
+	expected := Command{Tag: "tag", Payload: &Fetch{
+		SeqSet: []SeqRange{{Begin: 1, End: 1}},
+		Attributes: []FetchAttribute{
+			&FetchAttributeRFC822{},
+		},
+	}}
+
+	cmd, err := testParseCommand(`tag FETCH 1 RFC822`)
+	require.NoError(t, err)
+	require.Equal(t, expected, cmd)
+}
+
 func TestParser_FetchCommandRFC822Header(t *testing.T) {
 	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},

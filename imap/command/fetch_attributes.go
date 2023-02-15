@@ -55,6 +55,12 @@ func (f FetchAttributeRFC822Size) String() string {
 	return "RFC822.Size"
 }
 
+type FetchAttributeRFC822 struct{}
+
+func (f FetchAttributeRFC822) String() string {
+	return "RFC822"
+}
+
 type FetchAttributeRFC822Text struct{}
 
 func (f FetchAttributeRFC822Text) String() string {
