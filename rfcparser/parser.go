@@ -92,6 +92,16 @@ func (p *Parser) ParseAString() (String, error) {
 	return astring.IntoString(), nil
 }
 
+func (p *Parser) TryParseString() (String, bool, error) {
+	if !p.Check(TokenTypeDQuote) && !p.Check(TokenTypeLCurly) {
+		return String{}, false, nil
+	}
+
+	v, err := p.ParseString()
+
+	return v, true, err
+}
+
 // ParseString parses a string according to RFC3501.
 func (p *Parser) ParseString() (String, error) {
 	/*
