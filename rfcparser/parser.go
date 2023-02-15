@@ -191,14 +191,21 @@ func (p *Parser) ParseLiteral() ([]byte, error) {
 		return nil, err
 	}
 
-	if err := p.ConsumeNewLine(); err != nil {
+	if err := p.Consume(TokenTypeCR, "expected CR"); err != nil {
 		return nil, err
 	}
 
-	if p.literalContinuationCb != nil {
+	// Call literal continuation callback here or we risk getting stuck forever trying to read the next token
+	// in the scanner due to the byte buffers implementation as there will be no more new input until the we signal
+	// for more input.
+	if p.Check(TokenTypeLF) && p.literalContinuationCb != nil {
 		if err := p.literalContinuationCb(); err != nil {
 			return nil, fmt.Errorf("error occurred during literal continuation callback:%w", err)
 		}
+	}
+
+	if err := p.Consume(TokenTypeLF, "expected LF after CR"); err != nil {
+		return nil, err
 	}
 
 	literal := make([]byte, literalSize)
