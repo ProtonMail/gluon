@@ -59,14 +59,26 @@ type Token struct {
 }
 
 type Scanner struct {
-	source      *bufio.Reader
+	source      Reader
 	currentByte byte
 	offset      int
+}
+
+type Reader interface {
+	io.Reader
+	ReadByte() (byte, error)
+	ReadBytes(byte) ([]byte, error)
 }
 
 func NewScanner(source io.Reader) *Scanner {
 	return &Scanner{
 		source: bufio.NewReader(source),
+	}
+}
+
+func NewScannerWithReader(source Reader) *Scanner {
+	return &Scanner{
+		source: source,
 	}
 }
 
