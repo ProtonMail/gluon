@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
+	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
 type RenameCommand struct {
@@ -20,9 +20,9 @@ func (l RenameCommand) SanitizedString() string {
 
 type RenameCommandParser struct{}
 
-func (RenameCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
+func (RenameCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	// rename          = "RENAME" SP mailbox SP mailbox
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
@@ -31,7 +31,7 @@ func (RenameCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after mailbox"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after mailbox"); err != nil {
 		return nil, err
 	}
 

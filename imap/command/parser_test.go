@@ -2,7 +2,7 @@ package command
 
 import (
 	"bytes"
-	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
+	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -20,7 +20,7 @@ func toIMAPLine(string ...string) []byte {
 
 func testParseCommand(lines ...string) (Command, error) {
 	input := toIMAPLine(lines...)
-	s := rfcparser2.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	return p.Parse()
@@ -28,7 +28,7 @@ func testParseCommand(lines ...string) (Command, error) {
 
 func TestParser_InvalidTag(t *testing.T) {
 	input := []byte(`+tag LIST "" "*"`)
-	s := rfcparser2.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	_, err := p.Parse()
@@ -39,13 +39,13 @@ func TestParser_InvalidTag(t *testing.T) {
 
 func TestParser_TestEof(t *testing.T) {
 	var input []byte
-	s := rfcparser2.NewScanner(bytes.NewReader(input))
+	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
 	_, err := p.Parse()
 	require.Error(t, err)
-	require.True(t, rfcparser2.IsError(err))
-	parserError, ok := err.(*rfcparser2.Error) //nolint:errorlint
+	require.True(t, rfcparser.IsError(err))
+	parserError, ok := err.(*rfcparser.Error) //nolint:errorlint
 	require.True(t, ok)
 	require.True(t, parserError.IsEOF())
 }

@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
+	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 	"strings"
 )
 
@@ -25,10 +25,10 @@ func (f FetchCommand) SanitizedString() string {
 
 type FetchCommandParser struct{}
 
-func (FetchCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
+func (FetchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	//fetch           = "FETCH" SP sequence-set SP ("ALL" / "FULL" / "FAST" /
 	//                  fetch-att / "(" fetch-att *(SP fetch-att) ")")
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
@@ -37,13 +37,13 @@ func (FetchCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after sequence set"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after sequence set"); err != nil {
 		return nil, err
 	}
 
 	var attributes []FetchAttribute
 
-	if p.Check(rfcparser2.TokenTypeLParen) {
+	if p.Check(rfcparser.TokenTypeLParen) {
 		// Multiple list of attributes.
 		attr, err := parseFetchAttributes(p)
 		if err != nil {
@@ -78,8 +78,8 @@ func (FetchCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	return &FetchCommand{SeqSet: seqSet, Attributes: attributes}, nil
 }
 
-func parseFetchAttributeName(p *rfcparser2.Parser) (string, error) {
-	att, err := p.CollectBytesWhileMatches(rfcparser2.TokenTypeChar)
+func parseFetchAttributeName(p *rfcparser.Parser) (string, error) {
+	att, err := p.CollectBytesWhileMatches(rfcparser.TokenTypeChar)
 	if err != nil {
 		return "", err
 	}
@@ -87,10 +87,10 @@ func parseFetchAttributeName(p *rfcparser2.Parser) (string, error) {
 	return strings.ToLower(string(att.Value)), nil
 }
 
-func parseFetchAttributes(p *rfcparser2.Parser) ([]FetchAttribute, error) {
+func parseFetchAttributes(p *rfcparser.Parser) ([]FetchAttribute, error) {
 	var attributes []FetchAttribute
 
-	if err := p.Consume(rfcparser2.TokenTypeLParen, "expected ( for fetch attribute list start"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeLParen, "expected ( for fetch attribute list start"); err != nil {
 		return nil, err
 	}
 
@@ -106,7 +106,7 @@ func parseFetchAttributes(p *rfcparser2.Parser) ([]FetchAttribute, error) {
 
 	// Remaining.
 	for {
-		if ok, err := p.Matches(rfcparser2.TokenTypeSP); err != nil {
+		if ok, err := p.Matches(rfcparser.TokenTypeSP); err != nil {
 			return nil, err
 		} else if !ok {
 			break
@@ -120,14 +120,14 @@ func parseFetchAttributes(p *rfcparser2.Parser) ([]FetchAttribute, error) {
 		attributes = append(attributes, attribute)
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypeRParen, "expected ) for fetch attribute list end"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeRParen, "expected ) for fetch attribute list end"); err != nil {
 		return nil, err
 	}
 
 	return attributes, nil
 }
 
-func parseFetchAttribute(p *rfcparser2.Parser) (FetchAttribute, error) {
+func parseFetchAttribute(p *rfcparser.Parser) (FetchAttribute, error) {
 	attribute, err := parseFetchAttributeName(p)
 	if err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func parseFetchAttribute(p *rfcparser2.Parser) (FetchAttribute, error) {
 	return attr, nil
 }
 
-func handleFetchAttribute(name string, p *rfcparser2.Parser) (FetchAttribute, error) {
+func handleFetchAttribute(name string, p *rfcparser.Parser) (FetchAttribute, error) {
 	/*
 	 fetch-att       = "ENVELOPE" / "FLAGS" / "INTERNALDATE" /
 	                    "RFC822" [".HEADER" / ".SIZE" / ".TEXT"] /
@@ -169,12 +169,12 @@ func handleFetchAttribute(name string, p *rfcparser2.Parser) (FetchAttribute, er
 	}
 }
 
-func handleRFC822FetchAttribute(p *rfcparser2.Parser) (FetchAttribute, error) {
+func handleRFC822FetchAttribute(p *rfcparser.Parser) (FetchAttribute, error) {
 	if err := p.ConsumeBytesFold('8', '2', '2'); err != nil {
 		return nil, err
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypePeriod, "expected '.' after RFC822 fetch attribute"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypePeriod, "expected '.' after RFC822 fetch attribute"); err != nil {
 		return nil, err
 	}
 
@@ -195,15 +195,15 @@ func handleRFC822FetchAttribute(p *rfcparser2.Parser) (FetchAttribute, error) {
 	}
 }
 
-func handleBodyFetchAttribute(p *rfcparser2.Parser) (FetchAttribute, error) {
+func handleBodyFetchAttribute(p *rfcparser.Parser) (FetchAttribute, error) {
 	// Check if we are dealing with BODY only
-	if !p.Check(rfcparser2.TokenTypeLBracket) && !p.Check(rfcparser2.TokenTypePeriod) {
+	if !p.Check(rfcparser.TokenTypeLBracket) && !p.Check(rfcparser.TokenTypePeriod) {
 		return &FetchAttributeBody{}, nil
 	}
 
 	var readOnly = false
 
-	if ok, err := p.Matches(rfcparser2.TokenTypePeriod); err != nil {
+	if ok, err := p.Matches(rfcparser.TokenTypePeriod); err != nil {
 		return nil, err
 	} else if ok {
 		if err := p.ConsumeBytesFold('P', 'E', 'E', 'K'); err != nil {
@@ -213,13 +213,13 @@ func handleBodyFetchAttribute(p *rfcparser2.Parser) (FetchAttribute, error) {
 		readOnly = true
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypeLBracket, "expected [ for body section start"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeLBracket, "expected [ for body section start"); err != nil {
 		return nil, err
 	}
 
 	var section BodySection
 
-	if !p.Check(rfcparser2.TokenTypeRBracket) {
+	if !p.Check(rfcparser.TokenTypeRBracket) {
 		s, err := parseSectionSpec(p)
 		if err != nil {
 			return nil, err
@@ -228,13 +228,13 @@ func handleBodyFetchAttribute(p *rfcparser2.Parser) (FetchAttribute, error) {
 		section = s
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypeRBracket, "expected ] for body section end"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeRBracket, "expected ] for body section end"); err != nil {
 		return nil, err
 	}
 
 	var partial *BodySectionPartial
 
-	if ok, err := p.Matches(rfcparser2.TokenTypeLess); err != nil {
+	if ok, err := p.Matches(rfcparser.TokenTypeLess); err != nil {
 		return nil, err
 	} else if ok {
 		offset, err := p.ParseNumber()
@@ -242,7 +242,7 @@ func handleBodyFetchAttribute(p *rfcparser2.Parser) (FetchAttribute, error) {
 			return nil, err
 		}
 
-		if err := p.Consume(rfcparser2.TokenTypePeriod, "expected '.' after partial start"); err != nil {
+		if err := p.Consume(rfcparser.TokenTypePeriod, "expected '.' after partial start"); err != nil {
 			return nil, err
 		}
 
@@ -251,7 +251,7 @@ func handleBodyFetchAttribute(p *rfcparser2.Parser) (FetchAttribute, error) {
 			return nil, err
 		}
 
-		if err := p.Consume(rfcparser2.TokenTypeGreater, "expected > for end of partial specification"); err != nil {
+		if err := p.Consume(rfcparser.TokenTypeGreater, "expected > for end of partial specification"); err != nil {
 			return nil, err
 		}
 
@@ -264,9 +264,9 @@ func handleBodyFetchAttribute(p *rfcparser2.Parser) (FetchAttribute, error) {
 	return &FetchAttributeBodySection{Peek: readOnly, Section: section, Partial: partial}, nil
 }
 
-func parseSectionSpec(p *rfcparser2.Parser) (BodySection, error) {
+func parseSectionSpec(p *rfcparser.Parser) (BodySection, error) {
 	// section-spec    = section-msgtext / (section-part ["." section-text])
-	if p.Check(rfcparser2.TokenTypeDigit) {
+	if p.Check(rfcparser.TokenTypeDigit) {
 		part, err := parseSectionPart(p)
 		if err != nil {
 			return nil, err
@@ -284,7 +284,7 @@ func parseSectionSpec(p *rfcparser2.Parser) (BodySection, error) {
 	return parseSectionMsgText(p)
 }
 
-func parseSectionPart(p *rfcparser2.Parser) ([]int, error) {
+func parseSectionPart(p *rfcparser.Parser) ([]int, error) {
 	// section-part    = nz-number *("." nz-number)
 	//                     ; body part nesting
 	var result []int
@@ -299,14 +299,14 @@ func parseSectionPart(p *rfcparser2.Parser) ([]int, error) {
 	}
 
 	for {
-		if ok, err := p.Matches(rfcparser2.TokenTypePeriod); err != nil {
+		if ok, err := p.Matches(rfcparser.TokenTypePeriod); err != nil {
 			return nil, err
 		} else if !ok {
 			break
 		}
 
 		// If there is section-text after the section-part we can continue with number processing.
-		if !p.Check(rfcparser2.TokenTypeDigit) {
+		if !p.Check(rfcparser.TokenTypeDigit) {
 			break
 		}
 
@@ -321,10 +321,10 @@ func parseSectionPart(p *rfcparser2.Parser) ([]int, error) {
 	return result, nil
 }
 
-func parseSectionText(p *rfcparser2.Parser) (BodySection, error) {
+func parseSectionText(p *rfcparser.Parser) (BodySection, error) {
 	// section-text    = section-msgtext / "MIME"
 	//                    ; text other than actual body part (headers, etc.)
-	text, err := p.CollectBytesWhileMatches(rfcparser2.TokenTypeChar)
+	text, err := p.CollectBytesWhileMatches(rfcparser.TokenTypeChar)
 	if err != nil {
 		return nil, err
 	}
@@ -338,8 +338,8 @@ func parseSectionText(p *rfcparser2.Parser) (BodySection, error) {
 	return handleSectionMessageText(textStr, p)
 }
 
-func parseSectionMsgText(p *rfcparser2.Parser) (BodySection, error) {
-	text, err := p.CollectBytesWhileMatches(rfcparser2.TokenTypeChar)
+func parseSectionMsgText(p *rfcparser.Parser) (BodySection, error) {
+	text, err := p.CollectBytesWhileMatches(rfcparser.TokenTypeChar)
 	if err != nil {
 		return nil, err
 	}
@@ -349,13 +349,13 @@ func parseSectionMsgText(p *rfcparser2.Parser) (BodySection, error) {
 	return handleSectionMessageText(textStr, p)
 }
 
-func handleSectionMessageText(text string, p *rfcparser2.Parser) (BodySection, error) {
+func handleSectionMessageText(text string, p *rfcparser.Parser) (BodySection, error) {
 	// section-msgtext = "HEADER" / "HEADER.FIELDS" [".NOT"] SP header-list /
 	//                   "TEXT"
 	//                    ; top-level or MESSAGE/RFC822 part
 	switch text {
 	case "header":
-		if ok, err := p.Matches(rfcparser2.TokenTypePeriod); err != nil {
+		if ok, err := p.Matches(rfcparser.TokenTypePeriod); err != nil {
 			return nil, err
 		} else if !ok {
 			return &BodySectionHeader{}, nil
@@ -370,7 +370,7 @@ func handleSectionMessageText(text string, p *rfcparser2.Parser) (BodySection, e
 	}
 }
 
-func parseHeaderFieldsSectionMessageText(p *rfcparser2.Parser) (BodySection, error) {
+func parseHeaderFieldsSectionMessageText(p *rfcparser.Parser) (BodySection, error) {
 	// Read fields bit
 	{
 		text, err := collectBodySectionText(p)
@@ -385,7 +385,7 @@ func parseHeaderFieldsSectionMessageText(p *rfcparser2.Parser) (BodySection, err
 
 	var negate bool
 
-	if ok, err := p.Matches(rfcparser2.TokenTypePeriod); err != nil {
+	if ok, err := p.Matches(rfcparser.TokenTypePeriod); err != nil {
 		return nil, err
 	} else if ok {
 		text, err := collectBodySectionText(p)
@@ -400,7 +400,7 @@ func parseHeaderFieldsSectionMessageText(p *rfcparser2.Parser) (BodySection, err
 		negate = true
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space"); err != nil {
 		return nil, err
 	}
 
@@ -415,8 +415,8 @@ func parseHeaderFieldsSectionMessageText(p *rfcparser2.Parser) (BodySection, err
 	}, nil
 }
 
-func collectBodySectionText(p *rfcparser2.Parser) (string, error) {
-	text, err := p.CollectBytesWhileMatches(rfcparser2.TokenTypeChar)
+func collectBodySectionText(p *rfcparser.Parser) (string, error) {
+	text, err := p.CollectBytesWhileMatches(rfcparser.TokenTypeChar)
 	if err != nil {
 		return "", err
 	}
@@ -424,10 +424,10 @@ func collectBodySectionText(p *rfcparser2.Parser) (string, error) {
 	return strings.ToLower(string(text.Value)), nil
 }
 
-func parseHeaderList(p *rfcparser2.Parser) ([]string, error) {
+func parseHeaderList(p *rfcparser.Parser) ([]string, error) {
 	var result []string
 
-	if err := p.Consume(rfcparser2.TokenTypeLParen, "expected ( for header list start"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeLParen, "expected ( for header list start"); err != nil {
 		return nil, err
 	}
 
@@ -441,7 +441,7 @@ func parseHeaderList(p *rfcparser2.Parser) ([]string, error) {
 	}
 
 	for {
-		if ok, err := p.Matches(rfcparser2.TokenTypeSP); err != nil {
+		if ok, err := p.Matches(rfcparser.TokenTypeSP); err != nil {
 			return nil, err
 		} else if !ok {
 			break
@@ -455,7 +455,7 @@ func parseHeaderList(p *rfcparser2.Parser) ([]string, error) {
 		result = append(result, header.Value)
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypeRParen, "expected ) for header list end"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeRParen, "expected ) for header list end"); err != nil {
 		return nil, err
 	}
 
