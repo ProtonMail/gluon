@@ -174,8 +174,10 @@ func handleRFC822FetchAttribute(p *rfcparser.Parser) (FetchAttribute, error) {
 		return nil, err
 	}
 
-	if err := p.Consume(rfcparser.TokenTypePeriod, "expected '.' after RFC822 fetch attribute"); err != nil {
+	if ok, err := p.Matches(rfcparser.TokenTypePeriod); err != nil {
 		return nil, err
+	} else if !ok {
+		return &FetchAttributeRFC822{}, nil
 	}
 
 	attribute, err := parseFetchAttributeName(p)
