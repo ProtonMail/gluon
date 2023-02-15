@@ -2,6 +2,7 @@ package command
 
 import (
 	"encoding/base64"
+	"fmt"
 	"github.com/ProtonMail/gluon/internal/hash"
 )
 
@@ -19,4 +20,12 @@ func sanitizeString(s string) string {
 type Command struct {
 	Tag     string
 	Payload Payload
+}
+
+func (c Command) String() string {
+	return fmt.Sprintf("%v %v", c.Tag, c.Payload.String())
+}
+
+func (c Command) SaniztedString() string {
+	return fmt.Sprintf("%v %v", c.Tag, c.Payload.SanitizedString())
 }

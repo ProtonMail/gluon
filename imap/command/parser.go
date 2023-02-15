@@ -53,6 +53,7 @@ func NewParserWithLiteralContinuationCb(s *rfcparser.Scanner, cb func() error) *
 			"copy":        &CopyCommandParser{},
 			"move":        &MoveCommandParser{},
 			"uid":         NewUIDCommandParser(),
+			"id":          &IDCommandParser{},
 		},
 	}
 }
