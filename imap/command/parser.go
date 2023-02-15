@@ -13,6 +13,7 @@ type Builder interface {
 // Parser parses IMAP Commands.
 type Parser struct {
 	parser   *rfcparser.Parser
+	scanner  *rfcparser.Scanner
 	commands map[string]Builder
 	lastTag  string
 	lastCmd  string
@@ -24,7 +25,8 @@ func NewParser(s *rfcparser.Scanner) *Parser {
 
 func NewParserWithLiteralContinuationCb(s *rfcparser.Scanner, cb func() error) *Parser {
 	return &Parser{
-		parser: rfcparser.NewParserWithLiteralContinuationCb(s, cb),
+		scanner: s,
+		parser:  rfcparser.NewParserWithLiteralContinuationCb(s, cb),
 		commands: map[string]Builder{
 			"list":        &ListCommandParser{},
 			"append":      &AppendCommandParser{},
@@ -64,6 +66,13 @@ func (p *Parser) LastParsedTag() string {
 
 func (p *Parser) LastParsedCommand() string {
 	return p.lastCmd
+}
+
+// ConsumeInvalidInput will consume all remaining scanner input until a new line has been reached.
+func (p *Parser) ConsumeInvalidInput() error {
+	_, err := p.scanner.ConsumeUntilNewLine()
+
+	return err
 }
 
 func (p *Parser) Parse() (Command, error) {

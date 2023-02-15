@@ -88,6 +88,10 @@ func (s *Scanner) ConsumeBytes(dst []byte) error {
 	return nil
 }
 
+func (s *Scanner) ConsumeUntilNewLine() ([]byte, error) {
+	return s.source.ReadBytes('\n')
+}
+
 func (s *Scanner) ScanToken() (Token, error) {
 	b, err := s.advance()
 	if err != nil {
