@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
+	"github.com/ProtonMail/gluon/rfcparser"
 	"time"
 )
 
@@ -36,8 +36,8 @@ func (l AppendCommand) HasDateTime() bool {
 
 type AppendCommandParser struct{}
 
-func (AppendCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
+func (AppendCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
@@ -46,7 +46,7 @@ func (AppendCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after mailbox"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after mailbox"); err != nil {
 		return nil, err
 	}
 
@@ -61,14 +61,14 @@ func (AppendCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 	}
 
 	if hasFlagList {
-		if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after flag list"); err != nil {
+		if err := p.Consume(rfcparser.TokenTypeSP, "expected space after flag list"); err != nil {
 			return nil, err
 		}
 	}
 
 	var dateTime time.Time
 	// check date time.
-	if !p.Check(rfcparser2.TokenTypeLCurly) {
+	if !p.Check(rfcparser.TokenTypeLCurly) {
 		dt, err := ParseDateTime(p)
 		if err != nil {
 			return nil, err
@@ -76,7 +76,7 @@ func (AppendCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 
 		dateTime = dt
 
-		if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after flag list"); err != nil {
+		if err := p.Consume(rfcparser.TokenTypeSP, "expected space after flag list"); err != nil {
 			return nil, err
 		}
 	}

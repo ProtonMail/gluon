@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
+	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
 const SeqNumValueAsterisk = SeqNum(0)
@@ -30,7 +30,7 @@ func (s SeqRange) String() string {
 	return fmt.Sprintf("%v:%v", s.Begin.String(), s.End.String())
 }
 
-func ParseNZNumber(p *rfcparser2.Parser) (int, error) {
+func ParseNZNumber(p *rfcparser.Parser) (int, error) {
 	num, err := p.ParseNumber()
 	if err != nil {
 		return 0, err
@@ -43,8 +43,8 @@ func ParseNZNumber(p *rfcparser2.Parser) (int, error) {
 	return num, nil
 }
 
-func ParseSeqNumber(p *rfcparser2.Parser) (SeqNum, error) {
-	if ok, err := p.Matches(rfcparser2.TokenTypeAsterisk); err != nil {
+func ParseSeqNumber(p *rfcparser.Parser) (SeqNum, error) {
+	if ok, err := p.Matches(rfcparser.TokenTypeAsterisk); err != nil {
 		return -1, err
 	} else if ok {
 		return SeqNumValueAsterisk, nil
@@ -58,13 +58,13 @@ func ParseSeqNumber(p *rfcparser2.Parser) (SeqNum, error) {
 	return SeqNum(num), nil
 }
 
-func ParseSeqRange(p *rfcparser2.Parser) (SeqRange, error) {
+func ParseSeqRange(p *rfcparser.Parser) (SeqRange, error) {
 	seqBegin, err := ParseSeqNumber(p)
 	if err != nil {
 		return SeqRange{}, err
 	}
 
-	if ok, err := p.Matches(rfcparser2.TokenTypeColon); err != nil {
+	if ok, err := p.Matches(rfcparser.TokenTypeColon); err != nil {
 		return SeqRange{}, err
 	} else if !ok {
 		return SeqRange{
@@ -84,7 +84,7 @@ func ParseSeqRange(p *rfcparser2.Parser) (SeqRange, error) {
 	}, nil
 }
 
-func ParseSeqSet(p *rfcparser2.Parser) ([]SeqRange, error) {
+func ParseSeqSet(p *rfcparser.Parser) ([]SeqRange, error) {
 	// sequence-set    = (seq-number / seq-range) *("," sequence-set)
 	var result []SeqRange
 
@@ -98,7 +98,7 @@ func ParseSeqSet(p *rfcparser2.Parser) ([]SeqRange, error) {
 	}
 
 	for {
-		if ok, err := p.Matches(rfcparser2.TokenTypeComma); err != nil {
+		if ok, err := p.Matches(rfcparser.TokenTypeComma); err != nil {
 			return nil, err
 		} else if !ok {
 			break

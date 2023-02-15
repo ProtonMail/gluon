@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
+	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
 type UIDCommand struct {
@@ -32,20 +32,20 @@ func NewUIDCommandParser() *UIDCommandParser {
 		}}
 }
 
-func (u *UIDCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
+func (u *UIDCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	// uid             = "UID" SP (copy / fetch / search / store)
 	// uidExpunge      = "UID" SP "EXPUNGE"
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
 	var commandBytes []byte
 
 	for {
-		if ok, err := p.Matches(rfcparser2.TokenTypeChar); err != nil {
+		if ok, err := p.Matches(rfcparser.TokenTypeChar); err != nil {
 			return nil, err
 		} else if ok {
-			commandBytes = append(commandBytes, rfcparser2.ByteToLower(p.PreviousToken().Value))
+			commandBytes = append(commandBytes, rfcparser.ByteToLower(p.PreviousToken().Value))
 		} else {
 			break
 		}
@@ -87,8 +87,8 @@ func (l UIDExpungeCommand) SanitizedString() string {
 
 type UIDExpungeCommandParser struct{}
 
-func (UIDExpungeCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
+func (UIDExpungeCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 

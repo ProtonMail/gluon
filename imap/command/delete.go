@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
+	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
 type DeleteCommand struct {
@@ -19,9 +19,9 @@ func (l DeleteCommand) SanitizedString() string {
 
 type DeleteCommandParser struct{}
 
-func (DeleteCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
+func (DeleteCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	// delete          = "DELETE" SP mailbox
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 

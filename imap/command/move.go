@@ -2,7 +2,7 @@ package command
 
 import (
 	"fmt"
-	rfcparser2 "github.com/ProtonMail/gluon/rfcparser"
+	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
 type MoveCommand struct {
@@ -20,9 +20,9 @@ func (l MoveCommand) SanitizedString() string {
 
 type MoveCommandParser struct{}
 
-func (MoveCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
+func (MoveCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	// move            = "MOVE" SP sequence-set SP mailbox
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after command"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
@@ -31,7 +31,7 @@ func (MoveCommandParser) FromParser(p *rfcparser2.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	if err := p.Consume(rfcparser2.TokenTypeSP, "expected space after seqset"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after seqset"); err != nil {
 		return nil, err
 	}
 
