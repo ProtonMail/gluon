@@ -5,18 +5,18 @@ import (
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
-type CheckCommand struct{}
+type Check struct{}
 
-func (l CheckCommand) String() string {
+func (l Check) String() string {
 	return fmt.Sprintf("CHECK")
 }
 
-func (l CheckCommand) SanitizedString() string {
+func (l Check) SanitizedString() string {
 	return l.String()
 }
 
 type CheckCommandParser struct{}
 
 func (CheckCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
-	return &CheckCommand{}, nil
+	return &Check{}, nil
 }

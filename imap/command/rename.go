@@ -5,16 +5,16 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type RenameCommand struct {
+type Rename struct {
 	From string
 	To   string
 }
 
-func (l RenameCommand) String() string {
+func (l Rename) String() string {
 	return fmt.Sprintf("RENAME '%v' '%v'", l.From, l.To)
 }
 
-func (l RenameCommand) SanitizedString() string {
+func (l Rename) SanitizedString() string {
 	return fmt.Sprintf("RENAME '%v' '%v'", sanitizeString(l.From), sanitizeString(l.To))
 }
 
@@ -40,7 +40,7 @@ func (RenameCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &RenameCommand{
+	return &Rename{
 		From: mailboxFrom.Value,
 		To:   mailboxTo.Value,
 	}, nil

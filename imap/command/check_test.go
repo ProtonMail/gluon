@@ -12,7 +12,7 @@ func TestParser_CheckCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &CheckCommand{}}
+	expected := Command{Tag: "tag", Payload: &Check{}}
 
 	cmd, err := p.Parse()
 	require.NoError(t, err)

@@ -5,15 +5,15 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type SubscribeCommand struct {
+type Subscribe struct {
 	Mailbox string
 }
 
-func (l SubscribeCommand) String() string {
+func (l Subscribe) String() string {
 	return fmt.Sprintf("SUBSCRIBE '%v'", l.Mailbox)
 }
 
-func (l SubscribeCommand) SanitizedString() string {
+func (l Subscribe) SanitizedString() string {
 	return fmt.Sprintf("SUBSCRIBE '%v'", sanitizeString(l.Mailbox))
 }
 
@@ -30,7 +30,7 @@ func (SubscribeCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &SubscribeCommand{
+	return &Subscribe{
 		Mailbox: mailbox.Value,
 	}, nil
 }

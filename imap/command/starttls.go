@@ -5,18 +5,18 @@ import (
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
-type StartTLSCommand struct{}
+type StartTLS struct{}
 
-func (l StartTLSCommand) String() string {
+func (l StartTLS) String() string {
 	return fmt.Sprintf("STARTTLS")
 }
 
-func (l StartTLSCommand) SanitizedString() string {
+func (l StartTLS) SanitizedString() string {
 	return l.String()
 }
 
 type StartTLSCommandParser struct{}
 
 func (StartTLSCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
-	return &StartTLSCommand{}, nil
+	return &StartTLS{}, nil
 }

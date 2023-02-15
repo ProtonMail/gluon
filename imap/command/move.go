@@ -5,16 +5,16 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type MoveCommand struct {
+type Move struct {
 	SeqSet  []SeqRange
 	Mailbox string
 }
 
-func (l MoveCommand) String() string {
+func (l Move) String() string {
 	return fmt.Sprintf("MOVE %v '%v'", l.SeqSet, l.Mailbox)
 }
 
-func (l MoveCommand) SanitizedString() string {
+func (l Move) SanitizedString() string {
 	return fmt.Sprintf("MOVE %v '%v'", l.SeqSet, sanitizeString(l.Mailbox))
 }
 
@@ -40,7 +40,7 @@ func (MoveCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &MoveCommand{
+	return &Move{
 		SeqSet:  seqSet,
 		Mailbox: mailbox.Value,
 	}, nil

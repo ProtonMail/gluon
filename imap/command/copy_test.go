@@ -12,7 +12,7 @@ func TestParser_CopyCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &CopyCommand{
+	expected := Command{Tag: "tag", Payload: &Copy{
 		Mailbox: "INBOX",
 		SeqSet:  []SeqRange{{Begin: 1, End: SeqNumValueAsterisk}},
 	}}

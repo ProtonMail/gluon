@@ -10,16 +10,16 @@ type FetchAttribute interface {
 	String() string
 }
 
-type FetchCommand struct {
+type Fetch struct {
 	SeqSet     []SeqRange
 	Attributes []FetchAttribute
 }
 
-func (f FetchCommand) String() string {
+func (f Fetch) String() string {
 	return fmt.Sprintf("FETCH %v %v", f.SeqSet, f.Attributes)
 }
 
-func (f FetchCommand) SanitizedString() string {
+func (f Fetch) SanitizedString() string {
 	return f.String()
 }
 
@@ -75,7 +75,7 @@ func (FetchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		}
 	}
 
-	return &FetchCommand{SeqSet: seqSet, Attributes: attributes}, nil
+	return &Fetch{SeqSet: seqSet, Attributes: attributes}, nil
 }
 
 func parseFetchAttributeName(p *rfcparser.Parser) (string, error) {

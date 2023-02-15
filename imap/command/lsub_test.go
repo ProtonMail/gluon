@@ -12,7 +12,7 @@ func TestParser_LSubCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &LSubCommand{
+	expected := Command{Tag: "tag", Payload: &LSub{
 		Mailbox:     "",
 		LSubMailbox: "*",
 	}}
@@ -29,7 +29,7 @@ func TestParser_LSubCommandSpecialAsterisk(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &LSubCommand{
+	expected := Command{Tag: "tag", Payload: &LSub{
 		Mailbox:     "foo",
 		LSubMailbox: "*",
 	}}
@@ -46,7 +46,7 @@ func TestParser_LSubCommandSpecialPercentage(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &LSubCommand{
+	expected := Command{Tag: "tag", Payload: &LSub{
 		Mailbox:     "bar",
 		LSubMailbox: "%",
 	}}

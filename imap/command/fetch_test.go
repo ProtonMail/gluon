@@ -13,7 +13,7 @@ func TestParser_FetchCommandAll(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeAll{},
@@ -28,7 +28,7 @@ func TestParser_FetchCommandAll(t *testing.T) {
 }
 
 func TestParser_FetchCommandFull(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeFull{},
@@ -41,7 +41,7 @@ func TestParser_FetchCommandFull(t *testing.T) {
 }
 
 func TestParser_FetchCommandFast(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeFast{},
@@ -54,7 +54,7 @@ func TestParser_FetchCommandFast(t *testing.T) {
 }
 
 func TestParser_FetchCommandEnvelope(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeEnvelope{},
@@ -67,7 +67,7 @@ func TestParser_FetchCommandEnvelope(t *testing.T) {
 }
 
 func TestParser_FetchCommandFlags(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeFlags{},
@@ -80,7 +80,7 @@ func TestParser_FetchCommandFlags(t *testing.T) {
 }
 
 func TestParser_FetchCommandInternalDate(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeInternalDate{},
@@ -93,7 +93,7 @@ func TestParser_FetchCommandInternalDate(t *testing.T) {
 }
 
 func TestParser_FetchCommandRFC822Header(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeRFC822Header{},
@@ -106,7 +106,7 @@ func TestParser_FetchCommandRFC822Header(t *testing.T) {
 }
 
 func TestParser_FetchCommandRFC822Size(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeRFC822Size{},
@@ -119,7 +119,7 @@ func TestParser_FetchCommandRFC822Size(t *testing.T) {
 }
 
 func TestParser_FetchCommandRFC822Text(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeRFC822Text{},
@@ -132,7 +132,7 @@ func TestParser_FetchCommandRFC822Text(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodyStructure(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodyStructure{},
@@ -145,7 +145,7 @@ func TestParser_FetchCommandBodyStructure(t *testing.T) {
 }
 
 func TestParser_FetchCommandBody(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBody{},
@@ -158,7 +158,7 @@ func TestParser_FetchCommandBody(t *testing.T) {
 }
 
 func TestParser_FetchCommandUID(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeUID{},
@@ -171,7 +171,7 @@ func TestParser_FetchCommandUID(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodySection_Empty(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodySection{
@@ -188,7 +188,7 @@ func TestParser_FetchCommandBodySection_Empty(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodySection_Header(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodySection{
@@ -205,7 +205,7 @@ func TestParser_FetchCommandBodySection_Header(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodySection_Text(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodySection{
@@ -222,7 +222,7 @@ func TestParser_FetchCommandBodySection_Text(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodySection_HeaderFieldsSingular(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodySection{
@@ -242,7 +242,7 @@ func TestParser_FetchCommandBodySection_HeaderFieldsSingular(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodySection_HeaderFieldsMultiple(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodySection{
@@ -262,7 +262,7 @@ func TestParser_FetchCommandBodySection_HeaderFieldsMultiple(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodySection_HeaderFieldsNot(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodySection{
@@ -287,7 +287,7 @@ func TestParser_FetchCommandBodySection_MIMEIsErrorWithoutPart(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodySection_MIME(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodySection{
@@ -307,7 +307,7 @@ func TestParser_FetchCommandBodySection_MIME(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodySection_PartWithSectionMsgText(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodySection{
@@ -327,7 +327,7 @@ func TestParser_FetchCommandBodySection_PartWithSectionMsgText(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodySection_Partial(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodySection{
@@ -347,7 +347,7 @@ func TestParser_FetchCommandBodySection_Partial(t *testing.T) {
 }
 
 func TestParser_FetchCommandBodySection_Peek(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 1, End: 1}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeBodySection{
@@ -364,7 +364,7 @@ func TestParser_FetchCommandBodySection_Peek(t *testing.T) {
 }
 
 func TestParser_FetchCommandMultiple(t *testing.T) {
-	expected := Command{Tag: "tag", Payload: &FetchCommand{
+	expected := Command{Tag: "tag", Payload: &Fetch{
 		SeqSet: []SeqRange{{Begin: 2, End: 4}},
 		Attributes: []FetchAttribute{
 			&FetchAttributeFlags{},

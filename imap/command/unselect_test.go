@@ -12,7 +12,7 @@ func TestParser_UnselectCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &UnselectCommand{}}
+	expected := Command{Tag: "tag", Payload: &Unselect{}}
 
 	cmd, err := p.Parse()
 	require.NoError(t, err)

@@ -5,18 +5,18 @@ import (
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
-type UnselectCommand struct{}
+type Unselect struct{}
 
-func (l UnselectCommand) String() string {
+func (l Unselect) String() string {
 	return fmt.Sprintf("UNSELECT")
 }
 
-func (l UnselectCommand) SanitizedString() string {
+func (l Unselect) SanitizedString() string {
 	return l.String()
 }
 
 type UnselectCommandParser struct{}
 
 func (UnselectCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
-	return &UnselectCommand{}, nil
+	return &Unselect{}, nil
 }

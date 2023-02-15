@@ -26,14 +26,14 @@ func (s StoreAction) String() string {
 	}
 }
 
-type StoreCommand struct {
+type Store struct {
 	SeqSet []SeqRange
 	Action StoreAction
 	Flags  []string
 	Silent bool
 }
 
-func (s StoreCommand) String() string {
+func (s Store) String() string {
 	silentStr := ""
 	if s.Silent {
 		silentStr = ".SILENT"
@@ -42,7 +42,7 @@ func (s StoreCommand) String() string {
 	return fmt.Sprintf("STORE %v%v %v", s.Action.String(), silentStr, s.Flags)
 }
 
-func (s StoreCommand) SanitizedString() string {
+func (s Store) SanitizedString() string {
 	return s.String()
 }
 
@@ -107,7 +107,7 @@ func (StoreCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &StoreCommand{
+	return &Store{
 		SeqSet: seqSet,
 		Action: action,
 		Flags:  flags,

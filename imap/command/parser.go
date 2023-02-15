@@ -88,7 +88,7 @@ func (p *Parser) Parse() (Command, error) {
 
 		return Command{
 			Tag:     "",
-			Payload: &DoneCommand{},
+			Payload: &Done{},
 		}, nil
 	}
 

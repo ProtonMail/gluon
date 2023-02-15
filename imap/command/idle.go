@@ -5,18 +5,18 @@ import (
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
-type IdleCommand struct{}
+type Idle struct{}
 
-func (l IdleCommand) String() string {
+func (l Idle) String() string {
 	return fmt.Sprintf("IDLE")
 }
 
-func (l IdleCommand) SanitizedString() string {
+func (l Idle) SanitizedString() string {
 	return l.String()
 }
 
 type IdleCommandParser struct{}
 
 func (IdleCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
-	return &IdleCommand{}, nil
+	return &Idle{}, nil
 }

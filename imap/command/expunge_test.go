@@ -12,7 +12,7 @@ func TestParser_ExpungeCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &ExpungeCommand{}}
+	expected := Command{Tag: "tag", Payload: &Expunge{}}
 
 	cmd, err := p.Parse()
 	require.NoError(t, err)

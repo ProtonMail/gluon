@@ -5,15 +5,15 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type UIDCommand struct {
+type UID struct {
 	Command Payload
 }
 
-func (l UIDCommand) String() string {
+func (l UID) String() string {
 	return fmt.Sprintf("UID %v", l.Command.String())
 }
 
-func (l UIDCommand) SanitizedString() string {
+func (l UID) SanitizedString() string {
 	return fmt.Sprintf("UID %v", l.Command.SanitizedString())
 }
 
@@ -68,7 +68,7 @@ func (u *UIDCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &UIDCommand{
+	return &UID{
 		Command: payload,
 	}, nil
 }

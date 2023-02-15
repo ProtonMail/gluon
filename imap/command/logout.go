@@ -5,18 +5,18 @@ import (
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
-type LogoutCommand struct{}
+type Logout struct{}
 
-func (l LogoutCommand) String() string {
+func (l Logout) String() string {
 	return fmt.Sprintf("LOGOUT")
 }
 
-func (l LogoutCommand) SanitizedString() string {
+func (l Logout) SanitizedString() string {
 	return l.String()
 }
 
 type LogoutCommandParser struct{}
 
 func (LogoutCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
-	return &LogoutCommand{}, nil
+	return &Logout{}, nil
 }

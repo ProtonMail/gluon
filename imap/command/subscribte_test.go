@@ -12,7 +12,7 @@ func TestParser_SubscribeCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &SubscribeCommand{
+	expected := Command{Tag: "tag", Payload: &Subscribe{
 		Mailbox: "INBOX",
 	}}
 

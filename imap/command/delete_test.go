@@ -12,7 +12,7 @@ func TestParser_DeleteCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &DeleteCommand{
+	expected := Command{Tag: "tag", Payload: &Delete{
 		Mailbox: "INBOX",
 	}}
 

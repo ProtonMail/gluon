@@ -12,7 +12,7 @@ func TestParser_NoopCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &NoopCommand{}}
+	expected := Command{Tag: "tag", Payload: &Noop{}}
 
 	cmd, err := p.Parse()
 	require.NoError(t, err)

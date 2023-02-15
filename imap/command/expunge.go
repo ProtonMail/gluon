@@ -5,18 +5,18 @@ import (
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
-type ExpungeCommand struct{}
+type Expunge struct{}
 
-func (l ExpungeCommand) String() string {
+func (l Expunge) String() string {
 	return fmt.Sprintf("EXPUNGE")
 }
 
-func (l ExpungeCommand) SanitizedString() string {
+func (l Expunge) SanitizedString() string {
 	return l.String()
 }
 
 type ExpungeCommandParser struct{}
 
 func (ExpungeCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
-	return &ExpungeCommand{}, nil
+	return &Expunge{}, nil
 }

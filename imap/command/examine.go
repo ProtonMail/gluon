@@ -5,15 +5,15 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type ExamineCommand struct {
+type Examine struct {
 	Mailbox string
 }
 
-func (l ExamineCommand) String() string {
+func (l Examine) String() string {
 	return fmt.Sprintf("EXAMINE '%v'", l.Mailbox)
 }
 
-func (l ExamineCommand) SanitizedString() string {
+func (l Examine) SanitizedString() string {
 	return fmt.Sprintf("EXAMINE '%v'", sanitizeString(l.Mailbox))
 }
 
@@ -30,7 +30,7 @@ func (ExamineCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &ExamineCommand{
+	return &Examine{
 		Mailbox: mailbox.Value,
 	}, nil
 }

@@ -12,7 +12,7 @@ func TestParser_LoginCommandQuoted(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &LoginCommand{
+	expected := Command{Tag: "tag", Payload: &Login{
 		UserID:   "foo",
 		Password: "bar",
 	}}

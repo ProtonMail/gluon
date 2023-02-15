@@ -5,16 +5,16 @@ import (
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
-type ListCommand struct {
+type List struct {
 	Mailbox     string
 	ListMailbox string
 }
 
-func (l ListCommand) String() string {
+func (l List) String() string {
 	return fmt.Sprintf("LIST '%v' '%v'", l.Mailbox, l.ListMailbox)
 }
 
-func (l ListCommand) SanitizedString() string {
+func (l List) SanitizedString() string {
 	return l.String()
 }
 
@@ -40,7 +40,7 @@ func (ListCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &ListCommand{
+	return &List{
 		Mailbox:     mailbox.Value,
 		ListMailbox: listMailbox.Value,
 	}, nil

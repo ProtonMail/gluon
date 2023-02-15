@@ -5,15 +5,15 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type DeleteCommand struct {
+type Delete struct {
 	Mailbox string
 }
 
-func (l DeleteCommand) String() string {
+func (l Delete) String() string {
 	return fmt.Sprintf("DELETE '%v'", l.Mailbox)
 }
 
-func (l DeleteCommand) SanitizedString() string {
+func (l Delete) SanitizedString() string {
 	return fmt.Sprintf("DELETE '%v'", sanitizeString(l.Mailbox))
 }
 
@@ -30,7 +30,7 @@ func (DeleteCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &DeleteCommand{
+	return &Delete{
 		Mailbox: mailbox.Value,
 	}, nil
 }

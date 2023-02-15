@@ -5,15 +5,15 @@ import (
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 )
 
-type SelectCommand struct {
+type Select struct {
 	Mailbox string
 }
 
-func (l SelectCommand) String() string {
+func (l Select) String() string {
 	return fmt.Sprintf("SELECT '%v'", l.Mailbox)
 }
 
-func (l SelectCommand) SanitizedString() string {
+func (l Select) SanitizedString() string {
 	return fmt.Sprintf("SELECT '%v'", sanitizeString(l.Mailbox))
 }
 
@@ -30,7 +30,7 @@ func (SelectCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		return nil, err
 	}
 
-	return &SelectCommand{
+	return &Select{
 		Mailbox: mailbox.Value,
 	}, nil
 }

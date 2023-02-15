@@ -5,18 +5,18 @@ import (
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
-type CloseCommand struct{}
+type Close struct{}
 
-func (l CloseCommand) String() string {
+func (l Close) String() string {
 	return fmt.Sprintf("CLOSE")
 }
 
-func (l CloseCommand) SanitizedString() string {
+func (l Close) SanitizedString() string {
 	return l.String()
 }
 
 type CloseCommandParser struct{}
 
 func (CloseCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
-	return &CloseCommand{}, nil
+	return &Close{}, nil
 }

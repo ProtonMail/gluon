@@ -12,7 +12,7 @@ func TestParser_MoveCommand(t *testing.T) {
 	s := rfcparser.NewScanner(bytes.NewReader(input))
 	p := NewParser(s)
 
-	expected := Command{Tag: "tag", Payload: &MoveCommand{
+	expected := Command{Tag: "tag", Payload: &Move{
 		Mailbox: "INBOX",
 		SeqSet:  []SeqRange{{Begin: 1, End: SeqNumValueAsterisk}},
 	}}
