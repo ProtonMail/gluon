@@ -2,9 +2,10 @@ package command
 
 import (
 	"fmt"
-	"github.com/bradenaw/juniper/xslices"
 	"strings"
 	"time"
+
+	"github.com/bradenaw/juniper/xslices"
 )
 
 type SearchKeyAll struct{}

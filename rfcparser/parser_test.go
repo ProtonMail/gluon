@@ -2,8 +2,9 @@ package rfcparser
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func newTestParser(input []byte) *Parser {

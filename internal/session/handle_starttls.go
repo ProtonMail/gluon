@@ -3,8 +3,8 @@ package session
 import (
 	"bufio"
 	"crypto/tls"
-	"github.com/ProtonMail/gluon/imap/command"
 
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 )
 

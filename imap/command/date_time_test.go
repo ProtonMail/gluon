@@ -2,10 +2,11 @@ package command
 
 import (
 	"bytes"
-	rfcparser "github.com/ProtonMail/gluon/rfcparser"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/ProtonMail/gluon/rfcparser"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDateTimeParser(t *testing.T) {

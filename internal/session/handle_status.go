@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"

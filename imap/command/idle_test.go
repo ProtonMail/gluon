@@ -2,9 +2,10 @@ package command
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestParser_IdleCommand(t *testing.T) {

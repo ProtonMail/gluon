@@ -2,8 +2,9 @@ package command
 
 import (
 	"fmt"
-	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 	"time"
+
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 func ParseDateTime(p *rfcparser.Parser) (time.Time, error) {

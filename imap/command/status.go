@@ -2,7 +2,8 @@ package command
 
 import (
 	"fmt"
-	rfcparser "github.com/ProtonMail/gluon/rfcparser"
+
+	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/bradenaw/juniper/xslices"
 )
 

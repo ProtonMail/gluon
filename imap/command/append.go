@@ -2,8 +2,9 @@ package command
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/rfcparser"
 	"time"
+
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type Append struct {

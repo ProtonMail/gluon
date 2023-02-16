@@ -2,8 +2,9 @@ package command
 
 import (
 	"fmt"
-	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 	"strings"
+
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 func TryParseFlagList(p *rfcparser.Parser) ([]string, bool, error) {
