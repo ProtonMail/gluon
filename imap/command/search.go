@@ -4,6 +4,7 @@ import (
 	"fmt"
 	rfcparser "github.com/ProtonMail/gluon/rfcparser"
 	"github.com/bradenaw/juniper/xslices"
+	"strings"
 	"time"
 )
 
@@ -46,26 +47,70 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 
 	var charset string
 
-	// check for optional charset
-	keyword, err := readSearchKeyword(p)
-	if err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
 
-	if keyword.Value == "charset" {
-		if err := p.Consume(rfcparser.TokenTypeSP, "expected space after charset"); err != nil {
-			return nil, err
-		}
+	// Check for optional charset.
+	if ok, err := p.Matches(rfcparser.TokenTypeChar); err != nil {
+		return nil, err
+	} else if ok {
+		// Check if the character is C.
+		if rfcparser.ByteToLower(p.PreviousToken().Value) == 'c' {
+			offset := p.PreviousToken().Offset
 
-		encoding, err := p.ParseAString()
-		if err != nil {
-			return nil, err
-		}
+			// Check if the next character is also C. If true, it's the CC keyword.
+			if rfcparser.ByteToLower(p.CurrentToken().Value) == 'c' {
+				if err := p.Consume(rfcparser.TokenTypeChar, "expected char"); err != nil {
+					return nil, err
+				}
 
-		charset = encoding.Value
+				key, err := handleSearchKey(rfcparser.String{Value: "cc", Offset: offset}, p)
+				if err != nil {
+					return nil, err
+				}
+
+				keys = append(keys, key)
+			} else {
+				// Is the charset modifier.
+				if err := p.ConsumeBytesFold('H', 'A', 'R', 'S', 'E', 'T'); err != nil {
+					return nil, err
+				}
+
+				if err := p.Consume(rfcparser.TokenTypeSP, "expected space after charset"); err != nil {
+					return nil, err
+				}
+
+				encoding, err := p.ParseAString()
+				if err != nil {
+					return nil, err
+				}
+
+				charset = encoding.Value
+			}
+		} else {
+			// Another keyword entirely
+			firstChar := p.PreviousToken()
+
+			keyword, err := p.CollectBytesWhileMatches(rfcparser.TokenTypeChar)
+			if err != nil {
+				return nil, err
+			}
+
+			keywordStr := rfcparser.String{
+				Value:  strings.ToLower(string(firstChar.Value) + keyword.IntoString().Value),
+				Offset: firstChar.Offset,
+			}
+
+			key, err := handleSearchKey(keywordStr, p)
+			if err != nil {
+				return nil, err
+			}
+
+			keys = append(keys, key)
+		}
 	} else {
-		// Not charset, perform handling of the keword
-		key, err := handleSearchKey(keyword, p)
+		key, err := parseSearchKey(p)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +119,9 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 	}
 
 	for {
-		if !p.Check(rfcparser.TokenTypeSP) {
+		if ok, err := p.Matches(rfcparser.TokenTypeSP); err != nil {
+			return nil, err
+		} else if !ok {
 			break
 		}
 
@@ -97,6 +144,21 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 }
 
 func parseSearchKey(p *rfcparser.Parser) (SearchKey, error) {
+	if ok, err := p.Matches(rfcparser.TokenTypeLParen); err != nil {
+		return nil, err
+	} else if ok {
+		return parseSearchKeyList(p)
+	}
+
+	if p.Check(rfcparser.TokenTypeDigit) {
+		seqSet, err := ParseSeqSet(p)
+		if err != nil {
+			return nil, err
+		}
+
+		return &SearchKeySeqSet{SeqSet: seqSet}, nil
+	}
+
 	keyword, err := readSearchKeyword(p)
 	if err != nil {
 		return nil, err
@@ -105,11 +167,44 @@ func parseSearchKey(p *rfcparser.Parser) (SearchKey, error) {
 	return handleSearchKey(keyword, p)
 }
 
-func readSearchKeyword(p *rfcparser.Parser) (rfcparser.String, error) {
-	if err := p.Consume(rfcparser.TokenTypeSP, "expected space"); err != nil {
-		return rfcparser.String{}, err
+func parseSearchKeyList(p *rfcparser.Parser) (SearchKey, error) {
+	// "(" search-key *(SP search-key) ")"
+	var searchKeys []SearchKey
+
+	{
+		firstKey, err := parseSearchKey(p)
+		if err != nil {
+			return nil, err
+		}
+
+		searchKeys = append(searchKeys, firstKey)
 	}
 
+	for {
+		if ok, err := p.Matches(rfcparser.TokenTypeSP); err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+
+		firstKey, err := parseSearchKey(p)
+		if err != nil {
+			return nil, err
+		}
+
+		searchKeys = append(searchKeys, firstKey)
+	}
+
+	if err := p.Consume(rfcparser.TokenTypeRParen, "expected ) for search key list end"); err != nil {
+		return nil, err
+	}
+
+	return &SearchKeyList{
+		Keys: searchKeys,
+	}, nil
+}
+
+func readSearchKeyword(p *rfcparser.Parser) (rfcparser.String, error) {
 	keyword, err := p.CollectBytesWhileMatches(rfcparser.TokenTypeChar)
 	if err != nil {
 		return rfcparser.String{}, err
@@ -295,6 +390,10 @@ func handleSearchKey(keyword rfcparser.String, p *rfcparser.Parser) (SearchKey, 
 		return &SearchKeyLarger{Value: value}, nil
 
 	case "not":
+		if err := p.Consume(rfcparser.TokenTypeSP, "expected space after NOT"); err != nil {
+			return nil, err
+		}
+
 		key, err := parseSearchKey(p)
 		if err != nil {
 			return nil, err
@@ -303,8 +402,16 @@ func handleSearchKey(keyword rfcparser.String, p *rfcparser.Parser) (SearchKey, 
 		return &SearchKeyNot{Key: key}, nil
 
 	case "or":
+		if err := p.Consume(rfcparser.TokenTypeSP, "expected space after OR"); err != nil {
+			return nil, err
+		}
+
 		key1, err := parseSearchKey(p)
 		if err != nil {
+			return nil, err
+		}
+
+		if err := p.Consume(rfcparser.TokenTypeSP, "expected space after first OR key"); err != nil {
 			return nil, err
 		}
 
@@ -348,16 +455,16 @@ func handleSearchKey(keyword rfcparser.String, p *rfcparser.Parser) (SearchKey, 
 		return &SearchKeySmaller{Value: value}, nil
 
 	case "uid":
-		value, err := parseStringKeyNumber(p)
+		if err := p.Consume(rfcparser.TokenTypeSP, "expected space"); err != nil {
+			return nil, err
+		}
+
+		value, err := ParseSeqSet(p)
 		if err != nil {
 			return nil, err
 		}
 
-		if value < 0 || value > 0xFFFFFFFF {
-			return nil, fmt.Errorf("invalid UID number")
-		}
-
-		return &SearchKeyUID{Value: uint32(value)}, nil
+		return &SearchKeyUID{SeqSet: value}, nil
 
 	case "undraft":
 		return &SearchKeyUndraft{}, nil

@@ -463,7 +463,7 @@ func TestParser_SearchUID(t *testing.T) {
 	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
 		Keys: []SearchKey{
-			&SearchKeyUID{Value: 512},
+			&SearchKeyUID{SeqSet: []SeqRange{{Begin: 512, End: 512}}},
 		},
 	}}
 
@@ -496,6 +496,95 @@ func TestParser_SearchMultipleKeys(t *testing.T) {
 	}}
 
 	cmd, err := testParseCommand(`tag SEARCH UNDRAFT SUBJECT foo SENTSINCE 01-Jan-2009`)
+	require.NoError(t, err)
+	require.Equal(t, expected, cmd)
+}
+
+func TestParser_SearchSeqSet(t *testing.T) {
+	expected := Command{Tag: "tag", Payload: &Search{
+		Charset: "",
+		Keys: []SearchKey{
+			&SearchKeySeqSet{
+				SeqSet: []SeqRange{
+					{
+						Begin: 1,
+						End:   2,
+					},
+					{
+						Begin: SeqNumValueAsterisk,
+						End:   SeqNumValueAsterisk,
+					},
+				},
+			},
+		},
+	}}
+
+	cmd, err := testParseCommand(`tag SEARCH 1:2,*`)
+	require.NoError(t, err)
+	require.Equal(t, expected, cmd)
+}
+
+func TestParser_SearchList(t *testing.T) {
+	expected := Command{Tag: "tag", Payload: &Search{
+		Charset: "",
+		Keys: []SearchKey{
+			&SearchKeyList{
+				Keys: []SearchKey{
+					&SearchKeyUndraft{},
+					&SearchKeySubject{Value: "foo"},
+					&SearchKeySentSince{Value: buildSearchTestDate(2009, time.January, 1)},
+				},
+			},
+		},
+	}}
+
+	cmd, err := testParseCommand(`tag SEARCH (UNDRAFT SUBJECT foo SENTSINCE 01-Jan-2009)`)
+	require.NoError(t, err)
+	require.Equal(t, expected, cmd)
+}
+
+func TestParser_SearchListWithCharset(t *testing.T) {
+	expected := Command{Tag: "tag", Payload: &Search{
+		Charset: "UTF-8",
+		Keys: []SearchKey{
+			&SearchKeyList{
+				Keys: []SearchKey{
+					&SearchKeyUndraft{},
+					&SearchKeySubject{Value: "foo"},
+					&SearchKeySentSince{Value: buildSearchTestDate(2009, time.January, 1)},
+				},
+			},
+		},
+	}}
+
+	cmd, err := testParseCommand(`tag SEARCH CHARSET UTF-8 (UNDRAFT SUBJECT foo SENTSINCE 01-Jan-2009)`)
+	require.NoError(t, err)
+	require.Equal(t, expected, cmd)
+}
+
+func TestParser_SearchNestedList(t *testing.T) {
+	expected := Command{Tag: "tag", Payload: &Search{
+		Charset: "",
+		Keys: []SearchKey{
+			&SearchKeyList{
+				Keys: []SearchKey{
+					&SearchKeyUndraft{},
+					&SearchKeyList{
+						Keys: []SearchKey{
+							&SearchKeySubject{Value: "foo"},
+							&SearchKeyList{
+								Keys: []SearchKey{
+									&SearchKeySeqSet{SeqSet: []SeqRange{{Begin: 1, End: 2}}},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}}
+
+	cmd, err := testParseCommand(`tag SEARCH (UNDRAFT (SUBJECT foo (1:2)))`)
 	require.NoError(t, err)
 	require.Equal(t, expected, cmd)
 }
