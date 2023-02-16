@@ -2,9 +2,10 @@ package command
 
 import (
 	"bytes"
-	rfcparser "github.com/ProtonMail/gluon/rfcparser"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/ProtonMail/gluon/rfcparser"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParser_ParseFlagList(t *testing.T) {

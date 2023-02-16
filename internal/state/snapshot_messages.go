@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/ids"

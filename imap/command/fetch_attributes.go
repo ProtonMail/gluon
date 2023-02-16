@@ -2,9 +2,10 @@ package command
 
 import (
 	"fmt"
-	"github.com/bradenaw/juniper/xslices"
 	"strconv"
 	"strings"
+
+	"github.com/bradenaw/juniper/xslices"
 )
 
 type FetchAttributeAll struct{}

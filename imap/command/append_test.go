@@ -3,11 +3,12 @@ package command
 import (
 	"bytes"
 	"fmt"
+	"testing"
+	"time"
+
 	cppParser "github.com/ProtonMail/gluon/internal/parser"
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func buildAppendDateTime(year int, month time.Month, day int, hour int, min int, sec int, zoneHour int, zoneMinutes int, negativeZone bool) time.Time {

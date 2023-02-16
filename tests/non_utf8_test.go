@@ -1,11 +1,12 @@
 package tests
 
 import (
+	"testing"
+
 	"github.com/ProtonMail/gluon/reporter/mock_reporter"
 	"github.com/emersion/go-imap/client"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestSSLConnectionOverStartTLS(t *testing.T) {

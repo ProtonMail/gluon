@@ -2,10 +2,11 @@ package command
 
 import (
 	"bytes"
+	"testing"
+
 	cppParser "github.com/ProtonMail/gluon/internal/parser"
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestParser_ListCommandQuoted(t *testing.T) {

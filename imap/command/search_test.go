@@ -2,12 +2,13 @@ package command
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/rfcparser"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/text/encoding/htmlindex"
 	"testing"
 	"time"
 	"unicode/utf8"
+
+	"github.com/ProtonMail/gluon/rfcparser"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/text/encoding/htmlindex"
 )
 
 func buildSearchTestDate(year int, month time.Month, day int) time.Time {

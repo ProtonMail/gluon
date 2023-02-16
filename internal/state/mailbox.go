@@ -3,11 +3,11 @@ package state
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/command"
 	"strings"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"

@@ -3,11 +3,12 @@ package command
 import (
 	"bytes"
 	"fmt"
-	rfcparser "github.com/ProtonMail/gluon/rfcparser"
-	"github.com/stretchr/testify/require"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/ProtonMail/gluon/rfcparser"
+	"github.com/stretchr/testify/require"
 )
 
 func toIMAPLine(string ...string) []byte {

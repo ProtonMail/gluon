@@ -3,6 +3,7 @@ package command
 import (
 	"encoding/base64"
 	"fmt"
+
 	"github.com/ProtonMail/gluon/internal/hash"
 )
 

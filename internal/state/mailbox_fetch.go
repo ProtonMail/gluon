@@ -3,13 +3,13 @@ package state
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/imap/command"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"

@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/ProtonMail/gluon/liner"
 	"io"
 	"net"
 	"regexp"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ProtonMail/gluon/liner"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

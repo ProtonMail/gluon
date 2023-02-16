@@ -1,8 +1,9 @@
 package command
 
 import (
-	"github.com/ProtonMail/gluon/rfcparser"
 	"strings"
+
+	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 // ParseMailbox parses a mailbox name as defined in RFC 3501.
