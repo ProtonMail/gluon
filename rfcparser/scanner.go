@@ -11,6 +11,7 @@ type TokenType int
 
 const (
 	TokenTypeEOF TokenType = iota
+	TokenTypeError
 	TokenTypeSP
 	TokenTypeExclamation
 	TokenTypeDQuote
