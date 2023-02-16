@@ -41,6 +41,8 @@ func (u *UIDCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 
 	var commandBytes []byte
 
+	offset := p.PreviousToken().Offset
+
 	for {
 		if ok, err := p.Matches(rfcparser.TokenTypeChar); err != nil {
 			return nil, err
@@ -60,7 +62,7 @@ func (u *UIDCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 
 	builder, ok := u.commands[command]
 	if !ok {
-		return nil, fmt.Errorf("unknown uid command '%v'", command)
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown uid command '%v'", command), offset)
 	}
 
 	payload, err := builder.FromParser(p)
