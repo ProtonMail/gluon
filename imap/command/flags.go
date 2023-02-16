@@ -24,27 +24,29 @@ func ParseFlagList(p *rfcparser.Parser) ([]string, error) {
 		return nil, err
 	}
 
-	{
-		firstFlag, err := ParseFlag(p)
-		if err != nil {
-			return nil, err
-		}
-		flags = append(flags, firstFlag)
-	}
-
-	for {
-		if ok, err := p.Matches(rfcparser.TokenTypeSP); err != nil {
-			return nil, err
-		} else if !ok {
-			break
+	if !p.Check(rfcparser.TokenTypeRParen) {
+		{
+			firstFlag, err := ParseFlag(p)
+			if err != nil {
+				return nil, err
+			}
+			flags = append(flags, firstFlag)
 		}
 
-		flag, err := ParseFlag(p)
-		if err != nil {
-			return nil, err
-		}
+		for {
+			if ok, err := p.Matches(rfcparser.TokenTypeSP); err != nil {
+				return nil, err
+			} else if !ok {
+				break
+			}
 
-		flags = append(flags, flag)
+			flag, err := ParseFlag(p)
+			if err != nil {
+				return nil, err
+			}
+
+			flags = append(flags, flag)
+		}
 	}
 
 	if err := p.Consume(rfcparser.TokenTypeRParen, "Expected ')' at end of flag list"); err != nil {
