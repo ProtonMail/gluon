@@ -524,6 +524,26 @@ func TestParser_SearchSeqSet(t *testing.T) {
 	require.Equal(t, expected, cmd)
 }
 
+func TestParser_SearchSeqSetAsteriskFirst(t *testing.T) {
+	expected := Command{Tag: "tag", Payload: &Search{
+		Charset: "",
+		Keys: []SearchKey{
+			&SearchKeySeqSet{
+				SeqSet: []SeqRange{
+					{
+						Begin: SeqNumValueAsterisk,
+						End:   1,
+					},
+				},
+			},
+		},
+	}}
+
+	cmd, err := testParseCommand(`tag SEARCH *:1`)
+	require.NoError(t, err)
+	require.Equal(t, expected, cmd)
+}
+
 func TestParser_SearchList(t *testing.T) {
 	expected := Command{Tag: "tag", Payload: &Search{
 		Charset: "",
