@@ -94,26 +94,23 @@ func (p *Parser) Parse() (Command, error) {
 	// Done command does not have a tag.
 	if strings.ToLower(tag.Value) == "done" {
 		p.lastCmd = "done"
+		result.Tag = ""
+		result.Payload = &Done{}
+	} else {
+		result.Tag = tag.Value
+		p.lastTag = tag.Value
 
-		return Command{
-			Tag:     "",
-			Payload: &Done{},
-		}, nil
+		if err := p.parser.Consume(rfcparser.TokenTypeSP, "Expected space after tag"); err != nil {
+			return result, err
+		}
+
+		payload, err := p.parseCommand()
+		if err != nil {
+			return result, err
+		}
+
+		result.Payload = payload
 	}
-
-	result.Tag = tag.Value
-	p.lastTag = tag.Value
-
-	if err := p.parser.Consume(rfcparser.TokenTypeSP, "Expected space after tag"); err != nil {
-		return result, err
-	}
-
-	payload, err := p.parseCommand()
-	if err != nil {
-		return result, err
-	}
-
-	result.Payload = payload
 
 	if err := p.parser.Consume(rfcparser.TokenTypeCR, "expected CR"); err != nil {
 		return Command{}, err
