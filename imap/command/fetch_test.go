@@ -403,6 +403,26 @@ func TestParser_FetchCommandMultiple(t *testing.T) {
 	require.Equal(t, expected, cmd)
 }
 
+func TestParser_FetchCommandBodySectionPartOnly(t *testing.T) {
+	expected := Command{Tag: "A005", Payload: &Fetch{
+		SeqSet: []SeqRange{{Begin: 1, End: 1}},
+		Attributes: []FetchAttribute{
+			&FetchAttributeBodySection{
+				Section: &BodySectionPart{
+					Part:    []int{1, 1},
+					Section: nil,
+				},
+				Peek:    false,
+				Partial: nil,
+			},
+		},
+	}}
+
+	cmd, err := testParseCommand(`A005 FETCH 1 (BODY[1.1])`)
+	require.NoError(t, err)
+	require.Equal(t, expected, cmd)
+}
+
 func BenchmarkParser_Fetch(b *testing.B) {
 	input := toIMAPLine(`tag FETCH 2:4 (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY.PEEK[1.3.TEXT]<50.100>)`)
 
