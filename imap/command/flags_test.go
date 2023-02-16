@@ -11,6 +11,7 @@ func TestParser_ParseFlagList(t *testing.T) {
 	values := map[string][]string{
 		`(\Answered)`:                {`\Answered`},
 		`(\Answered Foo \Something)`: {`\Answered`, `Foo`, `\Something`},
+		`()`:                         nil,
 	}
 
 	for input, expected := range values {
@@ -24,7 +25,6 @@ func TestParser_ParseFlagList(t *testing.T) {
 
 func TestParser_ParseFlagListInvalid(t *testing.T) {
 	inputs := [][]byte{
-		[]byte(`()`),
 		[]byte(`(\Foo\Bar)`),
 		[]byte(`"(\Recent)`),
 		[]byte(`(\Foo )`),
