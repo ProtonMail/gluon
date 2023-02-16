@@ -2,6 +2,8 @@ package command
 
 import (
 	"fmt"
+	"github.com/bradenaw/juniper/xslices"
+	"strings"
 	"time"
 )
 
@@ -378,11 +380,11 @@ func (s SearchKeySmaller) SanitizedString() string {
 }
 
 type SearchKeyUID struct {
-	Value uint32
+	SeqSet []SeqRange
 }
 
 func (s SearchKeyUID) String() string {
-	return fmt.Sprintf("UID %v", s.Value)
+	return fmt.Sprintf("UID %v", s.SeqSet)
 }
 
 func (s SearchKeyUID) SanitizedString() string {
@@ -396,5 +398,33 @@ func (s SearchKeyUndraft) String() string {
 }
 
 func (s SearchKeyUndraft) SanitizedString() string {
+	return s.String()
+}
+
+type SearchKeyList struct {
+	Keys []SearchKey
+}
+
+func (s SearchKeyList) String() string {
+	return fmt.Sprintf("(%v)", strings.Join(xslices.Map(s.Keys, func(t SearchKey) string {
+		return t.String()
+	}), ""))
+}
+
+func (s SearchKeyList) SanitizedString() string {
+	return fmt.Sprintf("(%v)", strings.Join(xslices.Map(s.Keys, func(t SearchKey) string {
+		return t.SanitizedString()
+	}), ""))
+}
+
+type SearchKeySeqSet struct {
+	SeqSet []SeqRange
+}
+
+func (s SearchKeySeqSet) String() string {
+	return fmt.Sprintf("%v", s.SeqSet)
+}
+
+func (s SearchKeySeqSet) SanitizedString() string {
 	return s.String()
 }
