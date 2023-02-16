@@ -1,13 +1,14 @@
 package session
 
 import (
+	"bufio"
 	"crypto/tls"
+	"github.com/ProtonMail/gluon/imap/command"
 
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 )
 
-func (s *Session) handleStartTLS(tag string, cmd *proto.StartTLS) error {
+func (s *Session) handleStartTLS(tag string, _ *command.StartTLS) error {
 	if s.tlsConfig == nil {
 		return response.No(tag).WithError(ErrTLSUnavailable)
 	}
@@ -24,7 +25,8 @@ func (s *Session) handleStartTLS(tag string, cmd *proto.StartTLS) error {
 
 	s.conn = conn
 
-	s.liner.Reset(conn)
+	s.inputCollector.Reset()
+	s.inputCollector.SetSource(bufio.NewReader(s.conn))
 
 	return nil
 }

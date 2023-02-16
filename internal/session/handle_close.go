@@ -2,16 +2,15 @@ package session
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap/command"
 
 	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
 )
 
-// TODO(REFACTOR): No EXPUNGE responses are sent -- what about to other sessions also selected in this mailbox?
-func (s *Session) handleClose(ctx context.Context, tag string, cmd *proto.Close, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
+func (s *Session) handleClose(ctx context.Context, tag string, _ *command.Close, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
 	profiling.Start(ctx, profiling.CmdTypeClose)
 	defer profiling.Stop(ctx, profiling.CmdTypeClose)
 

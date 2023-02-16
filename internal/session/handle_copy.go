@@ -3,17 +3,16 @@ package session
 import (
 	"context"
 	"errors"
+	"github.com/ProtonMail/gluon/imap/command"
 
 	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
-	"github.com/emersion/go-imap/utf7"
 )
 
-func (s *Session) handleCopy(ctx context.Context, tag string, cmd *proto.Copy, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
+func (s *Session) handleCopy(ctx context.Context, tag string, cmd *command.Copy, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
 	if contexts.IsUID(ctx) {
 		profiling.Start(ctx, profiling.CmdTypeUIDCopy)
 		defer profiling.Stop(ctx, profiling.CmdTypeUIDCopy)
@@ -22,12 +21,12 @@ func (s *Session) handleCopy(ctx context.Context, tag string, cmd *proto.Copy, m
 		defer profiling.Stop(ctx, profiling.CmdTypeCopy)
 	}
 
-	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
+	nameUTF8, err := s.decodeMailboxName(cmd.Mailbox)
 	if err != nil {
 		return nil, err
 	}
 
-	item, err := mailbox.Copy(ctx, cmd.GetSequenceSet(), nameUTF8)
+	item, err := mailbox.Copy(ctx, cmd.SeqSet, nameUTF8)
 	if errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err), nil
 	} else if errors.Is(err, state.ErrNoSuchMailbox) {

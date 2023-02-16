@@ -469,6 +469,7 @@ func (p *Parser) MakeError(err string) error {
 func (p *Parser) MakeErrorAtOffset(err string, offset int) error {
 	return &Error{
 		Token: Token{
+			TType:  TokenTypeError,
 			Offset: offset,
 		},
 		Message: err,

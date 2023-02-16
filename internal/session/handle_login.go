@@ -2,15 +2,15 @@ package session
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap/command"
 
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/profiling"
 )
 
-func (s *Session) handleLogin(ctx context.Context, tag string, cmd *proto.Login, ch chan response.Response) error {
+func (s *Session) handleLogin(ctx context.Context, tag string, cmd *command.Login, ch chan response.Response) error {
 	profiling.Start(ctx, profiling.CmdTypeLogin)
 	defer profiling.Stop(ctx, profiling.CmdTypeLogin)
 
@@ -26,11 +26,11 @@ func (s *Session) handleLogin(ctx context.Context, tag string, cmd *proto.Login,
 		return response.Bad(tag).WithError(ErrAlreadyAuthenticated)
 	}
 
-	state, err := s.backend.GetState(ctx, cmd.GetUsername(), cmd.GetPassword(), s.sessionID)
+	state, err := s.backend.GetState(ctx, cmd.UserID, []byte(cmd.Password), s.sessionID)
 	if err != nil {
 		s.eventCh <- events.LoginFailed{
 			SessionID: s.sessionID,
-			Username:  cmd.GetUsername(),
+			Username:  cmd.UserID,
 		}
 
 		return err

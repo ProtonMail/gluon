@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/imap/command"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -14,7 +15,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/parser"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
@@ -23,7 +23,7 @@ import (
 
 var totalActiveSearchRequests int32
 
-func (m *Mailbox) Search(ctx context.Context, keys []*proto.SearchKey, decoder *encoding.Decoder) ([]uint32, error) {
+func (m *Mailbox) Search(ctx context.Context, keys []command.SearchKey, decoder *encoding.Decoder) ([]uint32, error) {
 	var mapFn func(snapMsgWithSeq) uint32
 
 	if contexts.IsUID(ctx) {
@@ -203,118 +203,118 @@ func newBuildSearchOpResult(op searchOp, needs ...searchOpResultOption) *buildSe
 	return r
 }
 
-func buildSearchOp(m *Mailbox, key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	switch key.Keyword {
-	case proto.SearchKeyword_SearchKWAll:
+func buildSearchOp(m *Mailbox, key command.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	switch key := key.(type) {
+	case *command.SearchKeyAll:
 		return buildSearchOpAll()
 
-	case proto.SearchKeyword_SearchKWAnswered:
+	case *command.SearchKeyAnswered:
 		return buildSearchOpAnswered()
 
-	case proto.SearchKeyword_SearchKWBcc:
+	case *command.SearchKeyBCC:
 		return buildSearchOpBcc(key, decoder)
 
-	case proto.SearchKeyword_SearchKWBefore:
+	case *command.SearchKeyBefore:
 		return buildSearchOpBefore(key)
 
-	case proto.SearchKeyword_SearchKWBody:
+	case *command.SearchKeyBody:
 		return buildSearchOpBody(key, decoder)
 
-	case proto.SearchKeyword_SearchKWCc:
+	case *command.SearchKeyCC:
 		return buildSearchOpCc(key, decoder)
 
-	case proto.SearchKeyword_SearchKWDeleted:
+	case *command.SearchKeyDeleted:
 		return buildSearchOpDeleted()
 
-	case proto.SearchKeyword_SearchKWDraft:
+	case *command.SearchKeyDraft:
 		return buildSearchOpDraft()
 
-	case proto.SearchKeyword_SearchKWFlagged:
+	case *command.SearchKeyFlagged:
 		return buildSearchOpFlagged()
 
-	case proto.SearchKeyword_SearchKWFrom:
+	case *command.SearchKeyFrom:
 		return buildSearchOpFrom(key, decoder)
 
-	case proto.SearchKeyword_SearchKWHeader:
+	case *command.SearchKeyHeader:
 		return buildSearchOpHeader(key, decoder)
 
-	case proto.SearchKeyword_SearchKWKeyword:
+	case *command.SearchKeyKeyword:
 		return buildSearchOpKeyword(key)
 
-	case proto.SearchKeyword_SearchKWLarger:
+	case *command.SearchKeyLarger:
 		return buildSearchOpLarger(key)
 
-	case proto.SearchKeyword_SearchKWNew:
+	case *command.SearchKeyNew:
 		return buildSearchOpNew()
 
-	case proto.SearchKeyword_SearchKWNot:
+	case *command.SearchKeyNot:
 		return buildSearchOpNot(m, key, decoder)
 
-	case proto.SearchKeyword_SearchKWOld:
+	case *command.SearchKeyOld:
 		return buildSearchOpOld()
 
-	case proto.SearchKeyword_SearchKWOn:
+	case *command.SearchKeyOn:
 		return buildSearchOpOn(key)
 
-	case proto.SearchKeyword_SearchKWOr:
+	case *command.SearchKeyOr:
 		return buildSearchOpOr(m, key, decoder)
 
-	case proto.SearchKeyword_SearchKWRecent:
+	case *command.SearchKeyRecent:
 		return buildSearchOpRecent()
 
-	case proto.SearchKeyword_SearchKWSeen:
+	case *command.SearchKeySeen:
 		return buildSearchOpSeen()
 
-	case proto.SearchKeyword_SearchKWSentBefore:
+	case *command.SearchKeySentBefore:
 		return buildSearchOpSentBefore(key)
 
-	case proto.SearchKeyword_SearchKWSentOn:
+	case *command.SearchKeySentOn:
 		return buildSearchOpSentOn(key)
 
-	case proto.SearchKeyword_SearchKWSentSince:
+	case *command.SearchKeySentSince:
 		return buildSearchOpSentSince(key)
 
-	case proto.SearchKeyword_SearchKWSince:
+	case *command.SearchKeySince:
 		return buildSearchOpSince(key)
 
-	case proto.SearchKeyword_SearchKWSmaller:
+	case *command.SearchKeySmaller:
 		return buildSearchOpSmaller(key)
 
-	case proto.SearchKeyword_SearchKWSubject:
+	case *command.SearchKeySubject:
 		return buildSearchOpSubject(key, decoder)
 
-	case proto.SearchKeyword_SearchKWText:
+	case *command.SearchKeyText:
 		return buildSearchOpText(key, decoder)
 
-	case proto.SearchKeyword_SearchKWTo:
+	case *command.SearchKeyTo:
 		return buildSearchOpTo(key, decoder)
 
-	case proto.SearchKeyword_SearchKWUID:
+	case *command.SearchKeyUID:
 		return buildSearchOpUID(m, key)
 
-	case proto.SearchKeyword_SearchKWUnanswered:
+	case *command.SearchKeyUnanswered:
 		return buildSearchOpUnanswered()
 
-	case proto.SearchKeyword_SearchKWUndeleted:
+	case *command.SearchKeyUndeleted:
 		return buildSearchOpUndeleted()
 
-	case proto.SearchKeyword_SearchKWUndraft:
+	case *command.SearchKeyUndraft:
 		return buildSearchOpUndraft()
 
-	case proto.SearchKeyword_SearchKWUnflagged:
+	case *command.SearchKeyUnflagged:
 		return buildSearchOpUnflagged()
 
-	case proto.SearchKeyword_SearchKWUnkeyword:
+	case *command.SearchKeyUnkeyword:
 		return buildSearchOpUnkeyword(key)
 
-	case proto.SearchKeyword_SearchKWUnseen:
+	case *command.SearchKeyUnseen:
 		return buildSearchOpUnseen()
 
-	case proto.SearchKeyword_SearchKWSeqSet:
+	case *command.SearchKeySeqSet:
 		return buildSearchOpSeqSet(m, key)
 
-	case proto.SearchKeyword_SearchKWList:
-		return buildSearchOpList(m, key, decoder)
+	case *command.SearchKeyList:
+		return buildSearchOpList(m, key.Keys, decoder)
 
 	default:
 		return nil, fmt.Errorf("bad search keyword")
@@ -337,8 +337,8 @@ func buildSearchOpAnswered() (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpBcc(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	decodedKey, err := decoder.Bytes(key.GetText())
+func buildSearchOpBcc(key *command.SearchKeyBCC, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes([]byte(key.Value))
 	if err != nil {
 		return nil, err
 	}
@@ -354,21 +354,16 @@ func buildSearchOpBcc(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSe
 	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func buildSearchOpBefore(key *proto.SearchKey) (*buildSearchOpResult, error) {
-	beforeDate, err := time.Parse("_2-Jan-2006", key.GetDate())
-	if err != nil {
-		return nil, err
-	}
-
+func buildSearchOpBefore(key *command.SearchKeyBefore) (*buildSearchOpResult, error) {
 	op := func(s *searchData) (bool, error) {
-		return s.dbMessage.date.Before(beforeDate), nil
+		return s.dbMessage.date.Before(key.Value), nil
 	}
 
 	return newBuildSearchOpResult(op, needsDBMessage()), nil
 }
 
-func buildSearchOpBody(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	keyBytes, err := decoder.Bytes(key.GetText())
+func buildSearchOpBody(key *command.SearchKeyBody, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	keyBytes, err := decoder.Bytes([]byte(key.Value))
 	if err != nil {
 		return nil, err
 	}
@@ -384,8 +379,8 @@ func buildSearchOpBody(key *proto.SearchKey, decoder *encoding.Decoder) (*buildS
 	return newBuildSearchOpResult(op, needsLiteral()), nil
 }
 
-func buildSearchOpCc(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	decodedKey, err := decoder.Bytes(key.GetText())
+func buildSearchOpCc(key *command.SearchKeyCC, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes([]byte(key.Value))
 	if err != nil {
 		return nil, err
 	}
@@ -425,8 +420,8 @@ func buildSearchOpFlagged() (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpFrom(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	decodedKey, err := decoder.Bytes(key.GetText())
+func buildSearchOpFrom(key *command.SearchKeyFrom, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes([]byte(key.Value))
 	if err != nil {
 		return nil, err
 	}
@@ -442,8 +437,8 @@ func buildSearchOpFrom(key *proto.SearchKey, decoder *encoding.Decoder) (*buildS
 	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func buildSearchOpHeader(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	decodedKey, err := decoder.Bytes(key.GetText())
+func buildSearchOpHeader(key *command.SearchKeyHeader, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes([]byte(key.Value))
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +446,7 @@ func buildSearchOpHeader(key *proto.SearchKey, decoder *encoding.Decoder) (*buil
 	decodedKeyStr := strings.ToLower(string(decodedKey))
 
 	op := func(s *searchData) (bool, error) {
-		value := s.header.Get(key.GetField())
+		value := s.header.Get(key.Field)
 
 		return strings.Contains(strings.ToLower(value), decodedKeyStr), nil
 	}
@@ -459,8 +454,8 @@ func buildSearchOpHeader(key *proto.SearchKey, decoder *encoding.Decoder) (*buil
 	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func buildSearchOpKeyword(key *proto.SearchKey) (*buildSearchOpResult, error) {
-	flagLowerCase := strings.ToLower(key.GetFlag())
+func buildSearchOpKeyword(key *command.SearchKeyKeyword) (*buildSearchOpResult, error) {
+	flagLowerCase := strings.ToLower(key.Value)
 
 	op := func(s *searchData) (bool, error) {
 		return s.message.flags.ContainsUnchecked(flagLowerCase), nil
@@ -469,8 +464,8 @@ func buildSearchOpKeyword(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpLarger(key *proto.SearchKey) (*buildSearchOpResult, error) {
-	size := int(key.GetSize())
+func buildSearchOpLarger(key *command.SearchKeyLarger) (*buildSearchOpResult, error) {
+	size := key.Value
 
 	op := func(s *searchData) (bool, error) {
 		return s.dbMessage.size > size, nil
@@ -487,8 +482,8 @@ func buildSearchOpNew() (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpNot(m *Mailbox, key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	toNegateOpResult, err := buildSearchOp(m, key.GetLeftOp(), decoder)
+func buildSearchOpNot(m *Mailbox, key *command.SearchKeyNot, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	toNegateOpResult, err := buildSearchOp(m, key.Key, decoder)
 	if err != nil {
 		return nil, err
 	}
@@ -516,11 +511,8 @@ func buildSearchOpOld() (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpOn(key *proto.SearchKey) (*buildSearchOpResult, error) {
-	onDate, err := time.Parse("_2-Jan-2006", key.GetDate())
-	if err != nil {
-		return nil, err
-	}
+func buildSearchOpOn(key *command.SearchKeyOn) (*buildSearchOpResult, error) {
+	onDate := key.Value
 
 	op := func(s *searchData) (bool, error) {
 		return onDate.Truncate(24 * time.Hour).Equal(s.dbMessage.date.Truncate(24 * time.Hour)), nil
@@ -529,13 +521,13 @@ func buildSearchOpOn(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op, needsDBMessage()), nil
 }
 
-func buildSearchOpOr(m *Mailbox, key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	leftOp, err := buildSearchOp(m, key.GetLeftOp(), decoder)
+func buildSearchOpOr(m *Mailbox, key *command.SearchKeyOr, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	leftOp, err := buildSearchOp(m, key.Key1, decoder)
 	if err != nil {
 		return nil, err
 	}
 
-	rightOp, err := buildSearchOp(m, key.GetRightOp(), decoder)
+	rightOp, err := buildSearchOp(m, key.Key2, decoder)
 	if err != nil {
 		return nil, err
 	}
@@ -577,11 +569,8 @@ func buildSearchOpSeen() (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpSentBefore(key *proto.SearchKey) (*buildSearchOpResult, error) {
-	beforeDate, err := time.Parse("_2-Jan-2006", key.GetDate())
-	if err != nil {
-		return nil, err
-	}
+func buildSearchOpSentBefore(key *command.SearchKeySentBefore) (*buildSearchOpResult, error) {
+	beforeDate := key.Value
 
 	op := func(s *searchData) (bool, error) {
 		value := s.header.Get("Date")
@@ -599,11 +588,8 @@ func buildSearchOpSentBefore(key *proto.SearchKey) (*buildSearchOpResult, error)
 	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func buildSearchOpSentOn(key *proto.SearchKey) (*buildSearchOpResult, error) {
-	onDate, err := time.Parse("_2-Jan-2006", key.GetDate())
-	if err != nil {
-		return nil, err
-	}
+func buildSearchOpSentOn(key *command.SearchKeySentOn) (*buildSearchOpResult, error) {
+	onDate := key.Value
 
 	op := func(s *searchData) (bool, error) {
 		value := s.header.Get("Date")
@@ -622,11 +608,8 @@ func buildSearchOpSentOn(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func buildSearchOpSentSince(key *proto.SearchKey) (*buildSearchOpResult, error) {
-	sinceDate, err := time.Parse("_2-Jan-2006", key.GetDate())
-	if err != nil {
-		return nil, err
-	}
+func buildSearchOpSentSince(key *command.SearchKeySentSince) (*buildSearchOpResult, error) {
+	sinceDate := key.Value
 
 	op := func(s *searchData) (bool, error) {
 		value := s.header.Get("Date")
@@ -644,11 +627,8 @@ func buildSearchOpSentSince(key *proto.SearchKey) (*buildSearchOpResult, error) 
 	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func buildSearchOpSince(key *proto.SearchKey) (*buildSearchOpResult, error) {
-	sinceDate, err := time.Parse("_2-Jan-2006", key.GetDate())
-	if err != nil {
-		return nil, err
-	}
+func buildSearchOpSince(key *command.SearchKeySince) (*buildSearchOpResult, error) {
+	sinceDate := key.Value
 
 	op := func(s *searchData) (bool, error) {
 		date := convertToDateWithoutTZ(s.dbMessage.date)
@@ -659,8 +639,8 @@ func buildSearchOpSince(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op, needsDBMessage()), nil
 }
 
-func buildSearchOpSmaller(key *proto.SearchKey) (*buildSearchOpResult, error) {
-	size := int(key.GetSize())
+func buildSearchOpSmaller(key *command.SearchKeySmaller) (*buildSearchOpResult, error) {
+	size := key.Value
 
 	op := func(s *searchData) (bool, error) {
 		return s.dbMessage.size < size, nil
@@ -669,8 +649,8 @@ func buildSearchOpSmaller(key *proto.SearchKey) (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op, needsDBMessage()), nil
 }
 
-func buildSearchOpSubject(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	decodedKey, err := decoder.Bytes(key.GetText())
+func buildSearchOpSubject(key *command.SearchKeySubject, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes([]byte(key.Value))
 	if err != nil {
 		return nil, err
 	}
@@ -686,8 +666,8 @@ func buildSearchOpSubject(key *proto.SearchKey, decoder *encoding.Decoder) (*bui
 	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func buildSearchOpText(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	decodedKey, err := decoder.Bytes(key.GetText())
+func buildSearchOpText(key *command.SearchKeyText, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes([]byte(key.Value))
 	if err != nil {
 		return nil, err
 	}
@@ -701,8 +681,8 @@ func buildSearchOpText(key *proto.SearchKey, decoder *encoding.Decoder) (*buildS
 	return newBuildSearchOpResult(op, needsLiteral()), nil
 }
 
-func buildSearchOpTo(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	decodedKey, err := decoder.Bytes(key.GetText())
+func buildSearchOpTo(key *command.SearchKeyTo, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	decodedKey, err := decoder.Bytes([]byte(key.Value))
 	if err != nil {
 		return nil, err
 	}
@@ -718,8 +698,8 @@ func buildSearchOpTo(key *proto.SearchKey, decoder *encoding.Decoder) (*buildSea
 	return newBuildSearchOpResult(op, needsHeader()), nil
 }
 
-func buildSearchOpUID(m *Mailbox, key *proto.SearchKey) (*buildSearchOpResult, error) {
-	intervals, err := m.snap.resolveUIDInterval(key.GetSequenceSet())
+func buildSearchOpUID(m *Mailbox, key *command.SearchKeyUID) (*buildSearchOpResult, error) {
+	intervals, err := m.snap.resolveUIDInterval(key.SeqSet)
 	if err != nil {
 		return nil, err
 	}
@@ -769,8 +749,8 @@ func buildSearchOpUnflagged() (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpUnkeyword(key *proto.SearchKey) (*buildSearchOpResult, error) {
-	flagLowerCase := strings.ToLower(key.GetFlag())
+func buildSearchOpUnkeyword(key *command.SearchKeyUnkeyword) (*buildSearchOpResult, error) {
+	flagLowerCase := strings.ToLower(key.Value)
 
 	op := func(s *searchData) (bool, error) {
 		return !s.message.flags.ContainsUnchecked(flagLowerCase), nil
@@ -787,8 +767,8 @@ func buildSearchOpUnseen() (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpSeqSet(m *Mailbox, key *proto.SearchKey) (*buildSearchOpResult, error) {
-	intervals, err := m.snap.resolveSeqInterval(key.GetSequenceSet())
+func buildSearchOpSeqSet(m *Mailbox, key *command.SearchKeySeqSet) (*buildSearchOpResult, error) {
+	intervals, err := m.snap.resolveSeqInterval(key.SeqSet)
 	if err != nil {
 		return nil, err
 	}
@@ -806,13 +786,11 @@ func buildSearchOpSeqSet(m *Mailbox, key *proto.SearchKey) (*buildSearchOpResult
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpList(m *Mailbox, key *proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	opKeys := key.GetChildren()
-
-	return buildSearchOpListWithKeys(m, opKeys, decoder)
+func buildSearchOpList(m *Mailbox, keys []command.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	return buildSearchOpListWithKeys(m, keys, decoder)
 }
 
-func buildSearchOpListWithKeys(m *Mailbox, opKeys []*proto.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+func buildSearchOpListWithKeys(m *Mailbox, opKeys []command.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
 	ops := make([]searchOp, 0, len(opKeys))
 
 	opResult := newBuildSearchOpResult(nil)

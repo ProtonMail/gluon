@@ -2,21 +2,20 @@ package session
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap/command"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
-	"github.com/emersion/go-imap/utf7"
 )
 
-func (s *Session) handleCreate(ctx context.Context, tag string, cmd *proto.Create, ch chan response.Response) error {
+func (s *Session) handleCreate(ctx context.Context, tag string, cmd *command.Create, ch chan response.Response) error {
 	profiling.Start(ctx, profiling.CmdTypeCreate)
 	defer profiling.Stop(ctx, profiling.CmdTypeCreate)
 
-	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
+	nameUTF8, err := s.decodeMailboxName(cmd.Mailbox)
 	if err != nil {
 		return err
 	}

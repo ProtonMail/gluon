@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/ProtonMail/gluon/imap/command"
 	"testing"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -144,7 +145,7 @@ func TestMessageRange1HigherThanMax(t *testing.T) {
 	require.NoError(t, msg.insert(messageIDPair(id1, "1"), 1, imap.NewFlagSet(imap.FlagSeen)))
 	require.NoError(t, msg.insert(messageIDPair(id2, "2"), 2, imap.NewFlagSet(imap.FlagSeen)))
 
-	seqSetInterval := [][]string{{"3", "*"}}
+	seqSetInterval := []command.SeqRange{{Begin: 3, End: command.SeqNumValueAsterisk}}
 
 	{
 		uidInterval, err := msg.resolveUIDInterval(seqSetInterval)
@@ -177,7 +178,7 @@ func TestSnapListGetMessages(t *testing.T) {
 	require.NoError(t, msg.insert(messageIDPair(id2, "2"), 2, imap.NewFlagSet(imap.FlagSeen)))
 
 	{
-		seqSetInterval := [][]string{{"3", "*"}}
+		seqSetInterval := []command.SeqRange{{Begin: 3, End: command.SeqNumValueAsterisk}}
 		_, err := msg.getMessagesInSeqRange(seqSetInterval)
 		require.Error(t, err)
 
@@ -186,7 +187,7 @@ func TestSnapListGetMessages(t *testing.T) {
 		require.Empty(t, uidInterval)
 	}
 	{
-		seqSetInterval := [][]string{{"*", "3"}}
+		seqSetInterval := []command.SeqRange{{Begin: command.SeqNumValueAsterisk, End: 3}}
 		_, err := msg.getMessagesInSeqRange(seqSetInterval)
 		require.Error(t, err)
 
@@ -195,7 +196,7 @@ func TestSnapListGetMessages(t *testing.T) {
 		require.Empty(t, uidInterval)
 	}
 	{
-		seqSetInterval := [][]string{{"1", "*"}}
+		seqSetInterval := []command.SeqRange{{Begin: 1, End: command.SeqNumValueAsterisk}}
 		seqList, err := msg.getMessagesInSeqRange(seqSetInterval)
 		require.NoError(t, err)
 		require.Equal(t, 2, len(seqList))
@@ -209,7 +210,7 @@ func TestSnapListGetMessages(t *testing.T) {
 		require.Equal(t, uidList[1].UID, imap.UID(2))
 	}
 	{
-		seqSetInterval := [][]string{{"2", "3"}}
+		seqSetInterval := []command.SeqRange{{Begin: 2, End: 3}}
 		_, err := msg.getMessagesInSeqRange(seqSetInterval)
 		require.Error(t, err)
 

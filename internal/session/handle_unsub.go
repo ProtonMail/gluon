@@ -2,18 +2,17 @@ package session
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap/command"
 
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/emersion/go-imap/utf7"
 )
 
-func (s *Session) handleUnsub(ctx context.Context, tag string, cmd *proto.Unsub, ch chan response.Response) error {
+func (s *Session) handleUnsub(ctx context.Context, tag string, cmd *command.Unsubscribe, ch chan response.Response) error {
 	profiling.Start(ctx, profiling.CmdTypeUnsubscribe)
 	defer profiling.Stop(ctx, profiling.CmdTypeUnsubscribe)
 
-	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
+	nameUTF8, err := s.decodeMailboxName(cmd.Mailbox)
 	if err != nil {
 		return err
 	}

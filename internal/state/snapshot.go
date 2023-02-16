@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap/command"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -9,7 +10,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/bradenaw/juniper/xslices"
 )
@@ -139,7 +139,7 @@ func (snap *snapshot) getAllMessagesIDsMarkedDelete() []ids.MessageIDPair {
 	return msgs
 }
 
-func (snap *snapshot) getMessagesInRange(ctx context.Context, seq *proto.SequenceSet) ([]snapMsgWithSeq, error) {
+func (snap *snapshot) getMessagesInRange(ctx context.Context, seq []command.SeqRange) ([]snapMsgWithSeq, error) {
 	switch {
 	case contexts.IsUID(ctx):
 		return snap.getMessagesInUIDRange(seq)
@@ -167,40 +167,20 @@ func (u UIDInterval) contains(uid imap.UID) bool {
 	return uid >= u.begin && uid <= u.end
 }
 
-func (snap *snapshot) resolveSeqInterval(seq *proto.SequenceSet) ([]SeqInterval, error) {
-	seqSet, err := toSeqSet(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	return snap.messages.resolveSeqInterval(seqSet)
+func (snap *snapshot) resolveSeqInterval(seq []command.SeqRange) ([]SeqInterval, error) {
+	return snap.messages.resolveSeqInterval(seq)
 }
 
-func (snap *snapshot) resolveUIDInterval(seq *proto.SequenceSet) ([]UIDInterval, error) {
-	seqSet, err := toSeqSet(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	return snap.messages.resolveUIDInterval(seqSet)
+func (snap *snapshot) resolveUIDInterval(seq []command.SeqRange) ([]UIDInterval, error) {
+	return snap.messages.resolveUIDInterval(seq)
 }
 
-func (snap *snapshot) getMessagesInSeqRange(seq *proto.SequenceSet) ([]snapMsgWithSeq, error) {
-	seqSet, err := toSeqSet(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	return snap.messages.getMessagesInSeqRange(seqSet)
+func (snap *snapshot) getMessagesInSeqRange(seq []command.SeqRange) ([]snapMsgWithSeq, error) {
+	return snap.messages.getMessagesInSeqRange(seq)
 }
 
-func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]snapMsgWithSeq, error) {
-	seqSet, err := toSeqSet(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	return snap.messages.getMessagesInUIDRange(seqSet)
+func (snap *snapshot) getMessagesInUIDRange(seq []command.SeqRange) ([]snapMsgWithSeq, error) {
+	return snap.messages.getMessagesInUIDRange(seq)
 }
 
 func (snap *snapshot) firstMessageWithFlag(flag string) (snapMsgWithSeq, bool) {
