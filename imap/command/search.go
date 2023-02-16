@@ -134,7 +134,7 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 	}
 
 	if len(keys) == 0 {
-		return nil, fmt.Errorf("no search keys specified")
+		return nil, p.MakeError("no search keys specified")
 	}
 
 	return &Search{

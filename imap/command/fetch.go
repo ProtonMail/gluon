@@ -58,7 +58,7 @@ func (FetchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 			return nil, err
 		}
 
-		switch attribute {
+		switch attribute.Value {
 		case "all":
 			attributes = []FetchAttribute{&FetchAttributeAll{}}
 		case "full":
@@ -78,13 +78,13 @@ func (FetchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	return &Fetch{SeqSet: seqSet, Attributes: attributes}, nil
 }
 
-func parseFetchAttributeName(p *rfcparser.Parser) (string, error) {
+func parseFetchAttributeName(p *rfcparser.Parser) (rfcparser.String, error) {
 	att, err := p.CollectBytesWhileMatches(rfcparser.TokenTypeChar)
 	if err != nil {
-		return "", err
+		return rfcparser.String{}, err
 	}
 
-	return strings.ToLower(string(att.Value)), nil
+	return att.IntoString().ToLower(), nil
 }
 
 func parseFetchAttributes(p *rfcparser.Parser) ([]FetchAttribute, error) {
@@ -141,7 +141,7 @@ func parseFetchAttribute(p *rfcparser.Parser) (FetchAttribute, error) {
 	return attr, nil
 }
 
-func handleFetchAttribute(name string, p *rfcparser.Parser) (FetchAttribute, error) {
+func handleFetchAttribute(name rfcparser.String, p *rfcparser.Parser) (FetchAttribute, error) {
 	/*
 	 fetch-att       = "ENVELOPE" / "FLAGS" / "INTERNALDATE" /
 	                    "RFC822" [".HEADER" / ".SIZE" / ".TEXT"] /
@@ -149,7 +149,7 @@ func handleFetchAttribute(name string, p *rfcparser.Parser) (FetchAttribute, err
 	                    "BODY" section ["<" number "." nz-number ">"] /
 	                    "BODY.PEEK" section ["<" number "." nz-number ">"]
 	*/
-	switch name {
+	switch name.Value {
 	case "envelope":
 		return &FetchAttributeEnvelope{}, nil
 	case "flags":
@@ -165,7 +165,7 @@ func handleFetchAttribute(name string, p *rfcparser.Parser) (FetchAttribute, err
 	case "body":
 		return handleBodyFetchAttribute(p)
 	default:
-		return nil, fmt.Errorf("unknown fetch attribute '%v'", name)
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown fetch attribute '%v'", name.Value), name.Offset)
 	}
 }
 
@@ -185,7 +185,7 @@ func handleRFC822FetchAttribute(p *rfcparser.Parser) (FetchAttribute, error) {
 		return nil, err
 	}
 
-	switch attribute {
+	switch attribute.Value {
 	case "header":
 		return &FetchAttributeRFC822Header{}, nil
 	case "size":
@@ -193,7 +193,7 @@ func handleRFC822FetchAttribute(p *rfcparser.Parser) (FetchAttribute, error) {
 	case "text":
 		return &FetchAttributeRFC822Text{}, nil
 	default:
-		return nil, fmt.Errorf("unknown fetch attribute 'RFC822.%v", attribute)
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown fetch attribute 'RFC822.%v", attribute.Value), attribute.Offset)
 	}
 }
 
@@ -337,9 +337,9 @@ func parseSectionText(p *rfcparser.Parser) (BodySection, error) {
 		return nil, err
 	}
 
-	textStr := strings.ToLower(string(text.Value))
+	textStr := text.IntoString().ToLower()
 
-	if textStr == "mime" {
+	if textStr.Value == "mime" {
 		return &BodySectionMIME{}, nil
 	}
 
@@ -352,16 +352,16 @@ func parseSectionMsgText(p *rfcparser.Parser) (BodySection, error) {
 		return nil, err
 	}
 
-	textStr := strings.ToLower(string(text.Value))
+	textStr := text.IntoString().ToLower()
 
 	return handleSectionMessageText(textStr, p)
 }
 
-func handleSectionMessageText(text string, p *rfcparser.Parser) (BodySection, error) {
+func handleSectionMessageText(text rfcparser.String, p *rfcparser.Parser) (BodySection, error) {
 	// section-msgtext = "HEADER" / "HEADER.FIELDS" [".NOT"] SP header-list /
 	//                   "TEXT"
 	//                    ; top-level or MESSAGE/RFC822 part
-	switch text {
+	switch text.Value {
 	case "header":
 		if ok, err := p.Matches(rfcparser.TokenTypePeriod); err != nil {
 			return nil, err
@@ -374,7 +374,7 @@ func handleSectionMessageText(text string, p *rfcparser.Parser) (BodySection, er
 	case "text":
 		return &BodySectionText{}, nil
 	default:
-		return nil, fmt.Errorf("unknown section msg text value '%v'", text)
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown section msg text value '%v'", text.Value), text.Offset)
 	}
 }
 
