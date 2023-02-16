@@ -150,7 +150,7 @@ func parseSearchKey(p *rfcparser.Parser) (SearchKey, error) {
 		return parseSearchKeyList(p)
 	}
 
-	if p.Check(rfcparser.TokenTypeDigit) {
+	if p.Check(rfcparser.TokenTypeDigit) || p.Check(rfcparser.TokenTypeAsterisk) {
 		seqSet, err := ParseSeqSet(p)
 		if err != nil {
 			return nil, err
