@@ -274,13 +274,19 @@ func parseSectionSpec(p *rfcparser.Parser) (BodySection, error) {
 			return nil, err
 		}
 
-		// Note: trailing . is consumed by parserSectionPart().
-		text, err := parseSectionText(p)
-		if err != nil {
-			return nil, err
+		var textSection BodySection
+
+		if p.Check(rfcparser.TokenTypeChar) {
+			// Note: trailing . is consumed by parserSectionPart().
+			text, err := parseSectionText(p)
+			if err != nil {
+				return nil, err
+			}
+
+			textSection = text
 		}
 
-		return &BodySectionPart{Part: part, Section: text}, nil
+		return &BodySectionPart{Part: part, Section: textSection}, nil
 	}
 
 	return parseSectionMsgText(p)
