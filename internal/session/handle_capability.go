@@ -2,9 +2,9 @@ package session
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap/command"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 )
 
@@ -26,7 +26,7 @@ func (s *Session) getCaps() []imap.Capability {
 	return caps
 }
 
-func (s *Session) handleCapability(ctx context.Context, tag string, cmd *proto.Capability, ch chan response.Response) error {
+func (s *Session) handleCapability(_ context.Context, tag string, _ *command.Capability, ch chan response.Response) error {
 	s.capsLock.Lock()
 	defer s.capsLock.Unlock()
 

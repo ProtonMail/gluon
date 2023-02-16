@@ -2,9 +2,9 @@ package session
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap/command"
 	"time"
 
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/profiling"
@@ -13,7 +13,7 @@ import (
 
 // GOMSRV-86: What does it mean to do IDLE when you're not selected?
 // GOMSRV-87: Should IDLE be stopped automatically when the context is cancelled?
-func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, cmdCh <-chan command) error {
+func (s *Session) handleIdle(ctx context.Context, tag string, _ *command.Idle, cmdCh <-chan commandResult) error {
 	profiling.Start(ctx, profiling.CmdTypeIdle)
 	defer profiling.Stop(ctx, profiling.CmdTypeIdle)
 
@@ -47,7 +47,7 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, c
 			}
 		}
 
-		var cmd *proto.Command
+		var cmd commandResult
 
 		for {
 			select {
@@ -56,7 +56,10 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, c
 					return nil
 				}
 
-				cmd = res.cmd
+				if res.err != nil {
+					return res.err
+				}
+				cmd = res
 
 			case <-s.state.Done():
 				return nil
@@ -71,8 +74,8 @@ func (s *Session) handleIdle(ctx context.Context, tag string, cmd *proto.Idle, c
 				return ctx.Err()
 			}
 
-			switch {
-			case cmd.GetDone() != nil:
+			switch cmd.command.Payload.(type) {
+			case *command.Done:
 				return response.Ok(tag).WithMessage("IDLE").Send(s)
 
 			default:

@@ -2,9 +2,8 @@ package state
 
 import (
 	"fmt"
-	"strconv"
-
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
@@ -278,13 +277,12 @@ func (list *snapMsgList) existsWithSeqID(id imap.SeqID) bool {
 	return true
 }
 
-func (list *snapMsgList) resolveSeqInterval(seqSet [][]string) ([]SeqInterval, error) {
+func (list *snapMsgList) resolveSeqInterval(seqSet []command.SeqRange) ([]SeqInterval, error) {
 	res := make([]SeqInterval, 0, len(seqSet))
 
 	for _, seqRange := range seqSet {
-		switch len(seqRange) {
-		case 1:
-			seq, err := list.resolveSeq(seqRange[0])
+		if seqRange.Begin == seqRange.End {
+			seq, err := list.resolveSeq(seqRange.Begin)
 			if err != nil {
 				return nil, err
 			}
@@ -293,24 +291,23 @@ func (list *snapMsgList) resolveSeqInterval(seqSet [][]string) ([]SeqInterval, e
 				begin: seq,
 				end:   seq,
 			})
-
-		case 2:
-			if seqRange[0] == "*" {
-				seqRange[0], seqRange[1] = seqRange[1], seqRange[0]
+		} else {
+			if seqRange.Begin == command.SeqNumValueAsterisk {
+				seqRange.Begin, seqRange.End = seqRange.End, seqRange.Begin
 			}
 
-			begin, err := list.resolveSeq(seqRange[0])
+			begin, err := list.resolveSeq(seqRange.Begin)
 			if err != nil {
 				return nil, err
 			}
 
-			end, err := list.resolveSeq(seqRange[1])
+			end, err := list.resolveSeq(seqRange.End)
 			if err != nil {
 				return nil, err
 			}
 
 			if begin > end {
-				if seqRange[1] != "*" {
+				if seqRange.End != command.SeqNumValueAsterisk {
 					begin, end = end, begin
 				} else {
 					end = begin
@@ -321,22 +318,18 @@ func (list *snapMsgList) resolveSeqInterval(seqSet [][]string) ([]SeqInterval, e
 				begin: begin,
 				end:   end,
 			})
-
-		default:
-			return nil, fmt.Errorf("bad sequence range")
 		}
 	}
 
 	return res, nil
 }
 
-func (list *snapMsgList) resolveUIDInterval(seqSet [][]string) ([]UIDInterval, error) {
+func (list *snapMsgList) resolveUIDInterval(seqSet []command.SeqRange) ([]UIDInterval, error) {
 	res := make([]UIDInterval, 0, len(seqSet))
 
 	for _, uidRange := range seqSet {
-		switch len(uidRange) {
-		case 1:
-			uid, err := list.resolveUID(uidRange[0])
+		if uidRange.Begin == uidRange.End {
+			uid, err := list.resolveUID(uidRange.Begin)
 			if err != nil {
 				return nil, err
 			}
@@ -345,24 +338,23 @@ func (list *snapMsgList) resolveUIDInterval(seqSet [][]string) ([]UIDInterval, e
 				begin: uid,
 				end:   uid,
 			})
-
-		case 2:
-			if uidRange[0] == "*" {
-				uidRange[0], uidRange[1] = uidRange[1], uidRange[0]
+		} else {
+			if uidRange.Begin == command.SeqNumValueAsterisk {
+				uidRange.Begin, uidRange.End = uidRange.End, uidRange.Begin
 			}
 
-			begin, err := list.resolveUID(uidRange[0])
+			begin, err := list.resolveUID(uidRange.Begin)
 			if err != nil {
 				return nil, err
 			}
 
-			end, err := list.resolveUID(uidRange[1])
+			end, err := list.resolveUID(uidRange.End)
 			if err != nil {
 				return nil, err
 			}
 
 			if begin > end {
-				if uidRange[1] != "*" {
+				if uidRange.End != command.SeqNumValueAsterisk {
 					begin, end = end, begin
 				} else {
 					end = begin
@@ -374,8 +366,6 @@ func (list *snapMsgList) resolveUIDInterval(seqSet [][]string) ([]UIDInterval, e
 				end:   end,
 			})
 
-		default:
-			return nil, fmt.Errorf("bad sequence range")
 		}
 	}
 
@@ -387,38 +377,28 @@ func (list *snapMsgList) resolveUIDInterval(seqSet [][]string) ([]UIDInterval, e
 // - No sequence number is valid if mailbox is empty, not even "*"
 // - "*" is converted to the number of messages in the mailbox
 // - when used in a range, the order of the indexes in irrelevant.
-func (list *snapMsgList) resolveSeq(number string) (imap.SeqID, error) {
-	if number == "*" {
+func (list *snapMsgList) resolveSeq(number command.SeqNum) (imap.SeqID, error) {
+	if number == command.SeqNumValueAsterisk {
 		return imap.SeqID(list.len()), nil
 	}
 
-	num, err := strconv.ParseUint(number, 10, 32)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse sequence number: %w", err)
-	}
-
-	return imap.SeqID(num), nil
+	return imap.SeqID(number), nil
 }
 
 // resolveUID converts a textual message UID into an integer.
-func (list *snapMsgList) resolveUID(number string) (imap.UID, error) {
+func (list *snapMsgList) resolveUID(number command.SeqNum) (imap.UID, error) {
 	if list.len() == 0 {
 		return 0, ErrNoSuchMessage
 	}
 
-	if number == "*" {
+	if number == command.SeqNumValueAsterisk {
 		return list.last().UID, nil
 	}
 
-	num, err := strconv.ParseUint(number, 10, 32)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse UID number: %w", err)
-	}
-
-	return imap.UID(num), nil
+	return imap.UID(number), nil
 }
 
-func (list *snapMsgList) getMessagesInSeqRange(seqSet [][]string) ([]snapMsgWithSeq, error) {
+func (list *snapMsgList) getMessagesInSeqRange(seqSet []command.SeqRange) ([]snapMsgWithSeq, error) {
 	var res []snapMsgWithSeq
 
 	intervals, err := list.resolveSeqInterval(seqSet)
@@ -446,7 +426,7 @@ func (list *snapMsgList) getMessagesInSeqRange(seqSet [][]string) ([]snapMsgWith
 	return res, nil
 }
 
-func (list *snapMsgList) getMessagesInUIDRange(seqSet [][]string) ([]snapMsgWithSeq, error) {
+func (list *snapMsgList) getMessagesInUIDRange(seqSet []command.SeqRange) ([]snapMsgWithSeq, error) {
 	var res []snapMsgWithSeq
 
 	// If there are no messages in the mailbox, we still resolve without error.

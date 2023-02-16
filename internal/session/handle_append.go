@@ -3,32 +3,29 @@ package session
 import (
 	"context"
 	"errors"
-	"time"
-
-	"github.com/ProtonMail/gluon/internal/parser/proto"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
-	"github.com/emersion/go-imap/utf7"
 )
 
-func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Append, ch chan response.Response) error {
+func (s *Session) handleAppend(ctx context.Context, tag string, cmd *command.Append, ch chan response.Response) error {
 	profiling.Start(ctx, profiling.CmdTypeAppend)
 	defer profiling.Stop(ctx, profiling.CmdTypeAppend)
 
-	nameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
+	nameUTF8, err := s.decodeMailboxName(cmd.Mailbox)
 	if err != nil {
 		return err
 	}
 
-	flags, err := validateStoreFlags(cmd.GetFlags())
+	flags, err := validateStoreFlags(cmd.Flags)
 	if err != nil {
 		return response.Bad(tag).WithError(err)
 	}
 
 	if err := s.state.AppendOnlyMailbox(ctx, nameUTF8, func(mailbox state.AppendOnlyMailbox, isSameMBox bool) error {
-		messageUID, err := mailbox.Append(ctx, cmd.GetMessage(), flags, toTime(cmd.GetDateTime()))
+		messageUID, err := mailbox.Append(ctx, cmd.Literal, flags, cmd.DateTime)
 		if err != nil {
 			reporter.MessageWithContext(ctx,
 				"Failed to append message to mailbox from state",
@@ -54,27 +51,4 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Appen
 	}
 
 	return nil
-}
-
-func toTime(dt *proto.DateTime) time.Time {
-	if dt == nil {
-		return time.Now()
-	}
-
-	zone := dt.Zone.Hour*3600 + dt.Zone.Minute*60
-
-	if !dt.Zone.Sign {
-		zone *= -1
-	}
-
-	return time.Date(
-		int(dt.Date.Year),
-		time.Month(dt.Date.Month),
-		int(dt.Date.Day),
-		int(dt.Time.Hour),
-		int(dt.Time.Minute),
-		int(dt.Time.Second),
-		0,
-		time.FixedZone("zone", int(zone)),
-	)
 }

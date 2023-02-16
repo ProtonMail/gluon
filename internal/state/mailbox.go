@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/imap/command"
 	"strings"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -250,7 +250,7 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 // Copy copies the messages represented by the given sequence set into the mailbox with the given name.
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are copied the response object will be nil.
-func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
+func (m *Mailbox) Copy(ctx context.Context, seq []command.SeqRange, name string) (response.Item, error) {
 	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
 		return nil, fmt.Errorf("operation not allowed")
 	}
@@ -301,7 +301,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 // Move moves the messages represented by the given sequence set into the mailbox with the given name.
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are moved the response object will be nil.
-func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
+func (m *Mailbox) Move(ctx context.Context, seq []command.SeqRange, name string) (response.Item, error) {
 	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
 		return nil, fmt.Errorf("operation not allowed")
 	}
@@ -349,25 +349,25 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 	return res, nil
 }
 
-func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation proto.Operation, flags imap.FlagSet) error {
-	messages, err := m.snap.getMessagesInRange(ctx, seq)
+func (m *Mailbox) Store(ctx context.Context, cmd *command.Store, flags imap.FlagSet) error {
+	messages, err := m.snap.getMessagesInRange(ctx, cmd.SeqSet)
 	if err != nil {
 		return err
 	}
 
 	return m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		switch operation {
-		case proto.Operation_Add:
+		switch cmd.Action {
+		case command.StoreActionAddFlags:
 			if err := m.state.actionAddMessageFlags(ctx, tx, messages, flags); err != nil {
 				return err
 			}
 
-		case proto.Operation_Remove:
+		case command.StoreActionRemFlags:
 			if err := m.state.actionRemoveMessageFlags(ctx, tx, messages, flags); err != nil {
 				return err
 			}
 
-		case proto.Operation_Replace:
+		case command.StoreActionSetFlags:
 			if err := m.state.actionSetMessageFlags(ctx, tx, messages, flags); err != nil {
 				return err
 			}
@@ -377,7 +377,7 @@ func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation p
 	})
 }
 
-func (m *Mailbox) Expunge(ctx context.Context, seq *proto.SequenceSet) error {
+func (m *Mailbox) Expunge(ctx context.Context, seq []command.SeqRange) error {
 	var msgIDs []ids.MessageIDPair
 
 	if seq != nil {
