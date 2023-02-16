@@ -120,3 +120,54 @@ func TestParser_LiteralWithContinuationSubmission(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expected, cmd)
 }
+
+func TestParser_TwoCommandsInSuccession(t *testing.T) {
+	// Run one go routine that submits bytes until the continuation call has been received
+	continueCh := make(chan struct{})
+	reader, writer := io.Pipe()
+
+	go func() {
+		defer writer.Close()
+
+		firstLine := toIMAPLine(`A003 CAPABILITY`)
+
+		secondLine := toIMAPLine(`B002 LIST "" %`)
+
+		if l, err := writer.Write(firstLine); err != nil || l != len(firstLine) {
+			writer.CloseWithError(fmt.Errorf("failed to write first line: %w", err))
+			return
+		}
+
+		<-continueCh
+
+		if l, err := writer.Write(secondLine); err != nil || l != len(secondLine) {
+			writer.CloseWithError(fmt.Errorf("failed to write second line: %w", err))
+			return
+		}
+	}()
+
+	s := rfcparser.NewScanner(reader)
+	p := NewParser(s)
+
+	// First command
+	{
+		expected := Command{Tag: "A003", Payload: &Capability{}}
+
+		cmd, err := p.Parse()
+		require.NoError(t, err)
+		require.Equal(t, expected, cmd)
+	}
+
+	// Submit next command.
+	close(continueCh)
+	{
+		expected := Command{Tag: "B002", Payload: &List{
+			Mailbox:     "",
+			ListMailbox: "%",
+		}}
+
+		cmd, err := p.Parse()
+		require.NoError(t, err)
+		require.Equal(t, expected, cmd)
+	}
+}
