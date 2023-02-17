@@ -349,14 +349,14 @@ func (m *Mailbox) Move(ctx context.Context, seq []command.SeqRange, name string)
 	return res, nil
 }
 
-func (m *Mailbox) Store(ctx context.Context, cmd *command.Store, flags imap.FlagSet) error {
-	messages, err := m.snap.getMessagesInRange(ctx, cmd.SeqSet)
+func (m *Mailbox) Store(ctx context.Context, seqSet []command.SeqRange, action command.StoreAction, flags imap.FlagSet) error {
+	messages, err := m.snap.getMessagesInRange(ctx, seqSet)
 	if err != nil {
 		return err
 	}
 
 	return m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		switch cmd.Action {
+		switch action {
 		case command.StoreActionAddFlags:
 			if err := m.state.actionAddMessageFlags(ctx, tx, messages, flags); err != nil {
 				return err

@@ -29,7 +29,7 @@ func (s *Session) handleExpunge(ctx context.Context, tag string, cmd *command.Ex
 	return response.Ok(tag).WithMessage("EXPUNGE"), nil
 }
 
-func (s *Session) handleUIDExpunge(ctx context.Context, tag string, cmd *command.UIDExpungeCommand, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
+func (s *Session) handleUIDExpunge(ctx context.Context, tag string, cmd *command.UIDExpunge, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
 	profiling.Start(ctx, profiling.CmdTypeExpunge)
 	defer profiling.Stop(ctx, profiling.CmdTypeExpunge)
 

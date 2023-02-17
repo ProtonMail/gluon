@@ -3,7 +3,7 @@ package session
 import (
 	"bytes"
 	"context"
-
+	"errors"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/logging"
@@ -17,7 +17,7 @@ type commandResult struct {
 	err     error
 }
 
-func (s *Session) startCommandReader(ctx context.Context, del string) <-chan commandResult {
+func (s *Session) startCommandReader(ctx context.Context) <-chan commandResult {
 	cmdCh := make(chan commandResult)
 
 	logging.GoAnnotated(ctx, func(ctx context.Context) {
@@ -39,8 +39,12 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 			cmd, err := parser.Parse()
 			s.logIncoming(string(s.inputCollector.Bytes()))
 			if err != nil {
-				parserError, ok := err.(*rfcparser.Error) //nolint:errorlint
-				if !ok || parserError.IsEOF() {
+				var parserError *rfcparser.Error
+				if !errors.As(err, &parserError) {
+					return
+				}
+
+				if parserError.IsEOF() {
 					return
 				}
 
@@ -64,7 +68,7 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 					reporter.Context{"error": err, "cmd": parser.LastParsedCommand()},
 				)
 			} else {
-				logrus.Debug(cmd.SaniztedString())
+				logrus.Debug(cmd.SanitizedString())
 			}
 
 			switch c := cmd.Payload.(type) {
