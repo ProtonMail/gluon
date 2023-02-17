@@ -70,7 +70,7 @@ func TestParser_UIDCommandStore(t *testing.T) {
 func TestParser_UIDCommandExpunge(t *testing.T) {
 	expected := Command{
 		Tag: "tag",
-		Payload: &UIDExpungeCommand{
+		Payload: &UIDExpunge{
 			SeqSet: []SeqRange{{Begin: 1, End: SeqNumValueAsterisk}},
 		},
 	}

@@ -76,15 +76,15 @@ func (u *UIDCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	}, nil
 }
 
-type UIDExpungeCommand struct {
+type UIDExpunge struct {
 	SeqSet []SeqRange
 }
 
-func (l UIDExpungeCommand) String() string {
+func (l UIDExpunge) String() string {
 	return fmt.Sprintf("UID EXPUNGE %v", l.SeqSet)
 }
 
-func (l UIDExpungeCommand) SanitizedString() string {
+func (l UIDExpunge) SanitizedString() string {
 	return l.String()
 }
 
@@ -100,5 +100,5 @@ func (UIDExpungeCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) 
 		return nil, err
 	}
 
-	return &UIDExpungeCommand{SeqSet: seqSet}, nil
+	return &UIDExpunge{SeqSet: seqSet}, nil
 }

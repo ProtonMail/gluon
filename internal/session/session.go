@@ -160,7 +160,7 @@ func (s *Session) serve(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	cmdCh := s.startCommandReader(ctx, s.backend.GetDelimiter())
+	cmdCh := s.startCommandReader(ctx)
 
 	for {
 		select {

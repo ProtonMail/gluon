@@ -30,7 +30,7 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *command.Stor
 		return response.Bad(tag).WithError(err), nil
 	}
 
-	if err := mailbox.Store(ctx, cmd, flags); errors.Is(err, state.ErrNoSuchMessage) {
+	if err := mailbox.Store(ctx, cmd.SeqSet, cmd.Action, flags); errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err), nil
 	} else if err != nil {
 		reporter.MessageWithContext(ctx,

@@ -27,6 +27,6 @@ func (c Command) String() string {
 	return fmt.Sprintf("%v %v", c.Tag, c.Payload.String())
 }
 
-func (c Command) SaniztedString() string {
+func (c Command) SanitizedString() string {
 	return fmt.Sprintf("%v %v", c.Tag, c.Payload.SanitizedString())
 }

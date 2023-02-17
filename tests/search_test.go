@@ -43,8 +43,7 @@ func TestSearchCharSetISO88591(t *testing.T) {
 		c.Cf(`TAG SEARCH CHARSET ISO-8859-1 BODY {%v}`, len(b)).Continue().Cb(b).S("* SEARCH 1").OK("TAG")
 
 		// Search for it with ISO-8859-1 encoding (direct).
-		// TODO(GODT-2165): This should work, but it doesn't.
-		// c.Cf(`TAG SEARCH CHARSET ISO-8859-1 BODY ` + string(b)).S("* SEARCH 1").OK("TAG")
+		c.Cf(`TAG SEARCH CHARSET ISO-8859-1 BODY ` + string(b)).S("* SEARCH 1").OK("TAG")
 	})
 }
 

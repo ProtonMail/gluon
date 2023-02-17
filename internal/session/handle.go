@@ -84,7 +84,7 @@ func (s *Session) handleCommand(
 		*command.Check,
 		*command.Close,
 		*command.Expunge,
-		*command.UIDExpungeCommand,
+		*command.UIDExpunge,
 		*command.Unselect,
 		*command.Search,
 		*command.Fetch,
@@ -255,7 +255,7 @@ func (s *Session) handleWithMailbox(
 		// 6.4.3. EXPUNGE Command
 		return s.handleExpunge(ctx, tag, cmd, mailbox, ch)
 
-	case *command.UIDExpungeCommand:
+	case *command.UIDExpunge:
 		// RFC4315 UIDPLUS Extension
 		return s.handleUIDExpunge(ctx, tag, cmd, mailbox, ch)
 
