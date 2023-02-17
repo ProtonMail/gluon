@@ -57,6 +57,11 @@ func IsError(err error) bool {
 	return errors.As(err, &perr)
 }
 
+type ParserState struct {
+	prevToken Token
+	curToken  Token
+}
+
 func NewParser(s *Scanner) *Parser {
 	return &Parser{scanner: s}
 }
@@ -476,6 +481,22 @@ func (p *Parser) MakeErrorAtOffset(err string, offset int) error {
 	}
 }
 
+// SaveState saves the current and previous token state so it can potentially be restored later with RestoreState.
+func (p *Parser) SaveState() ParserState {
+	return ParserState{
+		prevToken: p.previousToken,
+		curToken:  p.currentToken,
+	}
+}
+
+// RestoreState restores the previous and current tokens from the given state.
+// NOTE: If this is called without adjusting the scanner input to the location where these were recorded
+// you can break your parsing.
+func (p *Parser) RestoreState(state ParserState) {
+	p.previousToken = state.prevToken
+	p.currentToken = state.curToken
+}
+
 func IsAStringChar(tokenType TokenType) bool {
 	/*
 		ASTRING-CHAR   = ATOM-CHAR / resp-specials
@@ -519,7 +540,7 @@ func IsQuotedChar(tokenType TokenType) bool {
 }
 
 func IsCTL(tokenType TokenType) bool {
-	return tokenType == TokenTypeCTL || tokenType == TokenTypeCR || tokenType == TokenTypeLF
+	return tokenType == TokenTypeCTL || tokenType == TokenTypeCR || tokenType == TokenTypeLF || tokenType == TokenTypeTab
 }
 
 func ByteToInt(b byte) int {

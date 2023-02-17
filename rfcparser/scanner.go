@@ -51,6 +51,9 @@ const (
 	TokenTypeCR
 	TokenTypeLF
 	TokenTypeCTL
+	TokenTypeTab
+	TokenTypeDelete
+	TokenTypeZero
 )
 
 type Token struct {
@@ -128,13 +131,18 @@ func (s *Scanner) ScanToken() (Token, error) {
 	}
 
 	if isByteCTL(b) {
-		if b == '\r' {
+		switch b {
+		case 0x0:
+			return s.makeToken(TokenTypeZero), nil
+		case '\r':
 			return s.makeToken(TokenTypeCR), nil
-		} else if b == '\n' {
+		case '\n':
 			return s.makeToken(TokenTypeLF), nil
+		case '\t':
+			return s.makeToken(TokenTypeTab), nil
+		default:
+			return s.makeToken(TokenTypeCTL), nil
 		}
-
-		return s.makeToken(TokenTypeCTL), nil
 	}
 
 	switch b {
@@ -204,6 +212,8 @@ func (s *Scanner) ScanToken() (Token, error) {
 		return s.makeToken(TokenTypeRCurly), nil
 	case '~':
 		return s.makeToken(TokenTypeTilde), nil
+	case 0x7F:
+		return s.makeToken(TokenTypeDelete), nil
 	}
 
 	return Token{}, fmt.Errorf("unexpected character %v", b)
