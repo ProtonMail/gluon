@@ -78,7 +78,7 @@ func (state *State) db() *db.DB {
 	return state.user.GetDB()
 }
 
-func (state *State) List(ctx context.Context, ref, pattern string, subscribed bool, fn func(map[string]Match) error) error {
+func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn func(map[string]Match) error) error {
 	return state.db().Read(ctx, func(ctx context.Context, client *ent.Client) error {
 		mailboxes, err := db.GetAllMailboxes(ctx, client)
 		if err != nil {
@@ -117,7 +117,7 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 
 		var deletedSubscriptions map[imap.MailboxID]*ent.DeletedSubscription
 
-		if subscribed {
+		if lsub {
 			deletedSubscriptions, err = db.GetDeletedSubscriptionSet(ctx, client)
 			if err != nil {
 				return err
@@ -129,16 +129,19 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 		for _, mbox := range mailboxes {
 			delete(deletedSubscriptions, mbox.RemoteID)
 
-			if mbox.Subscribed {
-				matchMailboxes = append(matchMailboxes, matchMailbox{
-					Name:       mbox.Name,
-					Subscribed: subscribed,
-					EntMBox:    mbox,
-				})
+			// Only include subscribed mailboxes when LSUB is used.
+			if lsub && !mbox.Subscribed {
+				continue
 			}
+
+			matchMailboxes = append(matchMailboxes, matchMailbox{
+				Name:       mbox.Name,
+				Subscribed: lsub,
+				EntMBox:    mbox,
+			})
 		}
 
-		if subscribed {
+		if lsub {
 			// Insert any remaining mailboxes that have been deleted but are still subscribed.
 			for _, s := range deletedSubscriptions {
 				if state.user.GetRemote().GetMailboxVisibility(ctx, s.RemoteID) != imap.Visible {
@@ -153,7 +156,7 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 			}
 		}
 
-		matches, err := getMatches(ctx, client, matchMailboxes, ref, pattern, state.delimiter, subscribed)
+		matches, err := getMatches(ctx, client, matchMailboxes, ref, pattern, state.delimiter, lsub)
 		if err != nil {
 			return err
 		}
