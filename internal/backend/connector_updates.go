@@ -387,7 +387,7 @@ func (user *user) applyMessageMailboxesUpdated(ctx context.Context, update *imap
 			return err
 		}
 
-		if err := user.setMessageFlags(ctx, tx, result.InternalMsgID, update.Seen, update.Flagged); err != nil {
+		if err := user.setMessageFlags(ctx, tx, result.InternalMsgID, update.Seen, update.Flagged, update.Draft); err != nil {
 			return err
 		}
 
@@ -413,7 +413,7 @@ func (user *user) applyMessageFlagsUpdated(ctx context.Context, update *imap.Mes
 	}
 
 	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		if err := user.setMessageFlags(ctx, tx, internalMsgID, update.Seen, update.Flagged); err != nil {
+		if err := user.setMessageFlags(ctx, tx, internalMsgID, update.Seen, update.Flagged, update.Draft); err != nil {
 			return err
 		}
 
@@ -485,7 +485,7 @@ func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.T
 	return nil
 }
 
-func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, seen, flagged bool) error {
+func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, seen, flagged, draft bool) error {
 	curFlags, err := db.GetMessageFlags(ctx, tx.Client(), []imap.InternalMessageID{messageID})
 	if err != nil {
 		return err
@@ -509,6 +509,16 @@ func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID ima
 		}
 	} else if !flagged && flagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
 		if err := user.removeMessageFlags(ctx, tx, messageID, imap.FlagFlagged); err != nil {
+			return err
+		}
+	}
+
+	if draft && !flagSet.ContainsUnchecked(imap.FlagDraftLowerCase) {
+		if err := user.addMessageFlags(ctx, tx, messageID, imap.FlagDraft); err != nil {
+			return err
+		}
+	} else if !draft && flagSet.ContainsUnchecked(imap.FlagDraftLowerCase) {
+		if err := user.removeMessageFlags(ctx, tx, messageID, imap.FlagDraft); err != nil {
 			return err
 		}
 	}

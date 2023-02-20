@@ -263,6 +263,14 @@ func (state *dummyState) isFlagged(messageID imap.MessageID) bool {
 	return state.messages[messageID].flagged
 }
 
+func (state *dummyState) isDraft(messageID imap.MessageID) bool {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	// NOTE: If we want to support a custom draft folder, handle it here.
+	return false
+}
+
 func (state *dummyState) toMailbox(mboxID imap.MailboxID) imap.Mailbox {
 	return imap.Mailbox{
 		ID:             mboxID,
