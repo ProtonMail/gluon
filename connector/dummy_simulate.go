@@ -168,6 +168,7 @@ func (conn *Dummy) MessageAdded(messageID imap.MessageID, mboxID imap.MailboxID)
 		conn.state.getMailboxIDs(messageID),
 		conn.state.isSeen(messageID),
 		conn.state.isFlagged(messageID),
+		conn.state.isDraft(messageID),
 	))
 
 	return nil
@@ -181,6 +182,7 @@ func (conn *Dummy) MessageRemoved(messageID imap.MessageID, mboxID imap.MailboxI
 		conn.state.getMailboxIDs(messageID),
 		conn.state.isSeen(messageID),
 		conn.state.isFlagged(messageID),
+		conn.state.isDraft(messageID),
 	))
 
 	return nil
@@ -193,6 +195,7 @@ func (conn *Dummy) MessageSeen(messageID imap.MessageID, seen bool) error {
 		messageID,
 		conn.state.isSeen(messageID),
 		conn.state.isFlagged(messageID),
+		conn.state.isDraft(messageID),
 	))
 
 	return nil
@@ -205,6 +208,7 @@ func (conn *Dummy) MessageFlagged(messageID imap.MessageID, flagged bool) error 
 		messageID,
 		conn.state.isSeen(messageID),
 		conn.state.isFlagged(messageID),
+		conn.state.isDraft(messageID),
 	))
 
 	return nil
