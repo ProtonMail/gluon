@@ -9,41 +9,41 @@ fragment CR:               '\r';     // \u000D
 fragment U_0E_1F:          '\u000E'..'\u001F';
 
 // Printable (0x20-0x7E)
-Exclamation:      '!';      // \u0021
-DQuote:           '"';      // \u0022
-Hash:             '#';      // \u0023
-Dollar:           '$';      // \u0024
-Percent:          '%';      // \u0025
-Ampersand:        '&';      // \u0026
-SQuote:           '\'';     // \u0027
-LParens:          '(';      // \u0028
-RParens:          ')';      // \u0029
-Asterisk:         '*';      // \u002A
-Plus:             '+';      // \u002B
+fragment Exclamation:      '!';      // \u0021
+fragment DQuote:           '"';      // \u0022
+fragment Hash:             '#';      // \u0023
+fragment Dollar:           '$';      // \u0024
+fragment Percent:          '%';      // \u0025
+fragment Ampersand:        '&';      // \u0026
+fragment SQuote:           '\'';     // \u0027
+fragment LParens:          '(';      // \u0028
+fragment RParens:          ')';      // \u0029
+fragment Asterisk:         '*';      // \u002A
+fragment Plus:             '+';      // \u002B
 Comma:            ',';      // \u002C
-Minus:            '-';      // \u002D
+fragment Minus:            '-';      // \u002D
 Period:           '.';      // \u002E
-Slash:            '/';      // \u002F
+fragment Slash:            '/';      // \u002F
 fragment Digit:            [0-9];    // \u0030 -- \u0039
 Colon:            ':';      // \u003A
 Semicolon:        ';';      // \u003B
 Less:             '<';      // \u003C
-Equal:            '=';      // \u003D
+fragment Equal:            '=';      // \u003D
 Greater:          '>';      // \u003E
-Question:         '?';      // \u003F
+fragment Question:         '?';      // \u003F
 At:               '@';      // \u0040
 // alphaUpper
 fragment LBracket:         '[';      // \u005B
-Backslash:        '\\';     // \u005C
+fragment Backslash:        '\\';     // \u005C
 fragment RBracket:         ']';      // \u005D
-Caret:            '^';      // \u005E
-Underscore:       '_';      // \u005F
-Backtick:         '`';      // \u0060
+fragment Caret:            '^';      // \u005E
+fragment Underscore:       '_';      // \u005F
+fragment Backtick:         '`';      // \u0060
 // alphaLower
-LCurly:           '{';      // \u007B
-Pipe:             '|';      // \u007C
-RCurly:           '}';      // \u007D
-Tilde:            '~';      // \u007E
+fragment LCurly:           '{';      // \u007B
+fragment Pipe:             '|';      // \u007C
+fragment RCurly:           '}';      // \u007D
+fragment Tilde:            '~';      // \u007E
 
 // Other
 Delete: '\u007F';

@@ -38,7 +38,7 @@ func (s *StateUserInterfaceImpl) GetRemote() state.Connector {
 	return s.c
 }
 
-func (s *StateUserInterfaceImpl) GetStore() store.Store {
+func (s *StateUserInterfaceImpl) GetStore() *store.WriteControlledStore {
 	return s.u.store
 }
 
@@ -79,12 +79,8 @@ func (s *StateUserInterfaceImpl) ReleaseState(ctx context.Context, st *state.Sta
 	return s.u.removeState(ctx, st)
 }
 
-func (s *StateUserInterfaceImpl) GetGlobalUIDValidity() imap.UID {
-	return s.u.globalUIDValidity
-}
-
-func (s *StateUserInterfaceImpl) SetGlobalUIDValidity(uid imap.UID) {
-	s.u.globalUIDValidity = uid
+func (s *StateUserInterfaceImpl) GenerateUIDValidity() (imap.UID, error) {
+	return s.u.uidValidityGenerator.Generate()
 }
 
 func (s *StateUserInterfaceImpl) GetRecoveryMailboxID() ids.MailboxIDPair {

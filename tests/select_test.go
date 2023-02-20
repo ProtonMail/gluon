@@ -2,10 +2,12 @@ package tests
 
 import (
 	"testing"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 func TestSelect(t *testing.T) {
-	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withUIDValidityGenerator(imap.NewFixedUIDValidityGenerator(imap.UID(1)))), func(c *testConnection, _ *testSession) {
 		c.C("A002 CREATE Archive")
 		c.OK("A002")
 

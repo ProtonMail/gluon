@@ -2,9 +2,12 @@ package tests
 
 import (
 	"testing"
+	"time"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/utils"
+	"github.com/emersion/go-imap/client"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMessageCreatedUpdate(t *testing.T) {
@@ -304,5 +307,27 @@ func TestBatchMessageAddedWithMultipleFlags(t *testing.T) {
 		})
 
 		s.flush("user")
+	})
+}
+
+func TestMessageCreatedWithIgnoreMissingMailbox(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(c *client.Client, s *testSession) {
+		mailboxID := s.mailboxCreated("user", []string{"mbox"})
+		s.setUpdatesAllowedToFail("user", true)
+		{
+			// First round fails as a missing mailbox is not allowed.
+			s.messageCreatedWithMailboxes("user", []imap.MailboxID{mailboxID, "THIS MAILBOX DOES NOT EXISTS"}, []byte("To: Test"), time.Now())
+			status, err := c.Select("mbox", false)
+			require.NoError(t, err)
+			require.Equal(t, status.Messages, uint32(0))
+		}
+		{
+			// Second round succeeds as we publish an update that is allowed to fail.
+			s.setAllowMessageCreateWithUnknownMailboxID("user", true)
+			s.messageCreatedWithMailboxes("user", []imap.MailboxID{mailboxID, "THIS MAILBOX DOES NOT EXISTS"}, []byte("To: Test"), time.Now())
+			status, err := c.Select("mbox", false)
+			require.NoError(t, err)
+			require.Equal(t, status.Messages, uint32(1))
+		}
 	})
 }

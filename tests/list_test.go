@@ -2,6 +2,7 @@ package tests
 
 import (
 	"testing"
+	"time"
 
 	"github.com/ProtonMail/gluon/imap"
 )
@@ -282,13 +283,18 @@ func TestListHiddenMailbox(t *testing.T) {
 		m3 := s.mailboxCreatedWithAttributes("user", []string{"Spam"}, imap.NewFlagSet())
 		s.mailboxCreatedWithAttributes("user", []string{"Kos"}, imap.NewFlagSet())
 		m4 := s.mailboxCreatedWithAttributes("user", []string{"Vsechny zpravy"}, imap.NewFlagSet())
+		m5 := s.mailboxCreatedWithAttributes("user", []string{"HiddenIfEmpty1"}, imap.NewFlagSet())
+		m6 := s.mailboxCreatedWithAttributes("user", []string{"HiddenIfEmpty2"}, imap.NewFlagSet())
+		msg1 := s.messageCreatedWithMailboxes("user", []imap.MailboxID{m5}, []byte("To: no-reply@pm.me"), time.Now())
 
 		{
 			connector := s.conns[s.userIDs["user"]]
-			connector.SetMailboxVisible(m1, false)
-			connector.SetMailboxVisible(m2, false)
-			connector.SetMailboxVisible(m3, false)
-			connector.SetMailboxVisible(m4, false)
+			connector.SetMailboxVisibility(m1, imap.Hidden)
+			connector.SetMailboxVisibility(m2, imap.Hidden)
+			connector.SetMailboxVisibility(m3, imap.Hidden)
+			connector.SetMailboxVisibility(m4, imap.Hidden)
+			connector.SetMailboxVisibility(m5, imap.HiddenIfEmpty)
+			connector.SetMailboxVisibility(m6, imap.HiddenIfEmpty)
 		}
 
 		c.C(`a list "" "*"`)
@@ -297,6 +303,33 @@ func TestListHiddenMailbox(t *testing.T) {
 			`* LIST (\Unmarked) "." "Odeslane"`,
 			`* LIST (\Unmarked) "." "Archiv"`,
 			`* LIST (\Unmarked) "." "Kos"`,
+			`* LIST (\Marked) "." "HiddenIfEmpty1"`,
+		)
+		c.OK(`a`)
+
+		s.messageRemoved("user", msg1, m5)
+		s.messageAdded("user", msg1, m6)
+
+		c.C(`a list "" "*"`)
+		c.S(
+			`* LIST (\Unmarked) "." "INBOX"`,
+			`* LIST (\Unmarked) "." "Odeslane"`,
+			`* LIST (\Unmarked) "." "Archiv"`,
+			`* LIST (\Unmarked) "." "Kos"`,
+			`* LIST (\Marked) "." "HiddenIfEmpty2"`,
+		)
+		c.OK(`a`)
+	})
+}
+
+func TestListWithUtf8MailboxNames(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
+		s.mailboxCreated("user", []string{"mbox-öüäëæøå"})
+		s.flush("user")
+		c.C(`a list "" "*"`)
+		c.S(
+			`* LIST (\Unmarked) "." "INBOX"`,
+			`* LIST (\Unmarked) "." "mbox-&APYA,ADkAOsA5gD4AOU-"`,
 		)
 		c.OK(`a`)
 	})

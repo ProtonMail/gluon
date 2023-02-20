@@ -1,6 +1,8 @@
 package store_test
 
 import (
+	"bytes"
+	"math/rand"
 	"runtime"
 	"testing"
 
@@ -9,25 +11,63 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOnDiskStore(t *testing.T) {
-	for name, cmp := range map[string]store.Compressor{
-		"noop": nil,
-		"gzip": &store.GZipCompressor{},
-		"zlib": &store.ZLibCompressor{},
-	} {
-		t.Run(name, func(t *testing.T) {
-			store, err := store.NewOnDiskStore(
-				t.TempDir(),
-				[]byte("pass"),
-				store.WithCompressor(cmp),
-				store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
-			)
-			require.NoError(t, err)
+func TestStore_DecryptFailedOnFilesBiggerThanBlockSize(t *testing.T) {
+	store, err := store.NewOnDiskStore(
+		t.TempDir(),
+		[]byte("pass"),
+		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+	)
+	require.NoError(t, err)
 
-			testStore(t, store)
-			testStoreList(t, store)
-		})
+	data := make([]byte, 1024*1204)
+	{
+		_, err := rand.Read(data) //nolint:gosec
+		require.NoError(t, err)
 	}
+
+	id := imap.NewInternalMessageID()
+	require.NoError(t, store.Set(id, bytes.NewReader(data)))
+	read, err := store.Get(id)
+	require.NoError(t, err)
+	require.True(t, bytes.Equal(read, data))
+	require.NoError(t, store.Delete(id))
+}
+
+func BenchmarkStoreRead(t *testing.B) {
+	store, err := store.NewOnDiskStore(
+		t.TempDir(),
+		[]byte("pass"),
+		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+	)
+	require.NoError(t, err)
+
+	data := make([]byte, 15*1024*1204)
+	{
+		_, err := rand.Read(data) //nolint:gosec
+		require.NoError(t, err)
+	}
+
+	id := imap.NewInternalMessageID()
+	require.NoError(t, store.Set(id, bytes.NewReader(data)))
+
+	t.ResetTimer()
+
+	for i := 0; i < t.N; i++ {
+		_, err := store.Get(id)
+		require.NoError(t, err)
+	}
+}
+
+func TestOnDiskStore(t *testing.T) {
+	store, err := store.NewOnDiskStore(
+		t.TempDir(),
+		[]byte("pass"),
+		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+	)
+	require.NoError(t, err)
+
+	testStore(t, store)
+	testStoreList(t, store)
 }
 
 func testStore(t *testing.T, store store.Store) {
@@ -35,9 +75,9 @@ func testStore(t *testing.T, store store.Store) {
 	id2 := imap.NewInternalMessageID()
 	id3 := imap.NewInternalMessageID()
 
-	require.NoError(t, store.Set(id1, []byte("literal1")))
-	require.NoError(t, store.Set(id2, []byte("literal2")))
-	require.NoError(t, store.Set(id3, []byte("literal3")))
+	require.NoError(t, store.Set(id1, bytes.NewReader([]byte("literal1"))))
+	require.NoError(t, store.Set(id2, bytes.NewReader([]byte("literal2"))))
+	require.NoError(t, store.Set(id3, bytes.NewReader([]byte("literal3"))))
 
 	require.Equal(t, []byte("literal1"), must(store.Get(id1)))
 	require.Equal(t, []byte("literal2"), must(store.Get(id2)))
@@ -51,9 +91,9 @@ func testStoreList(t *testing.T, store store.Store) {
 	id2 := imap.NewInternalMessageID()
 	id3 := imap.NewInternalMessageID()
 
-	require.NoError(t, store.Set(id1, []byte("literal1")))
-	require.NoError(t, store.Set(id2, []byte("literal2")))
-	require.NoError(t, store.Set(id3, []byte("literal3")))
+	require.NoError(t, store.Set(id1, bytes.NewReader([]byte("literal1"))))
+	require.NoError(t, store.Set(id2, bytes.NewReader([]byte("literal2"))))
+	require.NoError(t, store.Set(id3, bytes.NewReader([]byte("literal3"))))
 
 	list, err := store.List()
 	require.NoError(t, err)

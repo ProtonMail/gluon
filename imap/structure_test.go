@@ -73,3 +73,91 @@ hey there bro
 	expected := "((\"text\" \"plain\" (\"charset\" \"utf-8\") NIL NIL \"quoted-printable\" 6 2)(\"message\" \"rfc822\" (\"name\" \"ISO-8859-1.eml\") NIL NIL NIL 127 (NIL \"ISO-8859-1\" ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail2\" \"pm.me\")) NIL NIL NIL NIL)(\"text\" \"plain\" (\"charset\" \"iso-8859-1\") NIL NIL NIL 14 1) 6) \"mixed\")"
 	require.Equal(t, expected, parsed.Body)
 }
+
+func TestParseInvalidCharsInContenType(t *testing.T) {
+	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com> 
+To:  Ned Freed <ned@innosoft.com> 
+Subject: Sample message 
+MIME-Version: 1.0 
+Content-type: multipart/mixed; boundary="simple boundary" 
+
+This is the preamble.  It is to be ignored, though it 
+is a handy place for mail composers to include an 
+explanatory note to non-MIME compliant readers. 
+--simple boundary
+Content-type: text/plain; charset=us-ascii
+
+This part does not end with a linebreak.
+--simple boundary
+Content-Disposition: attachment; filename=test.eml
+Content-Type: message/rfc822; name=test.eml
+X-Pm-Content-Encryption: on-import
+
+To: someone
+Subject: Fwd: embedded
+Content-type: multipart/mixed; boundary="embedded-boundary" 
+
+--embedded-boundary
+Content-Type: GIF �ɮ�;
+Content-Transfer-Encoding: base64
+Content-Location: file:///C:/ABWhiz41/images/itinlogo1.gif
+
+Ym9keQ==
+
+--embedded-boundary
+Content-type: text/plain; charset=us-ascii
+
+This part is also embedded
+--embedded-boundary--
+--simple boundary--
+This is the epilogue.  It is also to be ignored.
+`
+
+	parsed, err := NewParsedMessage([]byte(literal))
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+}
+
+func TestParseInvalidMimeType(t *testing.T) {
+	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com> 
+To:  Ned Freed <ned@innosoft.com> 
+Subject: Sample message 
+MIME-Version: 1.0 
+Content-type: multipart/mixed; boundary="simple boundary" 
+
+This is the preamble.  It is to be ignored, though it 
+is a handy place for mail composers to include an 
+explanatory note to non-MIME compliant readers. 
+--simple boundary
+Content-type: text/plain; charset=us-ascii
+
+This part does not end with a linebreak.
+--simple boundary
+Content-Disposition: attachment; filename=test.eml
+Content-Type: message/rfc822; name=test.eml
+X-Pm-Content-Encryption: on-import
+
+To: someone
+Subject: Fwd: embedded
+Content-type: multipart/mixed; boundary="embedded-boundary" 
+
+--embedded-boundary
+Content-Type: application/;
+Content-Transfer-Encoding: base64
+Content-Location: file:///C:/ABWhiz41/images/itinlogo1.gif
+
+Ym9keQ==
+
+--embedded-boundary
+Content-type: text/plain; charset=us-ascii
+
+This part is also embedded
+--embedded-boundary--
+--simple boundary--
+This is the epilogue.  It is also to be ignored.
+`
+
+	parsed, err := NewParsedMessage([]byte(literal))
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+}

@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/ProtonMail/gluon/imap"
@@ -28,7 +29,7 @@ func (t *TestStoreBuilder) New(dir, userID string, passphrase []byte) (store.Sto
 	}
 
 	for _, id := range testStoreBuilderTestIDs {
-		if err := st.Set(id, []byte{0xD, 0xE, 0xA, 0xD, 0xB, 0xE, 0xE, 0xF}); err != nil {
+		if err := st.Set(id, bytes.NewReader([]byte{0xD, 0xE, 0xA, 0xD, 0xB, 0xE, 0xE, 0xF})); err != nil {
 			panic("failed to store test data in store")
 		}
 	}

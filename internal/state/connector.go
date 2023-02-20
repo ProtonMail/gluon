@@ -41,6 +41,10 @@ type Connector interface {
 		date time.Time,
 	) (imap.InternalMessageID, imap.Message, []byte, error)
 
+	// GetMessageLiteral retrieves the message literal from the connector.
+	// Note: this can get called from different go routines.
+	GetMessageLiteral(ctx context.Context, id imap.MessageID) ([]byte, error)
+
 	// AddMessagesToMailbox adds the message with the given ID to the mailbox with the given ID.
 	AddMessagesToMailbox(
 		ctx context.Context,
@@ -61,7 +65,7 @@ type Connector interface {
 		messageIDs []imap.MessageID,
 		mboxFromID imap.MailboxID,
 		mboxToID imap.MailboxID,
-	) error
+	) (bool, error)
 
 	// SetMessagesSeen marks the message with the given ID as seen or unseen.
 	SetMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error
@@ -69,9 +73,6 @@ type Connector interface {
 	// SetMessagesFlagged marks the message with the given ID as seen or unseen.
 	SetMessagesFlagged(ctx context.Context, messageIDs []imap.MessageID, flagged bool) error
 
-	// SetUIDValidity sets the UID Validity for the user.
-	SetUIDValidity(imap.UID) error
-
-	// IsMailboxVisible checks whether a mailbox is visible to a client.
-	IsMailboxVisible(ctx context.Context, id imap.MailboxID) bool
+	// GetMailboxVisibility retrieves the visibility status of a mailbox for a client.
+	GetMailboxVisibility(ctx context.Context, id imap.MailboxID) imap.MailboxVisibility
 }

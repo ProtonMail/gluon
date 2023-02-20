@@ -2,16 +2,15 @@ package state
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/bradenaw/juniper/xslices"
 )
 
@@ -35,11 +34,14 @@ func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *en
 	}
 
 	for _, snapshotMessage := range snapshotMessages {
-		snap.messages.insert(
+		if err := snap.messages.insert(
 			ids.MessageIDPair{InternalID: snapshotMessage.InternalID, RemoteID: snapshotMessage.RemoteID},
 			snapshotMessage.UID,
 			snapshotMessage.GetFlagSet(),
-		)
+		); err != nil {
+			reporter.ExceptionWithContext(ctx, "Failed to insert message into new snapshot", reporter.Context{"error": err})
+			return nil, err
+		}
 	}
 
 	return snap, nil
@@ -137,7 +139,7 @@ func (snap *snapshot) getAllMessagesIDsMarkedDelete() []ids.MessageIDPair {
 	return msgs
 }
 
-func (snap *snapshot) getMessagesInRange(ctx context.Context, seq *proto.SequenceSet) ([]snapMsgWithSeq, error) {
+func (snap *snapshot) getMessagesInRange(ctx context.Context, seq []command.SeqRange) ([]snapMsgWithSeq, error) {
 	switch {
 	case contexts.IsUID(ctx):
 		return snap.getMessagesInUIDRange(seq)
@@ -165,159 +167,20 @@ func (u UIDInterval) contains(uid imap.UID) bool {
 	return uid >= u.begin && uid <= u.end
 }
 
-func (snap *snapshot) resolveSeqInterval(seq *proto.SequenceSet) ([]SeqInterval, error) {
-	seqSet, err := toSeqSet(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]SeqInterval, 0, len(seqSet))
-
-	for _, seqRange := range seqSet {
-		switch len(seqRange) {
-		case 1:
-			seq, err := snap.resolveSeq(seqRange[0])
-			if err != nil {
-				return nil, err
-			}
-
-			res = append(res, SeqInterval{
-				begin: seq,
-				end:   seq,
-			})
-
-		case 2:
-			begin, err := snap.resolveSeq(seqRange[0])
-			if err != nil {
-				return nil, err
-			}
-
-			end, err := snap.resolveSeq(seqRange[1])
-			if err != nil {
-				return nil, err
-			}
-
-			if begin > end {
-				begin, end = end, begin
-			}
-
-			res = append(res, SeqInterval{
-				begin: begin,
-				end:   end,
-			})
-
-		default:
-			return nil, fmt.Errorf("bad sequence range")
-		}
-	}
-
-	return res, nil
+func (snap *snapshot) resolveSeqInterval(seq []command.SeqRange) ([]SeqInterval, error) {
+	return snap.messages.resolveSeqInterval(seq)
 }
 
-func (snap *snapshot) resolveUIDInterval(seq *proto.SequenceSet) ([]UIDInterval, error) {
-	seqSet, err := toSeqSet(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]UIDInterval, 0, len(seqSet))
-
-	for _, uidRange := range seqSet {
-		switch len(uidRange) {
-		case 1:
-			uid, err := snap.resolveUID(uidRange[0])
-			if err != nil {
-				return nil, err
-			}
-
-			res = append(res, UIDInterval{
-				begin: uid,
-				end:   uid,
-			})
-
-		case 2:
-			begin, err := snap.resolveUID(uidRange[0])
-			if err != nil {
-				return nil, err
-			}
-
-			end, err := snap.resolveUID(uidRange[1])
-			if err != nil {
-				return nil, err
-			}
-
-			if begin > end {
-				begin, end = end, begin
-			}
-
-			res = append(res, UIDInterval{
-				begin: begin,
-				end:   end,
-			})
-
-		default:
-			return nil, fmt.Errorf("bad sequence range")
-		}
-	}
-
-	return res, nil
+func (snap *snapshot) resolveUIDInterval(seq []command.SeqRange) ([]UIDInterval, error) {
+	return snap.messages.resolveUIDInterval(seq)
 }
 
-func (snap *snapshot) getMessagesInSeqRange(seq *proto.SequenceSet) ([]snapMsgWithSeq, error) {
-	var res []snapMsgWithSeq
-
-	intervals, err := snap.resolveSeqInterval(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, seqRange := range intervals {
-		if seqRange.begin == seqRange.end {
-			msg, ok := snap.messages.getWithSeqID(seqRange.begin)
-			if !ok {
-				return nil, ErrNoSuchMessage
-			}
-
-			res = append(res, msg)
-		} else {
-			if !snap.messages.existsWithSeqID(seqRange.begin) || !snap.messages.existsWithSeqID(seqRange.end) {
-				return nil, ErrNoSuchMessage
-			}
-
-			res = append(res, snap.messages.seqRange(seqRange.begin, seqRange.end)...)
-		}
-	}
-
-	return res, nil
+func (snap *snapshot) getMessagesInSeqRange(seq []command.SeqRange) ([]snapMsgWithSeq, error) {
+	return snap.messages.getMessagesInSeqRange(seq)
 }
 
-func (snap *snapshot) getMessagesInUIDRange(seq *proto.SequenceSet) ([]snapMsgWithSeq, error) {
-	var res []snapMsgWithSeq
-
-	// If there are no messages in the mailbox, we still resolve without error.
-	if snap.messages.len() == 0 {
-		return nil, nil
-	}
-
-	intervals, err := snap.resolveUIDInterval(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, uidRange := range intervals {
-		if uidRange.begin == uidRange.end {
-			msg, ok := snap.messages.getWithUID(uidRange.begin)
-			if !ok {
-				continue
-			}
-
-			res = append(res, msg)
-		} else {
-			res = append(res, snap.messages.uidRange(uidRange.begin, uidRange.end)...)
-		}
-	}
-
-	return res, nil
+func (snap *snapshot) getMessagesInUIDRange(seq []command.SeqRange) ([]snapMsgWithSeq, error) {
+	return snap.messages.getMessagesInUIDRange(seq)
 }
 
 func (snap *snapshot) firstMessageWithFlag(flag string) (snapMsgWithSeq, bool) {
@@ -377,13 +240,11 @@ func (snap *snapshot) getMessagesWithoutFlagCount(flag string) int {
 }
 
 func (snap *snapshot) appendMessage(messageID ids.MessageIDPair, uid imap.UID, flags imap.FlagSet) error {
-	snap.messages.insert(
+	return snap.messages.insert(
 		messageID,
 		uid,
 		flags,
 	)
-
-	return nil
 }
 
 func (snap *snapshot) appendMessageFromOtherState(messageID ids.MessageIDPair, uid imap.UID, flags imap.FlagSet) error {
@@ -420,40 +281,4 @@ func (snap *snapshot) updateMessageRemoteID(internalID imap.InternalMessageID, r
 	}
 
 	return nil
-}
-
-// resolveSeq converts a textual sequence number into an integer.
-// According to RFC 3501, the definition of seq-number, page 89, for message sequence numbers
-// - No sequence number is valid if mailbox is empty, not even "*"
-// - "*" is converted to the number of messages in the mailbox
-// - when used in a range, the order of the indexes in irrelevant.
-func (snap *snapshot) resolveSeq(number string) (imap.SeqID, error) {
-	if number == "*" {
-		return imap.SeqID(snap.messages.len()), nil
-	}
-
-	num, err := strconv.ParseUint(number, 10, 32)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse sequence number: %w", err)
-	}
-
-	return imap.SeqID(num), nil
-}
-
-// resolveUID converts a textual message UID into an integer.
-func (snap *snapshot) resolveUID(number string) (imap.UID, error) {
-	if snap.messages.len() == 0 {
-		return 0, ErrNoSuchMessage
-	}
-
-	if number == "*" {
-		return snap.messages.last().UID, nil
-	}
-
-	num, err := strconv.ParseUint(number, 10, 32)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse UID number: %w", err)
-	}
-
-	return imap.UID(num), nil
 }

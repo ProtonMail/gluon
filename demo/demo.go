@@ -53,6 +53,7 @@ func main() {
 			logrus.StandardLogger().WriterLevel(logrus.TraceLevel),
 		),
 		gluon.WithDataDir(os.Getenv("GLUON_DIR")),
+		gluon.WithDatabaseDir(os.Getenv("GLUON_DIR")),
 	)
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to create server")

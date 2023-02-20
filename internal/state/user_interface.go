@@ -22,15 +22,13 @@ type UserInterface interface {
 
 	GetRemote() Connector
 
-	GetStore() store.Store
+	GetStore() *store.WriteControlledStore
 
 	QueueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update ...Update) error
 
 	ReleaseState(ctx context.Context, st *State) error
 
-	GetGlobalUIDValidity() imap.UID
-
-	SetGlobalUIDValidity(imap.UID)
-
 	GetRecoveryMailboxID() ids.MailboxIDPair
+
+	GenerateUIDValidity() (imap.UID, error)
 }

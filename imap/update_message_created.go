@@ -44,6 +44,9 @@ type MessagesCreated struct {
 	*updateWaiter
 
 	Messages []*MessageCreated
+
+	// IgnoreUnknownMailboxIDs will allow message creation when one or more MailboxIDs are not yet known when set to true.
+	IgnoreUnknownMailboxIDs bool
 }
 
 type MessageCreated struct {
@@ -53,10 +56,11 @@ type MessageCreated struct {
 	ParsedMessage *ParsedMessage
 }
 
-func NewMessagesCreated(updates ...*MessageCreated) *MessagesCreated {
+func NewMessagesCreated(ignoreUnknownMailboxIDs bool, updates ...*MessageCreated) *MessagesCreated {
 	return &MessagesCreated{
-		updateWaiter: newUpdateWaiter(),
-		Messages:     updates,
+		updateWaiter:            newUpdateWaiter(),
+		Messages:                updates,
+		IgnoreUnknownMailboxIDs: ignoreUnknownMailboxIDs,
 	}
 }
 

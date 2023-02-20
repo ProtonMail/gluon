@@ -59,7 +59,18 @@ func CreateMailbox(
 		create = create.SetRemoteID(mboxID)
 	}
 
-	return create.Save(ctx)
+	mbox, err := create.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if mboxID != ids.GluonInternalRecoveryMailboxRemoteID {
+		if _, err := RemoveDeletedSubscriptionWithName(ctx, tx, mbox.Name); err != nil {
+			return nil, err
+		}
+	}
+
+	return mbox, nil
 }
 
 func MailboxExistsWithID(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (bool, error) {
@@ -100,26 +111,23 @@ func DeleteMailboxWithRemoteID(
 	ctx context.Context,
 	tx *ent.Tx,
 	mboxID imap.MailboxID,
-	curUIDValidity imap.UID,
-) (imap.UID, error) {
-	mbox, err := tx.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Select(mailbox.FieldUIDValidity).Only(ctx)
+) error {
+	mbox, err := tx.Mailbox.Query().Where(mailbox.RemoteID(mboxID)).Select(mailbox.FieldSubscribed, mailbox.FieldName).Only(ctx)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	var newUIDValidity imap.UID
-
-	if mbox.UIDValidity == curUIDValidity {
-		newUIDValidity = curUIDValidity.Add(1)
-	} else {
-		newUIDValidity = curUIDValidity
+	if mbox.Subscribed {
+		if err := AddDeletedSubscription(ctx, tx, mbox.Name, mboxID); err != nil {
+			return err
+		}
 	}
 
 	if _, err := tx.Mailbox.Delete().Where(mailbox.RemoteID(mboxID)).Exec(ctx); err != nil {
-		return 0, err
+		return err
 	}
 
-	return newUIDValidity, nil
+	return nil
 }
 
 func UpdateRemoteMailboxID(ctx context.Context, tx *ent.Tx, internalID imap.InternalMailboxID, remoteID imap.MailboxID) error {
@@ -365,4 +373,92 @@ func FilterMailboxContains(ctx context.Context, client *ent.Client, mboxID imap.
 	return xslices.Map(r, func(r result) imap.InternalMessageID {
 		return r.InternalID
 	}), nil
+}
+
+func FilterMailboxContainsInternalID(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]imap.InternalMessageID, error) {
+	type result struct {
+		InternalID imap.InternalMessageID `json:"uid_message"`
+	}
+
+	var r []result
+
+	if err := client.UID.Query().Where(func(s *sql.Selector) {
+		s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.In(uid.MessageColumn, xslices.Map(messageIDs, func(id imap.InternalMessageID) interface{} {
+			return id
+		})...)))
+		s.Select(uid.MessageColumn)
+	}).Select().Scan(ctx, &r); err != nil {
+		return nil, err
+	}
+
+	return xslices.Map(r, func(r result) imap.InternalMessageID {
+		return r.InternalID
+	}), nil
+}
+
+func GetMailboxFlags(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (imap.FlagSet, error) {
+	mbox, err := client.Mailbox.Query().Where(mailbox.ID(mboxID)).WithFlags().Only(ctx)
+	if err != nil {
+		return imap.FlagSet{}, err
+	}
+
+	return imap.NewFlagSetFromSlice(xslices.Map(mbox.Edges.Flags, func(flag *ent.MailboxFlag) string {
+		return flag.Value
+	})), nil
+}
+
+func GetMailboxPermanentFlags(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (imap.FlagSet, error) {
+	mbox, err := client.Mailbox.Query().Where(mailbox.ID(mboxID)).WithPermanentFlags().Only(ctx)
+	if err != nil {
+		return imap.FlagSet{}, err
+	}
+
+	return imap.NewFlagSetFromSlice(xslices.Map(mbox.Edges.PermanentFlags, func(flag *ent.MailboxPermFlag) string {
+		return flag.Value
+	})), nil
+}
+
+func GetMailboxAttributes(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (imap.FlagSet, error) {
+	mbox, err := client.Mailbox.Query().Where(mailbox.ID(mboxID)).WithAttributes().Only(ctx)
+	if err != nil {
+		return imap.FlagSet{}, err
+	}
+
+	return imap.NewFlagSetFromSlice(xslices.Map(mbox.Edges.Attributes, func(flag *ent.MailboxAttr) string {
+		return flag.Value
+	})), nil
+}
+
+func IsMessageInMailbox(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID, messageID imap.InternalMailboxID) (bool, error) {
+	return client.UID.Query().Where(func(s *sql.Selector) {
+		s.Where(sql.And(sql.EQ(uid.MailboxColumn, mboxID), sql.EQ(uid.MessageColumn, messageID)))
+		s.Select(uid.MessageColumn)
+	}).Exist(ctx)
+}
+
+func GetMailboxCount(ctx context.Context, client *ent.Client) (int, error) {
+	return client.Mailbox.Query().Count(ctx)
+}
+
+func GetMailboxUID(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (imap.UID, error) {
+	mbox, err := client.Mailbox.Query().Where(mailbox.ID(mboxID)).Select(mailbox.FieldUIDNext).Only(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return mbox.UIDNext, err
+}
+
+func GetMailboxMessageCountAndUID(ctx context.Context, client *ent.Client, mboxID imap.InternalMailboxID) (int, imap.UID, error) {
+	messageCount, err := GetMailboxMessageCount(ctx, client, mboxID)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	uid, err := GetMailboxUID(ctx, client, mboxID)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return messageCount, uid, err
 }

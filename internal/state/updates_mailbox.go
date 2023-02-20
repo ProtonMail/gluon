@@ -7,6 +7,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/bradenaw/juniper/xslices"
 )
 
@@ -19,8 +20,23 @@ func MoveMessagesFromMailbox(
 	mboxFromID, mboxToID imap.InternalMailboxID,
 	messageIDs []imap.InternalMessageID,
 	s *State,
+	imapLimits limits.IMAP,
+	removeOldMessages bool,
 ) ([]db.UIDWithFlags, []Update, error) {
-	if mboxFromID != mboxToID {
+	messageCount, uid, err := db.GetMailboxMessageCountAndUID(ctx, tx.Client(), mboxToID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := imapLimits.CheckMailBoxMessageCount(messageCount, len(messageIDs)); err != nil {
+		return nil, nil, err
+	}
+
+	if err := imapLimits.CheckUIDCount(uid, len(messageIDs)); err != nil {
+		return nil, nil, err
+	}
+
+	if mboxFromID != mboxToID && removeOldMessages {
 		if err := db.RemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxFromID); err != nil {
 			return nil, nil, err
 		}
@@ -42,15 +58,30 @@ func MoveMessagesFromMailbox(
 		stateUpdates = append(stateUpdates, newExistsStateUpdateWithExists(mboxToID, responders, s))
 	}
 
-	for _, messageID := range messageIDs {
-		stateUpdates = append(stateUpdates, NewMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxFromID, NewExpunge(messageID)))
+	if removeOldMessages {
+		for _, messageID := range messageIDs {
+			stateUpdates = append(stateUpdates, NewMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxFromID, NewExpunge(messageID)))
+		}
 	}
 
 	return messageUIDs, stateUpdates, nil
 }
 
 // AddMessagesToMailbox adds the messages to the given mailbox.
-func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, s *State) ([]db.UIDWithFlags, Update, error) {
+func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, s *State, imapLimits limits.IMAP) ([]db.UIDWithFlags, Update, error) {
+	messageCount, uid, err := db.GetMailboxMessageCountAndUID(ctx, tx.Client(), mboxID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := imapLimits.CheckMailBoxMessageCount(messageCount, len(messageIDs)); err != nil {
+		return nil, nil, err
+	}
+
+	if err := imapLimits.CheckUIDCount(uid, len(messageIDs)); err != nil {
+		return nil, nil, err
+	}
+
 	messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxID)
 	if err != nil {
 		return nil, nil, err

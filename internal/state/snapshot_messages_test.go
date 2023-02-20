@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/stretchr/testify/require"
 )
@@ -19,12 +20,12 @@ func TestMessages(t *testing.T) {
 	id5 := imap.NewInternalMessageID()
 	id6 := imap.NewInternalMessageID()
 
-	msg.insert(messageIDPair(id1, "1"), 10, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(id2, "2"), 20, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(id3, "3"), 30, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(id4, "4"), 40, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(id5, "5"), 50, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(id6, "6"), 60, imap.NewFlagSet(imap.FlagSeen))
+	require.NoError(t, msg.insert(messageIDPair(id1, "1"), 10, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id2, "2"), 20, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id3, "3"), 30, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id4, "4"), 40, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id5, "5"), 50, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id6, "6"), 60, imap.NewFlagSet(imap.FlagSeen)))
 
 	msg.remove(id2)
 	msg.remove(id4)
@@ -85,12 +86,12 @@ func TestMessageUIDRange(t *testing.T) {
 	id5 := imap.NewInternalMessageID()
 	id6 := imap.NewInternalMessageID()
 
-	msg.insert(messageIDPair(id1, "1"), 10, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(id2, "2"), 20, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(id3, "3"), 30, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(id4, "4"), 40, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(id5, "5"), 50, imap.NewFlagSet(imap.FlagSeen))
-	msg.insert(messageIDPair(id6, "6"), 60, imap.NewFlagSet(imap.FlagSeen))
+	require.NoError(t, msg.insert(messageIDPair(id1, "1"), 10, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id2, "2"), 20, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id3, "3"), 30, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id4, "4"), 40, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id5, "5"), 50, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id6, "6"), 60, imap.NewFlagSet(imap.FlagSeen)))
 
 	// UIDRange Higher than maximum
 	{
@@ -132,6 +133,91 @@ func TestMessageUIDRange(t *testing.T) {
 		require.Equal(t, 2, len(result))
 		require.Equal(t, result[0].UID, imap.UID(30))
 		require.Equal(t, result[1].UID, imap.UID(40))
+	}
+}
+
+func TestMessageRange1HigherThanMax(t *testing.T) {
+	msg := newMsgList(8)
+
+	id1 := imap.NewInternalMessageID()
+	id2 := imap.NewInternalMessageID()
+
+	require.NoError(t, msg.insert(messageIDPair(id1, "1"), 1, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id2, "2"), 2, imap.NewFlagSet(imap.FlagSeen)))
+
+	seqSetInterval := []command.SeqRange{{Begin: 3, End: command.SeqNumValueAsterisk}}
+
+	{
+		uidInterval, err := msg.resolveUIDInterval(seqSetInterval)
+		require.NoError(t, err)
+		seqInterval, err := msg.resolveSeqInterval(seqSetInterval)
+		require.NoError(t, err)
+
+		require.Equal(t, uidInterval, []UIDInterval{{begin: imap.UID(3), end: imap.UID(3)}})
+		require.Equal(t, seqInterval, []SeqInterval{{begin: imap.SeqID(3), end: imap.SeqID(3)}})
+	}
+
+	{
+		_, err := msg.getMessagesInSeqRange(seqSetInterval)
+		require.Error(t, err)
+	}
+	{
+		messages, err := msg.getMessagesInUIDRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Empty(t, messages)
+	}
+}
+
+func TestSnapListGetMessages(t *testing.T) {
+	msg := newMsgList(8)
+
+	id1 := imap.NewInternalMessageID()
+	id2 := imap.NewInternalMessageID()
+
+	require.NoError(t, msg.insert(messageIDPair(id1, "1"), 1, imap.NewFlagSet(imap.FlagSeen)))
+	require.NoError(t, msg.insert(messageIDPair(id2, "2"), 2, imap.NewFlagSet(imap.FlagSeen)))
+
+	{
+		seqSetInterval := []command.SeqRange{{Begin: 3, End: command.SeqNumValueAsterisk}}
+		_, err := msg.getMessagesInSeqRange(seqSetInterval)
+		require.Error(t, err)
+
+		uidInterval, err := msg.getMessagesInUIDRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Empty(t, uidInterval)
+	}
+	{
+		seqSetInterval := []command.SeqRange{{Begin: command.SeqNumValueAsterisk, End: 3}}
+		_, err := msg.getMessagesInSeqRange(seqSetInterval)
+		require.Error(t, err)
+
+		uidInterval, err := msg.getMessagesInUIDRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Empty(t, uidInterval)
+	}
+	{
+		seqSetInterval := []command.SeqRange{{Begin: 1, End: command.SeqNumValueAsterisk}}
+		seqList, err := msg.getMessagesInSeqRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(seqList))
+		require.Equal(t, seqList[0].Seq, imap.SeqID(1))
+		require.Equal(t, seqList[1].Seq, imap.SeqID(2))
+
+		uidList, err := msg.getMessagesInUIDRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(uidList))
+		require.Equal(t, uidList[0].UID, imap.UID(1))
+		require.Equal(t, uidList[1].UID, imap.UID(2))
+	}
+	{
+		seqSetInterval := []command.SeqRange{{Begin: 2, End: 3}}
+		_, err := msg.getMessagesInSeqRange(seqSetInterval)
+		require.Error(t, err)
+
+		uidList, err := msg.getMessagesInUIDRange(seqSetInterval)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(uidList))
+		require.Equal(t, uidList[0].UID, imap.UID(2))
 	}
 }
 

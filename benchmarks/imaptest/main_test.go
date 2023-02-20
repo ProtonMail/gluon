@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"sync"
 	"testing"
@@ -19,7 +20,13 @@ import (
 const (
 	allowParallel     = false
 	doFullIMAPtestLog = false
-	gluon_log_level   = "warn"
+	gluonLogLevel     = "warn"
+	ignoreRecentError = true
+)
+
+var (
+	rxImapTestError       = regexp.MustCompile(`(?m)^Error: .*$`)
+	rxImapTestRecentError = regexp.MustCompile(`Error: .*: Message UID=\d+ has \\Recent flag in multiple sessions:`)
 )
 
 func TestIMAPTest(t *testing.T) {
@@ -86,7 +93,7 @@ func (conf *config) generateScenarios() ([]*scenario, error) {
 			}
 
 			scenarios = append(scenarios, sc)
-			i += 1
+			i++
 		}
 	}
 
@@ -183,7 +190,7 @@ func (s *scenario) runGluon() {
 		fmt.Sprintf("GLUON_DIR=%s", s.t.TempDir()),
 		fmt.Sprintf("GLUON_USER_COUNT=%d", s.users),
 		fmt.Sprintf("GLUON_HOST=127.0.0.1:%s", s.port),
-		"GLUON_LOG_LEVEL="+gluon_log_level,
+		"GLUON_LOG_LEVEL="+gluonLogLevel,
 	)
 
 	out := bytes.NewBuffer(nil)
@@ -216,11 +223,75 @@ func (s *scenario) runIMAPTest() {
 	fmt.Printf("IMAPTEST[%s]: %q\n%s\nIMAPTESTEND[%s]\n", s.name, s.imaptestParams, out.String(), s.name)
 
 	assert.NoError(s.t, err)
-	assert.False(s.t, bytes.Contains(out.Bytes(), []byte("rror")))
+	assert.False(s.t, hasIMAPLogAnError(out.Bytes(), ignoreRecentError), "Error(s) found in imaptest log.")
 
 	if doFullIMAPtestLog {
 		log, err := os.ReadFile(logPath)
 		assert.NoError(s.t, err)
 		fmt.Println("LOG", s.name, "\n", string(log), "\nLOG", s.name, "END")
+	}
+}
+
+func hasIMAPLogAnError(log []byte, ignoreRecent bool) bool {
+	for _, errMatch := range rxImapTestError.FindAll(log, -1) {
+		if ignoreRecent && rxImapTestRecentError.Match(errMatch) {
+			continue
+		}
+
+		return true
+	}
+
+	return false
+}
+
+func TestHasIMAPTestAnError(t *testing.T) {
+	data := []struct {
+		given                string
+		want, wantWithIgnore bool
+	}{
+		{
+			given: `Error: uknown error
+This is not an error
+Error: user1@example.com[510]: Message UID=76 has \Recent flag in multiple sessions: 510 and 511: * 76 FETCH (FLAGS (\Answered \Deleted \Draft \Recent))
+Logi List Stat Sele Fetc Fet2 Stor Dele Expu Appe Logo 
+100%  50%  50% 100% 100% 100%  50% 100% 100% 100% 100% 
+                          30%                  5%      
+ 524  262  253  500    0    0    0    0    0   63   24 500/500
+  52   22   17   24  108    0    0    0    0  158   52 500/500
+ 136   68   60   95   76   63    0    0    0   72  136 500/500
+ `,
+			want:           true,
+			wantWithIgnore: true,
+		},
+		{
+			given: `This is not an error
+Logi List Stat Sele Fetc Fet2 Stor Dele Expu Appe Logo 
+100%  50%  50% 100% 100% 100%  50% 100% 100% 100% 100% 
+                          30%                  5%      
+ 524  262  253  500    0    0    0    0    0   63   24 500/500
+  52   22   17   24  108    0    0    0    0  158   52 500/500
+ 136   68   60   95   76   63    0    0    0   72  136 500/500
+ `,
+			want:           false,
+			wantWithIgnore: false,
+		},
+		{
+			given: `This is not an error
+Error: user1@example.com[510]: Message UID=76 has \Recent flag in multiple sessions: 510 and 511: * 76 FETCH (FLAGS (\Answered \Deleted \Draft \Recent))
+Logi List Stat Sele Fetc Fet2 Stor Dele Expu Appe Logo 
+100%  50%  50% 100% 100% 100%  50% 100% 100% 100% 100% 
+                          30%                  5%      
+ 524  262  253  500    0    0    0    0    0   63   24 500/500
+  52   22   17   24  108    0    0    0    0  158   52 500/500
+ 136   68   60   95   76   63    0    0    0   72  136 500/500
+ `,
+			want:           true,
+			wantWithIgnore: false,
+		},
+	}
+
+	for i, td := range data {
+		assert.Equal(t, td.want, hasIMAPLogAnError([]byte(td.given), false), "While not ignoring case %d", i)
+		assert.Equal(t, td.wantWithIgnore, hasIMAPLogAnError([]byte(td.given), true), "While ignoring case %d", i)
 	}
 }

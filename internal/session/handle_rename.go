@@ -3,22 +3,21 @@ package session
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/internal/parser/proto"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/emersion/go-imap/utf7"
 )
 
-func (s *Session) handleRename(ctx context.Context, tag string, cmd *proto.Rename, ch chan response.Response) error {
+func (s *Session) handleRename(ctx context.Context, tag string, cmd *command.Rename, ch chan response.Response) error {
 	profiling.Start(ctx, profiling.CmdTypeRename)
 	defer profiling.Stop(ctx, profiling.CmdTypeRename)
 
-	oldNameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetMailbox())
+	oldNameUTF8, err := s.decodeMailboxName(cmd.From)
 	if err != nil {
 		return err
 	}
 
-	newNameUTF8, err := utf7.Encoding.NewDecoder().String(cmd.GetNewName())
+	newNameUTF8, err := s.decodeMailboxName(cmd.To)
 	if err != nil {
 		return err
 	}

@@ -3,12 +3,12 @@ package session
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/internal/parser/proto"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/profiling"
 )
 
-func (s *Session) handleLogout(ctx context.Context, tag string, cmd *proto.Logout) error {
+func (s *Session) handleLogout(ctx context.Context, tag string, _ *command.Logout) error {
 	profiling.Start(ctx, profiling.CmdTypeLogout)
 	defer profiling.Stop(ctx, profiling.CmdTypeLogout)
 

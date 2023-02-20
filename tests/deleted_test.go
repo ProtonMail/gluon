@@ -202,3 +202,33 @@ func TestRemoteMessageUpdate(t *testing.T) {
 		c.OK("A005")
 	})
 }
+
+func TestRemoteMessageUpdateChangesMailboxesOnly(t *testing.T) {
+	// Test that a sequence of delete followed by create with the same message ID  results in an updated message.
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		mailboxID1 := s.mailboxCreated("user", []string{"mbox1"})
+		mailboxID2 := s.mailboxCreated("user", []string{"mbox2"})
+		messageID := s.messageCreated("user", mailboxID1, []byte("To: 3@3.pm"), time.Now())
+
+		s.flush("user")
+		c.C(`A002 STATUS mbox1 (MESSAGES)`)
+		c.S(`* STATUS "mbox1" (MESSAGES 1)`)
+		c.S(`A002 OK STATUS`)
+
+		s.messageUpdatedWithID("user", messageID, mailboxID2, []byte("To: 3@3.pm"), time.Now())
+		s.flush("user")
+
+		c.C(`A002 STATUS mbox1 (MESSAGES)`)
+		c.S(`* STATUS "mbox1" (MESSAGES 0)`)
+		c.S(`A002 OK STATUS`)
+
+		c.C(`A002 STATUS mbox2 (MESSAGES)`)
+		c.S(`* STATUS "mbox2" (MESSAGES 1)`)
+		c.S(`A002 OK STATUS`)
+
+		c.C(`A00X SELECT mbox2`).OK(`A00X`)
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 3@3.pm FLAGS (\\Recent \\Seen))")
+		c.OK("A005")
+	})
+}

@@ -6,36 +6,43 @@ import (
 
 type Waiter interface {
 	// Wait waits until the update has been marked as done.
-	Wait()
+	Wait() (error, bool)
 
 	// WaitContext waits until the update has been marked as done or the context is cancelled.
-	WaitContext(context.Context)
+	WaitContext(context.Context) (error, bool)
 
-	// Done marks the update as done.
-	Done()
+	// Done marks the update as done and report an error (if any).
+	Done(error)
 }
 
 type updateWaiter struct {
-	waitCh chan struct{}
+	waitCh chan error
 }
 
 func newUpdateWaiter() *updateWaiter {
 	return &updateWaiter{
-		waitCh: make(chan struct{}),
+		waitCh: make(chan error, 1),
 	}
 }
 
-func (w *updateWaiter) Wait() {
-	<-w.waitCh
+func (w *updateWaiter) Wait() (error, bool) {
+	err, ok := <-w.waitCh
+	return err, ok
 }
 
-func (w *updateWaiter) WaitContext(ctx context.Context) {
+func (w *updateWaiter) WaitContext(ctx context.Context) (error, bool) {
 	select {
 	case <-ctx.Done():
-	case <-w.waitCh:
+		return nil, false
+	case err, ok := <-w.waitCh:
+		return err, ok
 	}
 }
 
-func (w *updateWaiter) Done() {
+func (w *updateWaiter) Done(err error) {
+	if err != nil {
+		w.waitCh <- err
+	}
+
 	close(w.waitCh)
 }

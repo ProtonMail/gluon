@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/logging"
-
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/session"
+	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
@@ -31,8 +31,11 @@ import (
 
 // Server is the gluon IMAP server.
 type Server struct {
-	// dir holds the path to all of Gluon's data.
-	dir string
+	// dataDir is the directory in which backend files should be stored.
+	dataDir string
+
+	// databaseDir is the directory in which database files should be stored.
+	databaseDir string
 
 	// backend provides the server with access to the IMAP backend.
 	backend *backend.Backend
@@ -82,6 +85,8 @@ type Server struct {
 
 	// disableParallelism indicates whether the server is allowed to parallelize certain IMAP commands.
 	disableParallelism bool
+
+	uidValidityGenerator imap.UIDValidityGenerator
 }
 
 // New creates a new server with the given options.
@@ -99,29 +104,32 @@ func New(withOpt ...Option) (*Server, error) {
 }
 
 // AddUser creates a new user and generates new unique ID for this user.
-// If you have an existing userID, please use LoadUser instead.
+// If the user already exists, an error is returned (use LoadUser instead).
 func (s *Server) AddUser(ctx context.Context, conn connector.Connector, passphrase []byte) (string, error) {
 	userID := s.backend.NewUserID()
 
-	if err := s.LoadUser(ctx, conn, userID, passphrase); err != nil {
+	if isNew, err := s.LoadUser(ctx, conn, userID, passphrase); err != nil {
 		return "", err
+	} else if !isNew {
+		return "", errors.New("user already exists")
 	}
 
 	return userID, nil
 }
 
 // LoadUser adds an existing user using a previously crated unique user ID.
-// If you don't have an existing userID, please use AddUser instead.
-func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, passphrase []byte) error {
+// It returns true if the user was newly created, false if it already existed.
+func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, passphrase []byte) (bool, error) {
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 
-	if err := s.backend.AddUser(ctx, userID, conn, passphrase); err != nil {
-		return fmt.Errorf("failed to add user: %w", err)
+	isNew, err := s.backend.AddUser(ctx, userID, conn, passphrase, s.uidValidityGenerator)
+	if err != nil {
+		return false, fmt.Errorf("failed to add user: %w", err)
 	}
 
 	counts, err := s.backend.GetMailboxMessageCounts(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to get counts: %w", err)
+		return false, fmt.Errorf("failed to get counts: %w", err)
 	}
 
 	s.publish(events.UserAdded{
@@ -129,7 +137,7 @@ func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID 
 		Counts: counts,
 	})
 
-	return nil
+	return isNew, nil
 }
 
 // RemoveUser removes a user from gluon.
@@ -235,7 +243,12 @@ func (s *Server) GetVersionInfo() version.Info {
 
 // GetDataPath returns the path in which gluon stores its data.
 func (s *Server) GetDataPath() string {
-	return s.dir
+	return s.dataDir
+}
+
+// GetDatabasePath returns the path in which gluon stores its data.
+func (s *Server) GetDatabasePath() string {
+	return s.databaseDir
 }
 
 // Close closes the server.

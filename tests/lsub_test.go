@@ -126,11 +126,7 @@ func TestLsubSubscribedNotExisting(t *testing.T) {
 		c.C(`tag DELETE foo`).OK(`tag`)
 
 		c.C(`A002 LSUB "" "foo"`)
-		// TODO GODT-1896: The server MUST NOT unilaterally remove an existing mailbox name
-		// from the subscription list even if a mailbox by that name no
-		// longer exists.
-		//
-		// c.S(`* LSUB (\Noselect) "." "foo"`)
+		c.S(`* LSUB (\Noselect) "." "foo"`)
 		c.OK(`A002`)
 	})
 }
@@ -147,10 +143,10 @@ func TestLsubWithHiddenMailbox(t *testing.T) {
 
 		{
 			connector := s.conns[s.userIDs["user"]]
-			connector.SetMailboxVisible(m1, false)
-			connector.SetMailboxVisible(m2, false)
-			connector.SetMailboxVisible(m3, false)
-			connector.SetMailboxVisible(m4, false)
+			connector.SetMailboxVisibility(m1, imap.Hidden)
+			connector.SetMailboxVisibility(m2, imap.Hidden)
+			connector.SetMailboxVisibility(m3, imap.Hidden)
+			connector.SetMailboxVisibility(m4, imap.HiddenIfEmpty)
 		}
 
 		{
@@ -164,6 +160,19 @@ func TestLsubWithHiddenMailbox(t *testing.T) {
 		c.S(
 			`* LSUB (\Unmarked) "." "INBOX"`,
 			`* LSUB (\Unmarked) "." "Odeslane"`,
+		)
+		c.OK(`a`)
+	})
+}
+
+func TestLSubWithUtf8MailboxNames(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, s *testSession) {
+		s.mailboxCreated("user", []string{"mbox-öüäëæøå"})
+		s.flush("user")
+		c.C(`a LSUB "" "*"`)
+		c.S(
+			`* LSUB (\Unmarked) "." "INBOX"`,
+			`* LSUB (\Unmarked) "." "mbox-&APYA,ADkAOsA5gD4AOU-"`,
 		)
 		c.OK(`a`)
 	})

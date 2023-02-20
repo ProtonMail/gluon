@@ -3,6 +3,7 @@
 package session
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -15,14 +16,17 @@ import (
 
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/backend"
-	"github.com/ProtonMail/gluon/internal/liner"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
+	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/ProtonMail/gluon/version"
 	"github.com/ProtonMail/gluon/wait"
+	"github.com/emersion/go-imap/utf7"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
@@ -33,8 +37,8 @@ type Session struct {
 	// conn is the underlying TCP connection to the client. It is wrapped by a buffered liner.
 	conn net.Conn
 
-	// liner wraps the underlying TCP connection to facilitate linewise reading.
-	liner *liner.Liner
+	scanner        *rfcparser.Scanner
+	inputCollector *command.InputCollector
 
 	// backend provides access to the IMAP backend (including the database).
 	backend *backend.Backend
@@ -82,6 +86,8 @@ type Session struct {
 
 	/// errorCount error counter
 	errorCount int
+
+	imapLimits limits.IMAP
 }
 
 func New(
@@ -93,9 +99,13 @@ func New(
 	eventCh chan<- events.Event,
 	idleBulkTime time.Duration,
 ) *Session {
+	inputCollector := command.NewInputCollector(bufio.NewReader(conn))
+	scanner := rfcparser.NewScannerWithReader(inputCollector)
+
 	return &Session{
 		conn:               conn,
-		liner:              liner.New(conn),
+		inputCollector:     inputCollector,
+		scanner:            scanner,
 		backend:            backend,
 		caps:               []imap.Capability{imap.IMAP4rev1, imap.IDLE, imap.UNSELECT, imap.UIDPLUS, imap.MOVE},
 		sessionID:          sessionID,
@@ -150,7 +160,7 @@ func (s *Session) serve(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	cmdCh := s.startCommandReader(ctx, s.backend.GetDelimiter())
+	cmdCh := s.startCommandReader(ctx)
 
 	for {
 		select {
@@ -167,7 +177,7 @@ func (s *Session) serve(ctx context.Context) error {
 			}
 
 			if res.err != nil {
-				if err := response.Bad(res.tag).WithError(res.err).Send(s); err != nil {
+				if err := response.Bad(res.command.Tag).WithError(res.err).Send(s); err != nil {
 					return err
 				}
 
@@ -191,19 +201,19 @@ func (s *Session) serve(ctx context.Context) error {
 				return response.Bye().WithInconsistentState().Send(s)
 			}
 
-			switch {
-			case res.cmd.GetLogout() != nil:
-				return s.handleLogout(ctx, res.tag, res.cmd.GetLogout())
+			switch cmd := res.command.Payload.(type) {
+			case *command.Logout:
+				return s.handleLogout(ctx, res.command.Tag, cmd)
 
-			case res.cmd.GetIdle() != nil:
-				if err := s.handleIdle(ctx, res.tag, res.cmd.GetIdle(), cmdCh); err != nil {
-					if err := response.No(res.tag).WithError(err).Send(s); err != nil {
+			case *command.Idle:
+				if err := s.handleIdle(ctx, res.command.Tag, cmd, cmdCh); err != nil {
+					if err := response.No(res.command.Tag).WithError(err).Send(s); err != nil {
 						return fmt.Errorf("failed to send response to client: %w", err)
 					}
 				}
 
 			default:
-				for res := range s.handleOther(withStartTime(ctx, time.Now()), res.tag, res.cmd) {
+				for res := range s.handleOther(withStartTime(ctx, time.Now()), res.command.Tag, cmd) {
 					if err := res.Send(s); err != nil {
 						return fmt.Errorf("failed to send response to client: %w", err)
 					}
@@ -229,13 +239,9 @@ func (s *Session) WriteResponse(res string) error {
 	return nil
 }
 
-func (s *Session) logIncoming(line string, lits ...string) {
+func (s *Session) logIncoming(line string) {
 	if s.inLogger == nil {
 		return
-	}
-
-	if len(lits) > 0 {
-		line = fmt.Sprintf("%s (Literals: %s)", line, strings.Join(lits, ", "))
 	}
 
 	writeLog(s.inLogger, "C", strconv.Itoa(s.sessionID), line)
@@ -287,4 +293,15 @@ func (s *Session) greet() error {
 		WithItems(response.ItemCapability(s.caps...)).
 		WithMessage(fmt.Sprintf("%v %v - gluon session ID %v", s.version.Name, s.version.Version.String(), s.sessionID)).
 		Send(s)
+}
+
+func (s *Session) decodeMailboxName(name string) (string, error) {
+	delimiter := s.backend.GetDelimiter()
+
+	split := strings.SplitAfterN(name, delimiter, 2)
+	if !strings.EqualFold(split[0], fmt.Sprintf("INBOX%v", delimiter)) || len(split) != 2 {
+		return utf7.Encoding.NewDecoder().String(name)
+	}
+
+	return utf7.Encoding.NewDecoder().String(fmt.Sprintf("INBOX%v%v", delimiter, split[1]))
 }

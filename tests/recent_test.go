@@ -80,9 +80,12 @@ func TestRecentAppend(t *testing.T) {
 }
 
 func TestRecentStore(t *testing.T) {
-	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		mbox, done := c[1].doCreateTempDir()
-		defer done()
+		defer func() {
+			s.flush("user")
+			done()
+		}()
 
 		// Create a message in mbox.
 		c[1].doAppend(mbox, `To: 1@pm.me`).expect(`OK`)

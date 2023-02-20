@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ProtonMail/gluon/constants"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ticker"
 	"github.com/bradenaw/juniper/xslices"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
 
@@ -50,32 +53,41 @@ type Dummy struct {
 	queue     []imap.Update
 	queueLock sync.Mutex
 
-	// hiddenMailboxes holds mailboxes that are hidden from the user.
-	hiddenMailboxes map[imap.MailboxID]struct{}
+	// hiddenMailboxes holds the visibility status of the mailboxes. Mailboxes not listed are considered visible.
+	mailboxVisibilities map[imap.MailboxID]imap.MailboxVisibility
 
-	// uidValidity holds the global UID validity.
-	uidValidity imap.UID
+	allowMessageCreateWithUnknownMailboxID bool
+
+	updatesAllowedToFail int32
 }
 
 func NewDummy(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
 	conn := &Dummy{
-		state:           newDummyState(flags, permFlags, attrs),
-		usernames:       usernames,
-		password:        password,
-		flags:           flags,
-		permFlags:       permFlags,
-		attrs:           attrs,
-		updateCh:        make(chan imap.Update, constants.ChannelBufferCount),
-		updateQuitCh:    make(chan struct{}),
-		ticker:          ticker.New(period),
-		hiddenMailboxes: make(map[imap.MailboxID]struct{}),
-		uidValidity:     1,
+		state:               newDummyState(flags, permFlags, attrs),
+		usernames:           usernames,
+		password:            password,
+		flags:               flags,
+		permFlags:           permFlags,
+		attrs:               attrs,
+		updateCh:            make(chan imap.Update, constants.ChannelBufferCount),
+		updateQuitCh:        make(chan struct{}),
+		ticker:              ticker.New(period),
+		mailboxVisibilities: make(map[imap.MailboxID]imap.MailboxVisibility),
 	}
 
 	go func() {
 		conn.ticker.Tick(func(time.Time) {
 			for _, update := range conn.popUpdates() {
-				defer update.Wait()
+				defer func() {
+					err, ok := update.Wait()
+					if ok && err != nil {
+						if atomic.LoadInt32(&conn.updatesAllowedToFail) == 0 {
+							panic(fmt.Sprintf("Failed to apply update %v: %v", update.String(), err))
+						} else {
+							logrus.Errorf("Failed to apply update %v: %v", update.String(), err)
+						}
+					}
+				}()
 
 				select {
 				case conn.updateCh <- update:
@@ -142,6 +154,10 @@ func (conn *Dummy) DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) err
 	return nil
 }
 
+func (conn *Dummy) GetMessageLiteral(ctx context.Context, id imap.MessageID) ([]byte, error) {
+	return conn.state.tryGetLiteral(id)
+}
+
 func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.MailboxID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error) {
 	// NOTE: We are only recording this here since it was the easiest command to verify the data has been record properly
 	// in the context, as APPEND will always require a communication with the remote connector.
@@ -162,7 +178,7 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.MailboxID, lit
 		date,
 	)
 
-	update := imap.NewMessagesCreated(&imap.MessageCreated{
+	update := imap.NewMessagesCreated(conn.allowMessageCreateWithUnknownMailboxID, &imap.MessageCreated{
 		Message:       message,
 		Literal:       literal,
 		MailboxIDs:    []imap.MailboxID{mboxID},
@@ -206,7 +222,7 @@ func (conn *Dummy) RemoveMessagesFromMailbox(ctx context.Context, messageIDs []i
 	return nil
 }
 
-func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) error {
+func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) (bool, error) {
 	for _, messageID := range messageIDs {
 		conn.state.removeMessageFromMailbox(messageID, mboxFromID)
 		conn.state.addMessageToMailbox(messageID, mboxToID)
@@ -220,7 +236,7 @@ func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID
 		))
 	}
 
-	return nil
+	return true, nil
 }
 
 func (conn *Dummy) MarkMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error {
@@ -253,22 +269,16 @@ func (conn *Dummy) MarkMessagesFlagged(ctx context.Context, messageIDs []imap.Me
 	return nil
 }
 
-func (conn *Dummy) GetUIDValidity() imap.UID {
-	return conn.uidValidity
-}
-
-func (conn *Dummy) SetUIDValidity(newUIDValidity imap.UID) error {
-	conn.uidValidity = newUIDValidity
-
-	return nil
-}
-
 func (conn *Dummy) Sync(ctx context.Context) error {
 	for _, mailbox := range conn.state.getMailboxes() {
 		update := imap.NewMailboxCreated(mailbox)
-		defer update.WaitContext(ctx)
 
 		conn.updateCh <- update
+
+		err, ok := update.WaitContext(ctx)
+		if ok && err != nil {
+			return fmt.Errorf("failed to apply update %v:%w", update.String(), err)
+		}
 	}
 
 	var updates []*imap.MessageCreated
@@ -282,10 +292,14 @@ func (conn *Dummy) Sync(ctx context.Context) error {
 		updates = append(updates, update)
 	}
 
-	update := imap.NewMessagesCreated(updates...)
-	defer update.WaitContext(ctx)
+	update := imap.NewMessagesCreated(conn.allowMessageCreateWithUnknownMailboxID, updates...)
 
 	conn.updateCh <- update
+
+	err, ok := update.WaitContext(ctx)
+	if ok && err != nil {
+		return fmt.Errorf("failed to apply update %v:%w", update.String(), err)
+	}
 
 	return nil
 }
@@ -307,18 +321,17 @@ func (conn *Dummy) ClearUpdates() {
 	conn.popUpdates()
 }
 
-func (conn *Dummy) IsMailboxVisible(_ context.Context, id imap.MailboxID) bool {
-	_, ok := conn.hiddenMailboxes[id]
+func (conn *Dummy) GetMailboxVisibility(_ context.Context, id imap.MailboxID) imap.MailboxVisibility {
+	visibility, ok := conn.mailboxVisibilities[id]
+	if !ok {
+		return imap.Visible
+	}
 
-	return !ok
+	return visibility
 }
 
-func (conn *Dummy) SetMailboxVisible(id imap.MailboxID, visible bool) {
-	if !visible {
-		conn.hiddenMailboxes[id] = struct{}{}
-	} else {
-		delete(conn.hiddenMailboxes, id)
-	}
+func (conn *Dummy) SetMailboxVisibility(id imap.MailboxID, visibility imap.MailboxVisibility) {
+	conn.mailboxVisibilities[id] = visibility
 }
 
 func (conn *Dummy) pushUpdate(update imap.Update) {
@@ -421,4 +434,15 @@ func (conn *Dummy) validateName(name []string) (bool, error) {
 	}
 
 	return exclusive, nil
+}
+
+func (conn *Dummy) SetUpdatesAllowedToFail(value bool) {
+	var v int32
+	if value {
+		v = 1
+	} else {
+		v = 0
+	}
+
+	atomic.StoreInt32(&conn.updatesAllowedToFail, v)
 }

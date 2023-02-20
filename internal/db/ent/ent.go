@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/ProtonMail/gluon/internal/db/ent/deletedsubscription"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailboxattr"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailboxflag"
@@ -37,13 +38,14 @@ type OrderFunc func(*sql.Selector)
 // columnChecker returns a function indicates if the column exists in the given column.
 func columnChecker(table string) func(string) error {
 	checks := map[string]func(string) bool{
-		mailbox.Table:         mailbox.ValidColumn,
-		mailboxattr.Table:     mailboxattr.ValidColumn,
-		mailboxflag.Table:     mailboxflag.ValidColumn,
-		mailboxpermflag.Table: mailboxpermflag.ValidColumn,
-		message.Table:         message.ValidColumn,
-		messageflag.Table:     messageflag.ValidColumn,
-		uid.Table:             uid.ValidColumn,
+		deletedsubscription.Table: deletedsubscription.ValidColumn,
+		mailbox.Table:             mailbox.ValidColumn,
+		mailboxattr.Table:         mailboxattr.ValidColumn,
+		mailboxflag.Table:         mailboxflag.ValidColumn,
+		mailboxpermflag.Table:     mailboxpermflag.ValidColumn,
+		message.Table:             message.ValidColumn,
+		messageflag.Table:         messageflag.ValidColumn,
+		uid.Table:                 uid.ValidColumn,
 	}
 	check, ok := checks[table]
 	if !ok {

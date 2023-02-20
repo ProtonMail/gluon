@@ -4,15 +4,15 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 )
 
-func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
+func (s *Session) handleStore(ctx context.Context, tag string, cmd *command.Store, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
 	if contexts.IsUID(ctx) {
 		profiling.Start(ctx, profiling.CmdTypeUIDStore)
 		defer profiling.Stop(ctx, profiling.CmdTypeUIDStore)
@@ -21,16 +21,16 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store,
 		defer profiling.Stop(ctx, profiling.CmdTypeStore)
 	}
 
-	if cmd.GetAction().GetSilent() {
+	if cmd.Silent {
 		ctx = contexts.AsSilent(ctx)
 	}
 
-	flags, err := validateStoreFlags(cmd.GetFlags())
+	flags, err := validateStoreFlags(cmd.Flags)
 	if err != nil {
 		return response.Bad(tag).WithError(err), nil
 	}
 
-	if err := mailbox.Store(ctx, cmd.GetSequenceSet(), cmd.GetAction().GetOperation(), flags); errors.Is(err, state.ErrNoSuchMessage) {
+	if err := mailbox.Store(ctx, cmd.SeqSet, cmd.Action, flags); errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err), nil
 	} else if err != nil {
 		reporter.MessageWithContext(ctx,

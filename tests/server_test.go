@@ -14,7 +14,9 @@ import (
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/hash"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
 	"github.com/bradenaw/juniper/xslices"
@@ -63,14 +65,18 @@ func (*dummyConnectorBuilder) New(usernames []string, password []byte, period ti
 }
 
 type serverOptions struct {
-	credentials        []credentials
-	delimiter          string
-	loginJailTime      time.Duration
-	dataDir            string
-	idleBulkTime       time.Duration
-	storeBuilder       store.Builder
-	connectorBuilder   connectorBuilder
-	disableParallelism bool
+	credentials          []credentials
+	delimiter            string
+	loginJailTime        time.Duration
+	dataDir              string
+	databaseDir          string
+	idleBulkTime         time.Duration
+	storeBuilder         store.Builder
+	connectorBuilder     connectorBuilder
+	disableParallelism   bool
+	imapLimits           limits.IMAP
+	reporter             reporter.Reporter
+	uidValidityGenerator imap.UIDValidityGenerator
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -115,6 +121,14 @@ func (opt *dataDirOption) apply(options *serverOptions) {
 	options.dataDir = opt.dir
 }
 
+type databaseDirOption struct {
+	dir string
+}
+
+func (opt *databaseDirOption) apply(options *serverOptions) {
+	options.databaseDir = opt.dir
+}
+
 type credentialsSeverOption struct {
 	credentials []credentials
 }
@@ -145,6 +159,30 @@ func (disableParallelism) apply(options *serverOptions) {
 	options.disableParallelism = true
 }
 
+type imapLimits struct {
+	limits limits.IMAP
+}
+
+func (m imapLimits) apply(options *serverOptions) {
+	options.imapLimits = m.limits
+}
+
+type reporterOption struct {
+	reporter reporter.Reporter
+}
+
+func (r reporterOption) apply(options *serverOptions) {
+	options.reporter = r.reporter
+}
+
+type uidValidityGeneratorOption struct {
+	generator imap.UIDValidityGenerator
+}
+
+func (u uidValidityGeneratorOption) apply(options *serverOptions) {
+	options.uidValidityGenerator = u.generator
+}
+
 func withIdleBulkTime(idleBulkTime time.Duration) serverOption {
 	return &idleBulkTimeOption{idleBulkTime: idleBulkTime}
 }
@@ -173,6 +211,18 @@ func withDisableParallelism() serverOption {
 	return &disableParallelism{}
 }
 
+func withIMAPLimits(limits limits.IMAP) serverOption {
+	return &imapLimits{limits: limits}
+}
+
+func withReporter(reporter reporter.Reporter) serverOption {
+	return &reporterOption{reporter: reporter}
+}
+
+func withUIDValidityGenerator(generator imap.UIDValidityGenerator) serverOption {
+	return &uidValidityGeneratorOption{generator: generator}
+}
+
 func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
 	options := &serverOptions{
 		credentials: []credentials{{
@@ -181,10 +231,12 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 		}},
 		delimiter:        "/",
 		loginJailTime:    time.Second,
-		dataDir:          tb.TempDir(),
+		dataDir:          filepath.Join(tb.TempDir(), "backend", "store"),
+		databaseDir:      filepath.Join(tb.TempDir(), "backend", "db"),
 		idleBulkTime:     time.Duration(500 * time.Millisecond),
 		storeBuilder:     &store.OnDiskStoreBuilder{},
 		connectorBuilder: &dummyConnectorBuilder{},
+		imapLimits:       limits.DefaultLimits(),
 	}
 
 	for _, op := range modifiers {
@@ -202,11 +254,15 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 	loggerOut := logrus.StandardLogger().WriterLevel(logrus.TraceLevel)
 	defer loggerOut.Close()
 
+	// Create a test reporter to capture reported messages.
+	reporter := new(testReporter)
+
 	// Log the (temporary?) directory to store gluon data.
 	logrus.Tracef("Gluon Data Dir: %v", options.dataDir)
 
 	gluonOptions := []gluon.Option{
 		gluon.WithDataDir(options.dataDir),
+		gluon.WithDatabaseDir(options.databaseDir),
 		gluon.WithDelimiter(options.delimiter),
 		gluon.WithLoginJailTime(options.loginJailTime),
 		gluon.WithTLS(&tls.Config{
@@ -227,10 +283,20 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		),
 		gluon.WithIdleBulkTime(options.idleBulkTime),
 		gluon.WithStoreBuilder(options.storeBuilder),
+		gluon.WithReporter(reporter),
+		gluon.WithIMAPLimits(options.imapLimits),
 	}
 
 	if options.disableParallelism {
 		gluonOptions = append(gluonOptions, gluon.WithDisableParallelism())
+	}
+
+	if options.reporter != nil {
+		gluonOptions = append(gluonOptions, gluon.WithReporter(options.reporter))
+	}
+
+	if options.uidValidityGenerator != nil {
+		gluonOptions = append(gluonOptions, gluon.WithUIDValidityGenerator(options.uidValidityGenerator))
 	}
 
 	// Create a new gluon server.
@@ -261,7 +327,8 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		userID := hex.EncodeToString(hash.SHA256([]byte(creds.usernames[0])))
 
 		// Load the user.
-		require.NoError(tb, server.LoadUser(ctx, conn, userID, []byte(creds.password)))
+		_, err := server.LoadUser(ctx, conn, userID, []byte(creds.password))
+		require.NoError(tb, err)
 
 		// Trigger a sync of the user's data.
 		require.NoError(tb, conn.Sync(ctx))
@@ -271,7 +338,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		}
 
 		conns[userID] = conn
-		dbPaths[userID] = filepath.Join(server.GetDataPath(), "backend", "db", fmt.Sprintf("%v.db", userID))
+		dbPaths[userID] = filepath.Join(server.GetDatabasePath(), fmt.Sprintf("%v.db", userID))
 	}
 
 	listener, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))
@@ -282,7 +349,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 
 	// Run the test against the server.
 	logging.DoAnnotated(ctx, func(context.Context) {
-		tests(newTestSession(tb, listener, server, eventCh, userIDs, conns, dbPaths, options))
+		tests(newTestSession(tb, listener, server, eventCh, reporter, userIDs, conns, dbPaths, options))
 	}, logging.Labels{
 		"Action": "Running gluon tests",
 	})

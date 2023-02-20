@@ -5,6 +5,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/ProtonMail/gluon/imap"
+	limits2 "github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
@@ -149,11 +151,23 @@ type withDataDir struct {
 }
 
 func (w *withDataDir) config(builder *serverBuilder) {
-	builder.dir = w.path
+	builder.dataDir = w.path
 }
 
 func WithDataDir(path string) Option {
 	return &withDataDir{path: path}
+}
+
+type withDatabaseDir struct {
+	path string
+}
+
+func (w *withDatabaseDir) config(builder *serverBuilder) {
+	builder.databaseDir = w.path
+}
+
+func WithDatabaseDir(path string) Option {
+	return &withDatabaseDir{path: path}
 }
 
 type withReporter struct {
@@ -176,4 +190,30 @@ func (withDisableParallelism) config(builder *serverBuilder) {
 
 func WithDisableParallelism() Option {
 	return &withDisableParallelism{}
+}
+
+type withIMAPLimits struct {
+	limits limits2.IMAP
+}
+
+func (w withIMAPLimits) config(builder *serverBuilder) {
+	builder.imapLimits = w.limits
+}
+
+func WithIMAPLimits(limits limits2.IMAP) Option {
+	return &withIMAPLimits{
+		limits: limits,
+	}
+}
+
+type withUIDValidityGenerator struct {
+	generator imap.UIDValidityGenerator
+}
+
+func (w withUIDValidityGenerator) config(builder *serverBuilder) {
+	builder.uidValidityGenerator = w.generator
+}
+
+func WithUIDValidityGenerator(generator imap.UIDValidityGenerator) Option {
+	return &withUIDValidityGenerator{generator: generator}
 }

@@ -1,14 +1,20 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
+	goimap "github.com/emersion/go-imap"
+	"github.com/emersion/go-imap/client"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMove(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t, withUIDValidityGenerator(imap.NewFixedUIDValidityGenerator(imap.UID(1)))), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// There are 100 messages in the origin and no messages in the destination.
 		c.Cf(`A001 status %v (messages)`, mbox).Sxe(`MESSAGES 100`).OK(`A001`)
 		c.C(`A002 status inbox (messages)`).Sxe(`MESSAGES 0`).OK(`A002`)
@@ -51,7 +57,7 @@ func TestMoveTryCreate(t *testing.T) {
 }
 
 func TestMoveNonExistent(t *testing.T) {
-	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
+	runOneToOneTestWithData(t, defaultServerOptions(t, withUIDValidityGenerator(imap.NewFixedUIDValidityGenerator(imap.UID(1)))), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// MOVE some of the messages out of the mailbox.
 		c.C(`A001 move 1:24,76:100 inbox`).OK(`A001`)
 
@@ -145,7 +151,7 @@ func TestMoveCopyDuplicates(t *testing.T) {
 }
 
 func TestMoveDuplicate(t *testing.T) {
-	runManyToOneTestWithAuth(t, defaultServerOptions(t, withIdleBulkTime(0)), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t, withIdleBulkTime(0), withUIDValidityGenerator(imap.NewFixedUIDValidityGenerator(imap.UID(1)))), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		origID := s.mailboxCreated("user", []string{"orig"})
 		destID := s.mailboxCreated("user", []string{"dest"})
 
@@ -212,5 +218,128 @@ func TestConcurrency(t *testing.T) {
 			c.Cf(`tag status %v (messages)`, mbox).Sx(fmt.Sprintf(`MESSAGES %v`, 100-i)).OK(`tag`)
 			c.Cf(`tag uid move %v archive`, 1+i).Sxe(`1 EXPUNGE`).OK(`tag`)
 		}
+	})
+}
+
+// disableRemoveFromMailboxConnector fails the first append and panics if move or remove takes place on the
+// connector.
+type simulateLabelConnector struct {
+	*connector.Dummy
+	mboxID imap.MailboxID
+}
+
+func (r *simulateLabelConnector) CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error) {
+	mbox, err := r.Dummy.CreateMailbox(ctx, name)
+	if err != nil {
+		return mbox, err
+	}
+
+	if len(r.mboxID) == 0 {
+		r.mboxID = mbox.ID
+	}
+
+	return mbox, nil
+}
+
+func (r *simulateLabelConnector) MoveMessages(
+	ctx context.Context,
+	ids []imap.MessageID,
+	from imap.MailboxID,
+	to imap.MailboxID,
+) (bool, error) {
+	if _, err := r.Dummy.MoveMessages(ctx, ids, from, to); err != nil {
+		return false, err
+	}
+
+	return to != r.mboxID, nil
+}
+
+type simulateLabelConnectorBuilder struct{}
+
+func (simulateLabelConnectorBuilder) New(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) Connector {
+	return &simulateLabelConnector{
+		Dummy: connector.NewDummy(usernames, password, period, flags, permFlags, attrs),
+	}
+}
+
+func TestMoveLabelBehavior(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&simulateLabelConnectorBuilder{})), func(client *client.Client, _ *testSession) {
+		require.NoError(t, doAppendWithClient(client, "inbox", "To: Foo@foo.com", time.Now()))
+		require.NoError(t, doAppendWithClient(client, "inbox", "To: Bar@foo.com", time.Now()))
+		require.NoError(t, doAppendWithClient(client, "inbox", "To: Z@foo.com", time.Now()))
+
+		require.NoError(t, client.Create("mylabel"))
+
+		// Move message to label
+		{
+			status, err := client.Select("INBOX", false)
+			require.NoError(t, err)
+			require.Equal(t, uint32(3), status.Messages)
+
+			// Move one message to label
+			require.NoError(t, client.Move(createSeqSet("1"), "mylabel"))
+
+			// Inbox should have 3 messages
+			status, err = client.Status("INBOX", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(3), status.Messages)
+
+			// Check all messages are still present
+			newFetchCommand(t, client).withItems("ENVELOPE").fetch("1:3").
+				forSeqNum(1, func(builder *validatorBuilder) {
+					builder.ignoreFlags()
+					builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+						builder.wantTo("Foo@foo.com")
+					})
+				}).
+				forSeqNum(2, func(builder *validatorBuilder) {
+					builder.ignoreFlags()
+					builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+						builder.wantTo("Bar@foo.com")
+					})
+				}).
+				forSeqNum(3, func(builder *validatorBuilder) {
+					builder.ignoreFlags()
+					builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+						builder.wantTo("Z@foo.com")
+					})
+				}).
+				checkAndRequireMessageCount(3)
+
+			// Label should have 1 message
+			status, err = client.Status("mylabel", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(1), status.Messages)
+
+		}
+
+		// Move message to inbox from label
+		{
+			status, err := client.Select("mylabel", false)
+			require.NoError(t, err)
+			require.Equal(t, uint32(1), status.Messages)
+
+			// Check it has the right message
+			newFetchCommand(t, client).withItems("ENVELOPE").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+				builder.ignoreFlags()
+				builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+					builder.wantTo("Foo@foo.com")
+				})
+			}).checkAndRequireMessageCount(1)
+
+			// Move one message to label
+			require.NoError(t, client.Move(createSeqSet("1"), "INBOX"))
+
+			// Inbox should have 3 messages
+			status, err = client.Status("INBOX", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(3), status.Messages)
+
+			// Label should have 1 message
+			status, err = client.Status("mylabel", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
 	})
 }

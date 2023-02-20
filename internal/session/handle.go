@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ProtonMail/gluon/internal/parser/proto"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/logging"
@@ -14,7 +14,7 @@ import (
 func (s *Session) handleOther(
 	ctx context.Context,
 	tag string,
-	cmd *proto.Command,
+	cmd command.Payload,
 ) <-chan response.Response {
 	resCh := make(chan response.Response)
 
@@ -52,47 +52,46 @@ func (s *Session) handleOther(
 func (s *Session) handleCommand(
 	ctx context.Context,
 	tag string,
-	cmd *proto.Command,
+	cmd command.Payload,
 	ch chan response.Response,
 ) error {
-	switch {
+	switch cmd.(type) {
 	case
-		cmd.GetCapability() != nil,
-		cmd.GetIdGet() != nil,
-		cmd.GetIdSet() != nil,
-		cmd.GetNoop() != nil:
+		*command.Capability,
+		*command.IDGet,
+		*command.IDSet,
+		*command.Noop:
 		return s.handleAnyCommand(ctx, tag, cmd, ch)
 
 	case
-		cmd.GetAuth() != nil,
-		cmd.GetLogin() != nil:
+		*command.Login:
 		return s.handleNotAuthenticatedCommand(ctx, tag, cmd, ch)
 
 	case
-		cmd.GetSelect() != nil,
-		cmd.GetExamine() != nil,
-		cmd.GetCreate() != nil,
-		cmd.GetDel() != nil,
-		cmd.GetRename() != nil,
-		cmd.GetSub() != nil,
-		cmd.GetUnsub() != nil,
-		cmd.GetList() != nil,
-		cmd.GetLsub() != nil,
-		cmd.GetStatus() != nil,
-		cmd.GetAppend() != nil:
+		*command.Select,
+		*command.Examine,
+		*command.Create,
+		*command.Delete,
+		*command.Rename,
+		*command.Subscribe,
+		*command.Unsubscribe,
+		*command.List,
+		*command.LSub,
+		*command.Status,
+		*command.Append:
 		return s.handleAuthenticatedCommand(ctx, tag, cmd, ch)
 	case
-		cmd.GetCheck() != nil,
-		cmd.GetClose() != nil,
-		cmd.GetExpunge() != nil,
-		cmd.GetUidExpunge() != nil,
-		cmd.GetUnselect() != nil,
-		cmd.GetSearch() != nil,
-		cmd.GetFetch() != nil,
-		cmd.GetStore() != nil,
-		cmd.GetCopy() != nil,
-		cmd.GetMove() != nil,
-		cmd.GetUid() != nil:
+		*command.Check,
+		*command.Close,
+		*command.Expunge,
+		*command.UIDExpunge,
+		*command.Unselect,
+		*command.Search,
+		*command.Fetch,
+		*command.Store,
+		*command.Copy,
+		*command.Move,
+		*command.UID:
 		return s.handleSelectedCommand(ctx, tag, cmd, ch)
 
 	default:
@@ -103,23 +102,23 @@ func (s *Session) handleCommand(
 func (s *Session) handleAnyCommand(
 	ctx context.Context,
 	tag string,
-	cmd *proto.Command,
+	cmd command.Payload,
 	ch chan response.Response,
 ) error {
-	switch {
-	case cmd.GetCapability() != nil:
+	switch cmd := cmd.(type) {
+	case *command.Capability:
 		// 6.1.1 CAPABILITY Command
-		return s.handleCapability(ctx, tag, cmd.GetCapability(), ch)
+		return s.handleCapability(ctx, tag, cmd, ch)
 
-	case cmd.GetNoop() != nil:
+	case *command.Noop:
 		// 6.1.2 NOOP Command
-		return s.handleNoop(ctx, tag, cmd.GetNoop(), ch)
+		return s.handleNoop(ctx, tag, cmd, ch)
 
-	case cmd.GetIdSet() != nil:
+	case *command.IDSet:
 		// RFC 2971 ID
-		return s.handleIDSet(ctx, tag, cmd.GetIdSet(), ch)
+		return s.handleIDSet(ctx, tag, cmd, ch)
 
-	case cmd.GetIdGet() != nil:
+	case *command.IDGet:
 		// RFC 2971 ID
 		return s.handleIDGet(ctx, tag, ch)
 
@@ -131,17 +130,13 @@ func (s *Session) handleAnyCommand(
 func (s *Session) handleNotAuthenticatedCommand(
 	ctx context.Context,
 	tag string,
-	cmd *proto.Command,
+	cmd command.Payload,
 	ch chan response.Response,
 ) error {
-	switch {
-	case cmd.GetAuth() != nil:
-		// 6.2.2. AUTHENTICATE Command
-		return ErrNotImplemented
-
-	case cmd.GetLogin() != nil:
+	switch cmd := cmd.(type) {
+	case *command.Login:
 		// 6.2.3. LOGIN Command
-		return s.handleLogin(ctx, tag, cmd.GetLogin(), ch)
+		return s.handleLogin(ctx, tag, cmd, ch)
 
 	default:
 		return fmt.Errorf("bad command")
@@ -151,7 +146,7 @@ func (s *Session) handleNotAuthenticatedCommand(
 func (s *Session) handleAuthenticatedCommand(
 	ctx context.Context,
 	tag string,
-	cmd *proto.Command,
+	cmd command.Payload,
 	ch chan response.Response,
 ) error {
 	s.userLock.Lock()
@@ -161,50 +156,50 @@ func (s *Session) handleAuthenticatedCommand(
 		return ErrNotAuthenticated
 	}
 
-	switch {
-	case cmd.GetSelect() != nil:
+	switch cmd := cmd.(type) {
+	case *command.Select:
 		// 6.3.1. SELECT Command
-		return s.handleSelect(ctx, tag, cmd.GetSelect(), ch)
+		return s.handleSelect(ctx, tag, cmd, ch)
 
-	case cmd.GetExamine() != nil:
+	case *command.Examine:
 		// 6.3.2. EXAMINE Command
-		return s.handleExamine(ctx, tag, cmd.GetExamine(), ch)
+		return s.handleExamine(ctx, tag, cmd, ch)
 
-	case cmd.GetCreate() != nil:
+	case *command.Create:
 		// 6.3.3. CREATE Command
-		return s.handleCreate(ctx, tag, cmd.GetCreate(), ch)
+		return s.handleCreate(ctx, tag, cmd, ch)
 
-	case cmd.GetDel() != nil:
+	case *command.Delete:
 		// 6.3.4. DELETE Command
-		return s.handleDelete(ctx, tag, cmd.GetDel(), ch)
+		return s.handleDelete(ctx, tag, cmd, ch)
 
-	case cmd.GetRename() != nil:
+	case *command.Rename:
 		// 6.3.5. RENAME Command
-		return s.handleRename(ctx, tag, cmd.GetRename(), ch)
+		return s.handleRename(ctx, tag, cmd, ch)
 
-	case cmd.GetSub() != nil:
+	case *command.Subscribe:
 		// 6.3.6. SUBSCRIBE Command
-		return s.handleSub(ctx, tag, cmd.GetSub(), ch)
+		return s.handleSub(ctx, tag, cmd, ch)
 
-	case cmd.GetUnsub() != nil:
+	case *command.Unsubscribe:
 		// 6.3.7. UNSUBSCRIBE Command
-		return s.handleUnsub(ctx, tag, cmd.GetUnsub(), ch)
+		return s.handleUnsub(ctx, tag, cmd, ch)
 
-	case cmd.GetList() != nil:
+	case *command.List:
 		// 6.3.8. LIST Command
-		return s.handleList(ctx, tag, cmd.GetList(), ch)
+		return s.handleList(ctx, tag, cmd, ch)
 
-	case cmd.GetLsub() != nil:
+	case *command.LSub:
 		// 6.3.9. Lsub Command
-		return s.handleLsub(ctx, tag, cmd.GetLsub(), ch)
+		return s.handleLsub(ctx, tag, cmd, ch)
 
-	case cmd.GetStatus() != nil:
+	case *command.Status:
 		// 6.3.10. STATUS Command
-		return s.handleStatus(ctx, tag, cmd.GetStatus(), ch)
+		return s.handleStatus(ctx, tag, cmd, ch)
 
-	case cmd.GetAppend() != nil:
+	case *command.Append:
 		// 6.3.11. APPEND Command
-		return s.handleAppend(ctx, tag, cmd.GetAppend(), ch)
+		return s.handleAppend(ctx, tag, cmd, ch)
 
 	default:
 		return fmt.Errorf("bad command")
@@ -214,7 +209,7 @@ func (s *Session) handleAuthenticatedCommand(
 func (s *Session) handleSelectedCommand(
 	ctx context.Context,
 	tag string,
-	cmd *proto.Command,
+	cmd command.Payload,
 	ch chan response.Response,
 ) error {
 	s.userLock.Lock()
@@ -243,54 +238,54 @@ func (s *Session) handleSelectedCommand(
 func (s *Session) handleWithMailbox(
 	ctx context.Context,
 	tag string,
-	cmd *proto.Command,
+	cmd command.Payload,
 	mailbox *state.Mailbox,
 	ch chan response.Response,
 ) (response.Response, error) {
-	switch {
-	case cmd.GetCheck() != nil:
+	switch cmd := cmd.(type) {
+	case *command.Check:
 		// 6.4.1. CHECK Command
-		return s.handleCheck(ctx, tag, cmd.GetCheck(), mailbox, ch)
+		return s.handleCheck(ctx, tag, cmd, mailbox, ch)
 
-	case cmd.GetClose() != nil:
+	case *command.Close:
 		// 6.4.2. CLOSE Command
-		return s.handleClose(ctx, tag, cmd.GetClose(), mailbox, ch)
+		return s.handleClose(ctx, tag, cmd, mailbox, ch)
 
-	case cmd.GetExpunge() != nil:
+	case *command.Expunge:
 		// 6.4.3. EXPUNGE Command
-		return s.handleExpunge(ctx, tag, cmd.GetExpunge(), mailbox, ch)
+		return s.handleExpunge(ctx, tag, cmd, mailbox, ch)
 
-	case cmd.GetUidExpunge() != nil:
+	case *command.UIDExpunge:
 		// RFC4315 UIDPLUS Extension
-		return s.handleUIDExpunge(ctx, tag, cmd.GetUidExpunge(), mailbox, ch)
+		return s.handleUIDExpunge(ctx, tag, cmd, mailbox, ch)
 
-	case cmd.GetUnselect() != nil:
+	case *command.Unselect:
 		// RFC3691 UNSELECT Extension
-		return s.handleUnselect(ctx, tag, cmd.GetUnselect(), mailbox, ch)
+		return s.handleUnselect(ctx, tag, cmd, mailbox, ch)
 
-	case cmd.GetSearch() != nil:
+	case *command.Search:
 		// 6.4.4. SEARCH Command
-		return s.handleSearch(ctx, tag, cmd.GetSearch(), mailbox, ch)
+		return s.handleSearch(ctx, tag, cmd, mailbox, ch)
 
-	case cmd.GetFetch() != nil:
+	case *command.Fetch:
 		// 6.4.5. FETCH Command
-		return s.handleFetch(ctx, tag, cmd.GetFetch(), mailbox, ch)
+		return s.handleFetch(ctx, tag, cmd, mailbox, ch)
 
-	case cmd.GetStore() != nil:
+	case *command.Store:
 		// 6.4.6. STORE Command
-		return s.handleStore(ctx, tag, cmd.GetStore(), mailbox, ch)
+		return s.handleStore(ctx, tag, cmd, mailbox, ch)
 
-	case cmd.GetCopy() != nil:
+	case *command.Copy:
 		// 6.4.7. COPY Command
-		return s.handleCopy(ctx, tag, cmd.GetCopy(), mailbox, ch)
+		return s.handleCopy(ctx, tag, cmd, mailbox, ch)
 
-	case cmd.GetUid() != nil:
+	case *command.UID:
 		// 6.4.8. UID Command
-		return s.handleUID(ctx, tag, cmd.GetUid(), mailbox, ch)
+		return s.handleUID(ctx, tag, cmd, mailbox, ch)
 
-	case cmd.GetMove() != nil:
+	case *command.Move:
 		// RFC6851 MOVE Command
-		return s.handleMove(ctx, tag, cmd.GetMove(), mailbox, ch)
+		return s.handleMove(ctx, tag, cmd, mailbox, ch)
 
 	default:
 		return nil, fmt.Errorf("bad command")

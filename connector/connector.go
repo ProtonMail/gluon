@@ -15,8 +15,12 @@ type Connector interface {
 	// CreateMailbox creates a mailbox with the given name.
 	CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error)
 
-	// IsMailboxVisible can be used to hide mailboxes from connected clients.
-	IsMailboxVisible(ctx context.Context, mboxID imap.MailboxID) bool
+	// GetMessageLiteral is intended to be used by Gluon when, for some reason, the local cached data no longer exists.
+	// Note: this can get called from different go routines.
+	GetMessageLiteral(ctx context.Context, id imap.MessageID) ([]byte, error)
+
+	// GetMailboxVisibility can be used to retrieve the visibility of mailboxes for connected clients.
+	GetMailboxVisibility(ctx context.Context, mboxID imap.MailboxID) imap.MailboxVisibility
 
 	// UpdateMailboxName sets the name of the mailbox with the given ID.
 	UpdateMailboxName(ctx context.Context, mboxID imap.MailboxID, newName []string) error
@@ -34,7 +38,8 @@ type Connector interface {
 	RemoveMessagesFromMailbox(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.MailboxID) error
 
 	// MoveMessages removes the given messages from one mailbox and adds them to the another mailbox.
-	MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) error
+	// Returns true if the original messages should be removed from mboxFromID (e.g: Distinguishing between labels and folders).
+	MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) (bool, error)
 
 	// MarkMessagesSeen sets the seen value of the given messages.
 	MarkMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error
@@ -44,12 +49,6 @@ type Connector interface {
 
 	// GetUpdates returns a stream of updates that the gluon server should apply.
 	GetUpdates() <-chan imap.Update
-
-	// GetUIDValidity returns the default UID validity for this user.
-	GetUIDValidity() imap.UID
-
-	// SetUIDValidity sets the default UID validity for this user.
-	SetUIDValidity(uidValidity imap.UID) error
 
 	// Close the connector will no longer be used and all resources should be closed/released.
 	Close(ctx context.Context) error

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -10,12 +11,14 @@ import (
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
+	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
 
-func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, name string) (*ent.Mailbox, error) {
+func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, name string, uidValidity imap.UID) (*ent.Mailbox, error) {
 	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
 	if err != nil {
 		return nil, err
@@ -35,7 +38,7 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 			res.Flags,
 			res.PermanentFlags,
 			res.Attributes,
-			state.user.GetGlobalUIDValidity(),
+			uidValidity,
 		)
 		if err != nil {
 			return nil, err
@@ -47,13 +50,13 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 	return db.GetMailboxByRemoteID(ctx, tx.Client(), res.ID)
 }
 
-func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name string) error {
+func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name string, uidValidity imap.UID) error {
 	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
 	if err != nil {
 		return err
 	}
 
-	return db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, state.user.GetGlobalUIDValidity())
+	return db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, uidValidity)
 }
 
 func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID ids.MailboxIDPair) error {
@@ -61,17 +64,8 @@ func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 		return err
 	}
 
-	newUIDValidity, err := db.DeleteMailboxWithRemoteID(ctx, tx, mboxID.RemoteID, state.user.GetGlobalUIDValidity())
-	if err != nil {
+	if err := db.DeleteMailboxWithRemoteID(ctx, tx, mboxID.RemoteID); err != nil {
 		return err
-	}
-
-	if newUIDValidity != state.user.GetGlobalUIDValidity() {
-		state.user.SetGlobalUIDValidity(newUIDValidity)
-
-		if err := state.user.GetRemote().SetUIDValidity(newUIDValidity); err != nil {
-			return err
-		}
 	}
 
 	return state.user.QueueOrApplyStateUpdate(ctx, tx, NewMailboxDeletedStateUpdate(mboxID.InternalID))
@@ -97,6 +91,7 @@ func (state *State) actionCreateMessage(
 	flags imap.FlagSet,
 	date time.Time,
 	isSelectedMailbox bool,
+	cameFromDrafts bool,
 ) (imap.UID, error) {
 	internalID, res, newLiteral, err := state.user.GetRemote().CreateMessage(ctx, mboxID.RemoteID, literal, flags, date)
 	if err != nil {
@@ -111,6 +106,13 @@ func (state *State) actionCreateMessage(
 		}
 
 		if err == nil {
+			if cameFromDrafts {
+				reporter.ExceptionWithContext(ctx, "Append to drafts must not return an existing RemoteID", nil)
+				return 0, fmt.Errorf("append to drafts returned an existing remote ID")
+			}
+
+			logrus.Debugf("Deduped message detected, adding existing %v message to mailbox instead.", internalID.ShortID())
+
 			result, err := state.actionAddMessagesToMailbox(ctx,
 				tx,
 				[]ids.MessageIDPair{{InternalID: internalID, RemoteID: res.ID}},
@@ -130,22 +132,22 @@ func (state *State) actionCreateMessage(
 		return 0, err
 	}
 
-	literalWithHeader, err := rfc822.SetHeaderValue(newLiteral, ids.InternalIDKey, internalID.String())
+	literalWithHeader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(newLiteral, ids.InternalIDKey, internalID.String())
 	if err != nil {
 		return 0, fmt.Errorf("failed to set internal ID: %w", err)
 	}
 
-	if err := state.user.GetStore().Set(internalID, literalWithHeader); err != nil {
+	if err := state.user.GetStore().SetUnchecked(internalID, literalWithHeader); err != nil {
 		return 0, fmt.Errorf("failed to store message literal: %w", err)
 	}
 
 	req := db.CreateMessageReq{
-		Message:    res,
-		Literal:    literalWithHeader,
-		Body:       parsedMessage.Body,
-		Structure:  parsedMessage.Structure,
-		Envelope:   parsedMessage.Envelope,
-		InternalID: internalID,
+		Message:     res,
+		LiteralSize: literalSize,
+		Body:        parsedMessage.Body,
+		Structure:   parsedMessage.Structure,
+		Envelope:    parsedMessage.Envelope,
+		InternalID:  internalID,
 	}
 
 	messageUID, flagSet, err := db.CreateAndAddMessageToMailbox(ctx, tx, mboxID.InternalID, &req)
@@ -186,7 +188,7 @@ func (state *State) actionCreateRecoveredMessage(
 		return err
 	}
 
-	if err := state.user.GetStore().Set(internalID, literal); err != nil {
+	if err := state.user.GetStore().SetUnchecked(internalID, bytes.NewReader(literal)); err != nil {
 		return fmt.Errorf("failed to store message literal: %w", err)
 	}
 
@@ -196,11 +198,11 @@ func (state *State) actionCreateRecoveredMessage(
 			Flags: flags,
 			Date:  date,
 		},
-		Literal:    literal,
-		Body:       parsedMessage.Body,
-		Structure:  parsedMessage.Structure,
-		Envelope:   parsedMessage.Envelope,
-		InternalID: internalID,
+		LiteralSize: len(literal),
+		Body:        parsedMessage.Body,
+		Structure:   parsedMessage.Structure,
+		Envelope:    parsedMessage.Envelope,
+		InternalID:  internalID,
 	}
 
 	recoveryMBoxID := state.user.GetRecoveryMailboxID()
@@ -255,7 +257,7 @@ func (state *State) actionAddMessagesToMailbox(
 		st = state
 	}
 
-	messageUIDs, update, err := AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, st)
+	messageUIDs, update, err := AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, st, state.imapLimits)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +281,7 @@ func (state *State) actionAddRecoveredMessagesToMailbox(
 		return nil, nil, err
 	}
 
-	return AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, state)
+	return AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, state, state.imapLimits)
 }
 
 func (state *State) actionImportRecoveredMessage(
@@ -328,22 +330,22 @@ func (state *State) actionImportRecoveredMessage(
 		return ids.MessageIDPair{}, false, err
 	}
 
-	literalWithHeader, err := rfc822.SetHeaderValue(newLiteral, ids.InternalIDKey, internalID.String())
+	literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(newLiteral, ids.InternalIDKey, internalID.String())
 	if err != nil {
 		return ids.MessageIDPair{}, false, fmt.Errorf("failed to set internal ID: %w", err)
 	}
 
-	if err := state.user.GetStore().Set(internalID, literalWithHeader); err != nil {
+	if err := state.user.GetStore().SetUnchecked(internalID, literalReader); err != nil {
 		return ids.MessageIDPair{}, false, fmt.Errorf("failed to store message literal: %w", err)
 	}
 
 	req := db.CreateMessageReq{
-		Message:    res,
-		Literal:    literalWithHeader,
-		Body:       parsedMessage.Body,
-		Structure:  parsedMessage.Structure,
-		Envelope:   parsedMessage.Envelope,
-		InternalID: internalID,
+		Message:     res,
+		LiteralSize: literalSize,
+		Body:        parsedMessage.Body,
+		Structure:   parsedMessage.Structure,
+		Envelope:    parsedMessage.Envelope,
+		InternalID:  internalID,
 	}
 
 	if _, err := db.CreateMessages(ctx, tx, &req); err != nil {
@@ -525,11 +527,12 @@ func (state *State) actionMoveMessages(
 
 	internalIDs, remoteIDs := ids.SplitMessageIDPairSlice(messagesIDsToMove)
 
-	if err := state.user.GetRemote().MoveMessagesFromMailbox(ctx, remoteIDs, mboxFromID.RemoteID, mboxToID.RemoteID); err != nil {
+	shouldRemoveOldMessages, err := state.user.GetRemote().MoveMessagesFromMailbox(ctx, remoteIDs, mboxFromID.RemoteID, mboxToID.RemoteID)
+	if err != nil {
 		return nil, err
 	}
 
-	messageUIDs, updates, err := MoveMessagesFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs, state)
+	messageUIDs, updates, err := MoveMessagesFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs, state, state.imapLimits, shouldRemoveOldMessages)
 	if err != nil {
 		return nil, err
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
@@ -24,7 +25,7 @@ type user struct {
 
 	connector      connector.Connector
 	updateInjector *updateInjector
-	store          store.Store
+	store          *store.WriteControlledStore
 	delimiter      string
 
 	db *db.DB
@@ -36,9 +37,11 @@ type user struct {
 	updateWG     sync.WaitGroup
 	updateQuitCh chan struct{}
 
-	globalUIDValidity imap.UID
-
 	recoveryMailboxID imap.InternalMailboxID
+
+	imapLimits limits.IMAP
+
+	uidValidityGenerator imap.UIDValidityGenerator
 }
 
 func newUser(
@@ -46,8 +49,10 @@ func newUser(
 	userID string,
 	database *db.DB,
 	conn connector.Connector,
-	store store.Store,
+	st store.Store,
 	delimiter string,
+	imapLimits limits.IMAP,
+	uidValidityGenerator imap.UIDValidityGenerator,
 ) (*user, error) {
 	if err := database.Init(ctx); err != nil {
 		return nil, err
@@ -55,6 +60,11 @@ func newUser(
 
 	// Create recovery mailbox if it does not exist
 	recoveryMBox, err := db.WriteResult(ctx, database, func(ctx context.Context, tx *ent.Tx) (*ent.Mailbox, error) {
+		uidValidity, err := uidValidityGenerator.Generate()
+		if err != nil {
+			return nil, err
+		}
+
 		mboxFlags := imap.NewFlagSet(imap.FlagSeen, imap.FlagFlagged, imap.FlagDeleted)
 		mbox := imap.Mailbox{
 			ID:             ids.GluonInternalRecoveryMailboxRemoteID,
@@ -64,7 +74,7 @@ func newUser(
 			Attributes:     imap.NewFlagSet(imap.AttrNoInferiors),
 		}
 
-		return db.GetOrCreateMailbox(ctx, tx, mbox, delimiter, conn.GetUIDValidity())
+		return db.GetOrCreateMailbox(ctx, tx, mbox, delimiter, uidValidity)
 	})
 	if err != nil {
 		return nil, err
@@ -75,16 +85,19 @@ func newUser(
 
 		connector:      conn,
 		updateInjector: newUpdateInjector(conn, userID),
-		store:          store,
+		store:          store.NewWriteControlledStore(st),
 		delimiter:      delimiter,
 
 		db: database,
 
-		states:            make(map[state.StateID]*state.State),
-		updateQuitCh:      make(chan struct{}),
-		globalUIDValidity: conn.GetUIDValidity(),
+		states:       make(map[state.StateID]*state.State),
+		updateQuitCh: make(chan struct{}),
 
 		recoveryMailboxID: recoveryMBox.ID,
+
+		imapLimits: imapLimits,
+
+		uidValidityGenerator: uidValidityGenerator,
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
@@ -209,6 +222,7 @@ func (user *user) newState() (*state.State, error) {
 	newState := state.NewState(
 		newStateUserInterfaceImpl(user, newStateConnectorImpl(user)),
 		user.delimiter,
+		user.imapLimits,
 	)
 
 	user.states[newState.StateID] = newState

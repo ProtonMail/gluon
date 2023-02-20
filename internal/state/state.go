@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,8 +13,10 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
+	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/sets"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
@@ -45,6 +48,8 @@ type State struct {
 
 	// invalid indicates whether this state became invalid and a clients needs to disconnect.
 	invalid bool
+
+	imapLimits limits.IMAP
 }
 
 var stateIDGenerator int64
@@ -53,7 +58,7 @@ func nextStateID() StateID {
 	return StateID(atomic.AddInt64(&stateIDGenerator, 1))
 }
 
-func NewState(user UserInterface, delimiter string) *State {
+func NewState(user UserInterface, delimiter string, imapLimits limits.IMAP) *State {
 	return &State{
 		user:         user,
 		StateID:      nextStateID(),
@@ -61,6 +66,7 @@ func NewState(user UserInterface, delimiter string) *State {
 		snap:         nil,
 		delimiter:    delimiter,
 		updatesQueue: queue.NewQueuedChannel[Update](32, 128),
+		imapLimits:   imapLimits,
 	}
 }
 
@@ -72,7 +78,7 @@ func (state *State) db() *db.DB {
 	return state.user.GetDB()
 }
 
-func (state *State) List(ctx context.Context, ref, pattern string, subscribed bool, fn func(map[string]Match) error) error {
+func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn func(map[string]Match) error) error {
 	return state.db().Read(ctx, func(ctx context.Context, client *ent.Client) error {
 		mailboxes, err := db.GetAllMailboxes(ctx, client)
 		if err != nil {
@@ -91,10 +97,66 @@ func (state *State) List(ctx context.Context, ref, pattern string, subscribed bo
 				return false
 			}
 
-			return state.user.GetRemote().IsMailboxVisible(ctx, mailbox.RemoteID)
+			switch visibility := state.user.GetRemote().GetMailboxVisibility(ctx, mailbox.RemoteID); visibility {
+			case imap.Hidden:
+				return false
+			case imap.Visible:
+				return true
+			case imap.HiddenIfEmpty:
+				count, err := db.GetMailboxMessageCount(ctx, client, mailbox.ID)
+				if err != nil {
+					logrus.WithError(err).Error("Failed to get recovery mailbox message count, assuming not empty")
+					return true
+				}
+				return count > 0
+			default:
+				logrus.Errorf("Unknown IMAP Mailbox visibility %v", visibility)
+				return true
+			}
 		})
 
-		matches, err := getMatches(ctx, client, mailboxes, ref, pattern, state.delimiter, subscribed)
+		var deletedSubscriptions map[imap.MailboxID]*ent.DeletedSubscription
+
+		if lsub {
+			deletedSubscriptions, err = db.GetDeletedSubscriptionSet(ctx, client)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Convert existing mailboxes over to match format.
+		matchMailboxes := make([]matchMailbox, 0, len(mailboxes))
+		for _, mbox := range mailboxes {
+			delete(deletedSubscriptions, mbox.RemoteID)
+
+			// Only include subscribed mailboxes when LSUB is used.
+			if lsub && !mbox.Subscribed {
+				continue
+			}
+
+			matchMailboxes = append(matchMailboxes, matchMailbox{
+				Name:       mbox.Name,
+				Subscribed: lsub,
+				EntMBox:    mbox,
+			})
+		}
+
+		if lsub {
+			// Insert any remaining mailboxes that have been deleted but are still subscribed.
+			for _, s := range deletedSubscriptions {
+				if state.user.GetRemote().GetMailboxVisibility(ctx, s.RemoteID) != imap.Visible {
+					continue
+				}
+
+				matchMailboxes = append(matchMailboxes, matchMailbox{
+					Name:       s.Name,
+					Subscribed: true,
+					EntMBox:    nil,
+				})
+			}
+		}
+
+		matches, err := getMatches(ctx, client, matchMailboxes, ref, pattern, state.delimiter, lsub)
 		if err != nil {
 			return err
 		}
@@ -164,6 +226,15 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 }
 
 func (state *State) Create(ctx context.Context, name string) error {
+	uidValidity, err := state.user.GenerateUIDValidity()
+	if err != nil {
+		return err
+	}
+
+	if err := state.imapLimits.CheckUIDValidity(uidValidity); err != nil {
+		return err
+	}
+
 	if strings.HasPrefix(strings.ToLower(name), ids.GluonRecoveryMailboxNameLowerCase) {
 		return fmt.Errorf("operation not allowed")
 	}
@@ -179,6 +250,12 @@ func (state *State) Create(ctx context.Context, name string) error {
 	}
 
 	mboxesToCreate, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) ([]string, error) {
+		if mailboxCount, err := db.GetMailboxCount(ctx, client); err != nil {
+			return nil, err
+		} else if err := state.imapLimits.CheckMailBoxCount(mailboxCount); err != nil {
+			return nil, err
+		}
+
 		var mboxesToCreate []string
 		// If the mailbox name is suffixed with the server's hierarchy separator, remove the separator and still create
 		// the mailbox
@@ -212,7 +289,7 @@ func (state *State) Create(ctx context.Context, name string) error {
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, mboxName := range mboxesToCreate {
-			if err := state.actionCreateMailbox(ctx, tx, mboxName); err != nil {
+			if err := state.actionCreateMailbox(ctx, tx, mboxName, uidValidity); err != nil {
 				return err
 			}
 		}
@@ -290,12 +367,17 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, m := range result.MBoxesToCreate {
+			uidValidity, err := state.user.GenerateUIDValidity()
+			if err != nil {
+				return err
+			}
+
 			res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(m, state.delimiter))
 			if err != nil {
 				return err
 			}
 
-			if err := db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, state.user.GetGlobalUIDValidity()); err != nil {
+			if err := db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, uidValidity); err != nil {
 				return err
 			}
 		}
@@ -332,12 +414,19 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 func (state *State) Subscribe(ctx context.Context, name string) error {
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return db.GetMailboxByName(ctx, client, name)
+		mbox, err := db.GetMailboxByName(ctx, client, name)
+		if err != nil {
+			return nil, ErrNoSuchMailbox
+		}
+
+		if mbox.Subscribed {
+			return nil, ErrAlreadySubscribed
+		}
+
+		return mbox, nil
 	})
 	if err != nil {
-		return ErrNoSuchMailbox
-	} else if mbox.Subscribed {
-		return ErrAlreadySubscribed
+		return err
 	}
 
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
@@ -346,16 +435,23 @@ func (state *State) Subscribe(ctx context.Context, name string) error {
 }
 
 func (state *State) Unsubscribe(ctx context.Context, name string) error {
-	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return db.GetMailboxByName(ctx, client, name)
-	})
-	if err != nil {
-		return ErrNoSuchMailbox
-	} else if !mbox.Subscribed {
-		return ErrAlreadyUnsubscribed
-	}
-
 	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		mbox, err := db.GetMailboxByName(ctx, tx.Client(), name)
+		if err != nil {
+			// If mailbox does not exist, check that if it is present in the deleted subscription table
+			if count, err := db.RemoveDeletedSubscriptionWithName(ctx, tx, name); err != nil {
+				return err
+			} else if count == 0 {
+				return ErrNoSuchMailbox
+			} else {
+				return nil
+			}
+		}
+
+		if !mbox.Subscribed {
+			return ErrAlreadyUnsubscribed
+		}
+
 		return mbox.Update().SetSubscribed(false).Exec(ctx)
 	})
 }
@@ -517,7 +613,12 @@ func (state *State) markInvalid() {
 
 // renameInbox creates a new mailbox and moves everything there.
 func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mailbox, newName string) error {
-	mbox, err := state.actionCreateAndGetMailbox(ctx, tx, newName)
+	uidValidity, err := state.user.GenerateUIDValidity()
+	if err != nil {
+		return err
+	}
+
+	mbox, err := state.actionCreateAndGetMailbox(ctx, tx, newName, uidValidity)
 	if err != nil {
 		return err
 	}
@@ -555,8 +656,37 @@ func (state *State) endIdle() {
 	state.idleCh = nil
 }
 
-func (state *State) getLiteral(messageID imap.InternalMessageID) ([]byte, error) {
-	return state.user.GetStore().Get(messageID)
+func (state *State) getLiteral(ctx context.Context, messageID ids.MessageIDPair) ([]byte, error) {
+	var literal []byte
+
+	storeLiteral, firstErr := state.user.GetStore().Get(messageID.InternalID)
+	if firstErr != nil {
+		logrus.Debugf("Failed load %v from store, attempting to download from connector", messageID.InternalID.ShortID())
+
+		connectorLiteral, err := state.user.GetRemote().GetMessageLiteral(ctx, messageID.RemoteID)
+		if err != nil {
+			logrus.Errorf("Failed to download message from connector: %v", err)
+			return nil, fmt.Errorf("message failed to load from cache (%v), failed to download from connector: %w", firstErr, err)
+		}
+
+		literalWithHeader, err := rfc822.SetHeaderValue(connectorLiteral, ids.InternalIDKey, messageID.InternalID.String())
+		if err != nil {
+			return nil, fmt.Errorf("failed to set internal ID on downloaded message: %w", err)
+		}
+
+		if err := state.user.GetStore().Set(messageID.InternalID, bytes.NewReader(literalWithHeader)); err != nil {
+			logrus.Errorf("Failed to store download message from connector: %v", err)
+			return nil, fmt.Errorf("message failed to load from cache (%v), failed to store new downloaded message: %w", firstErr, err)
+		}
+
+		logrus.Debugf("Message %v downloaded and stored ", messageID.InternalID.ShortID())
+
+		literal = literalWithHeader
+	} else {
+		literal = storeLiteral
+	}
+
+	return literal, nil
 }
 
 func (state *State) flushResponses(ctx context.Context, permitExpunge bool) ([]response.Response, error) {

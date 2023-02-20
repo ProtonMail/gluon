@@ -1,11 +1,16 @@
 package state
 
 import (
+	"fmt"
+
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
+
+var ErrOutOfOrderUIDInsertion = fmt.Errorf("UIDs must be strictly ascending")
 
 // snapMsg is a single message inside a snapshot.
 type snapMsg struct {
@@ -43,9 +48,9 @@ func (list *snapMsgList) binarySearchByUID(uid imap.UID) (int, bool) {
 	return index, ok
 }
 
-func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
+func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) error {
 	if len(list.msg) > 0 && list.msg[len(list.msg)-1].UID >= msgUID {
-		panic("UIDs must be strictly ascending")
+		return ErrOutOfOrderUIDInsertion
 	}
 
 	snapMsg := &snapMsg{
@@ -58,6 +63,8 @@ func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags 
 	list.msg = append(list.msg, snapMsg)
 
 	list.idx[msgID.InternalID] = snapMsg
+
+	return nil
 }
 
 func (list *snapMsgList) insertOutOfOrder(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
@@ -269,4 +276,182 @@ func (list *snapMsgList) existsWithSeqID(id imap.SeqID) bool {
 	}
 
 	return true
+}
+
+func (list *snapMsgList) resolveSeqInterval(seqSet []command.SeqRange) ([]SeqInterval, error) {
+	res := make([]SeqInterval, 0, len(seqSet))
+
+	for _, seqRange := range seqSet {
+		if seqRange.Begin == seqRange.End {
+			seq, err := list.resolveSeq(seqRange.Begin)
+			if err != nil {
+				return nil, err
+			}
+
+			res = append(res, SeqInterval{
+				begin: seq,
+				end:   seq,
+			})
+		} else {
+			if seqRange.Begin == command.SeqNumValueAsterisk {
+				seqRange.Begin, seqRange.End = seqRange.End, seqRange.Begin
+			}
+
+			begin, err := list.resolveSeq(seqRange.Begin)
+			if err != nil {
+				return nil, err
+			}
+
+			end, err := list.resolveSeq(seqRange.End)
+			if err != nil {
+				return nil, err
+			}
+
+			if begin > end {
+				if seqRange.End != command.SeqNumValueAsterisk {
+					begin, end = end, begin
+				} else {
+					end = begin
+				}
+			}
+
+			res = append(res, SeqInterval{
+				begin: begin,
+				end:   end,
+			})
+		}
+	}
+
+	return res, nil
+}
+
+func (list *snapMsgList) resolveUIDInterval(seqSet []command.SeqRange) ([]UIDInterval, error) {
+	res := make([]UIDInterval, 0, len(seqSet))
+
+	for _, uidRange := range seqSet {
+		if uidRange.Begin == uidRange.End {
+			uid, err := list.resolveUID(uidRange.Begin)
+			if err != nil {
+				return nil, err
+			}
+
+			res = append(res, UIDInterval{
+				begin: uid,
+				end:   uid,
+			})
+		} else {
+			if uidRange.Begin == command.SeqNumValueAsterisk {
+				uidRange.Begin, uidRange.End = uidRange.End, uidRange.Begin
+			}
+
+			begin, err := list.resolveUID(uidRange.Begin)
+			if err != nil {
+				return nil, err
+			}
+
+			end, err := list.resolveUID(uidRange.End)
+			if err != nil {
+				return nil, err
+			}
+
+			if begin > end {
+				if uidRange.End != command.SeqNumValueAsterisk {
+					begin, end = end, begin
+				} else {
+					end = begin
+				}
+			}
+
+			res = append(res, UIDInterval{
+				begin: begin,
+				end:   end,
+			})
+
+		}
+	}
+
+	return res, nil
+}
+
+// resolveSeq converts a textual sequence number into an integer.
+// According to RFC 3501, the definition of seq-number, page 89, for message sequence numbers
+// - No sequence number is valid if mailbox is empty, not even "*"
+// - "*" is converted to the number of messages in the mailbox
+// - when used in a range, the order of the indexes in irrelevant.
+func (list *snapMsgList) resolveSeq(number command.SeqNum) (imap.SeqID, error) {
+	if number == command.SeqNumValueAsterisk {
+		return imap.SeqID(list.len()), nil
+	}
+
+	return imap.SeqID(number), nil
+}
+
+// resolveUID converts a textual message UID into an integer.
+func (list *snapMsgList) resolveUID(number command.SeqNum) (imap.UID, error) {
+	if list.len() == 0 {
+		return 0, ErrNoSuchMessage
+	}
+
+	if number == command.SeqNumValueAsterisk {
+		return list.last().UID, nil
+	}
+
+	return imap.UID(number), nil
+}
+
+func (list *snapMsgList) getMessagesInSeqRange(seqSet []command.SeqRange) ([]snapMsgWithSeq, error) {
+	var res []snapMsgWithSeq
+
+	intervals, err := list.resolveSeqInterval(seqSet)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, seqRange := range intervals {
+		if seqRange.begin == seqRange.end {
+			msg, ok := list.getWithSeqID(seqRange.begin)
+			if !ok {
+				return nil, ErrNoSuchMessage
+			}
+
+			res = append(res, msg)
+		} else {
+			if !list.existsWithSeqID(seqRange.begin) || !list.existsWithSeqID(seqRange.end) {
+				return nil, ErrNoSuchMessage
+			}
+
+			res = append(res, list.seqRange(seqRange.begin, seqRange.end)...)
+		}
+	}
+
+	return res, nil
+}
+
+func (list *snapMsgList) getMessagesInUIDRange(seqSet []command.SeqRange) ([]snapMsgWithSeq, error) {
+	var res []snapMsgWithSeq
+
+	// If there are no messages in the mailbox, we still resolve without error.
+	if list.len() == 0 {
+		return nil, nil
+	}
+
+	intervals, err := list.resolveUIDInterval(seqSet)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, uidRange := range intervals {
+		if uidRange.begin == uidRange.end {
+			msg, ok := list.getWithUID(uidRange.begin)
+			if !ok {
+				continue
+			}
+
+			res = append(res, msg)
+		} else {
+			res = append(res, list.uidRange(uidRange.begin, uidRange.end)...)
+		}
+	}
+
+	return res, nil
 }

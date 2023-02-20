@@ -1,49 +1,81 @@
 package session
 
 import (
+	"bytes"
 	"context"
-	"fmt"
-
-	"github.com/bradenaw/juniper/xslices"
-	"golang.org/x/exp/maps"
-
-	"github.com/ProtonMail/gluon/internal/parser/proto"
+	"errors"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/reporter"
+	"github.com/ProtonMail/gluon/rfcparser"
+	"github.com/sirupsen/logrus"
 )
 
-type command struct {
-	tag string
-	cmd *proto.Command
-	err error
+type commandResult struct {
+	command command.Command
+	err     error
 }
 
-func (s *Session) startCommandReader(ctx context.Context, del string) <-chan command {
-	cmdCh := make(chan command)
+func (s *Session) startCommandReader(ctx context.Context) <-chan commandResult {
+	cmdCh := make(chan commandResult)
 
 	logging.GoAnnotated(ctx, func(ctx context.Context) {
 		defer close(cmdCh)
 
+		tlsHeaders := [][]byte{
+			{0x16, 0x03, 0x01}, // 1.0
+			{0x16, 0x03, 0x02}, // 1.1
+			{0x16, 0x03, 0x03}, // 1.2
+			{0x16, 0x03, 0x04}, // 1.3
+			{0x16, 0x00, 0x00}, // 0.0
+		}
+
+		parser := command.NewParserWithLiteralContinuationCb(s.scanner, func() error { return response.Continuation().Send(s) })
+
 		for {
-			line, literals, err := s.liner.Read(func() error { return response.Continuation().Send(s) })
+			s.inputCollector.Reset()
+
+			cmd, err := parser.Parse()
+			s.logIncoming(string(s.inputCollector.Bytes()))
 			if err != nil {
-				return
+				var parserError *rfcparser.Error
+				if !errors.As(err, &parserError) {
+					return
+				}
+
+				if parserError.IsEOF() {
+					return
+				}
+
+				if err := parser.ConsumeInvalidInput(); err != nil {
+					return
+				}
+
+				bytesRead := s.inputCollector.Bytes()
+				// check if we are receiving raw TLS requests, if so skip.
+				for _, tlsHeader := range tlsHeaders {
+					if bytes.HasPrefix(bytesRead, tlsHeader) {
+						logrus.Errorf("TLS Handshake detected while not running with TLS/SSL")
+						return
+					}
+				}
+
+				logrus.WithError(err).WithField("type", parser.LastParsedCommand()).Error("Failed to parse IMAP command")
+
+				reporter.MessageWithContext(ctx,
+					"Failed to parse IMAP command",
+					reporter.Context{"error": err, "cmd": parser.LastParsedCommand()},
+				)
+			} else {
+				logrus.Debug(cmd.SanitizedString())
 			}
 
-			s.logIncoming(string(line), xslices.Map(maps.Keys(literals), func(k string) string {
-				return fmt.Sprintf("%v: '%s'", k, literals[k])
-			})...)
-
-			tag, cmd, err := parse(line, literals, del)
-			if err != nil {
-				reporter.MessageWithContext(ctx,
-					"Failed to parse imap command",
-					reporter.Context{"error": err},
-				)
-			} else if cmd.GetStartTLS() != nil {
+			switch c := cmd.Payload.(type) {
+			case *command.StartTLS:
 				// TLS needs to be handled here to ensure that next command read is over the TLS connection.
-				if err = s.handleStartTLS(tag, cmd.GetStartTLS()); err != nil {
+				if err = s.handleStartTLS(cmd.Tag, c); err != nil {
+					logrus.WithError(err).Error("Cannot upgrade connection")
 					return
 				} else {
 					continue
@@ -51,7 +83,7 @@ func (s *Session) startCommandReader(ctx context.Context, del string) <-chan com
 			}
 
 			select {
-			case cmdCh <- command{tag: tag, cmd: cmd, err: err}:
+			case cmdCh <- commandResult{command: cmd, err: err}:
 				// ...
 
 			case <-ctx.Done():

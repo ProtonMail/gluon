@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
@@ -24,8 +24,11 @@ import (
 const maxLoginAttempts = 3
 
 type Backend struct {
-	// dir is the directory in which backend files should be stored.
-	dir string
+	// dataDir is the directory in which backend files should be stored.
+	dataDir string
+
+	// databaseDir is the directory in which database files should be stored.
+	databaseDir string
 
 	// delim is the server's path delim.
 	delim string
@@ -44,15 +47,19 @@ type Backend struct {
 	loginErrorCount int32
 	loginLock       sync.Mutex
 	loginWG         sync.WaitGroup
+
+	imapLimits limits.IMAP
 }
 
-func New(dir string, storeBuilder store.Builder, delim string, loginJailTime time.Duration) (*Backend, error) {
+func New(dataDir, databaseDir string, storeBuilder store.Builder, delim string, loginJailTime time.Duration, imapLimits limits.IMAP) (*Backend, error) {
 	return &Backend{
-		dir:           dir,
+		dataDir:       dataDir,
+		databaseDir:   databaseDir,
 		delim:         delim,
 		users:         make(map[string]*user),
 		storeBuilder:  storeBuilder,
 		loginJailTime: loginJailTime,
+		imapLimits:    imapLimits,
 	}, nil
 }
 
@@ -64,32 +71,34 @@ func (b *Backend) GetDelimiter() string {
 	return b.delim
 }
 
-func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Connector, passphrase []byte) error {
+// AddUser adds a new user to the backend.
+// It returns true if the user's database was created, false if it already existed.
+func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Connector, passphrase []byte, uidValidityGenerator imap.UIDValidityGenerator) (bool, error) {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
 
 	storeBuilder, err := b.storeBuilder.New(b.getStoreDir(), userID, passphrase)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	db, err := db.NewDB(b.getDBDir(), userID)
+	db, isNew, err := db.NewDB(b.getDBDir(), userID)
 	if err != nil {
 		if err := storeBuilder.Close(); err != nil {
 			logrus.WithError(err).Error("Failed to close store builder")
 		}
 
-		return err
+		return false, err
 	}
 
-	user, err := newUser(ctx, userID, db, conn, storeBuilder, b.delim)
+	user, err := newUser(ctx, userID, db, conn, storeBuilder, b.delim, b.imapLimits, uidValidityGenerator)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	b.users[userID] = user
 
-	return nil
+	return isNew, nil
 }
 
 func (b *Backend) RemoveUser(ctx context.Context, userID string, removeFiles bool) error {
@@ -243,9 +252,9 @@ func (b *Backend) getUserID(ctx context.Context, username string, password []byt
 }
 
 func (b *Backend) getStoreDir() string {
-	return filepath.Join(b.dir, "store")
+	return b.dataDir
 }
 
 func (b *Backend) getDBDir() string {
-	return filepath.Join(b.dir, "db")
+	return b.databaseDir
 }

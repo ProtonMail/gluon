@@ -1,7 +1,15 @@
 cmake_minimum_required(VERSION 3.14)
 
-set(VCPKG_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
-set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
+if (APPLE)
+  if ("${VCPKG_TARGET_TRIPLET}" STREQUAL "x64-osx-min-10.15")
+	set(VCPKG_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "")
+	set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "")
+  else()
+	set(VCPKG_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
+	set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
+  endif()
+endif()
+
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/extern/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "toolchain")
 
 project(Gluon VERSION 0.1.0 LANGUAGES CXX)
@@ -19,7 +27,7 @@ set(CMAKE_DEBUG_POSTFIX "d")
 
 if (APPLE)
   # Can't rely only on CMake's system information as it is possible to cross-compile for both x64 and arm64 on mac OS
-  if ("${VCPKG_TARGET_TRIPLET}" STREQUAL "x64-osx-min-11.0")
+  if ("${VCPKG_TARGET_TRIPLET}" STREQUAL "x64-osx-min-10.15")
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/Darwin/x86_64)
   else()
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/Darwin/arm64)

@@ -75,6 +75,12 @@ func (sc *stateConnectorImpl) CreateMessage(
 	return imap.NewInternalMessageID(), msg, newLiteral, nil
 }
 
+func (sc *stateConnectorImpl) GetMessageLiteral(ctx context.Context, id imap.MessageID) ([]byte, error) {
+	ctx = sc.newContextWithMetadata(ctx)
+
+	return sc.connector.GetMessageLiteral(ctx, id)
+}
+
 func (sc *stateConnectorImpl) AddMessagesToMailbox(
 	ctx context.Context,
 	messageIDs []imap.MessageID,
@@ -100,7 +106,7 @@ func (sc *stateConnectorImpl) MoveMessagesFromMailbox(
 	messageIDs []imap.MessageID,
 	mboxFromID imap.MailboxID,
 	mboxToID imap.MailboxID,
-) error {
+) (bool, error) {
 	ctx = sc.newContextWithMetadata(ctx)
 
 	return sc.connector.MoveMessages(ctx, messageIDs, mboxFromID, mboxToID)
@@ -118,12 +124,8 @@ func (sc *stateConnectorImpl) SetMessagesFlagged(ctx context.Context, messageIDs
 	return sc.connector.MarkMessagesFlagged(ctx, messageIDs, flagged)
 }
 
-func (sc *stateConnectorImpl) SetUIDValidity(uidValidity imap.UID) error {
-	return sc.connector.SetUIDValidity(uidValidity)
-}
-
-func (sc *stateConnectorImpl) IsMailboxVisible(ctx context.Context, id imap.MailboxID) bool {
-	return sc.connector.IsMailboxVisible(ctx, id)
+func (sc *stateConnectorImpl) GetMailboxVisibility(ctx context.Context, id imap.MailboxID) imap.MailboxVisibility {
+	return sc.connector.GetMailboxVisibility(ctx, id)
 }
 
 func (sc *stateConnectorImpl) getMetadataValue(key string) any {

@@ -4,11 +4,12 @@ import (
 	"crypto/tls"
 	"io"
 	"os"
-	"path/filepath"
 	"time"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/session"
+	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
@@ -17,68 +18,90 @@ import (
 )
 
 type serverBuilder struct {
-	dir                string
-	delim              string
-	loginJailTime      time.Duration
-	tlsConfig          *tls.Config
-	idleBulkTime       time.Duration
-	inLogger           io.Writer
-	outLogger          io.Writer
-	versionInfo        version.Info
-	cmdExecProfBuilder profiling.CmdProfilerBuilder
-	storeBuilder       store.Builder
-	reporter           reporter.Reporter
-	disableParallelism bool
+	dataDir              string
+	databaseDir          string
+	delim                string
+	loginJailTime        time.Duration
+	tlsConfig            *tls.Config
+	idleBulkTime         time.Duration
+	inLogger             io.Writer
+	outLogger            io.Writer
+	versionInfo          version.Info
+	cmdExecProfBuilder   profiling.CmdProfilerBuilder
+	storeBuilder         store.Builder
+	reporter             reporter.Reporter
+	disableParallelism   bool
+	imapLimits           limits.IMAP
+	uidValidityGenerator imap.UIDValidityGenerator
 }
 
 func newBuilder() (*serverBuilder, error) {
 	return &serverBuilder{
-		delim:              "/",
-		cmdExecProfBuilder: &profiling.NullCmdExecProfilerBuilder{},
-		storeBuilder:       &store.OnDiskStoreBuilder{},
-		reporter:           &reporter.NullReporter{},
-		idleBulkTime:       time.Duration(500 * time.Millisecond),
+		delim:                "/",
+		cmdExecProfBuilder:   &profiling.NullCmdExecProfilerBuilder{},
+		storeBuilder:         &store.OnDiskStoreBuilder{},
+		reporter:             &reporter.NullReporter{},
+		idleBulkTime:         500 * time.Millisecond,
+		imapLimits:           limits.DefaultLimits(),
+		uidValidityGenerator: imap.DefaultEpochUIDValidityGenerator(),
 	}, nil
 }
 
 func (builder *serverBuilder) build() (*Server, error) {
-	if builder.dir == "" {
+	if builder.dataDir == "" {
 		dir, err := os.MkdirTemp("", "gluon-*")
 		if err != nil {
 			return nil, err
 		}
 
-		builder.dir = dir
+		builder.dataDir = dir
 	}
 
-	if err := os.MkdirAll(builder.dir, 0o700); err != nil {
+	if err := os.MkdirAll(builder.dataDir, 0o700); err != nil {
+		return nil, err
+	}
+
+	if builder.databaseDir == "" {
+		dir, err := os.MkdirTemp("", "gluon-*")
+		if err != nil {
+			return nil, err
+		}
+
+		builder.databaseDir = dir
+	}
+
+	if err := os.MkdirAll(builder.databaseDir, 0o700); err != nil {
 		return nil, err
 	}
 
 	backend, err := backend.New(
-		filepath.Join(builder.dir, "backend"),
+		builder.dataDir,
+		builder.databaseDir,
 		builder.storeBuilder,
 		builder.delim,
 		builder.loginJailTime,
+		builder.imapLimits,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Server{
-		dir:                builder.dir,
-		backend:            backend,
-		sessions:           make(map[int]*session.Session),
-		serveErrCh:         queue.NewQueuedChannel[error](1, 1),
-		serveDoneCh:        make(chan struct{}),
-		inLogger:           builder.inLogger,
-		outLogger:          builder.outLogger,
-		tlsConfig:          builder.tlsConfig,
-		idleBulkTime:       builder.idleBulkTime,
-		storeBuilder:       builder.storeBuilder,
-		cmdExecProfBuilder: builder.cmdExecProfBuilder,
-		versionInfo:        builder.versionInfo,
-		reporter:           builder.reporter,
-		disableParallelism: builder.disableParallelism,
+		dataDir:              builder.dataDir,
+		databaseDir:          builder.databaseDir,
+		backend:              backend,
+		sessions:             make(map[int]*session.Session),
+		serveErrCh:           queue.NewQueuedChannel[error](1, 1),
+		serveDoneCh:          make(chan struct{}),
+		inLogger:             builder.inLogger,
+		outLogger:            builder.outLogger,
+		tlsConfig:            builder.tlsConfig,
+		idleBulkTime:         builder.idleBulkTime,
+		storeBuilder:         builder.storeBuilder,
+		cmdExecProfBuilder:   builder.cmdExecProfBuilder,
+		versionInfo:          builder.versionInfo,
+		reporter:             builder.reporter,
+		disableParallelism:   builder.disableParallelism,
+		uidValidityGenerator: builder.uidValidityGenerator,
 	}, nil
 }

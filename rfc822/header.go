@@ -311,6 +311,26 @@ func (h *Header) applyOffset(start *headerEntry, offset int) {
 // SetHeaderValue is a helper method that sets a header value in a message literal.
 // It does not check whether the existing value already exists.
 func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
+	reader, size, err := SetHeaderValueNoMemCopy(literal, key, val)
+	if err != nil {
+		return nil, err
+	}
+
+	var b bytes.Buffer
+
+	b.Grow(size)
+
+	if _, err := b.ReadFrom(reader); err != nil {
+		return nil, err
+	}
+
+	return b.Bytes(), nil
+}
+
+// SetHeaderValueNoMemCopy is the same as SetHeaderValue, except it does not allocate memory to modify the input literal.
+// Instead, it returns an io.MultiReader that combines the sub-slices in the correct order. This enables us to only
+// allocate memory for the new header field while re-using the old literal.
+func SetHeaderValueNoMemCopy(literal []byte, key, val string) (io.Reader, int, error) {
 	rawHeader, body := Split(literal)
 
 	parser := newHeaderParser(rawHeader)
@@ -327,7 +347,7 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 			if errors.Is(err, io.EOF) {
 				break
 			} else {
-				return nil, err
+				return nil, 0, err
 			}
 		}
 
@@ -342,18 +362,18 @@ func SetHeaderValue(literal []byte, key, val string) ([]byte, error) {
 	key = textproto.CanonicalMIMEHeaderKey(key)
 	data := joinLine([]byte(key), []byte(val))
 
-	result := make([]byte, 0, len(data)+len(literal))
 	if !foundFirstEntry {
-		result = append(result, rawHeader...)
-		result = append(result, data...)
-		result = append(result, body...)
-	} else {
-		result = append(result, literal[0:parsedHeaderEntry.keyStart]...)
-		result = append(result, data...)
-		result = append(result, literal[parsedHeaderEntry.keyStart:]...)
+		return io.MultiReader(bytes.NewReader(rawHeader), bytes.NewReader(data), bytes.NewReader(body)), len(rawHeader) + len(data) + len(body), nil
 	}
 
-	return result, nil
+	part1 := literal[0:parsedHeaderEntry.keyStart]
+	part2 := literal[parsedHeaderEntry.keyStart:]
+
+	return io.MultiReader(
+		bytes.NewReader(part1),
+		bytes.NewReader(data),
+		bytes.NewReader(part2),
+	), len(part1) + len(part2) + len(data), nil
 }
 
 // GetHeaderValue is a helper method that queries a header value in a message literal.
@@ -384,6 +404,52 @@ func GetHeaderValue(literal []byte, key string) (string, error) {
 	}
 
 	return "", nil
+}
+
+// EraseHeaderValue removes the header from a literal.
+func EraseHeaderValue(literal []byte, key string) ([]byte, error) {
+	rawHeader, _ := Split(literal)
+
+	parser := newHeaderParser(rawHeader)
+
+	var (
+		foundEntry        bool
+		parsedHeaderEntry parsedHeaderEntry
+	)
+
+	for {
+		entry, err := parser.next()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			} else {
+				return nil, err
+			}
+		}
+
+		if !entry.hasKey() {
+			continue
+		}
+
+		if !strings.EqualFold(key, string(entry.getKey(rawHeader))) {
+			continue
+		}
+
+		foundEntry = true
+		parsedHeaderEntry = entry
+
+		break
+	}
+
+	result := make([]byte, 0, len(literal))
+	if !foundEntry {
+		result = append(result, literal...)
+	} else {
+		result = append(result, literal[0:parsedHeaderEntry.keyStart]...)
+		result = append(result, literal[parsedHeaderEntry.valueEnd:]...)
+	}
+
+	return result, nil
 }
 
 var (

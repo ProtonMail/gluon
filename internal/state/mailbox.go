@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
-	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -19,7 +19,11 @@ import (
 )
 
 type Mailbox struct {
-	mbox *ent.Mailbox
+	id          ids.MailboxIDPair
+	name        string
+	subscribed  bool
+	uidValidity imap.UID
+	uidNext     imap.UID
 
 	state *State
 	snap  *snapshot
@@ -36,7 +40,10 @@ type AppendOnlyMailbox interface {
 
 func newMailbox(mbox *ent.Mailbox, state *State, snap *snapshot) *Mailbox {
 	return &Mailbox{
-		mbox: mbox,
+		id:          ids.NewMailboxIDPair(mbox),
+		name:        mbox.Name,
+		uidValidity: mbox.UIDValidity,
+		uidNext:     mbox.UIDNext,
 
 		state: state,
 
@@ -47,7 +54,7 @@ func newMailbox(mbox *ent.Mailbox, state *State, snap *snapshot) *Mailbox {
 }
 
 func (m *Mailbox) Name() string {
-	return m.mbox.Name
+	return m.name
 }
 
 func (m *Mailbox) Selected() bool {
@@ -76,48 +83,33 @@ func (m *Mailbox) Count() int {
 }
 
 func (m *Mailbox) Flags(ctx context.Context) (imap.FlagSet, error) {
-	flags, err := m.mbox.QueryFlags().All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return imap.NewFlagSetFromSlice(xslices.Map(flags, func(flag *ent.MailboxFlag) string {
-		return flag.Value
-	})), nil
+	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
+		return db.GetMailboxFlags(ctx, client, m.id.InternalID)
+	})
 }
 
 func (m *Mailbox) PermanentFlags(ctx context.Context) (imap.FlagSet, error) {
-	permFlags, err := m.mbox.QueryPermanentFlags().All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return imap.NewFlagSetFromSlice(xslices.Map(permFlags, func(flag *ent.MailboxPermFlag) string {
-		return flag.Value
-	})), nil
+	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
+		return db.GetMailboxPermanentFlags(ctx, client, m.id.InternalID)
+	})
 }
 
 func (m *Mailbox) Attributes(ctx context.Context) (imap.FlagSet, error) {
-	attrs, err := m.mbox.QueryAttributes().All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return imap.NewFlagSetFromSlice(xslices.Map(attrs, func(flag *ent.MailboxAttr) string {
-		return flag.Value
-	})), nil
+	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
+		return db.GetMailboxAttributes(ctx, client, m.id.InternalID)
+	})
 }
 
 func (m *Mailbox) UIDNext() imap.UID {
-	return m.mbox.UIDNext
+	return m.uidNext
 }
 
 func (m *Mailbox) UIDValidity() imap.UID {
-	return m.mbox.UIDValidity
+	return m.uidValidity
 }
 
 func (m *Mailbox) Subscribed() bool {
-	return m.mbox.Subscribed
+	return m.subscribed
 }
 
 func (m *Mailbox) GetMessagesWithFlag(flag string) []imap.SeqID {
@@ -153,53 +145,90 @@ func (m *Mailbox) GetMessagesWithoutFlagCount(flag string) int {
 }
 
 func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
-	internalIDString, err := rfc822.GetHeaderValue(literal, ids.InternalIDKey)
+	if err := m.state.db().Read(ctx, func(ctx context.Context, client *ent.Client) error {
+		if messageCount, uid, err := db.GetMailboxMessageCountAndUID(ctx, client, m.snap.mboxID.InternalID); err != nil {
+			return err
+		} else {
+			if err := m.state.imapLimits.CheckMailBoxMessageCount(messageCount, 1); err != nil {
+				return err
+			}
+
+			if err := m.state.imapLimits.CheckUIDCount(uid, 1); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return 0, err
+	}
+
+	var appendIntoDrafts bool
+
+	attr, err := m.Attributes(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	if len(internalIDString) > 0 {
-		msgID, err := imap.InternalMessageIDFromString(internalIDString)
+	// Force create message when appending to drafts so that IMAP clients can create new draft messages.
+	if !attr.Contains(imap.AttrDrafts) {
+		internalIDString, err := rfc822.GetHeaderValue(literal, ids.InternalIDKey)
 		if err != nil {
 			return 0, err
 		}
 
-		if message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
-			message, err := db.GetMessageWithIDWithDeletedFlag(ctx, client, msgID)
+		if len(internalIDString) > 0 {
+			msgID, err := imap.InternalMessageIDFromString(internalIDString)
 			if err != nil {
-				if ent.IsNotFound(err) {
-					return nil, nil
-				}
-
-				return nil, err
+				return 0, err
 			}
 
-			return message, nil
-		}); err != nil || message == nil {
-			logrus.WithError(err).Warn("The message has an unknown internal ID")
-		} else if !message.Deleted {
-			// Only shuffle around messages that haven't been marked for deletion.
-			if res, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
-				remoteID, err := db.GetMessageRemoteIDFromID(ctx, tx.Client(), msgID)
+			if message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
+				message, err := db.GetMessageWithIDWithDeletedFlag(ctx, client, msgID)
 				if err != nil {
+					if ent.IsNotFound(err) {
+						return nil, nil
+					}
+
 					return nil, err
 				}
 
-				return m.state.actionAddMessagesToMailbox(ctx, tx,
-					[]ids.MessageIDPair{{InternalID: msgID, RemoteID: remoteID}},
-					ids.NewMailboxIDPair(m.mbox),
-					m.snap == m.state.snap,
-				)
-			}); err != nil {
-				return 0, err
-			} else {
-				return res[0].UID, nil
+				return message, nil
+			}); err != nil || message == nil {
+				logrus.WithError(err).Warn("The message has an unknown internal ID")
+			} else if !message.Deleted {
+				logrus.Debugf("Appending duplicate message with Internal ID:%v", msgID.ShortID())
+				// Only shuffle around messages that haven't been marked for deletion.
+				if res, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
+					remoteID, err := db.GetMessageRemoteIDFromID(ctx, tx.Client(), msgID)
+					if err != nil {
+						return nil, err
+					}
+
+					return m.state.actionAddMessagesToMailbox(ctx, tx,
+						[]ids.MessageIDPair{{InternalID: msgID, RemoteID: remoteID}},
+						m.id,
+						m.snap == m.state.snap,
+					)
+				}); err != nil {
+					return 0, err
+				} else {
+					return res[0].UID, nil
+				}
 			}
+		}
+	} else {
+		appendIntoDrafts = true
+		newLiteral, err := rfc822.EraseHeaderValue(literal, ids.InternalIDKey)
+		if err != nil {
+			logrus.WithError(err).Error("Failed to erase Gluon internal id from draft")
+		} else {
+			literal = newLiteral
 		}
 	}
 
 	return db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (imap.UID, error) {
-		return m.state.actionCreateMessage(ctx, tx, m.snap.mboxID, literal, flags, date, m.snap == m.state.snap)
+		return m.state.actionCreateMessage(ctx, tx, m.snap.mboxID, literal, flags, date, m.snap == m.state.snap, appendIntoDrafts)
 	})
 }
 
@@ -221,7 +250,7 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 // Copy copies the messages represented by the given sequence set into the mailbox with the given name.
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are copied the response object will be nil.
-func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
+func (m *Mailbox) Copy(ctx context.Context, seq []command.SeqRange, name string) (response.Item, error) {
 	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
 		return nil, fmt.Errorf("operation not allowed")
 	}
@@ -272,7 +301,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq *proto.SequenceSet, name string)
 // Move moves the messages represented by the given sequence set into the mailbox with the given name.
 // If the context is a UID context, the sequence set refers to message UIDs.
 // If no items are moved the response object will be nil.
-func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string) (response.Item, error) {
+func (m *Mailbox) Move(ctx context.Context, seq []command.SeqRange, name string) (response.Item, error) {
 	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
 		return nil, fmt.Errorf("operation not allowed")
 	}
@@ -320,25 +349,25 @@ func (m *Mailbox) Move(ctx context.Context, seq *proto.SequenceSet, name string)
 	return res, nil
 }
 
-func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation proto.Operation, flags imap.FlagSet) error {
-	messages, err := m.snap.getMessagesInRange(ctx, seq)
+func (m *Mailbox) Store(ctx context.Context, seqSet []command.SeqRange, action command.StoreAction, flags imap.FlagSet) error {
+	messages, err := m.snap.getMessagesInRange(ctx, seqSet)
 	if err != nil {
 		return err
 	}
 
 	return m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		switch operation {
-		case proto.Operation_Add:
+		switch action {
+		case command.StoreActionAddFlags:
 			if err := m.state.actionAddMessageFlags(ctx, tx, messages, flags); err != nil {
 				return err
 			}
 
-		case proto.Operation_Remove:
+		case command.StoreActionRemFlags:
 			if err := m.state.actionRemoveMessageFlags(ctx, tx, messages, flags); err != nil {
 				return err
 			}
 
-		case proto.Operation_Replace:
+		case command.StoreActionSetFlags:
 			if err := m.state.actionSetMessageFlags(ctx, tx, messages, flags); err != nil {
 				return err
 			}
@@ -348,7 +377,7 @@ func (m *Mailbox) Store(ctx context.Context, seq *proto.SequenceSet, operation p
 	})
 }
 
-func (m *Mailbox) Expunge(ctx context.Context, seq *proto.SequenceSet) error {
+func (m *Mailbox) Expunge(ctx context.Context, seq []command.SeqRange) error {
 	var msgIDs []ids.MessageIDPair
 
 	if seq != nil {

@@ -55,7 +55,7 @@ func TestAppendWithUidPlus(t *testing.T) {
 		messagePath = "testdata/afternoon-meeting.eml"
 	)
 
-	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withUIDValidityGenerator(imap.NewFixedUIDValidityGenerator(imap.UID(1)))), func(client *client.Client, _ *testSession) {
 		const validityUid = uint32(1)
 
 		require.NoError(t, client.Create(mailboxName))
@@ -266,6 +266,94 @@ func TestAppendConnectorReturnsSameRemoteIDDifferentMBox(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
 		}
+	})
+}
+
+func TestAppendConnectorReturnsSameRemoteIDShouldRemoveDeletedFlag(t *testing.T) {
+	const (
+		mailboxName = "INBOX"
+		messagePath = "testdata/afternoon-meeting.eml"
+	)
+
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&returnSameRemoteIDConnectorBuilder{})), func(client *client.Client, _ *testSession) {
+		// Append message one time.
+		require.NoError(t, doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.SeenFlag))
+
+		{
+			status, err := client.Select(mailboxName, false)
+			require.NoError(t, err)
+			require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
+
+			// Mark it as deleted.
+			require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+
+			// Check flag got set
+			newFetchCommand(t, client).withItems("FLAGS").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+				builder.wantFlags(imap.FlagSeen, imap.FlagRecent, imap.FlagDeleted)
+			}).checkAndRequireMessageCount(1)
+		}
+
+		// Append same message again.
+		require.NoError(t, doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.SeenFlag))
+
+		// There should be 1 message in mailboxName and not be deleted
+		status, err := client.Select(mailboxName, false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
+
+		// Deleted flag should not be present
+		newFetchCommand(t, client).withItems("FLAGS").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+			builder.wantFlags(imap.FlagSeen)
+		}).checkAndRequireMessageCount(1)
+	})
+}
+
+func TestAppendConnectorReturnsSameInternalIDRemoveDeletedFlag(t *testing.T) {
+	const (
+		mailboxName = "INBOX"
+		messagePath = "testdata/afternoon-meeting.eml"
+	)
+
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&returnSameRemoteIDConnectorBuilder{})), func(client *client.Client, _ *testSession) {
+		// Append message one time.
+		require.NoError(t, doAppendWithClientFromFile(t, client, mailboxName, messagePath, time.Now(), goimap.SeenFlag))
+
+		var messageWithInternalID string
+
+		{
+			status, err := client.Select(mailboxName, false)
+			require.NoError(t, err)
+			require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
+
+			// Mark it as deleted.
+			require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+
+			// Check flag got set
+			newFetchCommand(t, client).withItems("FLAGS").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+				builder.wantFlags(imap.FlagSeen, imap.FlagRecent, imap.FlagDeleted)
+			})
+
+			// Retrieve message with internal id
+			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+				builder.ignoreFlags()
+				builder.wantSectionString("BODY[]", func(t testing.TB, literal string) {
+					messageWithInternalID = literal
+				})
+			}).checkAndRequireMessageCount(1)
+		}
+
+		// Append same message again.
+		require.NoError(t, doAppendWithClient(client, mailboxName, messageWithInternalID, time.Now(), goimap.SeenFlag))
+
+		// There should be 1 message in mailboxName and not be deleted
+		status, err := client.Select(mailboxName, false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
+
+		// Deleted flag should not be present
+		newFetchCommand(t, client).withItems("FLAGS").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+			builder.wantFlags(imap.FlagSeen)
+		}).checkAndRequireMessageCount(1)
 	})
 }
 

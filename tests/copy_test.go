@@ -11,7 +11,7 @@ import (
 )
 
 func TestCopy(t *testing.T) {
-	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, s *testSession, mbox string, mboxID imap.MailboxID) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t, withUIDValidityGenerator(imap.NewFixedUIDValidityGenerator(imap.UID(1)))), func(client *client.Client, s *testSession, mbox string, mboxID imap.MailboxID) {
 		{
 			// There are 100 messages in the origin and no messages in the destination.
 			mailboxStatus, err := client.Status(mbox, []goimap.StatusItem{goimap.StatusMessages})
@@ -62,7 +62,7 @@ func TestCopy(t *testing.T) {
 }
 
 func TestCopySameMBox(t *testing.T) {
-	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, s *testSession, mbox string, mboxID imap.MailboxID) {
+	runOneToOneTestClientWithData(t, defaultServerOptions(t, withUIDValidityGenerator(imap.NewFixedUIDValidityGenerator(imap.UID(1)))), func(client *client.Client, s *testSession, mbox string, mboxID imap.MailboxID) {
 		{
 			// There are 100 messages in the origin and no messages in the destination.
 			mailboxStatus, err := client.Status(mbox, []goimap.StatusItem{goimap.StatusMessages})

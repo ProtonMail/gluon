@@ -3,13 +3,13 @@ package session
 import (
 	"context"
 
-	"github.com/ProtonMail/gluon/internal/parser/proto"
+	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
 )
 
-func (s *Session) handleNoop(ctx context.Context, tag string, cmd *proto.Noop, ch chan response.Response) error {
+func (s *Session) handleNoop(ctx context.Context, tag string, _ *command.Noop, ch chan response.Response) error {
 	profiling.Start(ctx, profiling.CmdTypeNoop)
 	defer profiling.Stop(ctx, profiling.CmdTypeNoop)
 
