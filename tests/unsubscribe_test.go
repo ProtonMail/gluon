@@ -51,3 +51,30 @@ func TestUnsubscribeAfterMailboxRenamedDeleted(t *testing.T) {
 		c.S("A008 OK UNSUBSCRIBE")
 	})
 }
+
+func TestUnsubscribeList(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDelimiter(".")), func(c *testConnection, _ *testSession) {
+		c.C(`tag list "" "*"`)
+		c.S(`* LIST (\Unmarked) "." "INBOX"`)
+		c.OK(`tag`)
+
+		c.C(`tag unsubscribe "INBOX"`).OK(`tag`)
+
+		c.C(`tag list "" "*"`)
+		c.S(`* LIST (\Unmarked) "." "INBOX"`)
+		c.OK(`tag`)
+
+		c.C(`tag lsub "" "*"`)
+		c.OK(`tag`)
+
+		c.C(`tag subscribe "INBOX"`).OK(`tag`)
+
+		c.C(`tag lsub "" "*"`)
+		c.S(`* LSUB (\Unmarked) "." "INBOX"`)
+		c.OK(`tag`)
+
+		c.C(`tag list "" "*"`)
+		c.S(`* LIST (\Unmarked) "." "INBOX"`)
+		c.OK(`tag`)
+	})
+}
