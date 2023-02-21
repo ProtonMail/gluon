@@ -3,9 +3,14 @@ package tests
 import (
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/ProtonMail/gluon"
+	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -76,4 +81,49 @@ func TestErrorsWhenNotSelected(t *testing.T) {
 			c.Sx(fmt.Sprintf("%d NO %v", i, state.ErrSessionNotSelected))
 		}
 	})
+}
+
+func TestErrNoSuchMessage(t *testing.T) {
+	connBuilder := &updateInjectorConnectorBuilder{
+		updateCh: make(chan imap.Update),
+	}
+
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withConnectorBuilder(connBuilder)), func(c *testConnection, s *testSession) {
+		update := imap.NewMessageMailboxesUpdated("this is not the message you are looking for", []imap.MailboxID{}, false, false, false)
+
+		connBuilder.updateCh <- update
+
+		err, ok := update.Wait()
+		require.True(t, ok)
+		require.True(t, gluon.IsNoSuchMessage(err))
+	})
+}
+
+type updateInjectorConnector struct {
+	*connector.Dummy
+
+	updateCh chan imap.Update
+}
+
+func (conn *updateInjectorConnector) GetUpdates() <-chan imap.Update {
+	return conn.updateCh
+}
+
+type updateInjectorConnectorBuilder struct {
+	updateCh chan imap.Update
+}
+
+func (builder updateInjectorConnectorBuilder) New(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) Connector {
+	dummy := connector.NewDummy(usernames, password, period, flags, permFlags, attrs)
+
+	go func() {
+		for event := range dummy.GetUpdates() {
+			builder.updateCh <- event
+		}
+	}()
+
+	return &updateInjectorConnector{
+		Dummy:    dummy,
+		updateCh: builder.updateCh,
+	}
 }
