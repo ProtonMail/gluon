@@ -2,6 +2,7 @@ package rfc5322
 
 import (
 	"net/mail"
+	"time"
 
 	"github.com/ProtonMail/gluon/rfcparser"
 )
@@ -61,6 +62,24 @@ func ParseAddressList(input string) ([]*mail.Address, error) {
 	}
 
 	return parseAddressList(&p)
+}
+
+func ParseDateTime(input string) (time.Time, error) {
+	source := NewBacktrackingByteScanner([]byte(input))
+	scanner := rfcparser.NewScannerWithReader(source)
+	parser := rfcparser.NewParser(scanner)
+
+	p := Parser{
+		source:  source,
+		scanner: scanner,
+		parser:  parser,
+	}
+
+	if err := p.parser.Advance(); err != nil {
+		return time.Time{}, err
+	}
+
+	return parseDTDateTime(p.parser)
 }
 
 type ParserState struct {

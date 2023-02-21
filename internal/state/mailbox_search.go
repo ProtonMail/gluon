@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/rfc5322"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -14,7 +15,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/parser"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
@@ -575,7 +575,7 @@ func buildSearchOpSentBefore(key *command.SearchKeySentBefore) (*buildSearchOpRe
 	op := func(s *searchData) (bool, error) {
 		value := s.header.Get("Date")
 
-		date, err := parser.ParseRFC5322DateTime(value)
+		date, err := rfc5322.ParseDateTime(value)
 		if err != nil {
 			return false, err
 		}
@@ -594,7 +594,7 @@ func buildSearchOpSentOn(key *command.SearchKeySentOn) (*buildSearchOpResult, er
 	op := func(s *searchData) (bool, error) {
 		value := s.header.Get("Date")
 
-		date, err := parser.ParseRFC5322DateTime(value)
+		date, err := rfc5322.ParseDateTime(value)
 		if err != nil {
 			return false, err
 		}
@@ -614,7 +614,7 @@ func buildSearchOpSentSince(key *command.SearchKeySentSince) (*buildSearchOpResu
 	op := func(s *searchData) (bool, error) {
 		value := s.header.Get("Date")
 
-		date, err := parser.ParseRFC5322DateTime(value)
+		date, err := rfc5322.ParseDateTime(value)
 		if err != nil {
 			return false, err
 		}
