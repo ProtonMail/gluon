@@ -578,12 +578,19 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		return db.GetMessageIDFromRemoteID(ctx, client, update.Message.ID)
 	})
 	if ent.IsNotFound(err) {
-		return user.applyMessagesCreated(ctx, imap.NewMessagesCreated(true, &imap.MessageCreated{
-			Message:       update.Message,
-			Literal:       update.Literal,
-			MailboxIDs:    update.MailboxIDs,
-			ParsedMessage: update.ParsedMessage,
-		}))
+		if update.AllowCreate {
+			log.Warn("Message not found, creating it instead")
+
+			return user.applyMessagesCreated(ctx, imap.NewMessagesCreated(true, &imap.MessageCreated{
+				Message:       update.Message,
+				Literal:       update.Literal,
+				MailboxIDs:    update.MailboxIDs,
+				ParsedMessage: update.ParsedMessage,
+			}))
+		} else {
+			log.Warn("Message not found, skipping update")
+			return nil
+		}
 	} else if err != nil {
 		return err
 	}

@@ -155,7 +155,7 @@ func (conn *Dummy) MessageUpdated(message imap.Message, literal []byte, mboxIDs 
 		mboxIDs: mboxIDMap,
 	}
 
-	conn.pushUpdate(imap.NewMessageUpdated(message, literal, mboxIDs, parsedMessage))
+	conn.pushUpdate(imap.NewMessageUpdated(message, literal, mboxIDs, parsedMessage, false))
 
 	return nil
 }
