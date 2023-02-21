@@ -1,13 +1,10 @@
-package parser
+package rfc5322
 
 import (
-	"github.com/ProtonMail/gluon/rfc5322"
-	"net/mail"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestParseDateTime(t *testing.T) {
@@ -168,7 +165,7 @@ func TestParseDateTime(t *testing.T) {
 		test := test
 
 		t.Run(test.input, func(t *testing.T) {
-			got, err := ParseRFC5322DateTime(test.input)
+			got, err := ParseDateTime(test.input)
 			assert.NoError(t, err)
 			assert.Equal(t, test.want, got.Format(time.RFC3339))
 		})
@@ -201,7 +198,7 @@ func TestParseDateTimeObsolete(t *testing.T) {
 		test := test
 
 		t.Run(test.input, func(t *testing.T) {
-			got, err := ParseRFC5322DateTime(test.input)
+			got, err := ParseDateTime(test.input)
 			assert.NoError(t, err)
 			assert.Equal(t, test.want, got.Format(time.RFC3339))
 		})
@@ -226,7 +223,7 @@ func TestParseDateTimeRelaxed(t *testing.T) {
 		test := test
 
 		t.Run(test.input, func(t *testing.T) {
-			got, err := ParseRFC5322DateTime(test.input)
+			got, err := ParseDateTime(test.input)
 			assert.NoError(t, err)
 			assert.Equal(t, test.want, got.Format(time.RFC3339))
 		})
@@ -241,32 +238,8 @@ func TestParseDateTimeRejected(t *testing.T) {
 		test := test
 
 		t.Run(test, func(t *testing.T) {
-			_, err := ParseRFC5322DateTime(test)
+			_, err := ParseDateTime(test)
 			assert.Error(t, err)
 		})
-	}
-}
-
-func BenchmarkParseDateTimeGo(B *testing.B) {
-	input := `Mon, 02 Jan 06 15:04 -0700`
-	for i := 0; i < B.N; i++ {
-		_, err := rfc5322.ParseDateTime(input)
-		require.NoError(B, err)
-	}
-}
-
-func BenchmarkParseDateTimeGoSTD(B *testing.B) {
-	input := `Mon, 02 Jan 06 15:04 -0700`
-	for i := 0; i < B.N; i++ {
-		_, err := mail.ParseDate(input)
-		require.NoError(B, err)
-	}
-}
-
-func BenchmarkParseDateTimeCPP(B *testing.B) {
-	input := `Mon, 02 Jan 06 15:04 -0700`
-	for i := 0; i < B.N; i++ {
-		_, err := ParseRFC5322DateTime(input)
-		require.NoError(B, err)
 	}
 }
