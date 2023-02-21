@@ -1,10 +1,10 @@
 package imap
 
 import (
-	"github.com/ProtonMail/gluon/rfc5322"
 	"net/mail"
 	"strings"
 
+	"github.com/ProtonMail/gluon/rfc5322"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/sirupsen/logrus"
 )

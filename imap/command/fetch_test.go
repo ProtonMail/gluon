@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"testing"
 
-	cppParser "github.com/ProtonMail/gluon/internal/parser"
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 )
@@ -422,26 +421,4 @@ func TestParser_FetchCommandBodySectionPartOnly(t *testing.T) {
 	cmd, err := testParseCommand(`A005 FETCH 1 (BODY[1.1])`)
 	require.NoError(t, err)
 	require.Equal(t, expected, cmd)
-}
-
-func BenchmarkParser_Fetch(b *testing.B) {
-	input := toIMAPLine(`tag FETCH 2:4 (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY.PEEK[1.3.TEXT]<50.100>)`)
-
-	for i := 0; i < b.N; i++ {
-		s := rfcparser.NewScanner(bytes.NewReader(input))
-		p := NewParser(s)
-
-		_, err := p.Parse()
-		require.NoError(b, err)
-	}
-}
-
-func BenchmarkParser_FetchCPP(b *testing.B) {
-	input := string(toIMAPLine(`tag FETCH 2:4 (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY.PEEK[1.3.TEXT]<50.100>)`))
-
-	literalMap := cppParser.NewStringMap()
-
-	for i := 0; i < b.N; i++ {
-		cppParser.Parse(input, literalMap, "/")
-	}
 }

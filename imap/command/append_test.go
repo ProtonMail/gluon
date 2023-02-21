@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	cppParser "github.com/ProtonMail/gluon/internal/parser"
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 )
@@ -112,28 +111,4 @@ func TestParser_AppendWithUTF8Literal(t *testing.T) {
 	cmd, err := p.Parse()
 	require.NoError(t, err)
 	require.Equal(t, expected, cmd)
-}
-
-func BenchmarkParser_Append(b *testing.B) {
-	input := toIMAPLine(`A003 APPEND saved-messages (\Seen) {23}`, `My message body is here`)
-
-	for i := 0; i < b.N; i++ {
-		s := rfcparser.NewScanner(bytes.NewReader(input))
-		p := NewParser(s)
-
-		_, err := p.Parse()
-		require.NoError(b, err)
-	}
-}
-
-func BenchmarkParser_AppendCPP(b *testing.B) {
-	input := string(toIMAPLine(`A003 APPEND saved-messages (\Seen) {23}`, `04269a34-ad29-472c-9d5d-042a02b7fc0d`))
-
-	literalMap := cppParser.NewStringMap()
-
-	literalMap.Set("04269a34-ad29-472c-9d5d-042a02b7fc0d", "My message body is here")
-
-	for i := 0; i < b.N; i++ {
-		cppParser.Parse(input, literalMap, "/")
-	}
 }

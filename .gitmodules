@@ -1,6 +1,0 @@
-[submodule "internal/parser/vcpkg"]
-	path = internal/parser/extern/vcpkg
-	url = https://github.com/microsoft/vcpkg.git
-[submodule "internal/parser/extern/vcpkg"]
-	path = internal/parser/extern/vcpkg
-	url = https://github.com/microsoft/vcpkg.git
