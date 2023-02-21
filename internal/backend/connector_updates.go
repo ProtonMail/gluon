@@ -574,16 +574,21 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageUpdated) error {
 	log := logrus.WithField("message updated", update.Message.ID.ShortID())
 
-	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		internalMessageID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), update.Message.ID)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				log.Debugf("Message %v no longer exists, skipping", update.Message.ID.ShortID())
-				return nil
-			}
-			return err
-		}
+	internalMessageID, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (imap.InternalMessageID, error) {
+		return db.GetMessageIDFromRemoteID(ctx, client, update.Message.ID)
+	})
+	if ent.IsNotFound(err) {
+		return user.applyMessagesCreated(ctx, imap.NewMessagesCreated(true, &imap.MessageCreated{
+			Message:       update.Message,
+			Literal:       update.Literal,
+			MailboxIDs:    update.MailboxIDs,
+			ParsedMessage: update.ParsedMessage,
+		}))
+	} else if err != nil {
+		return err
+	}
 
+	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		// compare and see if the literal has changed.
 		onDiskLiteral, err := user.store.Get(internalMessageID)
 		if err != nil {
@@ -691,11 +696,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		}
 
 		return nil
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	})
 }
 
 // applyUIDValidityBumped applies a UIDValidityBumped event to the user.
