@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"testing"
 
-	cppParser "github.com/ProtonMail/gluon/internal/parser"
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 )
@@ -79,25 +78,4 @@ func TestParser_ListCommandLiteral(t *testing.T) {
 	require.True(t, continuationCalled)
 	require.Equal(t, "list", p.LastParsedCommand())
 	require.Equal(t, "tag", p.LastParsedTag())
-}
-
-func BenchmarkParser_ListCommand(b *testing.B) {
-	input := toIMAPLine(`tag LIST "bar" %`)
-
-	for i := 0; i < b.N; i++ {
-		s := rfcparser.NewScanner(bytes.NewReader(input))
-		p := NewParser(s)
-
-		_, err := p.Parse()
-		require.NoError(b, err)
-	}
-}
-
-func BenchmarkParser_ListCommandCPP(b *testing.B) {
-	input := string(toIMAPLine(`tag LIST "bar" %`))
-	literalMap := cppParser.NewStringMap()
-
-	for i := 0; i < b.N; i++ {
-		cppParser.Parse(input, literalMap, "/")
-	}
 }

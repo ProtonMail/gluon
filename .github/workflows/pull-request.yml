@@ -1,59 +1,15 @@
-name: Build and Test
+name: Test
 
 on:
   pull_request:
     branches: dev
 
 jobs:
-  check:
-    runs-on: ubuntu-20.04
-    outputs:
-      changed: ${{ steps.changed.outputs.any_changed }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 2
-
-      - id: changed
-        uses: tj-actions/changed-files@v21
-        with:
-          files: internal/parser
-          files_ignore: |
-            *.a
-            *.lib
-
-      - name: List change detection output
-        run: |
-          echo "Files changed?: ${{ steps.changed.outputs.any_changed }}"
-
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, macos-12, windows-latest]
-    runs-on: ${{ matrix.os }}
-    needs: check
-    steps:
-      - name: Get sources
-        uses: actions/checkout@v3
-        with:
-          submodules: 'recursive'
-
-      - name: List change detection output
-        run: |
-          echo "Files changed?: ${{ needs.check.outputs.changed }}"
-
-      - name: Build parser if modified
-        if: needs.check.outputs.changed == 'true'
-        uses: ./.github/actions/build-parser
-        with:
-          artifact-name: ${{ matrix.os }}-libs
-
   test:
     strategy:
       matrix:
         os: [ubuntu-20.04, macos-12, windows-latest]
     runs-on: ${{ matrix.os }}
-    needs: [build, check]
     steps:
       - name: Get sources
         uses: actions/checkout@v3
