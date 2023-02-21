@@ -353,6 +353,7 @@ func (conn *Dummy) pushUpdate(update imap.Update) {
 	switch update := update.(type) {
 	case *imap.MessageMailboxesUpdated:
 		conn.queue = removeMessageMailboxesUpdatedFromSlice(conn.queue, update.MessageID)
+
 	case *imap.MessageFlagsUpdated:
 		conn.queue = removeMessageFlagsUpdatedFromSlice(conn.queue, update.MessageID)
 
