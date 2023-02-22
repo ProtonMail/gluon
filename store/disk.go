@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -50,7 +51,8 @@ func NewOnDiskStore(path string, pass []byte, opt ...Option) (Store, error) {
 	return store, nil
 }
 
-const BlockSize = 64 * 4096
+const blockSize = 64 * 4096
+const storeVersion = uint32(1)
 
 func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error {
 	if err := os.MkdirAll(c.path, 0o700); err != nil {
@@ -76,6 +78,12 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error 
 
 	defer file.Close()
 
+	if written, err := file.Write(storeHeaderBytes); err != nil {
+		return err
+	} else if written != len(storeHeaderBytes) {
+		return fmt.Errorf("failed to write store header to file")
+	}
+
 	reader, writer := io.Pipe()
 	defer writer.Close()
 
@@ -91,9 +99,9 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error 
 	}()
 
 	encryptionOverhead := c.gcm.Overhead()
-	encryptedBlockSized := getEncryptedBlockSize(c.gcm, BlockSize)
+	encryptedBlockSized := getEncryptedBlockSize(c.gcm, blockSize)
 
-	compressedBlock := make([]byte, BlockSize)
+	compressedBlock := make([]byte, blockSize)
 	encryptedBlock := make([]byte, encryptedBlockSized)
 
 	// Write nonce to file.
@@ -103,8 +111,8 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error 
 
 	// Write encrypted blocks.
 	for {
-		// Read at least BlockSize from the compressor.
-		bytesRead, err := io.ReadAtLeast(reader, compressedBlock, BlockSize)
+		// Read at least blockSize from the compressor.
+		bytesRead, err := io.ReadAtLeast(reader, compressedBlock, blockSize)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -144,8 +152,17 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 
 	var fileSize int64
 
+	header := make([]byte, len(storeHeaderBytes))
+	if _, err := io.ReadFull(file, header); err != nil {
+		return nil, err
+	}
+
+	if !bytes.Equal(header, storeHeaderBytes) {
+		return nil, fmt.Errorf("file is not a valid store file")
+	}
+
 	if stat, err := file.Stat(); err == nil {
-		fileSize = stat.Size()
+		fileSize = stat.Size() - int64(len(storeHeaderBytes))
 	}
 
 	nonce := make([]byte, c.gcm.NonceSize())
@@ -158,13 +175,13 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 	reader, writer := io.Pipe()
 
 	encryptionOverhead := c.gcm.Overhead()
-	encryptedBlockSize := getEncryptedBlockSize(c.gcm, BlockSize)
+	encryptedBlockSize := getEncryptedBlockSize(c.gcm, blockSize)
 
 	go func() {
 		defer writer.Close()
 
 		readBuffer := make([]byte, encryptedBlockSize)
-		decryptBuffer := make([]byte, BlockSize)
+		decryptBuffer := make([]byte, blockSize)
 		totalBytesRead := 0
 
 		for {
@@ -282,3 +299,15 @@ func (*OnDiskStoreBuilder) Delete(path, userID string) error {
 func getEncryptedBlockSize(aead cipher.AEAD, blockSize int) int {
 	return blockSize + aead.Overhead()
 }
+
+func makeGluonHeaderBytes() []byte {
+	const StoreHeaderID = "GLUON-CACHE"
+
+	version := make([]byte, 4)
+
+	binary.LittleEndian.PutUint32(version, storeVersion)
+
+	return append([]byte(StoreHeaderID), version...)
+}
+
+var storeHeaderBytes = makeGluonHeaderBytes()

@@ -3,6 +3,8 @@ package store_test
 import (
 	"bytes"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -56,6 +58,28 @@ func BenchmarkStoreRead(t *testing.B) {
 		_, err := store.Get(id)
 		require.NoError(t, err)
 	}
+}
+
+func TestStoreReadFailsIfHeaderDoesNotMatch(t *testing.T) {
+	storeDir := t.TempDir()
+	store, err := store.NewOnDiskStore(
+		storeDir,
+		[]byte("pass"),
+		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+	)
+	require.NoError(t, err)
+
+	id := imap.NewInternalMessageID()
+	// Generate dummy file
+	{
+		data := make([]byte, 15*1024)
+		_, err := rand.Read(data) //nolint:gosec
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(storeDir, id.String()), data, 0o600))
+	}
+
+	_, err = store.Get(id)
+	require.Error(t, err)
 }
 
 func TestOnDiskStore(t *testing.T) {
