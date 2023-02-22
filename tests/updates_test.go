@@ -56,6 +56,7 @@ func TestMessageCreatedNoopUpdate(t *testing.T) {
 		// Create two messages externally.
 		s.messageCreatedFromFile("user", other, "testdata/multipart-mixed.eml")
 		s.messageCreatedFromFile("user", other, "testdata/afternoon-meeting.eml")
+		s.flush("user")
 
 		// Do noop to receive the updates.
 		c.C(`A002 NOOP`).Se(`* 2 EXISTS`, `* 2 RECENT`).OK(`A002`)
@@ -63,6 +64,7 @@ func TestMessageCreatedNoopUpdate(t *testing.T) {
 		// Create two more messages externally.
 		s.messageCreatedFromFile("user", other, "testdata/multipart-mixed.eml")
 		s.messageCreatedFromFile("user", other, "testdata/afternoon-meeting.eml")
+		s.flush("user")
 
 		// Do noop to receive the updates.
 		c.C(`A003 NOOP`).Se(`* 4 EXISTS`, `* 4 RECENT`).OK(`A003`)
@@ -74,6 +76,7 @@ func TestMessageCreatedNoopUpdate(t *testing.T) {
 		// Create two more messages externally.
 		s.messageCreatedFromFile("user", other, "testdata/multipart-mixed.eml")
 		s.messageCreatedFromFile("user", other, "testdata/afternoon-meeting.eml")
+		s.flush("user")
 
 		// Do noop to receive the updates.
 		c.C(`A006 NOOP`).Se(`* 6 EXISTS`, `* 2 RECENT`).OK(`A006`)
