@@ -19,9 +19,24 @@ import (
 )
 
 type onDiskStore struct {
-	path string
-	gcm  cipher.AEAD
-	sem  *Semaphore
+	path     string
+	gcm      cipher.AEAD
+	sem      *Semaphore
+	fallback Fallback
+}
+
+func NewCipher(pass []byte) (cipher.AEAD, error) {
+	aes, err := aes.NewCipher(hash(pass))
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(aes)
+	if err != nil {
+		return nil, err
+	}
+
+	return gcm, nil
 }
 
 func NewOnDiskStore(path string, pass []byte, opt ...Option) (Store, error) {
@@ -29,12 +44,7 @@ func NewOnDiskStore(path string, pass []byte, opt ...Option) (Store, error) {
 		return nil, err
 	}
 
-	aes, err := aes.NewCipher(hash(pass))
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(aes)
+	gcm, err := NewCipher(pass)
 	if err != nil {
 		return nil, err
 	}
@@ -154,10 +164,28 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 
 	header := make([]byte, len(storeHeaderBytes))
 	if _, err := io.ReadFull(file, header); err != nil {
+		if errors.Is(err, io.ErrUnexpectedEOF) && c.fallback != nil {
+			result, err := c.readFromFallback(file)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read from fallback: %w", err)
+			}
+
+			return result, nil
+		}
+
 		return nil, err
 	}
 
 	if !bytes.Equal(header, storeHeaderBytes) {
+		if c.fallback != nil {
+			result, err := c.readFromFallback(file)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read from fallback: %w", err)
+			}
+
+			return result, nil
+		}
+
 		return nil, fmt.Errorf("file is not a valid store file")
 	}
 
@@ -294,6 +322,16 @@ func (*OnDiskStoreBuilder) Delete(path, userID string) error {
 	storePath := filepath.Join(path, userID)
 
 	return os.RemoveAll(storePath)
+}
+
+func (c *onDiskStore) readFromFallback(file *os.File) ([]byte, error) {
+	if pos, err := file.Seek(0, 0); err != nil {
+		return nil, err
+	} else if pos != 0 {
+		return nil, fmt.Errorf("failed to rewind file to start")
+	}
+
+	return c.fallback.Read(c.gcm, file)
 }
 
 func getEncryptedBlockSize(aead cipher.AEAD, blockSize int) int {
