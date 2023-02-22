@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"bytes"
+	"github.com/ProtonMail/gluon/store/fallback_v0"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -80,6 +81,62 @@ func TestStoreReadFailsIfHeaderDoesNotMatch(t *testing.T) {
 
 	_, err = store.Get(id)
 	require.Error(t, err)
+}
+
+func TestStoreFallbackRead(t *testing.T) {
+	fallbackStore := fallback_v0.NewOnDiskStoreV0WithCompressor(&fallback_v0.GZipCompressor{})
+
+	storeDir := t.TempDir()
+
+	password := []byte("pass")
+
+	fileContents := []byte("Hello world from gluon store")
+
+	id := imap.NewInternalMessageID()
+
+	{
+		// create old store file on disk
+		gcm, err := store.NewCipher(password)
+		require.NoError(t, err)
+
+		filepath := filepath.Join(storeDir, id.String())
+
+		require.NoError(t, fallbackStore.Write(gcm, filepath, fileContents))
+	}
+
+	// Reading file without fallback should fail.
+	{
+		store, err := store.NewOnDiskStore(
+			storeDir,
+			[]byte("pass"),
+			store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+		)
+		require.NoError(t, err)
+		defer func() {
+			require.NoError(t, store.Close())
+		}()
+
+		_, err = store.Get(id)
+		require.Error(t, err)
+	}
+
+	//
+	{
+		store, err := store.NewOnDiskStore(
+			storeDir,
+			[]byte("pass"),
+			store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+			store.WithFallback(fallbackStore),
+		)
+		require.NoError(t, err)
+		defer func() {
+			require.NoError(t, store.Close())
+		}()
+
+		b, err := store.Get(id)
+		require.NoError(t, err)
+		require.Equal(t, fileContents, b)
+	}
 }
 
 func TestOnDiskStore(t *testing.T) {
