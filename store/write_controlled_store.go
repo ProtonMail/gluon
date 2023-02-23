@@ -101,7 +101,7 @@ func (w *WriteControlledStore) Delete(messageID ...imap.InternalMessageID) error
 			syncRef.lock.Lock()
 			defer syncRef.lock.Unlock()
 
-			return w.impl.Delete(messageID...)
+			return w.impl.Delete(id)
 		}(); err != nil {
 			return err
 		}
