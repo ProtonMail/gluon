@@ -677,7 +677,9 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 					stateUpdates = append(stateUpdates, updates...)
 				}
 
-				if err := db.DeleteMessages(ctx, tx, internalMessageID); err != nil {
+				// We need change the old remote id as it will break our table constraint otherwise and everything
+				// will silently fail.
+				if err := db.MarkMessageAsDeletedAndAssignRandomRemoteID(ctx, tx, internalMessageID); err != nil {
 					return err
 				}
 			}
@@ -699,8 +701,10 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 					InternalID:  newInternalID,
 				}
 
-				if _, err := db.CreateMessages(ctx, tx, request); err != nil {
+				if m, err := db.CreateMessages(ctx, tx, request); err != nil {
 					return err
+				} else if len(m) == 0 {
+					return fmt.Errorf("no messages were inserted")
 				}
 
 				if err := user.store.Set(newInternalID, literalReader); err != nil {
