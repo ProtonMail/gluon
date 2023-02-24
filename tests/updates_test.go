@@ -331,3 +331,96 @@ func TestMessageCreatedWithIgnoreMissingMailbox(t *testing.T) {
 		}
 	})
 }
+
+func TestInvalidIMAPCommandDoesNotBlockStateUpdates(t *testing.T) {
+	// Test that a sequence of delete followed by create with the same message ID  results in an updated message.
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		mailboxID := s.mailboxCreated("user", []string{"mbox1"})
+		messageID := s.messageCreated("user", mailboxID, []byte("To: 3@3.pm"), time.Now())
+
+		s.flush("user")
+		c.C(`A002 SELECT mbox1`).OK(`A002`)
+
+		// Check that the message exists.
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 3@3.pm FLAGS (\\Recent \\Seen))")
+		c.OK("A005")
+
+		// Update to the message is applied.
+		s.messageDeleted("user", messageID)
+		s.flush("user")
+
+		// First fetch should read the old message data due to deferred deletion.
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 3@3.pm)")
+		c.OK("A005")
+
+		c.C("A006 NOOP").OK("")
+
+		// Second fetch fail with
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("A005 BAD no such message")
+
+		// new message gets create
+		s.messageCreated("user", mailboxID, []byte("To: 3@3.pm"), time.Now())
+		s.flush("user")
+
+		// Third fetch will still fail, but now we get updates to the state.
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S(`* 1 EXISTS`)
+		c.S(`* 1 RECENT`)
+		c.S("A005 BAD no such message")
+
+		// Forth fetch succeeds.
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 3@3.pm FLAGS (\\Recent \\Seen))")
+		c.OK("A005")
+	})
+}
+
+func TestUpdatedMessageFetchSucceedsOnSecondTry(t *testing.T) {
+	// Test that a sequence of delete followed by create with the same message ID  results in an updated message.
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		mailboxID := s.mailboxCreated("user", []string{"mbox1"})
+		messageID := s.messageCreated("user", mailboxID, []byte("To: 3@3.pm"), time.Now())
+
+		s.flush("user")
+		c.C(`A002 SELECT mbox1`).OK(`A002`)
+
+		// Check that the message exists.
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 3@3.pm FLAGS (\\Recent \\Seen))")
+		c.OK("A005")
+
+		// Update to the message is applied.
+		s.messageUpdatedWithID("user", messageID, mailboxID, []byte("To: 4@4.pm"), time.Now())
+		s.flush("user")
+
+		// First fetch should read the old message data due to deferred deletion and get the updates
+		// that the message has been removed and replaced with new version.
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 3@3.pm)")
+		c.S("* 2 EXISTS")
+		c.S("* 2 RECENT")
+		c.OK("A005", "EXPUNGEISSUED")
+
+		// Original message remains active until Noop/Status/Select.
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 3@3.pm)")
+		c.OK(`A005`)
+
+		// New message is now available.
+		c.C(`A005 FETCH 2 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("* 2 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 4@4.pm FLAGS (\\Recent \\Seen))")
+		c.OK("A005")
+
+		// Noop finally allows expunges.
+		c.C("A006 NOOP")
+		c.OK("A006")
+
+		// Old message is now gone.
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 4@4.pm)")
+		c.OK("A005")
+	})
+}

@@ -560,6 +560,15 @@ func MarkMessageAsDeleted(ctx context.Context, tx *ent.Tx, messageID imap.Intern
 	return nil
 }
 
+func MarkMessageAsDeletedAndAssignRandomRemoteID(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID) error {
+	randomID := imap.MessageID(fmt.Sprintf("DELETED-%v", imap.NewInternalMessageID()))
+	if _, err := tx.Message.Update().Where(message.ID(messageID)).SetDeleted(true).SetRemoteID(randomID).Save(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func MarkMessageAsDeletedWithRemoteID(ctx context.Context, tx *ent.Tx, messageID imap.MessageID) error {
 	if _, err := tx.Message.Update().Where(message.RemoteID(messageID)).SetDeleted(true).Save(ctx); err != nil {
 		return err
