@@ -221,11 +221,18 @@ func (s *Session) handleSelectedCommand(
 
 	return s.state.Selected(ctx, func(mailbox *state.Mailbox) error {
 		okResponse, err := s.handleWithMailbox(ctx, tag, cmd, mailbox, ch)
-		if err != nil {
-			return err
+
+		// Allow state updates to be applied if the command failed. It might resolve
+		// some invalid state problem.
+		if flushErr := flush(ctx, mailbox, false, ch); flushErr != nil {
+			if err != nil {
+				return fmt.Errorf("%w (flush err:%v)", err, flushErr)
+			}
+
+			return flushErr
 		}
 
-		if err := flush(ctx, mailbox, false, ch); err != nil {
+		if err != nil {
 			return err
 		}
 
