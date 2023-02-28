@@ -30,10 +30,12 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *proto.Appen
 	if err := s.state.AppendOnlyMailbox(ctx, nameUTF8, func(mailbox state.AppendOnlyMailbox, isSameMBox bool) error {
 		messageUID, err := mailbox.Append(ctx, cmd.GetMessage(), flags, toTime(cmd.GetDateTime()))
 		if err != nil {
-			reporter.MessageWithContext(ctx,
-				"Failed to append message to mailbox from state",
-				reporter.Context{"error": err},
-			)
+			if shouldReportIMAPCommandError(err) {
+				reporter.MessageWithContext(ctx,
+					"Failed to append message to mailbox from state",
+					reporter.Context{"error": err},
+				)
+			}
 
 			return err
 		}

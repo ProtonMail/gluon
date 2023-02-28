@@ -27,10 +27,12 @@ func (s *Session) handleDelete(ctx context.Context, tag string, cmd *proto.Del, 
 
 	selectedDeleted, err := s.state.Delete(ctx, nameUTF8)
 	if err != nil {
-		reporter.MessageWithContext(ctx,
-			"Failed to delete mailbox",
-			reporter.Context{"error": err},
-		)
+		if shouldReportIMAPCommandError(err) {
+			reporter.MessageWithContext(ctx,
+				"Failed to delete mailbox",
+				reporter.Context{"error": err},
+			)
+		}
 
 		return err
 	}

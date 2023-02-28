@@ -2,10 +2,13 @@ package connector
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
 )
+
+var ErrOperationNotAllowed = errors.New("operation not allowed")
 
 // Connector connects the gluon server to a remote mail store.
 type Connector interface {

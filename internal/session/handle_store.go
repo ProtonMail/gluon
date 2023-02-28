@@ -33,10 +33,12 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store,
 	if err := mailbox.Store(ctx, cmd.GetSequenceSet(), cmd.GetAction().GetOperation(), flags); errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err), nil
 	} else if err != nil {
-		reporter.MessageWithContext(ctx,
-			"Failed to store flags on messages",
-			reporter.Context{"error": err},
-		)
+		if shouldReportIMAPCommandError(err) {
+			reporter.MessageWithContext(ctx,
+				"Failed to store flags on messages",
+				reporter.Context{"error": err},
+			)
+		}
 
 		return nil, err
 	}
