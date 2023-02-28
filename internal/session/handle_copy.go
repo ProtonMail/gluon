@@ -3,7 +3,6 @@ package session
 import (
 	"context"
 	"errors"
-
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/parser/proto"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -33,10 +32,12 @@ func (s *Session) handleCopy(ctx context.Context, tag string, cmd *proto.Copy, m
 	} else if errors.Is(err, state.ErrNoSuchMailbox) {
 		return response.No(tag).WithError(err).WithItems(response.ItemTryCreate()), nil
 	} else if err != nil {
-		reporter.MessageWithContext(ctx,
-			"Failed to copy messages",
-			reporter.Context{"error": err},
-		)
+		if shouldReportIMAPCommandError(err) {
+			reporter.MessageWithContext(ctx,
+				"Failed to copy messages",
+				reporter.Context{"error": err},
+			)
+		}
 
 		return nil, err
 	}

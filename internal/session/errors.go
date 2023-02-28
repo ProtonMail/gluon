@@ -1,6 +1,11 @@
 package session
 
-import "errors"
+import (
+	"context"
+	"errors"
+	"github.com/ProtonMail/gluon/connector"
+	"net"
+)
 
 var (
 	ErrCreateInbox = errors.New("cannot create INBOX")
@@ -13,3 +18,18 @@ var (
 
 	ErrNotImplemented = errors.New("not implemented")
 )
+
+func shouldReportIMAPCommandError(err error) bool {
+	var netErr *net.OpError
+
+	switch {
+	case errors.Is(err, connector.ErrOperationNotAllowed):
+		return false
+	case errors.Is(err, context.Canceled):
+		return false
+	case errors.As(err, &netErr):
+		return false
+	}
+
+	return true
+}
