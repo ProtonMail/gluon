@@ -627,6 +627,12 @@ func (state *State) getLiteral(ctx context.Context, messageID ids.MessageIDPair)
 
 	storeLiteral, firstErr := state.user.GetStore().Get(messageID.InternalID)
 	if firstErr != nil {
+		// Do not attempt to recovered messages from the connector.
+		if ids.IsRecoveredRemoteMessageID(messageID.RemoteID) {
+			logrus.Debugf("Failed load %v from store, but it is a recovered message.", messageID.InternalID)
+			return nil, firstErr
+		}
+
 		logrus.Debugf("Failed load %v from store, attempting to download from connector", messageID.InternalID.ShortID())
 
 		connectorLiteral, err := state.user.GetRemote().GetMessageLiteral(ctx, messageID.RemoteID)
