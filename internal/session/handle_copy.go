@@ -32,10 +32,12 @@ func (s *Session) handleCopy(ctx context.Context, tag string, cmd *command.Copy,
 	} else if errors.Is(err, state.ErrNoSuchMailbox) {
 		return response.No(tag).WithError(err).WithItems(response.ItemTryCreate()), nil
 	} else if err != nil {
-		reporter.MessageWithContext(ctx,
-			"Failed to copy messages",
-			reporter.Context{"error": err},
-		)
+		if shouldReportIMAPCommandError(err) {
+			reporter.MessageWithContext(ctx,
+				"Failed to copy messages",
+				reporter.Context{"error": err},
+			)
+		}
 
 		return nil, err
 	}

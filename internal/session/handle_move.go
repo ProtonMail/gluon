@@ -32,10 +32,12 @@ func (s *Session) handleMove(ctx context.Context, tag string, cmd *command.Move,
 	} else if errors.Is(err, state.ErrNoSuchMailbox) {
 		return response.No(tag).WithError(err).WithItems(response.ItemTryCreate()), nil
 	} else if err != nil {
-		reporter.MessageWithContext(ctx,
-			"Failed to move messages from mailbox",
-			reporter.Context{"error": err},
-		)
+		if shouldReportIMAPCommandError(err) {
+			reporter.MessageWithContext(ctx,
+				"Failed to move messages from mailbox",
+				reporter.Context{"error": err},
+			)
+		}
 
 		return nil, err
 	}
