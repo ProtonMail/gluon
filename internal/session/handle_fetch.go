@@ -24,10 +24,12 @@ func (s *Session) handleFetch(ctx context.Context, tag string, cmd *command.Fetc
 	if err := mailbox.Fetch(ctx, cmd, ch); errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err), nil
 	} else if err != nil {
-		reporter.MessageWithContext(ctx,
-			"Failed to fetch messages",
-			reporter.Context{"error": err},
-		)
+		if shouldReportIMAPCommandError(err) {
+			reporter.MessageWithContext(ctx,
+				"Failed to fetch messages",
+				reporter.Context{"error": err},
+			)
+		}
 
 		return nil, err
 	}

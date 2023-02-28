@@ -25,10 +25,12 @@ func (s *Session) handleCreate(ctx context.Context, tag string, cmd *command.Cre
 	}
 
 	if err := s.state.Create(ctx, nameUTF8); err != nil {
-		reporter.MessageWithContext(ctx,
-			"Failed to create mailbox",
-			reporter.Context{"error": err},
-		)
+		if shouldReportIMAPCommandError(err) {
+			reporter.MessageWithContext(ctx,
+				"Failed to create mailbox",
+				reporter.Context{"error": err},
+			)
+		}
 
 		return err
 	}
