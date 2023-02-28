@@ -623,7 +623,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		// compare and see if the literal has changed.
 		onDiskLiteral, err := user.store.Get(internalMessageID)
 		if err != nil {
-			return fmt.Errorf("failed to retrieve literal from cache: %w", err)
+			logrus.Debugf("failed to retrieve literal from cache: %v", err)
 		}
 
 		updateLiteral := update.Literal
