@@ -1,6 +1,9 @@
 package tests
 
 import (
+	"github.com/stretchr/testify/require"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -188,6 +191,39 @@ func TestRemoteMessageUpdate(t *testing.T) {
 		c.C(`A002 STATUS mbox1 (MESSAGES)`)
 		c.S(`* STATUS "mbox1" (MESSAGES 1)`)
 		c.S(`A002 OK STATUS`)
+
+		s.messageUpdatedWithID("user", messageID, mailboxID, []byte("To: 4@4.pm"), time.Now())
+		s.flush("user")
+
+		c.C(`A002 STATUS mbox1 (MESSAGES)`)
+		c.S(`* STATUS "mbox1" (MESSAGES 1)`)
+		c.S(`A002 OK STATUS`)
+
+		c.C(`A00X SELECT mbox1`).OK(`A00X`)
+		c.C(`A005 FETCH 1 (BODY[HEADER.FIELDS (TO)])`)
+		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 4@4.pm FLAGS (\\Recent \\Seen))")
+		c.OK("A005")
+	})
+}
+
+func TestRemoteMessageUpdateSucceedsIfLiteralIsMissing(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), "test_store")
+
+	// Test that missing cache literal does not block an update.
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withDataDir(dataDir)), func(c *testConnection, s *testSession) {
+		mailboxID := s.mailboxCreated("user", []string{"mbox1"})
+		messageID := s.messageCreated("user", mailboxID, []byte("To: 3@3.pm"), time.Now())
+
+		s.flush("user")
+		c.C(`A002 STATUS mbox1 (MESSAGES)`)
+		c.S(`* STATUS "mbox1" (MESSAGES 1)`)
+		c.S(`A002 OK STATUS`)
+
+		// delete the literals
+		{
+			err := os.RemoveAll(dataDir)
+			require.NoError(t, err)
+		}
 
 		s.messageUpdatedWithID("user", messageID, mailboxID, []byte("To: 4@4.pm"), time.Now())
 		s.flush("user")
