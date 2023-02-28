@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -10,11 +11,13 @@ import (
 	"sync"
 
 	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/reporter"
 )
 
 type DB struct {
+	conn *sql.DB
 	db   *ent.Client
 	lock sync.RWMutex
 }
@@ -45,6 +48,8 @@ func (d *DB) Write(ctx context.Context, fn func(context.Context, *ent.Tx) error)
 func (d *DB) Close() error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
+
+	defer d.conn.Close()
 
 	return d.db.Close()
 }
@@ -121,12 +126,15 @@ func NewDB(dir, userID string) (*DB, bool, error) {
 		return nil, false, err
 	}
 
-	client, err := ent.Open(dialect.SQLite, getDatabaseConn(dir, userID, path))
+	db, err := sql.Open(dialect.SQLite, getDatabaseConn(dir, userID, path))
 	if err != nil {
 		return nil, false, err
 	}
 
-	return &DB{db: client}, !exists, nil
+	return &DB{
+		conn: db,
+		db:   ent.NewClient(ent.Driver(entsql.NewDriver(dialect.SQLite, entsql.Conn{db}))),
+	}, !exists, nil
 }
 
 func DeleteDB(dir, userID string) error {
