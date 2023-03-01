@@ -47,6 +47,7 @@ func TestIMAPTest(t *testing.T) {
 	}
 }
 
+// nolint: musttag
 type config struct {
 	Cases    []caseConfig
 	Settings map[string]settingsConfig

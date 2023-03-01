@@ -14,7 +14,7 @@ func TestClose(t *testing.T) {
 	// This test is still useful as we have no way of checking the fetch responses after the store command.
 	// Additionally, we also need to ensure that there are no unilateral EXPUNGE messages returned from the server after close.
 	// There is currently no way to check for this with the go imap client.
-	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		c[1].C("b001 CREATE saved-messages")
 		c[1].S("b001 OK CREATE")
 
@@ -52,6 +52,8 @@ func TestClose(t *testing.T) {
 		c[1].S(`* 3 FETCH (FLAGS (\Deleted \Recent \Seen))`)
 		c[1].Sx("A005 OK.*")
 
+		s.flush("user")
+
 		c[2].C("B003 NOOP")
 		c[2].S(
 			`* 1 FETCH (FLAGS (\Deleted \Seen))`,
@@ -66,6 +68,8 @@ func TestClose(t *testing.T) {
 
 		c[1].C(`A202 CLOSE`)
 		c[1].S("A202 OK CLOSE")
+
+		s.flush("user")
 
 		c[2].C("B003 NOOP")
 		c[2].S(
