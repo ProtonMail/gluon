@@ -2,8 +2,7 @@ package store_test
 
 import (
 	"bytes"
-	"github.com/ProtonMail/gluon/store/fallback_v0"
-	"math/rand"
+	"crypto/rand"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/store"
+	"github.com/ProtonMail/gluon/store/fallback_v0"
 	"github.com/stretchr/testify/require"
 )
 

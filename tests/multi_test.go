@@ -50,12 +50,14 @@ func TestExistsUpdatesInSeparateMailboxes(t *testing.T) {
 }
 
 func TestFetchUpdates(t *testing.T) {
-	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
+	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		c[1].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
 
 		// First client selects in INBOX to receive FETCH update.
 		c[1].C("A006 select INBOX")
 		c[1].Se("A006 OK [READ-WRITE] SELECT")
+
+		s.flush("user")
 
 		// Second client selects in INBOX and then sets some flags to generate a FETCH update.
 		c[2].C("b006 select INBOX")
@@ -64,6 +66,8 @@ func TestFetchUpdates(t *testing.T) {
 		c[2].C(`B007 STORE 1 +FLAGS (\Deleted)`)
 		c[2].S(`* 1 FETCH (FLAGS (\Deleted \Seen))`)
 		c[2].Sx("B007 OK .*")
+
+		s.flush("user")
 
 		// First client receives the FETCH update.
 		c[1].C("c001 noop")
