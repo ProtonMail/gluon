@@ -50,7 +50,7 @@ func (list *snapMsgList) binarySearchByUID(uid imap.UID) (int, bool) {
 
 func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) error {
 	if len(list.msg) > 0 && list.msg[len(list.msg)-1].UID >= msgUID {
-		return ErrOutOfOrderUIDInsertion
+		return fmt.Errorf("UID-Last=%v UID-Msg=%v: %w", list.msg[len(list.msg)-1].UID, msgUID, ErrOutOfOrderUIDInsertion)
 	}
 
 	snapMsg := &snapMsg{
