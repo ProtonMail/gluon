@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -212,16 +211,16 @@ func (state *State) Create(ctx context.Context, name string) error {
 	}
 
 	if strings.HasPrefix(strings.ToLower(name), ids.GluonRecoveryMailboxNameLowerCase) {
-		return fmt.Errorf("operation not allowed")
+		return ErrOperationNotAllowed
 	}
 
 	if state.delimiter != "" {
 		if strings.HasPrefix(name, state.delimiter) {
-			return errors.New("invalid mailbox name: begins with hierarchy separator")
+			return ErrMailboxNameBeginsWithSeparator
 		}
 
 		if strings.Contains(name, state.delimiter+state.delimiter) {
-			return errors.New("invalid mailbox name: has adjacent hierarchy separators")
+			return ErrMailboxNameAdjacentSeparator
 		}
 	}
 
@@ -277,7 +276,7 @@ func (state *State) Create(ctx context.Context, name string) error {
 // Delete returns true if the mailbox that was deleted was the same as the one that was currently selected.
 func (state *State) Delete(ctx context.Context, name string) (bool, error) {
 	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
-		return false, fmt.Errorf("operation not allowed")
+		return false, ErrOperationNotAllowed
 	}
 
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
@@ -303,7 +302,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 	}
 
 	if strings.EqualFold(oldName, ids.GluonRecoveryMailboxName) || strings.EqualFold(newName, ids.GluonRecoveryMailboxName) {
-		return fmt.Errorf("operation not allowed")
+		return ErrOperationNotAllowed
 	}
 
 	result, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (Result, error) {
@@ -465,7 +464,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 // It can only be used for appending.
 func (state *State) AppendOnlyMailbox(ctx context.Context, name string, fn func(AppendOnlyMailbox, bool) error) error {
 	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
-		return fmt.Errorf("operation not allowed")
+		return ErrOperationNotAllowed
 	}
 
 	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
