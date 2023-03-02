@@ -1,6 +1,9 @@
 package rfc822
 
-import "io"
+import (
+	"fmt"
+	"io"
+)
 
 type headerParser struct {
 	header []byte
@@ -67,22 +70,38 @@ func (hp *headerParser) next() (parsedHeaderEntry, error) {
 	result.valueStart = searchOffset
 
 	for searchOffset < headerLen {
-		// consume all content in between two quotes.
-		if hp.header[searchOffset] == '"' {
+		b := hp.header[searchOffset]
+
+		if b == '\r' {
 			searchOffset++
-			for searchOffset < headerLen && hp.header[searchOffset] != '"' {
-				searchOffset++
+			if searchOffset >= headerLen {
+				return parsedHeaderEntry{}, io.ErrUnexpectedEOF
+			}
+
+			if hp.header[searchOffset] != '\n' {
+				return parsedHeaderEntry{}, fmt.Errorf(`expected \n after \n`)
 			}
 			searchOffset++
 
-			continue
-		} else if hp.header[searchOffset] == '\n' {
-			searchOffset++
-			// if folding the next line has to start with space or tab.
-			if searchOffset < headerLen && (hp.header[searchOffset] != ' ' && hp.header[searchOffset] != '\t') {
-				result.valueEnd = searchOffset
-				break
+			// If the next character after new line is a space, it's a fold
+			if searchOffset < headerLen && isWSP(hp.header[searchOffset]) {
+				continue
 			}
+
+			result.valueEnd = searchOffset
+
+			break
+		} else if b == '\n' {
+			searchOffset++
+
+			// If the next character after new line is a space, it's a fold
+			if searchOffset < headerLen && isWSP(hp.header[searchOffset]) {
+				continue
+			}
+
+			result.valueEnd = searchOffset
+
+			break
 		} else {
 			searchOffset++
 		}
@@ -96,6 +115,10 @@ func (hp *headerParser) next() (parsedHeaderEntry, error) {
 	}
 
 	return result, nil
+}
+
+func isWSP(b byte) bool {
+	return b == ' ' || b == '\t'
 }
 
 type parsedHeaderEntry struct {

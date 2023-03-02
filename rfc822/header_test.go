@@ -1,6 +1,7 @@
 package rfc822
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/bradenaw/juniper/xslices"
@@ -188,35 +189,35 @@ func TestParseHeaderFoldedLine(t *testing.T) {
 }
 
 func TestParseHeaderMultilineFilename(t *testing.T) {
-	const literal = "Content-Type: application/msword; name=\"this is a very long\nfilename.doc\""
+	const literal = "Content-Type: application/msword; name=\"this is a very long\n filename.doc\""
 
 	header, err := NewHeader([]byte(literal))
 	require.NoError(t, err)
 
 	assert.Equal(t, [][]byte{
-		[]byte("Content-Type: application/msword; name=\"this is a very long\nfilename.doc\""),
+		[]byte("Content-Type: application/msword; name=\"this is a very long\n filename.doc\""),
 	}, header.getLines())
 }
 
 func TestParseHeaderMultilineFilenameWithColon(t *testing.T) {
-	const literal = "Content-Type: application/msword; name=\"this is a very long\nfilename: too long.doc\""
+	const literal = "Content-Type: application/msword; name=\"this is a very long\n filename: too long.doc\""
 
 	header, err := NewHeader([]byte(literal))
 	require.NoError(t, err)
 
 	assert.Equal(t, [][]byte{
-		[]byte("Content-Type: application/msword; name=\"this is a very long\nfilename: too long.doc\""),
+		[]byte("Content-Type: application/msword; name=\"this is a very long\n filename: too long.doc\""),
 	}, header.getLines())
 }
 
 func TestParseHeaderMultilineFilenameWithColonAndNewline(t *testing.T) {
-	const literal = "Content-Type: application/msword; name=\"this is a very long\nfilename: too long.doc\"\n"
+	const literal = "Content-Type: application/msword; name=\"this is a very long\n filename: too long.doc\"\n"
 
 	header, err := NewHeader([]byte(literal))
 	require.NoError(t, err)
 
 	assert.Equal(t, [][]byte{
-		[]byte("Content-Type: application/msword; name=\"this is a very long\nfilename: too long.doc\"\n"),
+		[]byte("Content-Type: application/msword; name=\"this is a very long\n filename: too long.doc\"\n"),
 	}, header.getLines())
 }
 
@@ -234,10 +235,10 @@ func TestParseHeaderMultilineIndent(t *testing.T) {
 
 func TestParseHeaderMultipleMultilineFilenames(t *testing.T) {
 	const literal = `Content-Type: application/msword; name="=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=
-=BB=B6.DOC"
+ =BB=B6.DOC"
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=
-=BB=B6.DOC"
+ =BB=B6.DOC"
 Content-ID: <>
 `
 
@@ -245,9 +246,9 @@ Content-ID: <>
 	require.NoError(t, err)
 
 	assert.Equal(t, [][]byte{
-		[]byte("Content-Type: application/msword; name=\"=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=\n=BB=B6.DOC\"\n"),
+		[]byte("Content-Type: application/msword; name=\"=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=\n =BB=B6.DOC\"\n"),
 		[]byte("Content-Transfer-Encoding: base64\n"),
-		[]byte("Content-Disposition: attachment; filename=\"=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=\n=BB=B6.DOC\"\n"),
+		[]byte("Content-Disposition: attachment; filename=\"=E5=B8=B6=E6=9C=89=E5=A4=96=E5=9C=8B=E5=AD=97=E7=AC=A6=E7=9A=84=E9=99=84=E4=\n =BB=B6.DOC\"\n"),
 		[]byte("Content-ID: <>\n"),
 	}, header.getLines())
 }
@@ -351,4 +352,41 @@ func TestHeader_Erase(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, literal, newLiteral)
 	}
+}
+
+func TestHeader_SubjectWithRandomQuote(t *testing.T) {
+	raw := lines(`Subject: All " your " random " brackets " ' ' : belong to us () {}`,
+		`Date: Sun, 30 Jan 2000 11:49:30 +0700`,
+		`Content-Type: multipart/alternative; boundary="----=_BOUNDARY_"`)
+
+	header, err := NewHeader(raw)
+	require.NoError(t, err)
+
+	require.Equal(
+		t,
+		`All " your " random " brackets " ' ' : belong to us () {}`,
+		header.Get("Subject"),
+	)
+}
+
+func lines(s ...string) []byte {
+	return append([]byte(strings.Join(s, "\r\n")), '\r', '\n')
+}
+
+func TestHeader_WithTrailingSpaces(t *testing.T) {
+	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com> 
+To:  Ned Freed <ned@innosoft.com> 
+Subject: Sample message 
+MIME-Version: 1.0 
+Content-type: multipart/mixed; boundary="simple boundary" 
+`
+
+	header, err := NewHeader([]byte(literal))
+	require.NoError(t, err)
+
+	require.Equal(t, "Nathaniel Borenstein <nsb@bellcore.com>", header.Get("From"))
+	require.Equal(t, "Ned Freed <ned@innosoft.com>", header.Get("To"))
+	require.Equal(t, "Sample message", header.Get("Subject"))
+	require.Equal(t, "1.0", header.Get("MIME-Version"))
+	require.Equal(t, `multipart/mixed; boundary="simple boundary"`, header.Get("Content-type"))
 }
