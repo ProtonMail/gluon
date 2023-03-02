@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/internal/state"
 	"net"
 )
 
@@ -23,6 +24,10 @@ func shouldReportIMAPCommandError(err error) bool {
 	var netErr *net.OpError
 
 	switch {
+	case errors.Is(err, ErrCreateInbox) || errors.Is(err, ErrDeleteInbox) || errors.Is(err, ErrReadOnly):
+		return false
+	case state.IsStateError(err):
+		return false
 	case errors.Is(err, connector.ErrOperationNotAllowed):
 		return false
 	case errors.Is(err, context.Canceled):
