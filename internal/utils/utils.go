@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"github.com/google/uuid"
 )
 
@@ -28,4 +29,15 @@ func ShortID(id string) string {
 	}
 
 	return id[0:l] + "..."
+}
+
+// ErrCause returns the cause of the error, the inner-most error in the wrapped chain.
+func ErrCause(err error) error {
+	cause := err
+
+	for errors.Unwrap(cause) != nil {
+		cause = errors.Unwrap(cause)
+	}
+
+	return cause
 }

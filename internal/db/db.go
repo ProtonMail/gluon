@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -87,10 +88,12 @@ func WriteResult[T any](ctx context.Context, db *DB, fn func(context.Context, *e
 	}
 
 	if err := tx.Commit(); err != nil {
-		reporter.MessageWithContext(ctx,
-			"Failed to commit database transaction",
-			reporter.Context{"error": err},
-		)
+		if !errors.Is(err, context.Canceled) {
+			reporter.MessageWithContext(ctx,
+				"Failed to commit database transaction",
+				reporter.Context{"error": err, "type": utils.ErrCause(err)},
+			)
+		}
 
 		return failResult, fmt.Errorf("committing transaction: %w", err)
 	}
