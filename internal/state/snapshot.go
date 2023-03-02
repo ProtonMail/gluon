@@ -33,13 +33,44 @@ func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *en
 		messages: newMsgList(len(snapshotMessages)),
 	}
 
-	for _, snapshotMessage := range snapshotMessages {
+	for idx, snapshotMessage := range snapshotMessages {
 		if err := snap.messages.insert(
 			ids.MessageIDPair{InternalID: snapshotMessage.InternalID, RemoteID: snapshotMessage.RemoteID},
 			snapshotMessage.UID,
 			snapshotMessage.GetFlagSet(),
 		); err != nil {
-			reporter.ExceptionWithContext(ctx, "Failed to insert message into new snapshot", reporter.Context{"error": err})
+			// Try to collect more info to understand how this can possibly happen.
+			var (
+				isUnsorted           bool
+				duplicateMessageList []ids.MessageIDPair
+				duplicateSet         = make(map[imap.UID]struct{})
+			)
+
+			lastUID := snapshotMessages[0].UID
+			duplicateSet[lastUID] = struct{}{}
+
+			for _, msg := range snapshotMessages[1:] {
+				if msg.UID >= lastUID {
+					isUnsorted = true
+				}
+
+				if _, ok := duplicateSet[msg.UID]; ok {
+					duplicateMessageList = append(duplicateMessageList, ids.MessageIDPair{InternalID: msg.InternalID, RemoteID: msg.RemoteID})
+				} else {
+					duplicateSet[msg.UID] = struct{}{}
+				}
+			}
+
+			reporter.ExceptionWithContext(ctx, "Failed to insert message into new snapshot",
+				reporter.Context{"error": err,
+					"mailbox-id":     mbox.RemoteID,
+					"sorted":         !isUnsorted,
+					"has-duplicates": len(duplicateMessageList) != 0,
+					"duplicates":     duplicateMessageList,
+					"message-idx":    idx,
+				},
+			)
+
 			return nil, err
 		}
 	}
