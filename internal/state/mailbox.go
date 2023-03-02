@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -252,7 +251,7 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 // If no items are copied the response object will be nil.
 func (m *Mailbox) Copy(ctx context.Context, seq []command.SeqRange, name string) (response.Item, error) {
 	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
-		return nil, fmt.Errorf("operation not allowed")
+		return nil, ErrOperationNotAllowed
 	}
 
 	mbox, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
@@ -303,7 +302,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq []command.SeqRange, name string)
 // If no items are moved the response object will be nil.
 func (m *Mailbox) Move(ctx context.Context, seq []command.SeqRange, name string) (response.Item, error) {
 	if strings.EqualFold(name, ids.GluonRecoveryMailboxName) {
-		return nil, fmt.Errorf("operation not allowed")
+		return nil, ErrOperationNotAllowed
 	}
 
 	mbox, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
