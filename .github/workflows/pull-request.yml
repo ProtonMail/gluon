@@ -2,7 +2,9 @@ name: Build and Test
 
 on:
   pull_request:
-    branches: dev
+    branches:
+      - dev
+      - temp/hotfix-perth-narrows
 
 jobs:
   check:
