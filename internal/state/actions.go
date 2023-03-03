@@ -554,40 +554,6 @@ func (state *State) actionAddMessageFlags(
 		return sm.ID.InternalID
 	})
 
-	// If setting messages as seen, only set those messages that aren't currently seen.
-	if addFlags.ContainsUnchecked(imap.FlagSeenLowerCase) {
-		var messagesToApply []imap.MessageID
-
-		for _, msg := range messages {
-			if !msg.flags.ContainsUnchecked(imap.FlagSeenLowerCase) {
-				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
-			}
-		}
-
-		if len(messagesToApply) != 0 {
-			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, true); err != nil {
-				return err
-			}
-		}
-	}
-
-	// If setting messages as flagged, only set those messages that aren't currently flagged.
-	if addFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
-		var messagesToApply []imap.MessageID
-
-		for _, msg := range messages {
-			if !msg.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
-				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
-			}
-		}
-
-		if len(messagesToApply) != 0 {
-			if err := state.user.GetRemote().SetMessagesFlagged(ctx, messagesToApply, true); err != nil {
-				return err
-			}
-		}
-	}
-
 	if err := state.applyMessageFlagsAdded(ctx, tx, internalMessageIDs, addFlags); err != nil {
 		return err
 	}
@@ -605,40 +571,6 @@ func (state *State) actionRemoveMessageFlags(
 		return sm.ID.InternalID
 	})
 
-	// If setting messages as unseen, only set those messages that are currently seen.
-	if remFlags.ContainsUnchecked(imap.FlagSeenLowerCase) {
-		var messagesToApply []imap.MessageID
-
-		for _, msg := range messages {
-			if msg.flags.ContainsUnchecked(imap.FlagSeenLowerCase) {
-				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
-			}
-		}
-
-		if len(messagesToApply) != 0 {
-			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, false); err != nil {
-				return err
-			}
-		}
-	}
-
-	// If setting messages as unflagged, only set those messages that are currently flagged.
-	if remFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
-		var messagesToApply []imap.MessageID
-
-		for _, msg := range messages {
-			if msg.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
-				messagesToApply = append(messagesToApply, msg.ID.RemoteID)
-			}
-		}
-
-		if len(messagesToApply) != 0 {
-			if err := state.user.GetRemote().SetMessagesFlagged(ctx, messagesToApply, false); err != nil {
-				return err
-			}
-		}
-	}
-
 	if err := state.applyMessageFlagsRemoved(ctx, tx, internalMessageIDs, remFlags); err != nil {
 		return err
 	}
@@ -654,36 +586,6 @@ func (state *State) actionSetMessageFlags(ctx context.Context, tx *ent.Tx, messa
 	internalMessageIDs := xslices.Map(messages, func(sm snapMsgWithSeq) imap.InternalMessageID {
 		return sm.ID.InternalID
 	})
-
-	// If setting messages as seen, only set those messages that aren't currently seen, and vice versa.
-	setSeen := map[bool][]imap.MessageID{true: {}, false: {}}
-
-	for _, msg := range messages {
-		if seen := setFlags.ContainsUnchecked(imap.FlagSeenLowerCase); seen != msg.flags.ContainsUnchecked(imap.FlagSeenLowerCase) {
-			setSeen[seen] = append(setSeen[seen], msg.ID.RemoteID)
-		}
-	}
-
-	for seen, messageIDs := range setSeen {
-		if err := state.user.GetRemote().SetMessagesSeen(ctx, messageIDs, seen); err != nil {
-			return err
-		}
-	}
-
-	// If setting messages as flagged, only set those messages that aren't currently flagged, and vice versa.
-	setFlagged := map[bool][]imap.MessageID{true: {}, false: {}}
-
-	for _, msg := range messages {
-		if flagged := setFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase); flagged != msg.flags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
-			setFlagged[flagged] = append(setFlagged[flagged], msg.ID.RemoteID)
-		}
-	}
-
-	for flagged, messageIDs := range setFlagged {
-		if err := state.user.GetRemote().SetMessagesFlagged(ctx, messageIDs, flagged); err != nil {
-			return err
-		}
-	}
 
 	return state.applyMessageFlagsSet(ctx, tx, internalMessageIDs, setFlags)
 }
