@@ -332,8 +332,9 @@ func GetMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Context, client *ent.C
 }
 
 type MessageFlagSet struct {
-	ID      imap.InternalMessageID
-	FlagSet imap.FlagSet
+	ID       imap.InternalMessageID
+	RemoteID imap.MessageID
+	FlagSet  imap.FlagSet
 }
 
 // GetMessageFlags returns the flags of the given messages.
@@ -347,7 +348,7 @@ func GetMessageFlags(ctx context.Context, client *ent.Client, messageIDs []imap.
 			WithFlags(func(query *ent.MessageFlagQuery) {
 				query.Select(messageflag.FieldValue)
 			}).
-			Select(message.FieldID).
+			Select(message.FieldID, message.FieldRemoteID).
 			All(ctx)
 		if err != nil {
 			return nil, err
@@ -355,8 +356,9 @@ func GetMessageFlags(ctx context.Context, client *ent.Client, messageIDs []imap.
 
 		for _, msg := range chunkMessages {
 			mfs := MessageFlagSet{
-				ID:      msg.ID,
-				FlagSet: imap.NewFlagSetWithCapacity(len(msg.Edges.Flags)),
+				ID:       msg.ID,
+				RemoteID: msg.RemoteID,
+				FlagSet:  imap.NewFlagSetWithCapacity(len(msg.Edges.Flags)),
 			}
 
 			for _, v := range msg.Edges.Flags {
