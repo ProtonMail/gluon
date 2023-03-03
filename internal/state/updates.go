@@ -80,6 +80,40 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 		return err
 	}
 
+	// If setting messages as seen, only set those messages that aren't currently seen.
+	if addFlags.ContainsUnchecked(imap.FlagSeenLowerCase) {
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range curFlags {
+			if !msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) {
+				messagesToApply = append(messagesToApply, msg.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, true); err != nil {
+				return err
+			}
+		}
+	}
+
+	// If setting messages as flagged, only set those messages that aren't currently flagged.
+	if addFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range curFlags {
+			if !msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
+				messagesToApply = append(messagesToApply, msg.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesFlagged(ctx, messagesToApply, true); err != nil {
+				return err
+			}
+		}
+	}
+
 	if addFlags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
 		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, true); err != nil {
 			return err
@@ -166,6 +200,39 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 	if err != nil {
 		return err
 	}
+	// If setting messages as unseen, only set those messages that are currently seen.
+	if remFlags.ContainsUnchecked(imap.FlagSeenLowerCase) {
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range curFlags {
+			if msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) {
+				messagesToApply = append(messagesToApply, msg.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, false); err != nil {
+				return err
+			}
+		}
+	}
+
+	// If setting messages as unflagged, only set those messages that are currently flagged.
+	if remFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
+		var messagesToApply []imap.MessageID
+
+		for _, msg := range curFlags {
+			if msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
+				messagesToApply = append(messagesToApply, msg.RemoteID)
+			}
+		}
+
+		if len(messagesToApply) != 0 {
+			if err := state.user.GetRemote().SetMessagesFlagged(ctx, messagesToApply, false); err != nil {
+				return err
+			}
+		}
+	}
 
 	if remFlags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
 		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, false); err != nil {
@@ -249,6 +316,41 @@ func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messag
 
 	if state.snap == nil {
 		return nil
+	}
+
+	curFlags, err := db.GetMessageFlags(ctx, tx.Client(), messageIDs)
+	if err != nil {
+		return err
+	}
+
+	// If setting messages as seen, only set those messages that aren't currently seen, and vice versa.
+	setSeen := map[bool][]imap.MessageID{true: {}, false: {}}
+
+	for _, msg := range curFlags {
+		if seen := setFlags.ContainsUnchecked(imap.FlagSeenLowerCase); seen != msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) {
+			setSeen[seen] = append(setSeen[seen], msg.RemoteID)
+		}
+	}
+
+	for seen, messageIDs := range setSeen {
+		if err := state.user.GetRemote().SetMessagesSeen(ctx, messageIDs, seen); err != nil {
+			return err
+		}
+	}
+
+	// If setting messages as flagged, only set those messages that aren't currently flagged, and vice versa.
+	setFlagged := map[bool][]imap.MessageID{true: {}, false: {}}
+
+	for _, msg := range curFlags {
+		if flagged := setFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase); flagged != msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
+			setFlagged[flagged] = append(setFlagged[flagged], msg.RemoteID)
+		}
+	}
+
+	for flagged, messageIDs := range setFlagged {
+		if err := state.user.GetRemote().SetMessagesFlagged(ctx, messageIDs, flagged); err != nil {
+			return err
+		}
 	}
 
 	if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {
