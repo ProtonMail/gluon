@@ -85,5 +85,5 @@ func NewRecoveredRemoteMessageID(internalID imap.InternalMessageID) imap.Message
 }
 
 func IsRecoveredRemoteMessageID(id imap.MessageID) bool {
-	return strings.HasPrefix(gluonInternalRecoveredMessageRemoteIDPrefix, string(id))
+	return strings.HasPrefix(string(id), gluonInternalRecoveredMessageRemoteIDPrefix)
 }
