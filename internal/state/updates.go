@@ -85,7 +85,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 		var messagesToApply []imap.MessageID
 
 		for _, msg := range curFlags {
-			if !msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) {
+			if !msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
 				messagesToApply = append(messagesToApply, msg.RemoteID)
 			}
 		}
@@ -102,7 +102,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 		var messagesToApply []imap.MessageID
 
 		for _, msg := range curFlags {
-			if !msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
+			if !msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
 				messagesToApply = append(messagesToApply, msg.RemoteID)
 			}
 		}
@@ -205,7 +205,7 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 		var messagesToApply []imap.MessageID
 
 		for _, msg := range curFlags {
-			if msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) {
+			if msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
 				messagesToApply = append(messagesToApply, msg.RemoteID)
 			}
 		}
@@ -222,7 +222,7 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 		var messagesToApply []imap.MessageID
 
 		for _, msg := range curFlags {
-			if msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
+			if msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
 				messagesToApply = append(messagesToApply, msg.RemoteID)
 			}
 		}
@@ -327,7 +327,7 @@ func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messag
 	setSeen := map[bool][]imap.MessageID{true: {}, false: {}}
 
 	for _, msg := range curFlags {
-		if seen := setFlags.ContainsUnchecked(imap.FlagSeenLowerCase); seen != msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) {
+		if seen := setFlags.ContainsUnchecked(imap.FlagSeenLowerCase); seen != msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
 			setSeen[seen] = append(setSeen[seen], msg.RemoteID)
 		}
 	}
@@ -342,7 +342,7 @@ func (state *State) applyMessageFlagsSet(ctx context.Context, tx *ent.Tx, messag
 	setFlagged := map[bool][]imap.MessageID{true: {}, false: {}}
 
 	for _, msg := range curFlags {
-		if flagged := setFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase); flagged != msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
+		if flagged := setFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase); flagged != msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
 			setFlagged[flagged] = append(setFlagged[flagged], msg.RemoteID)
 		}
 	}
