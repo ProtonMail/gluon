@@ -248,11 +248,13 @@ func (state *State) Create(ctx context.Context, name string) error {
 		}
 	}
 
-	mboxesToCreate, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) ([]string, error) {
+	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		client := tx.Client()
+
 		if mailboxCount, err := db.GetMailboxCount(ctx, client); err != nil {
-			return nil, err
+			return err
 		} else if err := state.imapLimits.CheckMailBoxCount(mailboxCount); err != nil {
-			return nil, err
+			return err
 		}
 
 		var mboxesToCreate []string
@@ -263,14 +265,14 @@ func (state *State) Create(ctx context.Context, name string) error {
 		}
 
 		if exists, err := db.MailboxExistsWithName(ctx, client, name); err != nil {
-			return nil, err
+			return err
 		} else if exists {
-			return nil, ErrExistingMailbox
+			return ErrExistingMailbox
 		}
 
 		for _, superior := range listSuperiors(name, state.delimiter) {
 			if exists, err := db.MailboxExistsWithName(ctx, client, superior); err != nil {
-				return nil, err
+				return err
 			} else if exists {
 				continue
 			}
@@ -280,13 +282,6 @@ func (state *State) Create(ctx context.Context, name string) error {
 
 		mboxesToCreate = append(mboxesToCreate, name)
 
-		return mboxesToCreate, nil
-	})
-	if err != nil {
-		return err
-	}
-
-	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		for _, mboxName := range mboxesToCreate {
 			if err := state.actionCreateMailbox(ctx, tx, mboxName, uidValidity); err != nil {
 				return err
@@ -303,20 +298,19 @@ func (state *State) Delete(ctx context.Context, name string) (bool, error) {
 		return false, ErrOperationNotAllowed
 	}
 
-	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return db.GetMailboxByName(ctx, client, name)
+	mboxID, err := db.WriteResult(ctx, state.db(), func(ctx context.Context, tx *ent.Tx) (imap.InternalMailboxID, error) {
+		mbox, err := db.GetMailboxByName(ctx, tx.Client(), name)
+		if err != nil {
+			return 0, ErrNoSuchMailbox
+		}
+
+		return mbox.ID, state.actionDeleteMailbox(ctx, tx, ids.NewMailboxIDPair(mbox))
 	})
 	if err != nil {
-		return false, ErrNoSuchMailbox
-	}
-
-	if err := state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return state.actionDeleteMailbox(ctx, tx, ids.NewMailboxIDPair(mbox))
-	}); err != nil {
 		return false, err
 	}
 
-	return state.snap != nil && state.snap.mboxID.InternalID == mbox.ID, nil
+	return state.snap != nil && state.snap.mboxID.InternalID == mboxID, nil
 }
 
 func (state *State) Rename(ctx context.Context, oldName, newName string) error {
@@ -329,25 +323,27 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		return ErrOperationNotAllowed
 	}
 
-	result, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (Result, error) {
+	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		client := tx.Client()
+
 		mbox, err := db.GetMailboxByName(ctx, client, oldName)
 		if err != nil {
-			return Result{}, ErrNoSuchMailbox
+			return ErrNoSuchMailbox
 		}
 
 		if exists, err := db.MailboxExistsWithName(ctx, client, newName); err != nil {
-			return Result{}, err
+			return err
 		} else if exists {
-			return Result{}, ErrExistingMailbox
+			return ErrExistingMailbox
 		}
 
 		var mboxesToCreate []string
 		for _, superior := range listSuperiors(newName, state.delimiter) {
 			if exists, err := db.MailboxExistsWithName(ctx, client, superior); err != nil {
-				return Result{}, err
+				return err
 			} else if exists {
 				if superior == oldName {
-					return Result{}, ErrExistingMailbox
+					return ErrExistingMailbox
 				}
 				continue
 			}
@@ -355,17 +351,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			mboxesToCreate = append(mboxesToCreate, superior)
 		}
 
-		return Result{
-			MBox:           mbox,
-			MBoxesToCreate: mboxesToCreate,
-		}, nil
-	})
-	if err != nil {
-		return err
-	}
-
-	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		for _, m := range result.MBoxesToCreate {
+		for _, m := range mboxesToCreate {
 			uidValidity, err := state.user.GenerateUIDValidity()
 			if err != nil {
 				return err
@@ -382,7 +368,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		}
 
 		if oldName == imap.Inbox {
-			return state.renameInbox(ctx, tx, result.MBox, newName)
+			return state.renameInbox(ctx, tx, mbox, newName)
 		}
 
 		mailboxes, err := db.GetAllMailboxes(ctx, tx.Client())
@@ -407,28 +393,21 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			}
 		}
 
-		return state.actionUpdateMailbox(ctx, tx, result.MBox.RemoteID, newName)
+		return state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, newName)
 	})
 }
 
 func (state *State) Subscribe(ctx context.Context, name string) error {
-	mbox, err := db.ReadResult(ctx, state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		mbox, err := db.GetMailboxByName(ctx, client, name)
+	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		mbox, err := db.GetMailboxByName(ctx, tx.Client(), name)
 		if err != nil {
-			return nil, ErrNoSuchMailbox
+			return ErrNoSuchMailbox
 		}
 
 		if mbox.Subscribed {
-			return nil, ErrAlreadySubscribed
+			return ErrAlreadySubscribed
 		}
 
-		return mbox, nil
-	})
-	if err != nil {
-		return err
-	}
-
-	return state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		return mbox.Update().SetSubscribed(true).Exec(ctx)
 	})
 }
