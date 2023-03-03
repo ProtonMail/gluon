@@ -166,9 +166,11 @@ func (conn *Dummy) MessageAdded(messageID imap.MessageID, mboxID imap.MailboxID)
 	conn.pushUpdate(imap.NewMessageMailboxesUpdated(
 		messageID,
 		conn.state.getMailboxIDs(messageID),
-		conn.state.isSeen(messageID),
-		conn.state.isFlagged(messageID),
-		conn.state.isDraft(messageID),
+		imap.MessageCustomFlags{
+			Seen:    conn.state.isSeen(messageID),
+			Flagged: conn.state.isFlagged(messageID),
+		    Draft:   conn.state.isDraft(messageID),
+		},
 	))
 
 	return nil
@@ -180,9 +182,11 @@ func (conn *Dummy) MessageRemoved(messageID imap.MessageID, mboxID imap.MailboxI
 	conn.pushUpdate(imap.NewMessageMailboxesUpdated(
 		messageID,
 		conn.state.getMailboxIDs(messageID),
-		conn.state.isSeen(messageID),
-		conn.state.isFlagged(messageID),
-		conn.state.isDraft(messageID),
+		imap.MessageCustomFlags{
+			Seen:    conn.state.isSeen(messageID),
+			Flagged: conn.state.isFlagged(messageID),
+		    Draft:   conn.state.isDraft(messageID),
+		},
 	))
 
 	return nil
@@ -193,9 +197,11 @@ func (conn *Dummy) MessageSeen(messageID imap.MessageID, seen bool) error {
 
 	conn.pushUpdate(imap.NewMessageFlagsUpdated(
 		messageID,
-		conn.state.isSeen(messageID),
-		conn.state.isFlagged(messageID),
-		conn.state.isDraft(messageID),
+		imap.MessageCustomFlags{
+			Seen:    conn.state.isSeen(messageID),
+			Flagged: conn.state.isFlagged(messageID),
+		    Draft:   conn.state.isDraft(messageID),
+		},
 	))
 
 	return nil
@@ -206,9 +212,11 @@ func (conn *Dummy) MessageFlagged(messageID imap.MessageID, flagged bool) error 
 
 	conn.pushUpdate(imap.NewMessageFlagsUpdated(
 		messageID,
-		conn.state.isSeen(messageID),
-		conn.state.isFlagged(messageID),
-		conn.state.isDraft(messageID),
+		imap.MessageCustomFlags{
+			Seen:    conn.state.isSeen(messageID),
+			Flagged: conn.state.isFlagged(messageID),
+		    Draft:   conn.state.isDraft(messageID),
+		},
 	))
 
 	return nil

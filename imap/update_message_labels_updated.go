@@ -11,29 +11,33 @@ type MessageMailboxesUpdated struct {
 
 	*updateWaiter
 
-	MessageID            MessageID
-	MailboxIDs           []MailboxID
-	Seen, Flagged, Draft bool
+	MessageID   MessageID
+	MailboxIDs  []MailboxID
+	CustomFlags MessageCustomFlags
 }
 
-func NewMessageMailboxesUpdated(messageID MessageID, mailboxIDs []MailboxID, seen, flagged, draft bool) *MessageMailboxesUpdated {
+type MessageCustomFlags struct {
+	Seen, Flagged, Draft, Answered bool
+}
+
+func (f MessageCustomFlags) String() string {
+	return fmt.Sprintf("seen=%v, flagged=%v, draft=%v, answered=%v", f.Seen, f.Flagged, f.Draft, f.Answered)
+}
+
+func NewMessageMailboxesUpdated(messageID MessageID, mailboxIDs []MailboxID, flags MessageCustomFlags) *MessageMailboxesUpdated {
 	return &MessageMailboxesUpdated{
 		updateWaiter: newUpdateWaiter(),
 		MessageID:    messageID,
 		MailboxIDs:   mailboxIDs,
-		Seen:         seen,
-		Flagged:      flagged,
-		Draft:        draft,
+		CustomFlags:  flags,
 	}
 }
 
 func (u *MessageMailboxesUpdated) String() string {
 	return fmt.Sprintf(
-		"MessageMailboxesUpdated: MessageID = %v, MailboxIDs = %v, seen = %v, flagged = %v, draft = %v",
+		"MessageMailboxesUpdated: MessageID = %v, MailboxIDs = %v, CustomFlags = %v",
 		u.MessageID.ShortID(),
 		xslices.Map(u.MailboxIDs, func(id MailboxID) string { return id.ShortID() }),
-		u.Seen,
-		u.Flagged,
-		u.Draft,
+		u.CustomFlags,
 	)
 }
