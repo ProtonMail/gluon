@@ -197,9 +197,11 @@ func (conn *Dummy) AddMessagesToMailbox(ctx context.Context, messageIDs []imap.M
 		conn.pushUpdate(imap.NewMessageMailboxesUpdated(
 			messageID,
 			conn.state.getMailboxIDs(messageID),
-			conn.state.isSeen(messageID),
-			conn.state.isFlagged(messageID),
-			conn.state.isDraft(messageID),
+			imap.MessageCustomFlags{
+				Seen:    conn.state.isSeen(messageID),
+				Flagged: conn.state.isFlagged(messageID),
+				Draft:   conn.state.isDraft(messageID),
+			},
 		))
 	}
 
@@ -213,9 +215,11 @@ func (conn *Dummy) RemoveMessagesFromMailbox(ctx context.Context, messageIDs []i
 		conn.pushUpdate(imap.NewMessageMailboxesUpdated(
 			messageID,
 			conn.state.getMailboxIDs(messageID),
-			conn.state.isSeen(messageID),
-			conn.state.isFlagged(messageID),
-			conn.state.isDraft(messageID),
+			imap.MessageCustomFlags{
+				Seen:    conn.state.isSeen(messageID),
+				Flagged: conn.state.isFlagged(messageID),
+				Draft:   conn.state.isDraft(messageID),
+			},
 		))
 	}
 
@@ -230,9 +234,11 @@ func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID
 		conn.pushUpdate(imap.NewMessageMailboxesUpdated(
 			messageID,
 			conn.state.getMailboxIDs(messageID),
-			conn.state.isSeen(messageID),
-			conn.state.isFlagged(messageID),
-			conn.state.isDraft(messageID),
+			imap.MessageCustomFlags{
+				Seen:    conn.state.isSeen(messageID),
+				Flagged: conn.state.isFlagged(messageID),
+				Draft:   conn.state.isDraft(messageID),
+			},
 		))
 	}
 
@@ -245,9 +251,11 @@ func (conn *Dummy) MarkMessagesSeen(ctx context.Context, messageIDs []imap.Messa
 
 		conn.pushUpdate(imap.NewMessageFlagsUpdated(
 			messageID,
-			conn.state.isSeen(messageID),
-			conn.state.isFlagged(messageID),
-			conn.state.isDraft(messageID),
+			imap.MessageCustomFlags{
+				Seen:    conn.state.isSeen(messageID),
+				Flagged: conn.state.isFlagged(messageID),
+				Draft:   conn.state.isDraft(messageID),
+			},
 		))
 	}
 
@@ -260,9 +268,11 @@ func (conn *Dummy) MarkMessagesFlagged(ctx context.Context, messageIDs []imap.Me
 
 		conn.pushUpdate(imap.NewMessageFlagsUpdated(
 			messageID,
-			conn.state.isSeen(messageID),
-			conn.state.isFlagged(messageID),
-			conn.state.isDraft(messageID),
+			imap.MessageCustomFlags{
+				Seen:    conn.state.isSeen(messageID),
+				Flagged: conn.state.isFlagged(messageID),
+				Draft:   conn.state.isDraft(messageID),
+			},
 		))
 	}
 
