@@ -17,3 +17,12 @@ func ItemUID(n imap.UID) *itemUID {
 func (c *itemUID) String() string {
 	return fmt.Sprintf("UID %v", c.uid)
 }
+
+func (c *itemUID) mergeWith(other Item) Item {
+	_, ok := other.(*itemUID)
+	if !ok {
+		return nil
+	}
+
+	return ItemUID(c.uid)
+}
