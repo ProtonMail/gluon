@@ -22,6 +22,33 @@ type Update interface {
 	String() string
 }
 
+type messageFlagsComboStateUpdate struct {
+	AllStateFilter
+	updates []Update
+}
+
+func newMessageFlagsComboStateUpdate() *messageFlagsComboStateUpdate {
+	return &messageFlagsComboStateUpdate{}
+}
+
+func (u *messageFlagsComboStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+	for _, v := range u.updates {
+		if err := v.Apply(ctx, tx, s); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (u *messageFlagsComboStateUpdate) addUpdate(update Update) {
+	u.updates = append(u.updates, update)
+}
+
+func (u *messageFlagsComboStateUpdate) String() string {
+	return fmt.Sprintf("messageFlagsComboStateUpdate: %v", u.updates)
+}
+
 type messageFlagsAddedStateUpdate struct {
 	AllStateFilter
 	messageIDs []imap.InternalMessageID
@@ -68,10 +95,16 @@ func (u *messageFlagsAddedStateUpdate) String() string {
 }
 
 // applyMessageFlagsAdded adds the flags to the given messages.
-func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, messageIDs []imap.InternalMessageID, addFlags imap.FlagSet) error {
+func (state *State) applyMessageFlagsAdded(ctx context.Context,
+	tx *ent.Tx,
+	messageIDs []imap.InternalMessageID,
+	addFlags imap.FlagSet) error {
 	if addFlags.ContainsUnchecked(imap.FlagRecentLowerCase) {
 		return fmt.Errorf("the recent flag is read-only")
 	}
+
+	// Since DB state can be more up to date then the flag state we should only emit add flag updates for values
+	// that actually changed.
 
 	client := tx.Client()
 
@@ -114,16 +147,21 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 		}
 	}
 
+	flagStateUpdate := newMessageFlagsComboStateUpdate()
+
 	if addFlags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
 		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, true); err != nil {
 			return err
 		}
+
+		flagStateUpdate.addUpdate(newMessageFlagsAddedStateUpdate(imap.NewFlagSet(imap.FlagDeleted), state.snap.mboxID, messageIDs, state.StateID))
 	}
 
-	for _, flag := range addFlags.Remove(imap.FlagDeleted).ToSlice() {
+	remainingFlags := addFlags.Remove(imap.FlagDeleted)
+	for _, flag := range remainingFlags {
 		flagLowerCase := strings.ToLower(flag)
 
-		var messagesToFlag []imap.InternalMessageID
+		messagesToFlag := make([]imap.InternalMessageID, 0, len(messageIDs)/2)
 
 		for _, v := range curFlags {
 			if !v.FlagSet.ContainsUnchecked(flagLowerCase) {
@@ -134,9 +172,11 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context, tx *ent.Tx, mess
 		if err := db.AddMessageFlag(ctx, tx, messagesToFlag, flag); err != nil {
 			return err
 		}
+
+		flagStateUpdate.addUpdate(newMessageFlagsAddedStateUpdate(remainingFlags, state.snap.mboxID, messagesToFlag, state.StateID))
 	}
 
-	if err := state.user.QueueOrApplyStateUpdate(ctx, tx, newMessageFlagsAddedStateUpdate(addFlags, state.snap.mboxID, messageIDs, state.StateID)); err != nil {
+	if err := state.user.QueueOrApplyStateUpdate(ctx, tx, flagStateUpdate); err != nil {
 		return err
 	}
 
@@ -234,16 +274,21 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 		}
 	}
 
+	flagStateUpdate := newMessageFlagsComboStateUpdate()
+
 	if remFlags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
 		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, false); err != nil {
 			return err
 		}
+
+		flagStateUpdate.addUpdate(NewMessageFlagsRemovedStateUpdate(imap.NewFlagSet(imap.FlagDeleted), state.snap.mboxID, messageIDs, state.StateID))
 	}
 
-	for _, flag := range remFlags.Remove(imap.FlagDeleted).ToSlice() {
+	remainingFlags := remFlags.Remove(imap.FlagDeleted)
+	for _, flag := range remainingFlags {
 		flagLowerCase := strings.ToLower(flag)
 
-		var messagesToFlag []imap.InternalMessageID
+		messagesToFlag := make([]imap.InternalMessageID, 0, len(messageIDs)/2)
 
 		for _, v := range curFlags {
 			if v.FlagSet.ContainsUnchecked(flagLowerCase) {
@@ -254,9 +299,11 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context, tx *ent.Tx, me
 		if err := db.RemoveMessageFlag(ctx, tx, messagesToFlag, flag); err != nil {
 			return err
 		}
+
+		flagStateUpdate.addUpdate(NewMessageFlagsRemovedStateUpdate(remainingFlags, state.snap.mboxID, messagesToFlag, state.StateID))
 	}
 
-	if err := state.user.QueueOrApplyStateUpdate(ctx, tx, NewMessageFlagsRemovedStateUpdate(remFlags, state.snap.mboxID, messageIDs, state.StateID)); err != nil {
+	if err := state.user.QueueOrApplyStateUpdate(ctx, tx, flagStateUpdate); err != nil {
 		return err
 	}
 
