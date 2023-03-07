@@ -28,7 +28,7 @@ func (s *Session) handleCreate(ctx context.Context, tag string, cmd *command.Cre
 		if shouldReportIMAPCommandError(err) {
 			reporter.MessageWithContext(ctx,
 				"Failed to create mailbox",
-				reporter.Context{"error": err},
+				reporter.Context{"error": err, "mailbox": nameUTF8},
 			)
 		}
 

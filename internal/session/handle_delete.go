@@ -29,7 +29,7 @@ func (s *Session) handleDelete(ctx context.Context, tag string, cmd *command.Del
 		if shouldReportIMAPCommandError(err) {
 			reporter.MessageWithContext(ctx,
 				"Failed to delete mailbox",
-				reporter.Context{"error": err},
+				reporter.Context{"error": err, "mailbox": nameUTF8},
 			)
 		}
 
