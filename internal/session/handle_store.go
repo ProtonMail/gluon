@@ -36,7 +36,7 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *proto.Store,
 		if shouldReportIMAPCommandError(err) {
 			reporter.MessageWithContext(ctx,
 				"Failed to store flags on messages",
-				reporter.Context{"error": err},
+				reporter.Context{"error": err, "mailbox": mailbox.Name(), "action": cmd.Action.String()},
 			)
 		}
 

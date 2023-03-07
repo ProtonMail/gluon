@@ -36,7 +36,7 @@ func (s *Session) handleMove(ctx context.Context, tag string, cmd *proto.Move, m
 		if shouldReportIMAPCommandError(err) {
 			reporter.MessageWithContext(ctx,
 				"Failed to move messages from mailbox",
-				reporter.Context{"error": err},
+				reporter.Context{"error": err, "mailbox_to": nameUTF8, "mailbox_from": mailbox.Name()},
 			)
 		}
 
