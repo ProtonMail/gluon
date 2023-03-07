@@ -31,7 +31,7 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *command.App
 			if shouldReportIMAPCommandError(err) {
 				reporter.MessageWithContext(ctx,
 					"Failed to append message to mailbox from state",
-					reporter.Context{"error": err},
+					reporter.Context{"error": err, "mailbox": nameUTF8},
 				)
 			}
 
