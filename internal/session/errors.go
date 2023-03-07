@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/rfc822"
 	"net"
 )
 
@@ -33,6 +34,8 @@ func shouldReportIMAPCommandError(err error) bool {
 	case errors.Is(err, context.Canceled):
 		return false
 	case errors.As(err, &netErr):
+		return false
+	case errors.Is(err, rfc822.ErrNoSuchPart):
 		return false
 	}
 
