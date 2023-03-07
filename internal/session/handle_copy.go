@@ -35,7 +35,7 @@ func (s *Session) handleCopy(ctx context.Context, tag string, cmd *proto.Copy, m
 		if shouldReportIMAPCommandError(err) {
 			reporter.MessageWithContext(ctx,
 				"Failed to copy messages",
-				reporter.Context{"error": err},
+				reporter.Context{"error": err, "mailbox_to": nameUTF8, "mailbox_from": mailbox.Name()},
 			)
 		}
 
