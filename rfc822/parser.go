@@ -3,12 +3,14 @@ package rfc822
 import (
 	"bytes"
 	"encoding/base64"
-	"fmt"
+	"errors"
 	"io"
 	"mime/quotedprintable"
 
 	"github.com/sirupsen/logrus"
 )
+
+var ErrNoSuchPart = errors.New("no such parts exists")
 
 type Section struct {
 	identifier   []int
@@ -107,7 +109,7 @@ func (section *Section) Part(identifier ...int) (*Section, error) {
 		}
 
 		if identifier[0] <= 0 || identifier[0]-1 > len(children) {
-			return nil, fmt.Errorf("no such part exists")
+			return nil, ErrNoSuchPart
 		}
 
 		if len(children) != 0 {
