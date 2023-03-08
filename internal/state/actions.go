@@ -11,7 +11,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
-	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
@@ -100,30 +99,42 @@ func (state *State) actionCreateMessage(
 
 	{
 		// Handle the case where duplicate messages can return the same remote ID.
-		internalID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), res.ID)
+		knownInternalID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), res.ID)
 		if err != nil && !ent.IsNotFound(err) {
 			return 0, err
 		}
 
 		if err == nil {
 			if cameFromDrafts {
-				reporter.ExceptionWithContext(ctx, "Append to drafts must not return an existing RemoteID", nil)
-				return 0, fmt.Errorf("append to drafts returned an existing remote ID")
+				logrus.Debugf("Deduped draft detected %v. Deleting old version and accepting new one", knownInternalID.ShortID())
+				// Remove the old draft from the mailbox
+				updates, err := RemoveMessagesFromMailbox(ctx, tx, mboxID.InternalID, []imap.InternalMessageID{knownInternalID})
+				if err != nil {
+					return 0, err
+				}
+
+				if err := db.MarkMessageAsDeletedAndAssignRandomRemoteID(ctx, tx, knownInternalID); err != nil {
+					return 0, err
+				}
+
+				if err := state.user.QueueOrApplyStateUpdate(ctx, tx, updates...); err != nil {
+					return 0, err
+				}
+			} else {
+				logrus.Debugf("Deduped message detected, adding existing %v message to mailbox instead.", knownInternalID.ShortID())
+
+				result, err := state.actionAddMessagesToMailbox(ctx,
+					tx,
+					[]ids.MessageIDPair{{InternalID: knownInternalID, RemoteID: res.ID}},
+					mboxID,
+					isSelectedMailbox,
+				)
+				if err != nil {
+					return 0, err
+				}
+
+				return result[0].UID, nil
 			}
-
-			logrus.Debugf("Deduped message detected, adding existing %v message to mailbox instead.", internalID.ShortID())
-
-			result, err := state.actionAddMessagesToMailbox(ctx,
-				tx,
-				[]ids.MessageIDPair{{InternalID: internalID, RemoteID: res.ID}},
-				mboxID,
-				isSelectedMailbox,
-			)
-			if err != nil {
-				return 0, err
-			}
-
-			return result[0].UID, nil
 		}
 	}
 
