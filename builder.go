@@ -2,6 +2,8 @@ package gluon
 
 import (
 	"crypto/tls"
+	"github.com/ProtonMail/gluon/internal/db"
+	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"time"
@@ -84,6 +86,12 @@ func (builder *serverBuilder) build() (*Server, error) {
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// Defer delete all the previous databases from removed user accounts. This is required since we can't
+	// close ent databases on demand.
+	if err := db.DeleteDeferredDBFiles(builder.databaseDir); err != nil {
+		logrus.WithError(err).Error("Failed to remove old database files")
 	}
 
 	return &Server{
