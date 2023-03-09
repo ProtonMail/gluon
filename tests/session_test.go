@@ -367,6 +367,18 @@ func (s *testSession) setUpdatesAllowedToFail(user string, value bool) {
 	s.conns[s.userIDs[user]].SetUpdatesAllowedToFail(value)
 }
 
+func (s *testSession) removeAccount(t testing.TB, user string) string {
+	userID := s.userIDs[user]
+
+	s.conns[userID].Flush()
+	require.NoError(t, s.server.RemoveUser(context.Background(), userID, true))
+
+	delete(s.conns, userID)
+	delete(s.userIDs, user)
+
+	return userID
+}
+
 func forMessageInMBox(rr io.Reader, fn func(messageDelimiter, literal []byte)) error {
 	mr := mbox.NewReader(rr)
 
