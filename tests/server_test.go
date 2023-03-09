@@ -210,6 +210,10 @@ func withReporter(reporter reporter.Reporter) serverOption {
 	return &reporterOption{reporter: reporter}
 }
 
+func withDatabaseDir(dir string) serverOption {
+	return &databaseDirOption{dir: dir}
+}
+
 func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
 	options := &serverOptions{
 		credentials: []credentials{{
