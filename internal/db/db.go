@@ -110,7 +110,7 @@ func getDatabasePath(dir, userID string) string {
 	return filepath.Join(dir, fmt.Sprintf("%v.db", userID))
 }
 
-func getDeferredDeleteDBPath(dir string) string {
+func GetDeferredDeleteDBPath(dir string) string {
 	return filepath.Join(dir, "deferred_delete")
 }
 
@@ -142,13 +142,13 @@ func NewDB(dir, userID string) (*DB, bool, error) {
 // run on the Gluon server.
 func DeleteDB(dir, userID string) error {
 	// Rather than deleting the files immediately move them to a directory to be cleaned up later.
-	deferredDeletePath := getDeferredDeleteDBPath(dir)
+	deferredDeletePath := GetDeferredDeleteDBPath(dir)
 
 	if err := os.MkdirAll(deferredDeletePath, 0o700); err != nil {
 		return fmt.Errorf("failed to create deferred delete dir: %w", err)
 	}
 
-	matchingFiles, err := filepath.Glob(filepath.Join(dir, userID))
+	matchingFiles, err := filepath.Glob(filepath.Join(dir, userID+"*"))
 	if err != nil {
 		return fmt.Errorf("failed to match db files:%w", err)
 	}
@@ -165,7 +165,7 @@ func DeleteDB(dir, userID string) error {
 
 // DeleteDeferredDBFiles deletes all data from previous databases that were scheduled for removal.
 func DeleteDeferredDBFiles(dir string) error {
-	deferredDeleteDir := getDeferredDeleteDBPath(dir)
+	deferredDeleteDir := GetDeferredDeleteDBPath(dir)
 	if err := os.RemoveAll(deferredDeleteDir); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return err
