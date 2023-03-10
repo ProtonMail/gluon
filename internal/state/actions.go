@@ -100,22 +100,34 @@ func (state *State) actionCreateMessage(
 
 	{
 		// Handle the case where duplicate messages can return the same remote ID.
-		internalID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), res.ID)
-		if err != nil && !ent.IsNotFound(err) {
-			return 0, err
+		knownInternalID, knownErr := db.GetMessageIDFromRemoteID(ctx, tx.Client(), res.ID)
+		if knownErr != nil && !ent.IsNotFound(knownErr) {
+			return 0, knownErr
 		}
+		if knownErr == nil {
+			// Try to collect the original message date.
+			var existingMessageDate time.Time
+			if existingMessage, msgErr := db.GetMessage(ctx, tx.Client(), internalID); msgErr == nil {
+				existingMessageDate = existingMessage.Date
+			}
 
-		if err == nil {
 			if cameFromDrafts {
-				reporter.ExceptionWithContext(ctx, "Append to drafts must not return an existing RemoteID", nil)
+				reporter.ExceptionWithContext(ctx, "Append to drafts must not return an existing RemoteID", reporter.Context{
+					"remote-id":     res.ID,
+					"new-date":      res.Date,
+					"original-date": existingMessageDate,
+				})
+
+				logrus.Errorf("Append to drafts must not return an existing RemoteID (Remote=%v, Internal=%v)", res.ID, knownInternalID)
+
 				return 0, fmt.Errorf("append to drafts returned an existing remote ID")
 			}
 
-			logrus.Debugf("Deduped message detected, adding existing %v message to mailbox instead.", internalID.ShortID())
+			logrus.Debugf("Deduped message detected, adding existing %v message to mailbox instead.", knownInternalID.ShortID())
 
 			result, err := state.actionAddMessagesToMailbox(ctx,
 				tx,
-				[]ids.MessageIDPair{{InternalID: internalID, RemoteID: res.ID}},
+				[]ids.MessageIDPair{{InternalID: knownInternalID, RemoteID: res.ID}},
 				mboxID,
 				isSelectedMailbox,
 			)
