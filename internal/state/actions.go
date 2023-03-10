@@ -116,6 +116,7 @@ func (state *State) actionCreateMessage(
 					"remote-id":     res.ID,
 					"new-date":      res.Date,
 					"original-date": existingMessageDate,
+					"mailbox":       mboxID.RemoteID,
 				})
 
 				logrus.Errorf("Append to drafts must not return an existing RemoteID (Remote=%v, Internal=%v)", res.ID, knownInternalID)
