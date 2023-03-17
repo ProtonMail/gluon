@@ -2,6 +2,7 @@ package rfc5322
 
 import (
 	"bytes"
+	"github.com/stretchr/testify/require"
 	"net/mail"
 	"testing"
 
@@ -754,6 +755,20 @@ func TestParseAddressInvalid(t *testing.T) {
 			assert.True(t, rfcparser.IsError(err))
 		})
 	}
+}
+
+func TestParseDisplayNameOnlyShouldBeError(t *testing.T) {
+	const input = "FooBar"
+	_, err := ParseAddressList(input)
+	require.Error(t, err)
+}
+
+func TestParseEmptyStringIsNotError(t *testing.T) {
+	_, err := ParseAddressList("")
+	require.NoError(t, err)
+
+	_, err = ParseAddress("")
+	require.NoError(t, err)
 }
 
 func TestParseAddressListEmoji(t *testing.T) {

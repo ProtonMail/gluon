@@ -27,6 +27,10 @@ type parserString struct {
 }
 
 func ParseAddress(input string) ([]*mail.Address, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
+
 	source := NewBacktrackingByteScanner([]byte(input))
 	scanner := rfcparser.NewScannerWithReader(source)
 	parser := rfcparser.NewParser(scanner)
@@ -47,6 +51,10 @@ func ParseAddress(input string) ([]*mail.Address, error) {
 }
 
 func ParseAddressList(input string) ([]*mail.Address, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
+
 	source := NewBacktrackingByteScanner([]byte(input))
 	scanner := rfcparser.NewScannerWithReader(source)
 	parser := rfcparser.NewParser(scanner)
