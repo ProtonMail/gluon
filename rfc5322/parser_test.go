@@ -763,6 +763,13 @@ func TestParseDisplayNameOnlyShouldBeError(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestParseInvalidHeaderValueShouldBeError(t *testing.T) {
+	// E.g: Incorrect header format causes headers fields to be combined into one, this should be invalid.
+	const input = "FooBar From:Too Subjects:x"
+	_, err := ParseAddressList(input)
+	require.Error(t, err)
+}
+
 func TestParseEmptyStringIsNotError(t *testing.T) {
 	_, err := ParseAddressList("")
 	require.NoError(t, err)

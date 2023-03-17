@@ -166,42 +166,53 @@ func parseGroup(p *Parser) ([]*mail.Address, bool, error) {
 			}
 		}
 
-		// Mailbox
-		var parsedFirstMailbox bool
+		// This section can optionally be one of the following: mailbox-list / CFWS / obs-group-list. So if
+		// we run out of input, we see semicolon or a double quote we should skip trying to parse this bit.
+		if !(p.parser.Check(rfcparser.TokenTypeEOF) ||
+			p.parser.Check(rfcparser.TokenTypeSemicolon) ||
+			p.parser.Check(rfcparser.TokenTypeDQuote)) {
+			// Mailbox
+			var parsedFirstMailbox bool
 
-		{
-			parserState := p.SaveState()
-			mailbox, err := parseMailbox(p)
-			if err != nil {
-				p.RestoreState(parserState)
-			} else {
-				parsedFirstMailbox = true
-				result = append(result, mailbox)
-			}
-		}
-
-		// *("," [mailbox / CFWS])
-		if parsedFirstMailbox {
-			for {
-				if ok, err := p.parser.Matches(rfcparser.TokenTypeComma); err != nil {
-					return nil, false, err
-				} else if !ok {
-					break
-				}
-
-				if ok, err := tryParseCFWS(p.parser); err != nil {
-					return nil, false, err
-				} else if ok {
-					continue
-				}
-
-				// Mailbox
+			{
+				parserState := p.SaveState()
 				mailbox, err := parseMailbox(p)
 				if err != nil {
+					p.RestoreState(parserState)
+				} else {
+					parsedFirstMailbox = true
+					result = append(result, mailbox)
+				}
+			}
+
+			// *("," [mailbox / CFWS])
+			if parsedFirstMailbox {
+				for {
+					if ok, err := p.parser.Matches(rfcparser.TokenTypeComma); err != nil {
+						return nil, false, err
+					} else if !ok {
+						break
+					}
+
+					if ok, err := tryParseCFWS(p.parser); err != nil {
+						return nil, false, err
+					} else if ok {
+						continue
+					}
+
+					// Mailbox
+					mailbox, err := parseMailbox(p)
+					if err != nil {
+						return nil, false, err
+					}
+
+					result = append(result, mailbox)
+				}
+			} else {
+				// If we did not parse a mailbox then we must parse CWFS
+				if err := parseCFWS(p.parser); err != nil {
 					return nil, false, err
 				}
-
-				result = append(result, mailbox)
 			}
 		}
 
