@@ -38,6 +38,18 @@ func TestRenameHierarchy(t *testing.T) {
 	})
 }
 
+func TestRenameHierarchyRoot(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
+		require.NoError(t, client.Create("foo/bar/zap"))
+
+		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "foo", "foo/bar", "foo/bar/zap"})
+
+		require.NoError(t, client.Rename("foo", "baz"))
+
+		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "baz", "baz/bar", "baz/bar/zap"})
+	})
+}
+
 func TestRenameAddHierarchy(t *testing.T) {
 	type renameTC struct {
 		src       string

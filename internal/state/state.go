@@ -371,6 +371,11 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			return state.renameInbox(ctx, tx, mbox, newName)
 		}
 
+		if err := state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, newName); err != nil {
+			return err
+		}
+
+		// Locally update all inferiors so we don't wait for update
 		mailboxes, err := db.GetAllMailboxes(ctx, tx.Client())
 		if err != nil {
 			return err
@@ -388,12 +393,12 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 			newInferior := newName + strings.TrimPrefix(inferior, oldName)
 
-			if err := state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, newInferior); err != nil {
+			if err := db.RenameMailboxWithRemoteID(ctx, tx, mbox.RemoteID, newInferior); err != nil {
 				return err
 			}
 		}
 
-		return state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, newName)
+		return nil
 	})
 }
 
