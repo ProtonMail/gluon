@@ -1,6 +1,8 @@
 package command
 
-import "github.com/ProtonMail/gluon/rfcparser"
+import (
+	"github.com/ProtonMail/gluon/rfcparser"
+)
 
 type InputCollector struct {
 	source rfcparser.Reader
@@ -21,7 +23,7 @@ func (i *InputCollector) Bytes() []byte {
 func (i *InputCollector) Read(dst []byte) (int, error) {
 	n, err := i.source.Read(dst)
 	if err == nil {
-		i.bytes = append(i.bytes, dst...)
+		i.bytes = append(i.bytes, dst[0:n]...)
 	}
 
 	return n, err
