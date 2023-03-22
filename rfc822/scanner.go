@@ -60,7 +60,7 @@ func indexOfNewLineAfterBoundary(data []byte) int {
 	for ; index < dataLen && data[index] == '\r'; index++ {
 	}
 
-	if data[index] == '\n' {
+	if index < dataLen && data[index] == '\n' {
 		return index
 	}
 

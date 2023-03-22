@@ -161,3 +161,10 @@ This is the epilogue.  It is also to be ignored.
 	require.NoError(t, err)
 	require.NotNil(t, parsed)
 }
+
+func TestParseMessage_GODT_2513(t *testing.T) {
+	// This sequence could cause a crash.
+	parsed, err := NewParsedMessage([]byte("Content-tYpe: multipArt/0;BoundArY=\"simple boundary\"\n\n--simple boundary\r"))
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+}
