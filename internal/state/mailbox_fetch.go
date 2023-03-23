@@ -114,6 +114,8 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 	}
 
 	if err := parallel.DoContext(ctx, parallelism, len(snapMessages), func(ctx context.Context, i int) error {
+		defer m.state.handlePanic()
+
 		msg := snapMessages[i]
 		message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
 			return db.GetMessage(ctx, client, msg.ID.InternalID)

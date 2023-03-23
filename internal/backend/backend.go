@@ -14,6 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/limits"
+	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
@@ -49,9 +50,11 @@ type Backend struct {
 	loginWG         sync.WaitGroup
 
 	imapLimits limits.IMAP
+
+	panicHandler queue.PanicHandler
 }
 
-func New(dataDir, databaseDir string, storeBuilder store.Builder, delim string, loginJailTime time.Duration, imapLimits limits.IMAP) (*Backend, error) {
+func New(dataDir, databaseDir string, storeBuilder store.Builder, delim string, loginJailTime time.Duration, imapLimits limits.IMAP, panicHandler queue.PanicHandler) (*Backend, error) {
 	return &Backend{
 		dataDir:       dataDir,
 		databaseDir:   databaseDir,
@@ -91,7 +94,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		return false, err
 	}
 
-	user, err := newUser(ctx, userID, db, conn, storeBuilder, b.delim, b.imapLimits, uidValidityGenerator)
+	user, err := newUser(ctx, userID, db, conn, storeBuilder, b.delim, b.imapLimits, uidValidityGenerator, b.panicHandler)
 	if err != nil {
 		return false, err
 	}

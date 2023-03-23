@@ -49,6 +49,8 @@ type State struct {
 	invalid bool
 
 	imapLimits limits.IMAP
+
+	panicHandler queue.PanicHandler
 }
 
 var stateIDGenerator int64
@@ -57,15 +59,22 @@ func nextStateID() StateID {
 	return StateID(atomic.AddInt64(&stateIDGenerator, 1))
 }
 
-func NewState(user UserInterface, delimiter string, imapLimits limits.IMAP) *State {
+func NewState(user UserInterface, delimiter string, imapLimits limits.IMAP, panicHandler queue.PanicHandler) *State {
 	return &State{
 		user:         user,
 		StateID:      nextStateID(),
 		doneCh:       make(chan struct{}),
 		snap:         nil,
 		delimiter:    delimiter,
-		updatesQueue: queue.NewQueuedChannel[Update](32, 128),
+		updatesQueue: queue.NewQueuedChannel[Update](32, 128, panicHandler),
 		imapLimits:   imapLimits,
+		panicHandler: panicHandler,
+	}
+}
+
+func (state *State) handlePanic() {
+	if state.panicHandler != nil {
+		state.panicHandler.HandlePanic()
 	}
 }
 

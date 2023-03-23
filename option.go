@@ -8,6 +8,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	limits2 "github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
+	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
@@ -190,6 +191,18 @@ func (withDisableParallelism) config(builder *serverBuilder) {
 
 func WithDisableParallelism() Option {
 	return &withDisableParallelism{}
+}
+
+type withPanicHandler struct {
+	panicHandler queue.PanicHandler
+}
+
+func (opt *withPanicHandler) config(builder *serverBuilder) {
+	builder.panicHandler = opt.panicHandler
+}
+
+func WithPanicHandler(panicHandler queue.PanicHandler) Option {
+	return &withPanicHandler{panicHandler}
 }
 
 type withIMAPLimits struct {

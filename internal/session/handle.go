@@ -10,6 +10,12 @@ import (
 	"github.com/ProtonMail/gluon/logging"
 )
 
+func (s *Session) handlePanic() {
+	if s.panicHandler != nil {
+		s.panicHandler.HandlePanic()
+	}
+}
+
 func (s *Session) handleOther(
 	ctx context.Context,
 	tag string,

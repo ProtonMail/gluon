@@ -21,7 +21,7 @@ type commandResult struct {
 func (s *Session) startCommandReader(ctx context.Context) <-chan commandResult {
 	cmdCh := make(chan commandResult)
 
-	logging.GoAnnotated(ctx, func(ctx context.Context) {
+	logging.GoAnnotated(ctx, s.panicHandler, func(ctx context.Context) {
 		defer close(cmdCh)
 
 		tlsHeaders := [][]byte{

@@ -2,11 +2,17 @@ package store
 
 import "sync"
 
+type PanicHandler interface {
+	HandlePanic()
+}
+
 // Semaphore implements a type used to limit concurrent operations.
 type Semaphore struct {
 	ch chan struct{}
 	wg sync.WaitGroup
 	rw sync.RWMutex
+
+	panicHandler PanicHandler
 }
 
 // NewSemaphore constructs a new semaphore with the given limit.
@@ -48,8 +54,20 @@ func (sem *Semaphore) Do(fn func()) {
 	fn()
 }
 
+func (sem *Semaphore) SetPanicHandler(panicHandler PanicHandler) {
+	sem.panicHandler = panicHandler
+}
+
+func (sem *Semaphore) handlePanic() {
+	if sem.panicHandler != nil {
+		sem.panicHandler.HandlePanic()
+	}
+}
+
 // Go executes the given function asynchronously.
 func (sem *Semaphore) Go(fn func()) {
+	defer sem.handlePanic()
+
 	sem.Lock()
 	sem.wg.Add(1)
 

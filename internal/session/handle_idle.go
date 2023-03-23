@@ -22,7 +22,7 @@ func (s *Session) handleIdle(ctx context.Context, tag string, _ *command.Idle, c
 	}
 
 	return s.state.Idle(ctx, func(pending []response.Response, resCh chan response.Response) error {
-		logging.GoAnnotated(ctx, func(ctx context.Context) {
+		logging.GoAnnotated(ctx, s.panicHandler, func(ctx context.Context) {
 			if s.idleBulkTime != 0 {
 				sendResponsesInBulks(s, resCh, s.idleBulkTime)
 			} else {

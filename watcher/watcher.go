@@ -11,7 +11,7 @@ type Watcher[T any] struct {
 	eventCh *queue.QueuedChannel[T]
 }
 
-func New[T any](ofType ...T) *Watcher[T] {
+func New[T any](panicHandler queue.PanicHandler, ofType ...T) *Watcher[T] {
 	types := make(map[reflect.Type]struct{}, len(ofType))
 
 	for _, t := range ofType {
@@ -20,7 +20,7 @@ func New[T any](ofType ...T) *Watcher[T] {
 
 	return &Watcher[T]{
 		types:   types,
-		eventCh: queue.NewQueuedChannel[T](1, 1),
+		eventCh: queue.NewQueuedChannel[T](1, 1, panicHandler),
 	}
 }
 

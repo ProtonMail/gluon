@@ -22,6 +22,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
+	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/ProtonMail/gluon/version"
@@ -88,6 +89,8 @@ type Session struct {
 	errorCount int
 
 	imapLimits limits.IMAP
+
+	panicHandler queue.PanicHandler
 }
 
 func New(
@@ -98,11 +101,12 @@ func New(
 	profiler profiling.CmdProfilerBuilder,
 	eventCh chan<- events.Event,
 	idleBulkTime time.Duration,
+	panicHandler queue.PanicHandler,
 ) *Session {
 	inputCollector := command.NewInputCollector(bufio.NewReader(conn))
 	scanner := rfcparser.NewScannerWithReader(inputCollector)
 
-	return &Session{
+	s := &Session{
 		conn:               conn,
 		inputCollector:     inputCollector,
 		scanner:            scanner,
@@ -113,7 +117,12 @@ func New(
 		idleBulkTime:       idleBulkTime,
 		version:            version,
 		cmdProfilerBuilder: profiler,
+		panicHandler:       panicHandler,
 	}
+
+	s.handleWG.SetPanicHandler(panicHandler)
+
+	return s
 }
 
 func (s *Session) SetIncomingLogger(w io.Writer) {
@@ -217,6 +226,8 @@ func (s *Session) serve(ctx context.Context) error {
 				for res := range respCh {
 					if err := res.Send(s); err != nil {
 						go func() {
+							s.handlePanic()
+
 							for range respCh {
 								// Consume all invalid input on error that is still being produced by the ongoing
 								// command.
