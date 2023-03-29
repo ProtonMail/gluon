@@ -8,7 +8,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/logging"
-	"github.com/ProtonMail/gluon/queue"
 )
 
 func (s *Session) handleOther(
@@ -16,17 +15,7 @@ func (s *Session) handleOther(
 	tag string,
 	cmd command.Payload,
 ) <-chan response.Response {
-	resCh := make(chan response.Response)
-
-	outCh := queue.NewQueuedChannel[response.Response](0, 0)
-
-	go func() {
-		defer outCh.Close()
-
-		for res := range resCh {
-			outCh.Enqueue(res)
-		}
-	}()
+	resCh := make(chan response.Response, 8)
 
 	s.handleWG.Go(func() {
 		logging.DoAnnotated(state.NewStateContext(ctx, s.state), func(ctx context.Context) {
@@ -45,7 +34,7 @@ func (s *Session) handleOther(
 		})
 	})
 
-	return outCh.GetChannel()
+	return resCh
 }
 
 // handleCommand returns a response instance if a command needs to force an exit of the client.

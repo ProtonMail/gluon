@@ -213,8 +213,16 @@ func (s *Session) serve(ctx context.Context) error {
 				}
 
 			default:
-				for res := range s.handleOther(withStartTime(ctx, time.Now()), res.command.Tag, cmd) {
+				respCh := s.handleOther(withStartTime(ctx, time.Now()), res.command.Tag, cmd)
+				for res := range respCh {
 					if err := res.Send(s); err != nil {
+						go func() {
+							for range respCh {
+								// Consume all invalid input on error that is still being produced by the ongoing
+								// command.
+							}
+						}()
+
 						return fmt.Errorf("failed to send response to client: %w", err)
 					}
 				}
