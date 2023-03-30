@@ -6,13 +6,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
@@ -35,7 +35,7 @@ type serverBuilder struct {
 	disableParallelism   bool
 	imapLimits           limits.IMAP
 	uidValidityGenerator imap.UIDValidityGenerator
-	panicHandler         queue.PanicHandler
+	panicHandler         async.PanicHandler
 }
 
 func newBuilder() (*serverBuilder, error) {
@@ -47,7 +47,7 @@ func newBuilder() (*serverBuilder, error) {
 		idleBulkTime:         500 * time.Millisecond,
 		imapLimits:           limits.DefaultLimits(),
 		uidValidityGenerator: imap.DefaultEpochUIDValidityGenerator(),
-		panicHandler:         queue.NoopPanicHandler{},
+		panicHandler:         async.NoopPanicHandler{},
 	}, nil
 }
 
@@ -102,8 +102,9 @@ func (builder *serverBuilder) build() (*Server, error) {
 		databaseDir:          builder.databaseDir,
 		backend:              backend,
 		sessions:             make(map[int]*session.Session),
-		serveErrCh:           queue.NewQueuedChannel[error](1, 1, builder.panicHandler),
+		serveErrCh:           async.NewQueuedChannel[error](1, 1, builder.panicHandler),
 		serveDoneCh:          make(chan struct{}),
+		serveWG:              async.MakeWaitGroup(builder.panicHandler),
 		inLogger:             builder.inLogger,
 		outLogger:            builder.outLogger,
 		tlsConfig:            builder.tlsConfig,
@@ -116,8 +117,6 @@ func (builder *serverBuilder) build() (*Server, error) {
 		uidValidityGenerator: builder.uidValidityGenerator,
 		panicHandler:         builder.panicHandler,
 	}
-
-	s.serveWG.SetPanicHandler(builder.panicHandler)
 
 	return s, nil
 }

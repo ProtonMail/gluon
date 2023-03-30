@@ -1,4 +1,4 @@
-package queue
+package async
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ func TestQueuedChannel(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	// Create a new queued channel.
-	queue := NewQueuedChannel[int](3, 3, nil)
+	queue := NewQueuedChannel[int](3, 3, NoopPanicHandler{})
 
 	// Push some items to the queue.
 	require.True(t, queue.Enqueue(1, 2, 3))
@@ -43,7 +43,7 @@ func TestQueuedChannelDoesNotLeakIfThereAreNoReadersOnCloseAndDiscard(t *testing
 	defer goleak.VerifyNone(t)
 
 	// Create a new queued channel.
-	queue := NewQueuedChannel[int](1, 3, nil)
+	queue := NewQueuedChannel[int](1, 3, NoopPanicHandler{})
 
 	// Push some items to the queue.
 	require.True(t, queue.Enqueue(1, 2, 3))

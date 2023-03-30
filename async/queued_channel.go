@@ -1,4 +1,4 @@
-package queue
+package async
 
 import (
 	"context"
@@ -17,14 +17,6 @@ type QueuedChannel[T any] struct {
 	cond   *sync.Cond
 	closed atomicBool // Should use atomic.Bool once we use Go 1.19!
 }
-
-type PanicHandler interface {
-	HandlePanic()
-}
-
-type NoopPanicHandler struct{}
-
-func (n NoopPanicHandler) HandlePanic() {}
 
 func NewQueuedChannel[T any](chanBufferSize, queueCapacity int, panicHandler PanicHandler) *QueuedChannel[T] {
 	queue := &QueuedChannel[T]{

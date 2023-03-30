@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/logging"
-	"github.com/ProtonMail/gluon/queue"
 )
 
 // updateInjector allows anyone to publish custom imap updates alongside the updates that are generated from the
@@ -24,7 +24,7 @@ type updateInjector struct {
 // newUpdateInjector creates a new updateInjector.
 //
 // nolint:contextcheck
-func newUpdateInjector(connector connector.Connector, userID string, panicHandler queue.PanicHandler) *updateInjector {
+func newUpdateInjector(connector connector.Connector, userID string, panicHandler async.PanicHandler) *updateInjector {
 	injector := &updateInjector{
 		updatesCh:     make(chan imap.Update),
 		forwardQuitCh: make(chan struct{}),

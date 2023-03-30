@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
@@ -13,7 +14,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"
-	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
@@ -44,7 +44,7 @@ type user struct {
 
 	uidValidityGenerator imap.UIDValidityGenerator
 
-	panicHandler queue.PanicHandler
+	panicHandler async.PanicHandler
 }
 
 func newUser(
@@ -56,7 +56,7 @@ func newUser(
 	delimiter string,
 	imapLimits limits.IMAP,
 	uidValidityGenerator imap.UIDValidityGenerator,
-	panicHandler queue.PanicHandler,
+	panicHandler async.PanicHandler,
 ) (*user, error) {
 	if err := database.Init(ctx); err != nil {
 		return nil, err

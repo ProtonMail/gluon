@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
@@ -114,7 +115,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 	}
 
 	if err := parallel.DoContext(ctx, parallelism, len(snapMessages), func(ctx context.Context, i int) error {
-		defer m.state.handlePanic()
+		defer async.HandlePanic(m.state.panicHandler)
 
 		msg := snapMessages[i]
 		message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {

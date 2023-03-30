@@ -5,10 +5,10 @@ import (
 	"io"
 	"time"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/imap"
 	limits2 "github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
@@ -194,14 +194,14 @@ func WithDisableParallelism() Option {
 }
 
 type withPanicHandler struct {
-	panicHandler queue.PanicHandler
+	panicHandler async.PanicHandler
 }
 
 func (opt *withPanicHandler) config(builder *serverBuilder) {
 	builder.panicHandler = opt.panicHandler
 }
 
-func WithPanicHandler(panicHandler queue.PanicHandler) Option {
+func WithPanicHandler(panicHandler async.PanicHandler) Option {
 	return &withPanicHandler{panicHandler}
 }
 

@@ -7,13 +7,13 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/limits"
-	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/sets"
@@ -41,7 +41,7 @@ type State struct {
 
 	doneCh chan struct{}
 
-	updatesQueue *queue.QueuedChannel[Update]
+	updatesQueue *async.QueuedChannel[Update]
 
 	delimiter string
 
@@ -50,7 +50,7 @@ type State struct {
 
 	imapLimits limits.IMAP
 
-	panicHandler queue.PanicHandler
+	panicHandler async.PanicHandler
 }
 
 var stateIDGenerator int64
@@ -59,22 +59,16 @@ func nextStateID() StateID {
 	return StateID(atomic.AddInt64(&stateIDGenerator, 1))
 }
 
-func NewState(user UserInterface, delimiter string, imapLimits limits.IMAP, panicHandler queue.PanicHandler) *State {
+func NewState(user UserInterface, delimiter string, imapLimits limits.IMAP, panicHandler async.PanicHandler) *State {
 	return &State{
 		user:         user,
 		StateID:      nextStateID(),
 		doneCh:       make(chan struct{}),
 		snap:         nil,
 		delimiter:    delimiter,
-		updatesQueue: queue.NewQueuedChannel[Update](32, 128, panicHandler),
+		updatesQueue: async.NewQueuedChannel[Update](32, 128, panicHandler),
 		imapLimits:   imapLimits,
 		panicHandler: panicHandler,
-	}
-}
-
-func (state *State) handlePanic() {
-	if state.panicHandler != nil {
-		state.panicHandler.HandlePanic()
 	}
 }
 

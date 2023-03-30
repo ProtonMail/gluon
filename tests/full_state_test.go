@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/logging"
-	"github.com/ProtonMail/gluon/queue"
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"
@@ -112,7 +112,7 @@ func TestReceptionOnIdle(t *testing.T) {
 		wg.Add(2)
 
 		// idling.
-		logging.GoAnnotated(context.Background(), queue.NoopPanicHandler{}, func(ctx context.Context) {
+		logging.GoAnnotated(context.Background(), async.NoopPanicHandler{}, func(ctx context.Context) {
 			defer wg.Done()
 			done <- c.Idle(stop, nil)
 		}, logging.Labels{
@@ -121,7 +121,7 @@ func TestReceptionOnIdle(t *testing.T) {
 		})
 
 		// receiving messages from another client.
-		logging.GoAnnotated(context.Background(), queue.NoopPanicHandler{}, func(ctx context.Context) {
+		logging.GoAnnotated(context.Background(), async.NoopPanicHandler{}, func(ctx context.Context) {
 			defer wg.Done()
 
 			cli := sess.newClient()

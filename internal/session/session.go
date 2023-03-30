@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
@@ -22,11 +23,9 @@ import (
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/ProtonMail/gluon/version"
-	"github.com/ProtonMail/gluon/wait"
 	"github.com/emersion/go-imap/utf7"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
@@ -83,14 +82,14 @@ type Session struct {
 	cmdProfilerBuilder profiling.CmdProfilerBuilder
 
 	// handleWG is used to wait for all commands to finish before closing the session.
-	handleWG wait.Group
+	handleWG async.WaitGroup
 
 	/// errorCount error counter
 	errorCount int
 
 	imapLimits limits.IMAP
 
-	panicHandler queue.PanicHandler
+	panicHandler async.PanicHandler
 }
 
 func New(
@@ -101,12 +100,12 @@ func New(
 	profiler profiling.CmdProfilerBuilder,
 	eventCh chan<- events.Event,
 	idleBulkTime time.Duration,
-	panicHandler queue.PanicHandler,
+	panicHandler async.PanicHandler,
 ) *Session {
 	inputCollector := command.NewInputCollector(bufio.NewReader(conn))
 	scanner := rfcparser.NewScannerWithReader(inputCollector)
 
-	s := &Session{
+	return &Session{
 		conn:               conn,
 		inputCollector:     inputCollector,
 		scanner:            scanner,
@@ -117,12 +116,9 @@ func New(
 		idleBulkTime:       idleBulkTime,
 		version:            version,
 		cmdProfilerBuilder: profiler,
+		handleWG:           async.MakeWaitGroup(panicHandler),
 		panicHandler:       panicHandler,
 	}
-
-	s.handleWG.SetPanicHandler(panicHandler)
-
-	return s
 }
 
 func (s *Session) SetIncomingLogger(w io.Writer) {
@@ -226,7 +222,7 @@ func (s *Session) serve(ctx context.Context) error {
 				for res := range respCh {
 					if err := res.Send(s); err != nil {
 						go func() {
-							s.handlePanic()
+							defer async.HandlePanic(s.panicHandler)
 
 							for range respCh {
 								// Consume all invalid input on error that is still being produced by the ongoing

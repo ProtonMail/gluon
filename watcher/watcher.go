@@ -3,15 +3,15 @@ package watcher
 import (
 	"reflect"
 
-	"github.com/ProtonMail/gluon/queue"
+	"github.com/ProtonMail/gluon/async"
 )
 
 type Watcher[T any] struct {
 	types   map[reflect.Type]struct{}
-	eventCh *queue.QueuedChannel[T]
+	eventCh *async.QueuedChannel[T]
 }
 
-func New[T any](panicHandler queue.PanicHandler, ofType ...T) *Watcher[T] {
+func New[T any](panicHandler async.PanicHandler, ofType ...T) *Watcher[T] {
 	types := make(map[reflect.Type]struct{}, len(ofType))
 
 	for _, t := range ofType {
@@ -20,7 +20,7 @@ func New[T any](panicHandler queue.PanicHandler, ofType ...T) *Watcher[T] {
 
 	return &Watcher[T]{
 		types:   types,
-		eventCh: queue.NewQueuedChannel[T](1, 1, panicHandler),
+		eventCh: async.NewQueuedChannel[T](1, 1, panicHandler),
 	}
 }
 

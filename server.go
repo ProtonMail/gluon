@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
@@ -19,11 +20,9 @@ import (
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
-	"github.com/ProtonMail/gluon/wait"
 	"github.com/ProtonMail/gluon/watcher"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -45,13 +44,13 @@ type Server struct {
 	sessionsLock sync.RWMutex
 
 	// serveErrCh collects errors encountered while serving.
-	serveErrCh *queue.QueuedChannel[error]
+	serveErrCh *async.QueuedChannel[error]
 
 	// serveDoneCh is used to stop the server.
 	serveDoneCh chan struct{}
 
 	// serveWG keeps track of serving goroutines.
-	serveWG wait.Group
+	serveWG async.WaitGroup
 
 	// nextID holds the ID that will be given to the next session.
 	nextID     int
@@ -88,7 +87,7 @@ type Server struct {
 
 	uidValidityGenerator imap.UIDValidityGenerator
 
-	panicHandler queue.PanicHandler
+	panicHandler async.PanicHandler
 }
 
 // New creates a new server with the given options.
@@ -193,10 +192,7 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 
 // serve handles incoming connections and starts a new goroutine for each.
 func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
-	var connWG wait.Group
-	defer connWG.Wait()
-
-	connWG.SetPanicHandler(s.panicHandler)
+	connWG := async.MakeWaitGroup(s.panicHandler)
 
 	for {
 		select {
@@ -364,7 +360,7 @@ func (s *Server) publish(event events.Event) {
 
 // newConnCh accepts connections from the given listener.
 // It returns a channel of all accepted connections which is closed when the listener is closed.
-func newConnCh(l net.Listener, panicHandler queue.PanicHandler) <-chan net.Conn {
+func newConnCh(l net.Listener, panicHandler async.PanicHandler) <-chan net.Conn {
 	connCh := make(chan net.Conn)
 
 	go func() {

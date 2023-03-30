@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/store/fallback_v0"
@@ -18,7 +19,7 @@ func TestStore_DecryptFailedOnFilesBiggerThanBlockSize(t *testing.T) {
 	store, err := store.NewOnDiskStore(
 		t.TempDir(),
 		[]byte("pass"),
-		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU(), async.NoopPanicHandler{})),
 	)
 	require.NoError(t, err)
 
@@ -40,7 +41,7 @@ func BenchmarkStoreRead(t *testing.B) {
 	store, err := store.NewOnDiskStore(
 		t.TempDir(),
 		[]byte("pass"),
-		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU(), async.NoopPanicHandler{})),
 	)
 	require.NoError(t, err)
 
@@ -66,7 +67,7 @@ func TestStoreReadFailsIfHeaderDoesNotMatch(t *testing.T) {
 	store, err := store.NewOnDiskStore(
 		storeDir,
 		[]byte("pass"),
-		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU(), async.NoopPanicHandler{})),
 	)
 	require.NoError(t, err)
 
@@ -109,7 +110,7 @@ func TestStoreFallbackRead(t *testing.T) {
 		store, err := store.NewOnDiskStore(
 			storeDir,
 			[]byte("pass"),
-			store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+			store.WithSemaphore(store.NewSemaphore(runtime.NumCPU(), async.NoopPanicHandler{})),
 		)
 		require.NoError(t, err)
 		defer func() {
@@ -125,7 +126,7 @@ func TestStoreFallbackRead(t *testing.T) {
 		store, err := store.NewOnDiskStore(
 			storeDir,
 			[]byte("pass"),
-			store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+			store.WithSemaphore(store.NewSemaphore(runtime.NumCPU(), async.NoopPanicHandler{})),
 			store.WithFallback(fallbackStore),
 		)
 		require.NoError(t, err)
@@ -143,7 +144,7 @@ func TestOnDiskStore(t *testing.T) {
 	store, err := store.NewOnDiskStore(
 		t.TempDir(),
 		[]byte("pass"),
-		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU())),
+		store.WithSemaphore(store.NewSemaphore(runtime.NumCPU(), async.NoopPanicHandler{})),
 	)
 	require.NoError(t, err)
 
