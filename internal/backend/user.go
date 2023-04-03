@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
@@ -42,6 +43,8 @@ type user struct {
 	imapLimits limits.IMAP
 
 	uidValidityGenerator imap.UIDValidityGenerator
+
+	panicHandler async.PanicHandler
 }
 
 func newUser(
@@ -53,6 +56,7 @@ func newUser(
 	delimiter string,
 	imapLimits limits.IMAP,
 	uidValidityGenerator imap.UIDValidityGenerator,
+	panicHandler async.PanicHandler,
 ) (*user, error) {
 	if err := database.Init(ctx); err != nil {
 		return nil, err
@@ -84,7 +88,7 @@ func newUser(
 		userID: userID,
 
 		connector:      conn,
-		updateInjector: newUpdateInjector(conn, userID),
+		updateInjector: newUpdateInjector(conn, userID, panicHandler),
 		store:          store.NewWriteControlledStore(st),
 		delimiter:      delimiter,
 
@@ -98,6 +102,8 @@ func newUser(
 		imapLimits: imapLimits,
 
 		uidValidityGenerator: uidValidityGenerator,
+
+		panicHandler: panicHandler,
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
@@ -119,7 +125,7 @@ func newUser(
 	user.updateWG.Add(1)
 
 	// nolint:contextcheck
-	logging.GoAnnotated(context.Background(), func(ctx context.Context) {
+	logging.GoAnnotated(context.Background(), panicHandler, func(ctx context.Context) {
 		defer user.updateWG.Done()
 
 		updateCh := user.updateInjector.GetUpdates()
@@ -227,6 +233,7 @@ func (user *user) newState() (*state.State, error) {
 		newStateUserInterfaceImpl(user, newStateConnectorImpl(user)),
 		user.delimiter,
 		user.imapLimits,
+		user.panicHandler,
 	)
 
 	user.states[newState.StateID] = newState

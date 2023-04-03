@@ -1,17 +1,23 @@
 package store
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/ProtonMail/gluon/async"
+)
 
 // Semaphore implements a type used to limit concurrent operations.
 type Semaphore struct {
 	ch chan struct{}
 	wg sync.WaitGroup
 	rw sync.RWMutex
+
+	panicHandler async.PanicHandler
 }
 
 // NewSemaphore constructs a new semaphore with the given limit.
-func NewSemaphore(max int) *Semaphore {
-	return &Semaphore{ch: make(chan struct{}, max)}
+func NewSemaphore(max int, panicHandler async.PanicHandler) *Semaphore {
+	return &Semaphore{ch: make(chan struct{}, max), panicHandler: panicHandler}
 }
 
 // Lock locks the semaphore, waiting first until it is possible.
@@ -50,6 +56,8 @@ func (sem *Semaphore) Do(fn func()) {
 
 // Go executes the given function asynchronously.
 func (sem *Semaphore) Go(fn func()) {
+	defer async.HandlePanic(sem.panicHandler)
+
 	sem.Lock()
 	sem.wg.Add(1)
 

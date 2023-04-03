@@ -1,4 +1,4 @@
-package queue
+package async
 
 import (
 	"context"
@@ -18,7 +18,7 @@ type QueuedChannel[T any] struct {
 	closed atomicBool // Should use atomic.Bool once we use Go 1.19!
 }
 
-func NewQueuedChannel[T any](chanBufferSize, queueCapacity int) *QueuedChannel[T] {
+func NewQueuedChannel[T any](chanBufferSize, queueCapacity int, panicHandler PanicHandler) *QueuedChannel[T] {
 	queue := &QueuedChannel[T]{
 		ch:     make(chan T, chanBufferSize),
 		stopCh: make(chan struct{}),
@@ -30,7 +30,7 @@ func NewQueuedChannel[T any](chanBufferSize, queueCapacity int) *QueuedChannel[T
 	queue.closed.store(false)
 
 	// Start the queue consumer.
-	logging.GoAnnotated(context.Background(), func(ctx context.Context) {
+	logging.GoAnnotated(context.Background(), panicHandler, func(ctx context.Context) {
 		defer close(queue.ch)
 
 		for {

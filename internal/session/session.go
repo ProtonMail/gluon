@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
@@ -25,7 +26,6 @@ import (
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/ProtonMail/gluon/version"
-	"github.com/ProtonMail/gluon/wait"
 	"github.com/emersion/go-imap/utf7"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
@@ -82,12 +82,14 @@ type Session struct {
 	cmdProfilerBuilder profiling.CmdProfilerBuilder
 
 	// handleWG is used to wait for all commands to finish before closing the session.
-	handleWG wait.Group
+	handleWG async.WaitGroup
 
 	/// errorCount error counter
 	errorCount int
 
 	imapLimits limits.IMAP
+
+	panicHandler async.PanicHandler
 }
 
 func New(
@@ -98,6 +100,7 @@ func New(
 	profiler profiling.CmdProfilerBuilder,
 	eventCh chan<- events.Event,
 	idleBulkTime time.Duration,
+	panicHandler async.PanicHandler,
 ) *Session {
 	inputCollector := command.NewInputCollector(bufio.NewReader(conn))
 	scanner := rfcparser.NewScannerWithReader(inputCollector)
@@ -113,6 +116,8 @@ func New(
 		idleBulkTime:       idleBulkTime,
 		version:            version,
 		cmdProfilerBuilder: profiler,
+		handleWG:           async.MakeWaitGroup(panicHandler),
+		panicHandler:       panicHandler,
 	}
 }
 
@@ -217,6 +222,8 @@ func (s *Session) serve(ctx context.Context) error {
 				for res := range respCh {
 					if err := res.Send(s); err != nil {
 						go func() {
+							defer async.HandlePanic(s.panicHandler)
+
 							for range respCh {
 								// Consume all invalid input on error that is still being produced by the ongoing
 								// command.

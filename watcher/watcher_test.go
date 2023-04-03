@@ -3,12 +3,14 @@ package watcher
 import (
 	"testing"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWatcher(t *testing.T) {
 	watcher := New[events.Event](
+		async.NoopPanicHandler{},
 		events.ListenerAdded{},
 		events.ListenerRemoved{},
 	)

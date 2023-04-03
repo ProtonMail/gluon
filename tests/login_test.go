@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/events"
-	"github.com/ProtonMail/gluon/wait"
 	"github.com/stretchr/testify/require"
 )
 
@@ -120,7 +120,7 @@ func TestLoginTooManyAttemptsMany(t *testing.T) {
 		c[2].C("A002 login user badpass").NO("A002")
 		c[3].C("A003 login user badpass").NO("A003")
 
-		var wg wait.Group
+		wg := async.MakeWaitGroup(async.NoopPanicHandler{})
 
 		// All clients should be jailed for 1 sec.
 		for _, i := range []int{1, 2, 3} {

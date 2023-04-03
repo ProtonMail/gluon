@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
@@ -57,6 +58,8 @@ func (m *Mailbox) Search(ctx context.Context, keys []command.SearchKey, decoder 
 	}
 
 	if err := parallel.DoContext(ctx, parallelism, msgCount, func(ctx context.Context, i int) error {
+		defer async.HandlePanic(m.state.panicHandler)
+
 		msg, ok := m.snap.messages.getWithSeqID(imap.SeqID(i + 1))
 		if !ok {
 			return nil

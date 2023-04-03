@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/logging"
@@ -23,7 +24,7 @@ type updateInjector struct {
 // newUpdateInjector creates a new updateInjector.
 //
 // nolint:contextcheck
-func newUpdateInjector(connector connector.Connector, userID string) *updateInjector {
+func newUpdateInjector(connector connector.Connector, userID string, panicHandler async.PanicHandler) *updateInjector {
 	injector := &updateInjector{
 		updatesCh:     make(chan imap.Update),
 		forwardQuitCh: make(chan struct{}),
@@ -31,7 +32,7 @@ func newUpdateInjector(connector connector.Connector, userID string) *updateInje
 
 	injector.forwardWG.Add(1)
 
-	logging.GoAnnotated(context.Background(), func(ctx context.Context) {
+	logging.GoAnnotated(context.Background(), panicHandler, func(ctx context.Context) {
 		injector.forward(ctx, connector.GetUpdates())
 	}, logging.Labels{
 		"Action": "Forwarding updates",

@@ -4,11 +4,12 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSemaphore(t *testing.T) {
-	sem := NewSemaphore(4)
+	sem := NewSemaphore(4, async.NoopPanicHandler{})
 
 	// Block the semaphore so that tasks wait until we unblock it.
 	sem.Block()

@@ -2,21 +2,21 @@ package gluon
 
 import (
 	"crypto/tls"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"time"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/db"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/queue"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
+	"github.com/sirupsen/logrus"
 )
 
 type serverBuilder struct {
@@ -35,6 +35,7 @@ type serverBuilder struct {
 	disableParallelism   bool
 	imapLimits           limits.IMAP
 	uidValidityGenerator imap.UIDValidityGenerator
+	panicHandler         async.PanicHandler
 }
 
 func newBuilder() (*serverBuilder, error) {
@@ -46,6 +47,7 @@ func newBuilder() (*serverBuilder, error) {
 		idleBulkTime:         500 * time.Millisecond,
 		imapLimits:           limits.DefaultLimits(),
 		uidValidityGenerator: imap.DefaultEpochUIDValidityGenerator(),
+		panicHandler:         async.NoopPanicHandler{},
 	}, nil
 }
 
@@ -83,6 +85,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 		builder.delim,
 		builder.loginJailTime,
 		builder.imapLimits,
+		builder.panicHandler,
 	)
 	if err != nil {
 		return nil, err
@@ -94,13 +97,14 @@ func (builder *serverBuilder) build() (*Server, error) {
 		logrus.WithError(err).Error("Failed to remove old database files")
 	}
 
-	return &Server{
+	s := &Server{
 		dataDir:              builder.dataDir,
 		databaseDir:          builder.databaseDir,
 		backend:              backend,
 		sessions:             make(map[int]*session.Session),
-		serveErrCh:           queue.NewQueuedChannel[error](1, 1),
+		serveErrCh:           async.NewQueuedChannel[error](1, 1, builder.panicHandler),
 		serveDoneCh:          make(chan struct{}),
+		serveWG:              async.MakeWaitGroup(builder.panicHandler),
 		inLogger:             builder.inLogger,
 		outLogger:            builder.outLogger,
 		tlsConfig:            builder.tlsConfig,
@@ -111,5 +115,8 @@ func (builder *serverBuilder) build() (*Server, error) {
 		reporter:             builder.reporter,
 		disableParallelism:   builder.disableParallelism,
 		uidValidityGenerator: builder.uidValidityGenerator,
-	}, nil
+		panicHandler:         builder.panicHandler,
+	}
+
+	return s, nil
 }
