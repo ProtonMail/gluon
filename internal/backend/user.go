@@ -125,7 +125,7 @@ func newUser(
 	user.updateWG.Add(1)
 
 	// nolint:contextcheck
-	logging.GoAnnotated(context.Background(), panicHandler, func(ctx context.Context) {
+	async.GoAnnotated(context.Background(), panicHandler, func(ctx context.Context) {
 		defer user.updateWG.Done()
 
 		updateCh := user.updateInjector.GetUpdates()

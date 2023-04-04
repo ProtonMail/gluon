@@ -334,7 +334,7 @@ func (s *Server) getNextID() int {
 func (s *Server) newEventCh(ctx context.Context) chan events.Event {
 	eventCh := make(chan events.Event)
 
-	logging.GoAnnotated(ctx, s.panicHandler, func(ctx context.Context) {
+	async.GoAnnotated(ctx, s.panicHandler, func(ctx context.Context) {
 		for event := range eventCh {
 			s.publish(event)
 		}
@@ -364,11 +364,7 @@ func newConnCh(l net.Listener, panicHandler async.PanicHandler) <-chan net.Conn 
 	connCh := make(chan net.Conn)
 
 	go func() {
-		defer func() {
-			if panicHandler != nil {
-				panicHandler.HandlePanic()
-			}
-		}()
+		defer async.HandlePanic(panicHandler)
 
 		defer close(connCh)
 

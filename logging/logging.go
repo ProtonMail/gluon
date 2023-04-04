@@ -20,24 +20,6 @@ const (
 	LineKey = "line"
 )
 
-type PanicHandler interface {
-	HandlePanic()
-}
-
-func GoAnnotated(ctx context.Context, panicHandler PanicHandler, fn func(context.Context), labelMap ...Labels) {
-	pprofDo(ctx, toLabelSet(labelMap...), func(ctx context.Context) {
-		go func() {
-			defer func() {
-				if panicHandler != nil {
-					panicHandler.HandlePanic()
-				}
-			}()
-
-			fn(ctx)
-		}()
-	})
-}
-
 func DoAnnotated(ctx context.Context, fn func(context.Context), labelMap ...Labels) {
 	pprofDo(ctx, toLabelSet(labelMap...), fn)
 }
