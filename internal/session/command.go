@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/logging"
@@ -21,7 +22,7 @@ type commandResult struct {
 func (s *Session) startCommandReader(ctx context.Context) <-chan commandResult {
 	cmdCh := make(chan commandResult)
 
-	logging.GoAnnotated(ctx, s.panicHandler, func(ctx context.Context) {
+	async.GoAnnotated(ctx, s.panicHandler, func(ctx context.Context) {
 		defer close(cmdCh)
 
 		tlsHeaders := [][]byte{

@@ -32,7 +32,7 @@ func newUpdateInjector(connector connector.Connector, userID string, panicHandle
 
 	injector.forwardWG.Add(1)
 
-	logging.GoAnnotated(context.Background(), panicHandler, func(ctx context.Context) {
+	async.GoAnnotated(context.Background(), panicHandler, func(ctx context.Context) {
 		injector.forward(ctx, connector.GetUpdates())
 	}, logging.Labels{
 		"Action": "Forwarding updates",
