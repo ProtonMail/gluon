@@ -63,6 +63,7 @@ func New(dataDir, databaseDir string, storeBuilder store.Builder, delim string, 
 		storeBuilder:  storeBuilder,
 		loginJailTime: loginJailTime,
 		imapLimits:    imapLimits,
+		panicHandler:  panicHandler,
 	}, nil
 }
 
