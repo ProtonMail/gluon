@@ -463,8 +463,7 @@ func TestFetchFromDataUids(t *testing.T) {
 }
 
 func TestFetchInReplyTo(t *testing.T) {
-	const message = `From cras@irccrew.org  Tue Jul 23 19:39:23 2002
-Received: with ECARTIS (v1.0.0; list dovecot); Tue, 23 Jul 2002 19:39:23 +0300 (EEST)
+	const message = `Received: with ECARTIS (v1.0.0; list dovecot); Tue, 23 Jul 2002 19:39:23 +0300 (EEST)
 Return-Path: <cras@irccrew.org>
 Delivered-To: dovecot@procontrol.fi
 Date: Tue, 23 Jul 2002 19:39:23 +0300
