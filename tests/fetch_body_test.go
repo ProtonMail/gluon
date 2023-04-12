@@ -704,8 +704,7 @@ func TestFetchBodyPeekInvalidSectionNumber(t *testing.T) {
 func TestFetchBody_Dovecot_InvalidMessageHeader(t *testing.T) {
 	// This tests fails when requesting when fetch BODY.PEEK[HEADER.FIELDS (In-Reply-To In-Reply-To Cc)].
 	// Instead of only returning In-Reply-To and Cc, it was also returning the References header.
-	const message = `From tss@iki.fi  Mon Apr  7 01:27:38 2003
-Received: with ECARTIS (v1.0.0; list dovecot); Mon, 07 Apr 2003 01:27:38 +0300 (EEST)
+	const message = `Received: with ECARTIS (v1.0.0; list dovecot); Mon, 07 Apr 2003 01:27:38 +0300 (EEST)
 Return-Path: <tss@iki.fi>
 X-Original-To: dovecot@procontrol.fi
 Delivered-To: dovecot@procontrol.fi

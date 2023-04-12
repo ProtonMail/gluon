@@ -455,6 +455,7 @@ func EraseHeaderValue(literal []byte, key string) ([]byte, error) {
 var (
 	ErrNonASCIIHeaderKey = fmt.Errorf("header key contains invalid characters")
 	ErrKeyNotFound       = fmt.Errorf("invalid header key")
+	ErrParseHeader       = fmt.Errorf("failed to parse header")
 )
 
 func mergeMultiline(line []byte) string {

@@ -289,14 +289,6 @@ func TestSplitHeaderBodyOnlyHeaderNoNewline(t *testing.T) {
 	assert.Equal(t, []byte(""), body)
 }
 
-func TestParseHeaderWithPrelude(t *testing.T) {
-	const literal = "From cras@irccrew.org  Tue Aug  6 13:34:34 2002\r\nTo: user@pm.me"
-	header, err := NewHeader([]byte(literal))
-	require.NoError(t, err)
-
-	assert.Equal(t, header.Get("to"), "user@pm.me")
-}
-
 func TestSetHeaderValue(t *testing.T) {
 	const literal = "To: user@pm.me"
 
@@ -307,21 +299,6 @@ func TestSetHeaderValue(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, newHeader, []byte("Foo: bar\r\nTo: user@pm.me"))
-	// Ensure the original data wasn't modified.
-	assert.Equal(t, literalBytes, []byte(literal))
-}
-
-func TestSetHeaderValueWithPrelude(t *testing.T) {
-	const literal = "From cras@irccrew.org  Tue Aug  6 13:34:34 2002\r\nTo: user@pm.me"
-
-	// Create a clone so we can test this with mutable memory.
-	literalBytes := xslices.Clone([]byte(literal))
-
-	newHeader, err := SetHeaderValue(literalBytes, "foo", "bar")
-	require.NoError(t, err)
-
-	assert.Equal(t, newHeader, []byte("From cras@irccrew.org  Tue Aug  6 13:34:34 2002\r\nFoo: bar\r\nTo: user@pm.me"))
-
 	// Ensure the original data wasn't modified.
 	assert.Equal(t, literalBytes, []byte(literal))
 }
@@ -389,4 +366,37 @@ Content-type: multipart/mixed; boundary="simple boundary"
 	require.Equal(t, "Sample message", header.Get("Subject"))
 	require.Equal(t, "1.0", header.Get("MIME-Version"))
 	require.Equal(t, `multipart/mixed; boundary="simple boundary"`, header.Get("Content-type"))
+}
+
+func TestHeader_MBoxFormatCausesError(t *testing.T) {
+	const literal = `X-Mozilla-Keys:
+>From 1637354717149124322@xxx Tue Jun 25 22:52:20 +0000 2019
+X-GM-THIRD: 12345
+`
+
+	_, err := NewHeader([]byte(literal))
+	require.Error(t, err)
+}
+
+func TestHeader_EmptyField(t *testing.T) {
+	const literal = "X-Mozilla-Keys:\r\nX-GM-THIRD: 12345\r\n"
+
+	header, err := NewHeader([]byte(literal))
+	require.NoError(t, err)
+	require.Empty(t, header.Get("X-Mozilla-Key"))
+	require.Equal(t, "12345", header.Get("X-GM-THIRD"))
+}
+
+func TestHeader_MissingLFAfterCRIsError(t *testing.T) {
+	const literal = "X-Mozilla-Keys:\rX-GM-THIRD: 12345\r\n"
+
+	_, err := NewHeader([]byte(literal))
+	require.Error(t, err)
+}
+
+func TestHeader_InvalidCharAfterColonIsError(t *testing.T) {
+	const literal = "X-Mozilla-Keys:#X-GM-THIRD: 12345\r\n"
+
+	_, err := NewHeader([]byte(literal))
+	require.Error(t, err)
 }
