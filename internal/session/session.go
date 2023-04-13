@@ -110,7 +110,7 @@ func New(
 		inputCollector:     inputCollector,
 		scanner:            scanner,
 		backend:            backend,
-		caps:               []imap.Capability{imap.IMAP4rev1, imap.IDLE, imap.UNSELECT, imap.UIDPLUS, imap.MOVE},
+		caps:               []imap.Capability{imap.IMAP4rev1, imap.IDLE, imap.UNSELECT, imap.UIDPLUS, imap.MOVE, imap.ID},
 		sessionID:          sessionID,
 		eventCh:            eventCh,
 		idleBulkTime:       idleBulkTime,

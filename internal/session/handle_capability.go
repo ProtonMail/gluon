@@ -16,7 +16,7 @@ func (s *Session) getCaps() []imap.Capability {
 		return s.caps
 	}
 
-	caps := []imap.Capability{}
+	var caps []imap.Capability
 	for _, c := range s.caps {
 		if imap.IsCapabilityAvailableBeforeAuth(c) {
 			caps = append(caps, c)
