@@ -90,7 +90,7 @@ func TestLoginLiteralFailure(t *testing.T) {
 func TestLoginCapabilities(t *testing.T) {
 	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("A001 login user pass")
-		c.S(`A001 OK [CAPABILITY IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT] Logged in`)
+		c.S(`A001 OK [CAPABILITY ID IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT] Logged in`)
 	})
 }
 
