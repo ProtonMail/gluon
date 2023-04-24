@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/internal/utils"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
@@ -31,4 +32,6 @@ type UserInterface interface {
 	GetRecoveryMailboxID() ids.MailboxIDPair
 
 	GenerateUIDValidity() (imap.UID, error)
+
+	GetRecoveredMessageHashesMap() *utils.MessageHashesMap
 }

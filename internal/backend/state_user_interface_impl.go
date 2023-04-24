@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/internal/utils"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db"
@@ -88,4 +89,8 @@ func (s *StateUserInterfaceImpl) GetRecoveryMailboxID() ids.MailboxIDPair {
 		InternalID: s.u.recoveryMailboxID,
 		RemoteID:   ids.GluonInternalRecoveryMailboxRemoteID,
 	}
+}
+
+func (s *StateUserInterfaceImpl) GetRecoveredMessageHashesMap() *utils.MessageHashesMap {
+	return s.u.recoveredMessageHashes
 }

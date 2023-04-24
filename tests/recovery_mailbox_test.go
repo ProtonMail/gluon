@@ -200,6 +200,44 @@ func TestFailedAppendEndsInRecovery(t *testing.T) {
 	})
 }
 
+func TestFailedAppendAreDedupedInRecoveryMailbox(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&failAppendLabelConnectorBuilder{})), func(client *client.Client, s *testSession) {
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
+		status, err := client.Select("INBOX", false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(0), status.Messages)
+		require.Error(t, doAppendWithClient(client, "INBOX", "To: Foo@bar.com", time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", "To: Foo@bar.com", time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", "To: Bar@bar.com", time.Now()))
+
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(2), status.Messages)
+		}
+		{
+			status, err := client.Status("INBOX", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
+		{
+			_, err := client.Select(ids.GluonRecoveryMailboxName, false)
+			require.NoError(t, err)
+			// Check that no custom headers are appended to the message.
+			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+				builder.ignoreFlags()
+				builder.wantSection("BODY[]", "To: Foo@bar.com")
+			}).checkAndRequireMessageCount(1)
+		}
+	})
+}
+
 func TestRecoveryMBoxCanBeCopiedOutOfDedup(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&recoveryDedupConnectorConnectorBuilder{})), func(client *client.Client, s *testSession) {
 		// Insert first message, fails.
