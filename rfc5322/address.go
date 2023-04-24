@@ -531,7 +531,8 @@ func isDText(tokenType rfcparser.TokenType) bool {
 	if rfcparser.IsCTL(tokenType) ||
 		tokenType == rfcparser.TokenTypeLBracket ||
 		tokenType == rfcparser.TokenTypeRBracket ||
-		tokenType == rfcparser.TokenTypeBackslash {
+		tokenType == rfcparser.TokenTypeBackslash ||
+		tokenType == rfcparser.TokenTypeEOF {
 		return false
 	}
 
