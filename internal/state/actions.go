@@ -192,23 +192,23 @@ func (state *State) actionCreateRecoveredMessage(
 	literal []byte,
 	flags imap.FlagSet,
 	date time.Time,
-) error {
+) (bool, error) {
 	internalID := imap.NewInternalMessageID()
 	remoteID := ids.NewRecoveredRemoteMessageID(internalID)
 
 	parsedMessage, err := imap.NewParsedMessage(literal)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	alreadyKnown, err := state.user.GetRecoveredMessageHashesMap().Insert(internalID, literal)
 	if err == nil && alreadyKnown {
 		// Message is already known to us, so we ignore it.
-		return nil
+		return true, nil
 	}
 
 	if err := state.user.GetStore().SetUnchecked(internalID, bytes.NewReader(literal)); err != nil {
-		return fmt.Errorf("failed to store message literal: %w", err)
+		return false, fmt.Errorf("failed to store message literal: %w", err)
 	}
 
 	req := db.CreateMessageReq{
@@ -228,7 +228,7 @@ func (state *State) actionCreateRecoveredMessage(
 
 	messageUID, flagSet, err := db.CreateAndAddMessageToMailbox(ctx, tx, recoveryMBoxID.InternalID, &req)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if err := state.user.QueueOrApplyStateUpdate(ctx, tx, newExistsStateUpdateWithExists(
@@ -236,10 +236,10 @@ func (state *State) actionCreateRecoveredMessage(
 		[]*exists{newExists(ids.MessageIDPair{InternalID: internalID, RemoteID: remoteID}, messageUID, flagSet)},
 		nil,
 	)); err != nil {
-		return err
+		return false, err
 	}
 
-	return nil
+	return false, nil
 }
 
 func (state *State) actionAddMessagesToMailbox(

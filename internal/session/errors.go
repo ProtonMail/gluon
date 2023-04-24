@@ -37,6 +37,8 @@ func shouldReportIMAPCommandError(err error) bool {
 		return false
 	case errors.Is(err, rfc822.ErrNoSuchPart):
 		return false
+	case errors.Is(err, state.ErrKnownRecoveredMessage):
+		return false
 	}
 
 	return true
