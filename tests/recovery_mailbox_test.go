@@ -238,6 +238,38 @@ func TestFailedAppendAreDedupedInRecoveryMailbox(t *testing.T) {
 	})
 }
 
+func TestRecoveryMailboxOnlyReportsOnFirstDedupedMessage(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&failAppendLabelConnectorBuilder{})), func(client *client.Client, s *testSession) {
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
+		status, err := client.Select("INBOX", false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(0), status.Messages)
+		require.Error(t, doAppendWithClient(client, "INBOX", "To: Foo@bar.com", time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", "To: Foo@bar.com", time.Now()))
+
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(1), status.Messages)
+		}
+		{
+			status, err := client.Status("INBOX", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
+		{
+			reports := s.reporter.getReports()
+			require.Equal(t, 1, len(reports))
+		}
+	})
+}
+
 func TestRecoveryMBoxCanBeCopiedOutOfDedup(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&recoveryDedupConnectorConnectorBuilder{})), func(client *client.Client, s *testSession) {
 		// Insert first message, fails.
