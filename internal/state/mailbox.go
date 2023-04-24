@@ -2,6 +2,8 @@ package state
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -231,15 +233,22 @@ func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.
 	})
 }
 
+var ErrKnownRecoveredMessage = errors.New("known recovered message, possible duplication")
+
 func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
 	uid, err := m.AppendRegular(ctx, literal, flags, date)
 	if err != nil {
 		// Failed to append to mailbox attempt to insert into recovery mailbox.
-		if err := m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		knownMessage, recoverErr := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (bool, error) {
 			return m.state.actionCreateRecoveredMessage(ctx, tx, literal, flags, date)
-		}); err != nil {
-			logrus.WithError(err).Error("Failed to insert message into recovery mailbox")
-			reporter.ExceptionWithContext(ctx, "Failed to insert message into recovery mailbox", reporter.Context{"error": err})
+		})
+		if recoverErr != nil && !knownMessage {
+			logrus.WithError(recoverErr).Error("Failed to insert message into recovery mailbox")
+			reporter.ExceptionWithContext(ctx, "Failed to insert message into recovery mailbox", reporter.Context{"error": recoverErr})
+		}
+
+		if knownMessage {
+			err = fmt.Errorf("%v: %w", err, ErrKnownRecoveredMessage)
 		}
 	}
 
