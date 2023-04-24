@@ -400,3 +400,10 @@ func TestHeader_InvalidCharAfterColonIsError(t *testing.T) {
 	_, err := NewHeader([]byte(literal))
 	require.Error(t, err)
 }
+
+func TestHeader_SingleEmptyField(t *testing.T) {
+	header, err := NewHeader([]byte("Content-tYpe:\r")) //Panic
+	require.NoError(t, err)
+
+	require.Empty(t, header.Get("Content-Type"))
+}
