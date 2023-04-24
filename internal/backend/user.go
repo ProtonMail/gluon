@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"sync"
 
 	"github.com/ProtonMail/gluon/async"
@@ -45,6 +46,8 @@ type user struct {
 	uidValidityGenerator imap.UIDValidityGenerator
 
 	panicHandler async.PanicHandler
+
+	recoveredMessageHashes *utils.MessageHashesMap
 }
 
 func newUser(
@@ -62,6 +65,8 @@ func newUser(
 		return nil, err
 	}
 
+	recoveredMessageHashes := utils.NewMessageHashesMap()
+
 	// Create recovery mailbox if it does not exist
 	recoveryMBox, err := db.WriteResult(ctx, database, func(ctx context.Context, tx *ent.Tx) (*ent.Mailbox, error) {
 		uidValidity, err := uidValidityGenerator.Generate()
@@ -78,7 +83,30 @@ func newUser(
 			Attributes:     imap.NewFlagSet(imap.AttrNoInferiors),
 		}
 
-		return db.GetOrCreateMailbox(ctx, tx, mbox, delimiter, uidValidity)
+		recoveryMBox, err := db.GetOrCreateMailbox(ctx, tx, mbox, delimiter, uidValidity)
+		if err != nil {
+			return nil, err
+		}
+
+		// Pre-fill the message hashes map
+		messages, err := db.GetMailboxMessageIDPairs(ctx, tx.Client(), recoveryMBox.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, m := range messages {
+			literal, err := st.Get(m.InternalID)
+			if err != nil {
+				logrus.WithError(err).Errorf("Failed to load %v for store for recovered message hashes map", m.InternalID)
+				continue
+			}
+
+			if _, err := recoveredMessageHashes.Insert(m.InternalID, literal); err != nil {
+				logrus.WithError(err).Errorf("Failed insert literal for %v into recovered message hashes map", m.InternalID)
+			}
+		}
+
+		return recoveryMBox, nil
 	})
 	if err != nil {
 		return nil, err
@@ -104,6 +132,8 @@ func newUser(
 		uidValidityGenerator: uidValidityGenerator,
 
 		panicHandler: panicHandler,
+
+		recoveredMessageHashes: recoveredMessageHashes,
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
