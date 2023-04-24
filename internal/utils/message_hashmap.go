@@ -1,9 +1,8 @@
 package utils
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/rfc822"
 	"sync"
 )
 
@@ -24,14 +23,10 @@ func NewMessageHashesMap() *MessageHashesMap {
 // Insert inserts the hash of the current message literal into the map and return true if an existing value was already
 // present.
 func (m *MessageHashesMap) Insert(id imap.InternalMessageID, literal []byte) (bool, error) {
-	hash := sha256.New()
-
-	if _, err := hash.Write(literal); err != nil {
+	literalHashStr, err := rfc822.GetMessageHash(literal)
+	if err != nil {
 		return false, err
 	}
-
-	literalHash := hash.Sum(nil)
-	literalHashStr := hex.EncodeToString(literalHash)
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
