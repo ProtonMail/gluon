@@ -852,3 +852,8 @@ func TestParserAddressEmailValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestParse_GODT_2587_infinite_loop(t *testing.T) {
+	_, err := ParseAddressList("00@[000000000000000")
+	assert.Error(t, err)
+}
