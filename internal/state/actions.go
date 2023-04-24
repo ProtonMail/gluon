@@ -201,6 +201,12 @@ func (state *State) actionCreateRecoveredMessage(
 		return err
 	}
 
+	alreadyKnown, err := state.user.GetRecoveredMessageHashesMap().Insert(internalID, literal)
+	if err == nil && alreadyKnown {
+		// Message is already known to us, so we ignore it.
+		return nil
+	}
+
 	if err := state.user.GetStore().SetUnchecked(internalID, bytes.NewReader(literal)); err != nil {
 		return fmt.Errorf("failed to store message literal: %w", err)
 	}
@@ -436,6 +442,8 @@ func (state *State) actionMoveMessagesOutOfRecoveryMailbox(
 			return nil, err
 		}
 
+		state.user.GetRecoveredMessageHashesMap().Erase(oldInternalIDs...)
+
 		updates = append(updates, removeUpdates...)
 	}
 
@@ -470,6 +478,8 @@ func (state *State) actionRemoveMessagesFromMailboxUnchecked(
 		if err := state.user.GetRemote().RemoveMessagesFromMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
 			return err
 		}
+	} else {
+		state.user.GetRecoveredMessageHashesMap().Erase(internalIDs...)
 	}
 
 	updates, err := RemoveMessagesFromMailbox(ctx, tx, mboxID.InternalID, internalIDs)

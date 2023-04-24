@@ -3,8 +3,6 @@ package imap
 import (
 	"fmt"
 	"strings"
-
-	"github.com/ProtonMail/gluon/internal/utils"
 )
 
 type MailboxUpdated struct {
@@ -28,6 +26,6 @@ func (u *MailboxUpdated) String() string {
 	return fmt.Sprintf(
 		"MailboxUpdated: MailboxID = %v, MailboxName = %v",
 		u.MailboxID.ShortID(),
-		utils.ShortID(strings.Join(u.MailboxName, "/")),
+		ShortID(strings.Join(u.MailboxName, "/")),
 	)
 }
