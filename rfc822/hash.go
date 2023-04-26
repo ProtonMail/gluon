@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
+	"github.com/sirupsen/logrus"
+	"strings"
 )
 
 // GetMessageHash returns the hash of the given message.
@@ -60,8 +62,28 @@ func GetMessageHash(b []byte) (string, error) {
 			return err
 		}
 
-		if _, err := h.Write([]byte(header.Get("Content-Type"))); err != nil {
-			return err
+		contentType := header.Get("Content-Type")
+		mimeType, values, err := ParseMIMEType(contentType)
+		if err != nil {
+			logrus.Warnf("Message contains invalid mime type: %v", contentType)
+		} else {
+			if _, err := h.Write([]byte(mimeType)); err != nil {
+				return err
+			}
+
+			for k, v := range values {
+				if strings.EqualFold(k, "boundary") {
+					continue
+				}
+
+				if _, err := h.Write([]byte(k)); err != nil {
+					return err
+				}
+
+				if _, err := h.Write([]byte(v)); err != nil {
+					return err
+				}
+			}
 		}
 
 		if _, err := h.Write([]byte(header.Get("Content-Disposition"))); err != nil {
