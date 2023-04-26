@@ -169,16 +169,15 @@ func TestParseMessage_GODT_2513(t *testing.T) {
 	require.NotNil(t, parsed)
 }
 
-func Fuzz_NewParsedMessage(f *testing.F) {
-	in_seed1, err_1 := os.ReadFile(filepath.Join("testdata", "rfc822.eml"))
-	in_seed2, err_2 := os.ReadFile(filepath.Join("testdata", "bounds.eml"))
+func FuzzNewParsedMessage(f *testing.F) {
+	inSeed1, err1 := os.ReadFile(filepath.Join("testdata", "rfc822.eml"))
+	inSeed2, err2 := os.ReadFile(filepath.Join("testdata", "bounds.eml"))
 
-	if err_1 != nil || err_2 != nil {
-		return
-	}
+	require.NoError(f, err1)
+	require.NoError(f, err2)
 
-	f.Add(in_seed1)
-	f.Add(in_seed2)
+	f.Add(inSeed1)
+	f.Add(inSeed2)
 
 	f.Fuzz(func(t *testing.T, inputData []byte) {
 
