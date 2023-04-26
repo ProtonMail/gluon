@@ -323,7 +323,7 @@ Ym9keQ==
 	assert.Equal(t, []byte("body"), body)
 }
 
-func Fuzz_ParseDec(f *testing.F) {
+func FuzzParseDec(f *testing.F) {
 	f.Add([]byte(`From: Sender <sender@pm.me>
 	To: Receiver <receiver@pm.me>
 	Content-Transfer-Encoding: base64
