@@ -857,3 +857,28 @@ func TestParse_GODT_2587_infinite_loop(t *testing.T) {
 	_, err := ParseAddressList("00@[000000000000000")
 	assert.Error(t, err)
 }
+
+func Fuzz_ParseAddress(f *testing.F) {
+
+	f.Add("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghiklm@iana.org")
+	f.Add("!#$%&`*+/=?^`{|}~@iana.org")
+
+	f.Fuzz(func(t *testing.T, inputData string) {
+
+		ParseAddress(inputData)
+		ParseAddressList(inputData)
+	})
+}
+
+func Fuzz_RFC5322(f *testing.F) {
+
+	f.Add(`pete(his account)@silly.test(his host)`)
+	f.Add(` " foo bar derer " `)
+	f.Add("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghiklm@iana.org")
+
+	f.Fuzz(func(t *testing.T, inputData string) {
+
+		p := newTestRFCParser(inputData)
+		parseNameAddr(p)
+	})
+}
