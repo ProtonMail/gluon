@@ -170,8 +170,12 @@ func TestParseMessage_GODT_2513(t *testing.T) {
 }
 
 func Fuzz_NewParsedMessage(f *testing.F) {
-	in_seed1, _ := os.ReadFile(filepath.Join("testdata", "rfc822.eml"))
-	in_seed2, _ := os.ReadFile(filepath.Join("testdata", "bounds.eml"))
+	in_seed1, err_1 := os.ReadFile(filepath.Join("testdata", "rfc822.eml"))
+	in_seed2, err_2 := os.ReadFile(filepath.Join("testdata", "bounds.eml"))
+
+	if err_1 != nil || err_2 != nil {
+		return
+	}
 
 	f.Add(in_seed1)
 	f.Add(in_seed2)
