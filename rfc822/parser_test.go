@@ -324,7 +324,6 @@ Ym9keQ==
 }
 
 func Fuzz_ParseDec(f *testing.F) {
-
 	f.Add([]byte(`From: Sender <sender@pm.me>
 	To: Receiver <receiver@pm.me>
 	Content-Transfer-Encoding: base64
@@ -339,6 +338,6 @@ func Fuzz_ParseDec(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, inputData []byte) {
 
-		Parse(inputData).DecodedBody()
+		_, _ = Parse(inputData).DecodedBody()
 	})
 }

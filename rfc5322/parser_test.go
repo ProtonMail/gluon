@@ -3,7 +3,7 @@ package rfc5322
 import (
 	"bytes"
 	"github.com/stretchr/testify/require"
-	"net/mail"
+    "net/mail"
 	"testing"
 
 	"github.com/ProtonMail/gluon/rfcparser"
@@ -859,19 +859,17 @@ func TestParse_GODT_2587_infinite_loop(t *testing.T) {
 }
 
 func Fuzz_ParseAddress(f *testing.F) {
-
 	f.Add("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghiklm@iana.org")
 	f.Add("!#$%&`*+/=?^`{|}~@iana.org")
 
 	f.Fuzz(func(t *testing.T, inputData string) {
 
-		ParseAddress(inputData)
-		ParseAddressList(inputData)
+		_, _ = ParseAddress(inputData)
+		_, _ = ParseAddressList(inputData)
 	})
 }
 
 func Fuzz_RFC5322(f *testing.F) {
-
 	f.Add(`pete(his account)@silly.test(his host)`)
 	f.Add(` " foo bar derer " `)
 	f.Add("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghiklm@iana.org")
@@ -879,6 +877,6 @@ func Fuzz_RFC5322(f *testing.F) {
 	f.Fuzz(func(t *testing.T, inputData string) {
 
 		p := newTestRFCParser(inputData)
-		parseNameAddr(p)
+		_, _ = parseNameAddr(p)
 	})
 }
