@@ -1,0 +1,46 @@
+From: "Testing" <foobar@protonmail.com>
+To: "Test 123" <barfoo@gmail.com>
+Subject: Small doc attachment VALID v5
+Date: Wed, 26 Apr 2023 08:25:16 +0200
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_0022_01D97836.53531060"
+X-Mailer: Microsoft Outlook 16.0
+Content-Language: en-us
+X-OlkEid: 00000000225333D1866CB24A8049706F3452C40E0700C3B68E10F77511CEB4CD00AA00BBB6E600000000000C00003BB97E4DCE360843BCF25AA31956C0E2000000000408000048AD3E35A4DC1A47ABA5F573BB76D09A
+
+This is a multipart message in MIME format.
+
+------=_NextPart_000_0022_01D97836.53531060
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_001_0023_01D97836.53531060"
+
+
+------=_NextPart_001_0023_01D97836.53531060
+Content-Type: text/plain;
+	charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Simple Body
+
+
+------=_NextPart_001_0023_01D97836.53531060
+Content-Type: text/html;
+	boundary="----=_NextPart_000_003E_01D97831.767F38C0";
+	charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+<div style=3D"font-family: Arial, sans-serif; font-size: 14px; color: =
+rgb(0, 0, 0);">Simple Body<br></div>
+------=_NextPart_001_0023_01D97836.53531060--
+
+------=_NextPart_000_0022_01D97836.53531060
+Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document;
+	name="test.docx"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+	filename="test.docx"
+
+UEsDBBQABgAIAAAAIQDfpNJsWgEAACAFAAATAAgCW0NvbnRlbnRfVHlwZXNdLnhtbCCiBAIooAAC
+
+------=_NextPart_000_0022_01D97836.53531060--

@@ -249,8 +249,8 @@ func TestRecoveryMailboxOnlyReportsOnFirstDedupedMessage(t *testing.T) {
 		status, err := client.Select("INBOX", false)
 		require.NoError(t, err)
 		require.Equal(t, uint32(0), status.Messages)
-		require.Error(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/multipart-mixed.eml", time.Now()))
-		require.Error(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/multipart-mixed2.eml", time.Now()))
+		require.Error(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/original.eml", time.Now()))
+		require.Error(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/duplicate.eml", time.Now()))
 
 		{
 			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
