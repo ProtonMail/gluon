@@ -365,7 +365,7 @@ func (user *user) applyMessageMailboxesUpdated(ctx context.Context, update *imap
 			return err
 		}
 
-		if err := user.setMessageFlags(ctx, tx, internalMsgID, update.CustomFlags); err != nil {
+		if err := user.setMessageFlags(ctx, tx, internalMsgID, update.Flags); err != nil {
 			return err
 		}
 
@@ -393,7 +393,7 @@ func (user *user) applyMessageFlagsUpdated(ctx context.Context, update *imap.Mes
 			return err
 		}
 
-		if err := user.setMessageFlags(ctx, tx, internalMsgID, update.CustomFlags); err != nil {
+		if err := user.setMessageFlags(ctx, tx, internalMsgID, update.Flags); err != nil {
 			return err
 		}
 
@@ -465,7 +465,7 @@ func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.T
 	return nil
 }
 
-func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, flags imap.MessageCustomFlags) error {
+func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, flags imap.FlagSet) error {
 	curFlags, err := db.GetMessageFlags(ctx, tx.Client(), []imap.InternalMessageID{messageID})
 	if err != nil {
 		return err
@@ -473,34 +473,20 @@ func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID ima
 
 	flagSet := curFlags[0].FlagSet
 
-	setFlag := func(flag string, wantFlag bool) error {
-		if wantFlag && !flagSet.Contains(flag) {
-			if err := user.addMessageFlags(ctx, tx, messageID, flag); err != nil {
-				return err
-			}
-		} else if !wantFlag && flagSet.Contains(flag) {
-			if err := user.removeMessageFlags(ctx, tx, messageID, flag); err != nil {
+	for _, v := range flagSet.ToSliceUnsorted() {
+		if !flags.Contains(v) {
+			if err := user.removeMessageFlags(ctx, tx, messageID, v); err != nil {
 				return err
 			}
 		}
-
-		return nil
 	}
 
-	if err := setFlag(imap.FlagSeen, flags.Seen); err != nil {
-		return err
-	}
-
-	if err := setFlag(imap.FlagFlagged, flags.Flagged); err != nil {
-		return err
-	}
-
-	if err := setFlag(imap.FlagDraft, flags.Draft); err != nil {
-		return err
-	}
-
-	if err := setFlag(imap.FlagAnswered, flags.Answered); err != nil {
-		return err
+	for _, v := range flags.ToSliceUnsorted() {
+		if !flagSet.Contains(v) {
+			if err := user.addMessageFlags(ctx, tx, messageID, v); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

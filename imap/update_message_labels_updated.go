@@ -11,33 +11,25 @@ type MessageMailboxesUpdated struct {
 
 	*updateWaiter
 
-	MessageID   MessageID
-	MailboxIDs  []MailboxID
-	CustomFlags MessageCustomFlags
+	MessageID  MessageID
+	MailboxIDs []MailboxID
+	Flags      FlagSet
 }
 
-type MessageCustomFlags struct {
-	Seen, Flagged, Draft, Answered bool
-}
-
-func (f MessageCustomFlags) String() string {
-	return fmt.Sprintf("seen=%v, flagged=%v, draft=%v, answered=%v", f.Seen, f.Flagged, f.Draft, f.Answered)
-}
-
-func NewMessageMailboxesUpdated(messageID MessageID, mailboxIDs []MailboxID, flags MessageCustomFlags) *MessageMailboxesUpdated {
+func NewMessageMailboxesUpdated(messageID MessageID, mailboxIDs []MailboxID, flags FlagSet) *MessageMailboxesUpdated {
 	return &MessageMailboxesUpdated{
 		updateWaiter: newUpdateWaiter(),
 		MessageID:    messageID,
 		MailboxIDs:   mailboxIDs,
-		CustomFlags:  flags,
+		Flags:        flags,
 	}
 }
 
 func (u *MessageMailboxesUpdated) String() string {
 	return fmt.Sprintf(
-		"MessageMailboxesUpdated: MessageID = %v, MailboxIDs = %v, CustomFlags = %v",
+		"MessageMailboxesUpdated: MessageID = %v, MailboxIDs = %v, Flags = %v",
 		u.MessageID.ShortID(),
 		xslices.Map(u.MailboxIDs, func(id MailboxID) string { return id.ShortID() }),
-		u.CustomFlags,
+		u.Flags.ToSlice(),
 	)
 }
