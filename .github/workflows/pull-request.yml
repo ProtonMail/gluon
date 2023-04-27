@@ -47,3 +47,25 @@ jobs:
       - name: Run tests with race check
         if: runner.os != 'Windows'
         run: go test -race -v ./tests
+
+  Fuzzing:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Build Fuzzers
+      id: build
+      uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+      with:
+        oss-fuzz-project-name: 'gluon'
+        language: go
+    - name: Run Fuzzers
+      uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+      with:
+        oss-fuzz-project-name: 'gluon'
+        language: go
+        fuzz-seconds: 300
+    - name: Upload Crash
+      uses: actions/upload-artifact@v3
+      if: failure() && steps.build.outcome == 'success'
+      with:
+        name: artifacts
+        path: ./out/artifacts
