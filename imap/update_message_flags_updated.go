@@ -9,22 +9,22 @@ type MessageFlagsUpdated struct {
 
 	*updateWaiter
 
-	MessageID   MessageID
-	CustomFlags MessageCustomFlags
+	MessageID MessageID
+	Flags     FlagSet
 }
 
-func NewMessageFlagsUpdated(messageID MessageID, flags MessageCustomFlags) *MessageFlagsUpdated {
+func NewMessageFlagsUpdated(messageID MessageID, flags FlagSet) *MessageFlagsUpdated {
 	return &MessageFlagsUpdated{
 		updateWaiter: newUpdateWaiter(),
 		MessageID:    messageID,
-		CustomFlags:  flags,
+		Flags:        flags,
 	}
 }
 
 func (u *MessageFlagsUpdated) String() string {
 	return fmt.Sprintf(
-		"MessageFlagsUpdated: MessageID = %v, CustomFlags = %v",
+		"MessageFlagsUpdated: MessageID = %v, Flags = %v",
 		u.MessageID.ShortID(),
-		u.CustomFlags,
+		u.Flags.ToSlice(),
 	)
 }

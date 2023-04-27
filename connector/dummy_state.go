@@ -267,8 +267,27 @@ func (state *dummyState) isDraft(messageID imap.MessageID) bool {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	// NOTE: If we want to support a custom draft folder, handle it here.
+	// NOTE: If we want to support a custom draft folder, handle it here and update `getMessageFlags`.
 	return false
+}
+
+func (state *dummyState) getMessageFlags(messageID imap.MessageID) imap.FlagSet {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	msg := state.messages[messageID]
+
+	flags := imap.NewFlagSet()
+
+	if msg.seen {
+		flags.AddToSelf(imap.FlagSeen)
+	}
+
+	if msg.flagged {
+		flags.AddToSelf(imap.FlagFlagged)
+	}
+
+	return flags
 }
 
 func (state *dummyState) toMailbox(mboxID imap.MailboxID) imap.Mailbox {

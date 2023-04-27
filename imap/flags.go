@@ -64,6 +64,11 @@ func (fs FlagSet) ToSlice() []string {
 	return flags
 }
 
+// ToSliceUnsorted is the same as ToSlice, but does not sort the returned value.
+func (fs FlagSet) ToSliceUnsorted() []string {
+	return maps.Values(fs)
+}
+
 // Contains returns true if and only if the flag is in the set.
 func (fs FlagSet) Contains(flag string) bool {
 	_, ok := fs[strings.ToLower(flag)]
