@@ -270,6 +270,33 @@ func TestRecoveryMailboxOnlyReportsOnFirstDedupedMessage(t *testing.T) {
 	})
 }
 
+func TestRecoveryMailboxDoesNotStoreMessageWhichExceedLimit(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&sizeExceededAppendConnectorBuilder{})), func(client *client.Client, s *testSession) {
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
+		status, err := client.Select("INBOX", false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(0), status.Messages)
+		require.Error(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/original.eml", time.Now()))
+		require.Error(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/duplicate.eml", time.Now()))
+
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+		{
+			status, err := client.Status("INBOX", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+	})
+}
+
 func TestRecoveryMBoxCanBeCopiedOutOfDedup(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&recoveryDedupConnectorConnectorBuilder{})), func(client *client.Client, s *testSession) {
 		// Insert first message, fails.
@@ -521,6 +548,36 @@ type failAppendLabelConnectorBuilder struct{}
 
 func (failAppendLabelConnectorBuilder) New(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) Connector {
 	return &failAppendLabelConnector{
+		Dummy: connector.NewDummy(usernames, password, period, flags, permFlags, attrs),
+	}
+}
+
+// failAppendLabelConnector simulate Create Message failures and also ensures that no calls to Add or Move can take place.
+type sizeExceededAppendConnector struct {
+	*connector.Dummy
+}
+
+func (r *sizeExceededAppendConnector) CreateMessage(
+	_ context.Context,
+	_ imap.MailboxID,
+	_ []byte,
+	_ imap.FlagSet,
+	_ time.Time) (imap.Message, []byte, error) {
+	return imap.Message{}, nil, fmt.Errorf("messsage to large: %w", connector.ErrMessageSizeExceedsLimits)
+}
+
+func (r *sizeExceededAppendConnector) AddMessagesToMailbox(
+	_ context.Context,
+	_ []imap.MessageID,
+	_ imap.MailboxID,
+) error {
+	return fmt.Errorf("messsage to large: %w", connector.ErrMessageSizeExceedsLimits)
+}
+
+type sizeExceededAppendConnectorBuilder struct{}
+
+func (sizeExceededAppendConnectorBuilder) New(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) Connector {
+	return &sizeExceededAppendConnector{
 		Dummy: connector.NewDummy(usernames, password, period, flags, permFlags, attrs),
 	}
 }

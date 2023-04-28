@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/db"
@@ -238,6 +239,11 @@ var ErrKnownRecoveredMessage = errors.New("known recovered message, possible dup
 func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
 	uid, err := m.AppendRegular(ctx, literal, flags, date)
 	if err != nil {
+		// Can't store messages that exceed size limits
+		if errors.Is(err, connector.ErrMessageSizeExceedsLimits) {
+			return uid, err
+		}
+
 		// Failed to append to mailbox attempt to insert into recovery mailbox.
 		knownMessage, recoverErr := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (bool, error) {
 			return m.state.actionCreateRecoveredMessage(ctx, tx, literal, flags, date)

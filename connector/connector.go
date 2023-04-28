@@ -9,6 +9,7 @@ import (
 )
 
 var ErrOperationNotAllowed = errors.New("operation not allowed")
+var ErrMessageSizeExceedsLimits = errors.New("message size exceeds limits")
 
 // Connector connects the gluon server to a remote mail store.
 type Connector interface {
