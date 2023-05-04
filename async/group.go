@@ -46,8 +46,9 @@ func (g *Group) Once(f func(ctx context.Context)) {
 	go func() {
 		defer HandlePanic(g.panicHandler)
 
+		defer g.wg.Done()
+
 		f(g.ctx)
-		g.wg.Done()
 	}()
 }
 
