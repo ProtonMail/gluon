@@ -250,6 +250,8 @@ func (b *Backend) getUserID(ctx context.Context, username string, password []byt
 		})
 
 		return "", ErrLoginBlocked
+	} else {
+		logrus.Errorf("Incorrect login credentials. Please try again, Attempt %d", count)
 	}
 
 	return "", ErrNoSuchUser
