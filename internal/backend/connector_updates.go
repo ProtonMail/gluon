@@ -126,7 +126,7 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 	}
 
 	stateUpdate, err := db.WriteResult(ctx, user.db, func(ctx context.Context, tx *ent.Tx) (state.Update, error) {
-		internalMailboxID, err := db.GetMailboxIDFromRemoteID(ctx, tx.Client(), update.MailboxID)
+		mailbox, err := db.GetMailboxByRemoteID(ctx, tx.Client(), update.MailboxID)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return nil, nil
@@ -139,7 +139,11 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 			return nil, err
 		}
 
-		return state.NewMailboxDeletedStateUpdate(internalMailboxID), nil
+		if _, err := db.RemoveDeletedSubscriptionWithName(ctx, tx, mailbox.Name); err != nil {
+			return nil, err
+		}
+
+		return state.NewMailboxDeletedStateUpdate(mailbox.ID), nil
 	})
 	if err != nil {
 		return err
