@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"mime/quotedprintable"
 
@@ -113,6 +114,12 @@ func (section *Section) Part(identifier ...int) (*Section, error) {
 		}
 
 		if len(children) != 0 {
+			childIndex := identifier[0] - 1
+
+			if childIndex >= len(children) {
+				return nil, fmt.Errorf("invalid part index")
+			}
+
 			return children[identifier[0]-1].Part(identifier[1:]...)
 		}
 	}
