@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ProtonMail/gluon/rfcparser"
@@ -77,18 +78,18 @@ func ParseDateDayFixed(p *rfcparser.Parser) (int, error) {
 }
 
 var dateMonthToInt = map[string]time.Month{
-	"Jan": time.January,
-	"Feb": time.February,
-	"Mar": time.March,
-	"Apr": time.April,
-	"May": time.May,
-	"Jun": time.June,
-	"Jul": time.July,
-	"Aug": time.August,
-	"Sep": time.September,
-	"Oct": time.October,
-	"Nov": time.November,
-	"Dec": time.December,
+	"jan": time.January,
+	"feb": time.February,
+	"mar": time.March,
+	"apr": time.April,
+	"may": time.May,
+	"jun": time.June,
+	"jul": time.July,
+	"aug": time.August,
+	"sep": time.September,
+	"oct": time.October,
+	"nov": time.November,
+	"dec": time.December,
 }
 
 func ParseDateMonth(p *rfcparser.Parser) (time.Month, error) {
@@ -102,7 +103,7 @@ func ParseDateMonth(p *rfcparser.Parser) (time.Month, error) {
 		month[i] = p.PreviousToken().Value
 	}
 
-	v, ok := dateMonthToInt[string(month)]
+	v, ok := dateMonthToInt[strings.ToLower(string(month))]
 	if !ok {
 		return 0, p.MakeError(fmt.Sprintf("invalid date month '%v'", string(month)))
 	}
