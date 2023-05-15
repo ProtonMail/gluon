@@ -36,3 +36,18 @@ func TestDateTimeParser_OneDayDigit(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expected, dt)
 }
+
+func TestDateMonthIsCaseInsensitive(t *testing.T) {
+	inputs := []string{"May", "MAY", "may", "mAy"}
+
+	for _, input := range inputs {
+		p := rfcparser.NewParser(rfcparser.NewScanner(bytes.NewReader([]byte(input))))
+		// Advance at least once to prepare first token.
+		err := p.Advance()
+		require.NoError(t, err)
+
+		v, err := ParseDateMonth(p)
+		require.NoError(t, err)
+		require.Equal(t, time.May, v)
+	}
+}
