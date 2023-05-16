@@ -880,3 +880,10 @@ func FuzzRFC5322(f *testing.F) {
 		_, _ = parseNameAddr(p)
 	})
 }
+
+func TestParse_AddressAngleAddrOnlyWithSeparator(t *testing.T) {
+	// EOF was not properly handled after separator.
+	addrList, err := ParseAddressList("<test@user.com>,")
+	assert.NoError(t, err)
+	require.Equal(t, addrList[0].Address, "test@user.com")
+}

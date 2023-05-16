@@ -57,11 +57,16 @@ func parseAddressList(p *Parser) ([]*mail.Address, error) {
 		if ok, err := tryParseCFWS(p.parser); err != nil {
 			return nil, err
 		} else if ok {
-			// Only continue if the next input is EOF or comma or we can run into issues with parsring
+			// Only continue if the next input is EOF or comma or we can run into issues with parsing
 			// the `',' address` rules.
 			if p.parser.Check(rfcparser.TokenTypeEOF) || p.parser.CheckWith(isSep) {
 				continue
 			}
+		}
+
+		// Check there is still input to be processed before continuing.
+		if p.parser.Check(rfcparser.TokenTypeEOF) {
+			break
 		}
 
 		// address
