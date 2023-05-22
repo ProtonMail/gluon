@@ -85,19 +85,19 @@ func (m *Mailbox) Count() int {
 }
 
 func (m *Mailbox) Flags(ctx context.Context) (imap.FlagSet, error) {
-	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
+	return stateDBReadResult(ctx, m.state, func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
 		return db.GetMailboxFlags(ctx, client, m.id.InternalID)
 	})
 }
 
 func (m *Mailbox) PermanentFlags(ctx context.Context) (imap.FlagSet, error) {
-	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
+	return stateDBReadResult(ctx, m.state, func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
 		return db.GetMailboxPermanentFlags(ctx, client, m.id.InternalID)
 	})
 }
 
 func (m *Mailbox) Attributes(ctx context.Context) (imap.FlagSet, error) {
-	return db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
+	return stateDBReadResult(ctx, m.state, func(ctx context.Context, client *ent.Client) (imap.FlagSet, error) {
 		return db.GetMailboxAttributes(ctx, client, m.id.InternalID)
 	})
 }
@@ -147,7 +147,7 @@ func (m *Mailbox) GetMessagesWithoutFlagCount(flag string) int {
 }
 
 func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error) {
-	if err := m.state.db().Read(ctx, func(ctx context.Context, client *ent.Client) error {
+	if err := stateDBRead(ctx, m.state, func(ctx context.Context, client *ent.Client) error {
 		if messageCount, uid, err := db.GetMailboxMessageCountAndUID(ctx, client, m.snap.mboxID.InternalID); err != nil {
 			return err
 		} else {
@@ -185,7 +185,7 @@ func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.
 				return 0, err
 			}
 
-			if message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
+			if message, err := stateDBReadResult(ctx, m.state, func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
 				message, err := db.GetMessageWithIDWithDeletedFlag(ctx, client, msgID)
 				if err != nil {
 					if ent.IsNotFound(err) {
@@ -201,10 +201,10 @@ func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.
 			} else if !message.Deleted {
 				logrus.Debugf("Appending duplicate message with Internal ID:%v", msgID.ShortID())
 				// Only shuffle around messages that haven't been marked for deletion.
-				if res, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
+				if res, err := stateDBWriteResult(ctx, m.state, func(ctx context.Context, tx *ent.Tx) ([]Update, []db.UIDWithFlags, error) {
 					remoteID, err := db.GetMessageRemoteIDFromID(ctx, tx.Client(), msgID)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 
 					return m.state.actionAddMessagesToMailbox(ctx, tx,
@@ -229,7 +229,7 @@ func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.
 		}
 	}
 
-	return db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (imap.UID, error) {
+	return stateDBWriteResult(ctx, m.state, func(ctx context.Context, tx *ent.Tx) ([]Update, imap.UID, error) {
 		return m.state.actionCreateMessage(ctx, tx, m.snap.mboxID, literal, flags, date, m.snap == m.state.snap, appendIntoDrafts)
 	})
 }
@@ -245,7 +245,7 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 		}
 
 		// Failed to append to mailbox attempt to insert into recovery mailbox.
-		knownMessage, recoverErr := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) (bool, error) {
+		knownMessage, recoverErr := stateDBWriteResult(ctx, m.state, func(ctx context.Context, tx *ent.Tx) ([]Update, bool, error) {
 			return m.state.actionCreateRecoveredMessage(ctx, tx, literal, flags, date)
 		})
 		if recoverErr != nil && !knownMessage {
@@ -269,7 +269,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq []command.SeqRange, name string)
 		return nil, ErrOperationNotAllowed
 	}
 
-	mbox, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+	mbox, err := stateDBReadResult(ctx, m.state, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
@@ -290,7 +290,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq []command.SeqRange, name string)
 		msgIDs[i] = snapMsg.ID
 	}
 
-	destUIDs, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
+	destUIDs, err := stateDBWriteResult(ctx, m.state, func(ctx context.Context, tx *ent.Tx) ([]Update, []db.UIDWithFlags, error) {
 		if m.state.user.GetRecoveryMailboxID().InternalID == m.snap.mboxID.InternalID {
 			return m.state.actionCopyMessagesOutOfRecoveryMailbox(ctx, tx, msgIDs, ids.NewMailboxIDPair(mbox))
 		} else {
@@ -320,7 +320,7 @@ func (m *Mailbox) Move(ctx context.Context, seq []command.SeqRange, name string)
 		return nil, ErrOperationNotAllowed
 	}
 
-	mbox, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
+	mbox, err := stateDBReadResult(ctx, m.state, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
 		return db.GetMailboxByName(ctx, client, name)
 	})
 	if err != nil {
@@ -341,7 +341,7 @@ func (m *Mailbox) Move(ctx context.Context, seq []command.SeqRange, name string)
 		msgIDs[i] = snapMsg.ID
 	}
 
-	destUIDs, err := db.WriteResult(ctx, m.state.db(), func(ctx context.Context, tx *ent.Tx) ([]db.UIDWithFlags, error) {
+	destUIDs, err := stateDBWriteResult(ctx, m.state, func(ctx context.Context, tx *ent.Tx) ([]Update, []db.UIDWithFlags, error) {
 		if m.state.user.GetRecoveryMailboxID().InternalID == m.snap.mboxID.InternalID {
 			return m.state.actionMoveMessagesOutOfRecoveryMailbox(ctx, tx, msgIDs, ids.NewMailboxIDPair(mbox))
 		} else {
@@ -369,25 +369,19 @@ func (m *Mailbox) Store(ctx context.Context, seqSet []command.SeqRange, action c
 		return err
 	}
 
-	return m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	return stateDBWrite(ctx, m.state, func(ctx context.Context, tx *ent.Tx) ([]Update, error) {
 		switch action {
 		case command.StoreActionAddFlags:
-			if err := m.state.actionAddMessageFlags(ctx, tx, messages, flags); err != nil {
-				return err
-			}
+			return m.state.actionAddMessageFlags(ctx, tx, messages, flags)
 
 		case command.StoreActionRemFlags:
-			if err := m.state.actionRemoveMessageFlags(ctx, tx, messages, flags); err != nil {
-				return err
-			}
+			return m.state.actionRemoveMessageFlags(ctx, tx, messages, flags)
 
 		case command.StoreActionSetFlags:
-			if err := m.state.actionSetMessageFlags(ctx, tx, messages, flags); err != nil {
-				return err
-			}
+			return m.state.actionSetMessageFlags(ctx, tx, messages, flags)
 		}
 
-		return nil
+		return nil, fmt.Errorf("unknown flag action")
 	})
 }
 
@@ -411,7 +405,7 @@ func (m *Mailbox) Expunge(ctx context.Context, seq []command.SeqRange) error {
 		msgIDs = m.snap.getAllMessagesIDsMarkedDelete()
 	}
 
-	return m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	return stateDBWrite(ctx, m.state, func(ctx context.Context, tx *ent.Tx) ([]Update, error) {
 		return m.state.actionRemoveMessagesFromMailbox(ctx, tx, msgIDs, m.snap.mboxID)
 	})
 }
