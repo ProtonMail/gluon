@@ -88,7 +88,7 @@ func buildSearchData(ctx context.Context, m *Mailbox, op *buildSearchOpResult, m
 	data := searchData{message: message}
 
 	if op.needsMessage {
-		dbm, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
+		dbm, err := stateDBReadResult(ctx, m.state, func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
 			return db.GetMessageDateAndSize(ctx, client, message.ID.InternalID)
 		})
 		if err != nil {

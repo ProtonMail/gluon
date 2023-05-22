@@ -118,7 +118,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 		defer async.HandlePanic(m.state.panicHandler)
 
 		msg := snapMessages[i]
-		message, err := db.ReadResult(ctx, m.state.db(), func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
+		message, err := stateDBReadResult(ctx, m.state, func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
 			return db.GetMessage(ctx, client, msg.ID.InternalID)
 		})
 		if err != nil {
@@ -175,7 +175,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 	})
 
 	if len(msgsToBeMarkedSeen) != 0 {
-		if err := m.state.db().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		if err := stateDBWrite(ctx, m.state, func(ctx context.Context, tx *ent.Tx) ([]Update, error) {
 			return m.state.actionAddMessageFlags(ctx, tx, msgsToBeMarkedSeen, imap.NewFlagSet(imap.FlagSeen))
 		}); err != nil {
 			return err
