@@ -95,6 +95,12 @@ func (w *WriteControlledStore) SetUnchecked(messageID imap.InternalMessageID, re
 	return w.impl.Set(messageID, reader)
 }
 
+// DeleteUnchecked allows the user to bypass lock access. This will only work if you can guarantee that the data being
+// delete is not being used anywhere.
+func (w *WriteControlledStore) DeleteUnchecked(messageIDs ...imap.InternalMessageID) error {
+	return w.impl.Delete(messageIDs...)
+}
+
 func (w *WriteControlledStore) Delete(messageID ...imap.InternalMessageID) error {
 	for _, id := range messageID {
 		if err := func() error {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"runtime"
 	"strings"
 
@@ -214,7 +215,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	messageForMBox := make(map[imap.InternalMailboxID][]imap.InternalMessageID)
 	mboxInternalIDMap := make(map[imap.MailboxID]imap.InternalMailboxID)
 
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
 		client := tx.Client()
 
 		for _, message := range update.Messages {
@@ -336,6 +337,19 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 		return nil
 	})
+
+	// Clean up cache messages that were created if the transaction failed.
+	if err != nil {
+		for _, message := range messagesToCreate {
+			if err := user.store.DeleteUnchecked(message.InternalID); err != nil {
+				if !os.IsNotExist(err) {
+					logrus.WithError(err).Errorf("Failed to delete cache message %v after failed transaction", message.InternalID)
+				}
+			}
+		}
+	}
+
+	return err
 }
 
 // applyMessageMailboxesUpdated applies a MessageMailboxesUpdated update.
