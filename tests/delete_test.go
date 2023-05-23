@@ -56,8 +56,8 @@ func TestDeleteMailboxHasChildren(t *testing.T) {
 		c.C(`A002 CREATE "foo"`).OK(`A002`)
 		c.C(`A003 CREATE "foo/bar"`).OK(`A003`)
 
-		c.doAppend(`foo`, `To: 1@pm.me`).expect("OK")
-		c.doAppend(`foo/bar`, `To: 2@pm.me`).expect("OK")
+		c.doAppend(`foo`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c.doAppend(`foo/bar`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
 
 		c.C(`A004 SELECT "INBOX"`).OK(`A004`)
 		c.C(`A005 LIST "" *`)

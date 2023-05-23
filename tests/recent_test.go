@@ -7,7 +7,7 @@ import (
 func TestRecentSelect(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 appends a new message to INBOX.
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		// Client 2 is the first to be notified of the new message; it appears as recent to client 2.
 		c[2].C("A006 select INBOX")
@@ -22,7 +22,7 @@ func TestRecentSelect(t *testing.T) {
 func TestRecentStatus(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 appends a new message to INBOX.
-		c[1].doAppend("INBOX", `To: 1@pm.me`).expect("OK")
+		c[1].doAppend("INBOX", buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		// Client 2 is the first to be notified of the new message; it appears as recent to client 2.
 		// Calling STATUS must not change the value of RECENT.
@@ -38,7 +38,7 @@ func TestRecentStatus(t *testing.T) {
 func TestRecentFetch(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 appends a new message to INBOX.
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		// Client 2 is the first to be notified of the new message; it appears as recent to client 2.
 		c[2].C("A006 select INBOX")
@@ -65,7 +65,7 @@ func TestRecentFetch(t *testing.T) {
 func TestRecentAppend(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, _ *testSession) {
 		// Client 1 appends a new message to INBOX.
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		// Client 2 is the first to be notified of the new message; it appears as recent to client 2.
 		c[2].C("A006 select INBOX")
@@ -73,7 +73,7 @@ func TestRecentAppend(t *testing.T) {
 
 		// Client 2 then appends a second message to the mailbox while selected.
 		// As it was the first client to perform the operation, it sees the message as recent.
-		c[2].doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
+		c[2].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
 		c[2].C("A006 fetch 2 (UID FLAGS)")
 		c[2].Se(`* 2 FETCH (UID 2 FLAGS (\Recent))`).OK("A006")
 	})
@@ -88,7 +88,7 @@ func TestRecentStore(t *testing.T) {
 		}()
 
 		// Create a message in mbox.
-		c[1].doAppend(mbox, `To: 1@pm.me`).expect(`OK`)
+		c[1].doAppend(mbox, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect(`OK`)
 
 		// Select in the mailbox.
 		c[1].Cf(`A002 SELECT %v`, mbox).OK(`A002`)
@@ -120,7 +120,7 @@ func TestRecentExists(t *testing.T) {
 		c[2].C("A006 select INBOX").OK("A006")
 
 		// Client 3 appends a new message to INBOX.
-		c[3].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
+		c[3].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		// Client 1 is notified of the new message. No recent is sent as client 2 still has the mailbox selected.
 		c[1].C("A007 NOOP")
@@ -140,8 +140,8 @@ func TestRecentIDLEExists(t *testing.T) {
 		c[1].S("+ Ready")
 
 		// Client 2 appends two new messages to INBOX.
-		c[2].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
-		c[2].doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
+		c[2].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c[2].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
 
 		// Client 1 receives EXISTS and RECENT updates.
 		c[1].S(`* 2 EXISTS`, `* 2 RECENT`)
@@ -159,8 +159,8 @@ func TestRecentIDLEExpunge(t *testing.T) {
 		c[1].S("+ Ready")
 
 		// Client 2 appends two new messages to INBOX.
-		c[2].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
-		c[2].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
+		c[2].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c[2].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		// Client 2 moves those two messages to the other folder.
 		c[2].C("A006 select INBOX").OK("A006")

@@ -18,11 +18,11 @@ func TestClose(t *testing.T) {
 		c[1].C("b001 CREATE saved-messages")
 		c[1].S("b001 OK CREATE")
 
-		c[1].doAppend(`saved-messages`, `To: 1@pm.me`, `\Seen`).expect("OK")
-		c[1].doAppend(`saved-messages`, `To: 2@pm.me`).expect("OK")
-		c[1].doAppend(`saved-messages`, `To: 3@pm.me`, `\Seen`).expect("OK")
-		c[1].doAppend(`saved-messages`, `To: 4@pm.me`).expect("OK")
-		c[1].doAppend(`saved-messages`, `To: 5@pm.me`, `\Seen`).expect("OK")
+		c[1].doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
+		c[1].doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+		c[1].doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 3@pm.me`), `\Seen`).expect("OK")
+		c[1].doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 4@pm.me`)).expect("OK")
+		c[1].doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 5@pm.me`), `\Seen`).expect("OK")
 
 		c[1].C(`A002 SELECT saved-messages`)
 		c[1].Se(`A002 OK [READ-WRITE] SELECT`)
@@ -92,11 +92,11 @@ func TestCloseWithClient(t *testing.T) {
 		)
 		require.NoError(t, client.Create(messageBoxName))
 
-		require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 1@pm.me")))
-		require.NoError(t, client.Append(messageBoxName, nil, time.Now(), strings.NewReader("To: 2@pm.me")))
-		require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 3@pm.me")))
-		require.NoError(t, client.Append(messageBoxName, nil, time.Now(), strings.NewReader("To: 4@pm.me")))
-		require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 5@pm.me")))
+		require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 1@pm.me"))))
+		require.NoError(t, client.Append(messageBoxName, nil, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 2@pm.me"))))
+		require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 3@pm.me"))))
+		require.NoError(t, client.Append(messageBoxName, nil, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 4@pm.me"))))
+		require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 5@pm.me"))))
 
 		{
 			mailboxStatus, err := client.Select(messageBoxName, false)

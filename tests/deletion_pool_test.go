@@ -8,9 +8,9 @@ import (
 
 func TestDeletionPool(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3, 4}, func(c map[int]*testConnection, s *testSession) {
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
-		c[1].doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
-		c[1].doAppend(`INBOX`, `To: 3@pm.me`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 3@pm.me`)).expect("OK")
 
 		for _, i := range []int{1, 2, 4} {
 			c[i].C("A006 SELECT INBOX")
@@ -64,9 +64,9 @@ func TestDeletionPool(t *testing.T) {
 
 func TestExpungeIssued(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
-		c[1].doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
-		c[1].doAppend(`INBOX`, `To: 3@pm.me`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 3@pm.me`)).expect("OK")
 
 		// 2 snapshots of INBOX
 		for i := 1; i <= 2; i++ {
@@ -115,8 +115,8 @@ func TestExpungeIssued(t *testing.T) {
 
 func TestExpungeUpdate(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
-		c[1].doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
 
 		// 2 snapshots of INBOX
 		for i := 1; i <= 2; i++ {
@@ -155,7 +155,7 @@ func TestExpungeUpdate(t *testing.T) {
 		c[2].Sx(`B002 OK \[EXPUNGEISSUED\] command completed in`)
 
 		// session 1 adds a message to the box and flags it as answered
-		c[1].doAppend(`INBOX`, `To: 3@pm.me`).expect(`OK .*`)
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 3@pm.me`)).expect("OK")
 		c[1].C(`A005 STORE 2 +FLAGS (\Answered)`)
 		c[1].S(`* 2 FETCH (FLAGS (\Answered \Recent))`)
 		c[1].Sx("A005 OK command completed in")
@@ -196,10 +196,10 @@ func TestExpungeUpdate(t *testing.T) {
 func TestStatusOnUnnotifiedSnapshot(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		// INBOX with 4 messages
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
-		c[1].doAppend(`INBOX`, `To: 2@pm.me`, `\Seen`).expect("OK")
-		c[1].doAppend(`INBOX`, `To: 3@pm.me`).expect("OK")
-		c[1].doAppend(`INBOX`, `To: 4@pm.me`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 2@pm.me`), `\Seen`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 3@pm.me`)).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 4@pm.me`)).expect("OK")
 
 		// 2 sessions with INBOX selected (-> 2 snapshots), session 3 is in Authenticated state (no mailbox selected).
 		for i := 1; i <= 2; i++ {
@@ -236,7 +236,7 @@ func TestDeletionFlagPropagation(t *testing.T) {
 		defer done()
 
 		// Create a message.
-		c[1].doAppend(origin, `To: 1@pm.me`).expect(`OK`)
+		c[1].doAppend(origin, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect(`OK`)
 
 		destination, done := c[1].doCreateTempDir()
 		defer done()
@@ -267,7 +267,7 @@ func TestDeletionFlagPropagation(t *testing.T) {
 func TestDeletionFlagPropagationIDLE(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// Create a message.
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect(`OK`)
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect(`OK`)
 
 		// Create a destination mailbox.
 		c[1].C("A002 CREATE destination").OK("A002")
@@ -301,7 +301,7 @@ func TestDeletionFlagPropagationIDLE(t *testing.T) {
 func TestDeletionFlagPropagationMulti(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		// Create a message.
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect(`OK`)
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect(`OK`)
 
 		// Create two destination mailboxes.
 		c[1].C("A002 CREATE mbox1").OK("A002")
@@ -358,6 +358,7 @@ func TestNoopReceivesPendingDeletionUpdates(t *testing.T) {
 		messageID1 := s.messageCreatedFromFile("user", mailboxID, "testdata/multipart-mixed.eml")
 		messageID2 := s.messageCreatedFromFile("user", mailboxID, "testdata/afternoon-meeting.eml")
 
+		s.flush("user")
 		// Create a snapshot by selecting in the mailbox.
 		c.C(`A001 select mbox`).OK(`A001`)
 
@@ -365,6 +366,7 @@ func TestNoopReceivesPendingDeletionUpdates(t *testing.T) {
 		s.messageRemoved("user", messageID1, mailboxID)
 		s.messageRemoved("user", messageID2, mailboxID)
 
+		s.flush("user")
 		// Noop should process their deletion.
 		c.C(`A002 noop`)
 		c.S(`* 1 EXPUNGE`, `* 1 EXPUNGE`)

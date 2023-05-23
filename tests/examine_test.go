@@ -18,7 +18,7 @@ func TestExamineWithLiteral(t *testing.T) {
 		c.C("A002 CREATE Archive")
 		c.S("A002 OK CREATE")
 
-		c.doAppend(`Archive`, `To: 3@pm.me`, `\Seen`).expect("OK")
+		c.doAppend(`Archive`, buildRFC5322TestLiteral(`To: 3@pm.me`), `\Seen`).expect("OK")
 
 		c.C("a007 examine {7}")
 		c.S("+ Ready")
@@ -36,9 +36,9 @@ func TestExamineWithLiteral(t *testing.T) {
 func TestExamineClient(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withUIDValidityGenerator(imap.NewFixedUIDValidityGenerator(1))), func(client *client.Client, _ *testSession) {
 		require.NoError(t, client.Create("Archive"))
-		require.NoError(t, client.Append("INBOX", []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 1@pm.me")))
-		require.NoError(t, client.Append("INBOX", []string{}, time.Now(), strings.NewReader("To: 2@pm.me")))
-		require.NoError(t, client.Append("Archive", []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 3@pm.me")))
+		require.NoError(t, client.Append("INBOX", []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 1@pm.me"))))
+		require.NoError(t, client.Append("INBOX", []string{}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 2@pm.me"))))
+		require.NoError(t, client.Append("Archive", []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 3@pm.me"))))
 
 		// IMAP client does not have an explicit Examine call, but this a call to Select(..., readonly=true) gets
 		// converted into an EXAMINE command.
