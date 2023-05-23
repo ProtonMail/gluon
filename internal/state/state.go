@@ -16,7 +16,7 @@ import (
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
-	"github.com/bradenaw/juniper/sets"
+	"github.com/bradenaw/juniper/xmaps"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
 )
@@ -770,7 +770,7 @@ func (state *State) popResponders(permitExpunge bool) []Responder {
 
 	var pop, rem []Responder
 
-	skipIDs := make(sets.Map[imap.InternalMessageID])
+	skipIDs := make(xmaps.Set[imap.InternalMessageID])
 
 	for _, res := range state.res {
 		if permitExpunge {
