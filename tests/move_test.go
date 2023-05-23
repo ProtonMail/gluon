@@ -108,10 +108,10 @@ func TestMoveBackAndForth(t *testing.T) {
 func TestMoveCopyDuplicates(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		// 4 messages in inbox.
-		c.doAppend("inbox", "To: 1@pm.me").expect("OK")
-		c.doAppend("inbox", "To: 2@pm.me").expect("OK")
-		c.doAppend("inbox", "To: 3@pm.me").expect("OK")
-		c.doAppend("inbox", "To: 4@pm.me").expect("OK")
+		c.doAppend("inbox", buildRFC5322TestLiteral("To: 1@pm.me")).expect("OK")
+		c.doAppend("inbox", buildRFC5322TestLiteral("To: 2@pm.me")).expect("OK")
+		c.doAppend("inbox", buildRFC5322TestLiteral("To: 3@pm.me")).expect("OK")
+		c.doAppend("inbox", buildRFC5322TestLiteral("To: 4@pm.me")).expect("OK")
 
 		// Create other mailbox.
 		c.C("tag create other").OK("tag")
@@ -264,9 +264,9 @@ func (simulateLabelConnectorBuilder) New(usernames []string, password []byte, pe
 
 func TestMoveLabelBehavior(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&simulateLabelConnectorBuilder{})), func(client *client.Client, _ *testSession) {
-		require.NoError(t, doAppendWithClient(client, "inbox", "To: Foo@foo.com", time.Now()))
-		require.NoError(t, doAppendWithClient(client, "inbox", "To: Bar@foo.com", time.Now()))
-		require.NoError(t, doAppendWithClient(client, "inbox", "To: Z@foo.com", time.Now()))
+		require.NoError(t, doAppendWithClient(client, "inbox", buildRFC5322TestLiteral("To: Foo@foo.com"), time.Now()))
+		require.NoError(t, doAppendWithClient(client, "inbox", buildRFC5322TestLiteral("To: Bar@foo.com"), time.Now()))
+		require.NoError(t, doAppendWithClient(client, "inbox", buildRFC5322TestLiteral("To: Z@foo.com"), time.Now()))
 
 		require.NoError(t, client.Create("mylabel"))
 
@@ -289,18 +289,24 @@ func TestMoveLabelBehavior(t *testing.T) {
 				forSeqNum(1, func(builder *validatorBuilder) {
 					builder.ignoreFlags()
 					builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+						builder.skipDateTime()
+						builder.skipFromAndSender()
 						builder.wantTo("Foo@foo.com")
 					})
 				}).
 				forSeqNum(2, func(builder *validatorBuilder) {
 					builder.ignoreFlags()
 					builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+						builder.skipDateTime()
+						builder.skipFromAndSender()
 						builder.wantTo("Bar@foo.com")
 					})
 				}).
 				forSeqNum(3, func(builder *validatorBuilder) {
 					builder.ignoreFlags()
 					builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+						builder.skipDateTime()
+						builder.skipFromAndSender()
 						builder.wantTo("Z@foo.com")
 					})
 				}).
@@ -323,6 +329,8 @@ func TestMoveLabelBehavior(t *testing.T) {
 			newFetchCommand(t, client).withItems("ENVELOPE").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
 				builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+					builder.skipDateTime()
+					builder.skipFromAndSender()
 					builder.wantTo("Foo@foo.com")
 				})
 			}).checkAndRequireMessageCount(1)

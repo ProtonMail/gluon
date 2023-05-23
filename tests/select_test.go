@@ -11,9 +11,9 @@ func TestSelect(t *testing.T) {
 		c.C("A002 CREATE Archive")
 		c.OK("A002")
 
-		c.doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
-		c.doAppend(`INBOX`, `To: 2@pm.me`).expect("OK")
-		c.doAppend(`Archive`, `To: 3@pm.me`, `\Seen`).expect("OK")
+		c.doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
+		c.doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+		c.doAppend(`Archive`, buildRFC5322TestLiteral(`To: 3@pm.me`), `\Seen`).expect("OK")
 
 		c.C("A006 select INBOX")
 		c.S(`* FLAGS (\Deleted \Flagged \Seen)`,

@@ -31,6 +31,20 @@ func (h *testHelper) expect(res ...string) {
 	h.s.Sxe(res...)
 }
 
+const DefaultTestDateStr = "23 Feb 2020 02:52:25 -0800 (PST)"
+
+func buildRFC5322TestLiteral(literal string) string {
+	if !strings.Contains(literal, "Date: ") {
+		literal = "Date: " + DefaultTestDateStr + "\r\n" + literal
+	}
+
+	if !strings.Contains(literal, "From: ") {
+		literal = "From: NoAddress@void.universe" + "\r\n" + literal
+	}
+
+	return literal
+}
+
 func (s *testConnection) doAppend(mailboxName, literal string, flags ...string) *testHelper {
 	tag := uuid.NewString()
 
@@ -650,6 +664,21 @@ func (v *envelopeValidatorBuilder) wantDateTime(dateTime string) *envelopeValida
 	}
 
 	return v
+}
+
+func (v *envelopeValidatorBuilder) skipDateTime() {
+	v.validator.validateDateTime = func(_ testing.TB, _ time.Time) {
+	}
+}
+
+func (v *envelopeValidatorBuilder) skipFromAndSender() {
+	v.validator.validateFrom = func(_ testing.TB, _ []*goimap.Address) {
+
+	}
+
+	v.validator.validateSender = func(_ testing.TB, _ []*goimap.Address) {
+
+	}
 }
 
 func (v *envelopeValidatorBuilder) wantSubject(subject string) *envelopeValidatorBuilder {
