@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/db"
 	"runtime"
 	"strconv"
 	"strings"
@@ -12,8 +13,6 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
@@ -28,7 +27,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 		return err
 	}
 
-	operations := make([]func(snapMsgWithSeq, *ent.Message, []byte) (response.Item, error), 0, len(cmd.Attributes))
+	operations := make([]func(snapMsgWithSeq, *db.Message, []byte) (response.Item, error), 0, len(cmd.Attributes))
 
 	var (
 		needsLiteral bool
@@ -84,7 +83,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 				setSeen = true
 			}
 
-			op := func(_ snapMsgWithSeq, _ *ent.Message, literal []byte) (response.Item, error) {
+			op := func(_ snapMsgWithSeq, _ *db.Message, literal []byte) (response.Item, error) {
 				return fetchAttributeBodySection(attribute, literal)
 			}
 
@@ -118,8 +117,8 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 		defer async.HandlePanic(m.state.panicHandler)
 
 		msg := snapMessages[i]
-		message, err := stateDBReadResult(ctx, m.state, func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
-			return db.GetMessage(ctx, client, msg.ID.InternalID)
+		message, err := stateDBReadResult(ctx, m.state, func(ctx context.Context, client db.ReadOnly) (*db.Message, error) {
+			return client.GetMessage(ctx, msg.ID.InternalID)
 		})
 		if err != nil {
 			return err
@@ -175,7 +174,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 	})
 
 	if len(msgsToBeMarkedSeen) != 0 {
-		if err := stateDBWrite(ctx, m.state, func(ctx context.Context, tx *ent.Tx) ([]Update, error) {
+		if err := stateDBWrite(ctx, m.state, func(ctx context.Context, tx db.Transaction) ([]Update, error) {
 			return m.state.actionAddMessageFlags(ctx, tx, msgsToBeMarkedSeen, imap.NewFlagSet(imap.FlagSeen))
 		}); err != nil {
 			return err
@@ -185,47 +184,47 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 	return nil
 }
 
-func fetchEnvelope(_ snapMsgWithSeq, message *ent.Message, _ []byte) (response.Item, error) {
+func fetchEnvelope(_ snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
 	return response.ItemEnvelope(message.Envelope), nil
 }
 
-func fetchFlags(msg snapMsgWithSeq, message *ent.Message, _ []byte) (response.Item, error) {
+func fetchFlags(msg snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
 	return response.ItemFlags(msg.flags), nil
 }
 
-func fetchInternalDate(_ snapMsgWithSeq, message *ent.Message, _ []byte) (response.Item, error) {
+func fetchInternalDate(_ snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
 	return response.ItemInternalDate(message.Date), nil
 }
 
-func fetchRFC822(_ snapMsgWithSeq, _ *ent.Message, literal []byte) (response.Item, error) {
+func fetchRFC822(_ snapMsgWithSeq, _ *db.Message, literal []byte) (response.Item, error) {
 	return response.ItemRFC822Literal(literal), nil
 }
 
-func fetchRFC822Header(_ snapMsgWithSeq, _ *ent.Message, literal []byte) (response.Item, error) {
+func fetchRFC822Header(_ snapMsgWithSeq, _ *db.Message, literal []byte) (response.Item, error) {
 	section := rfc822.Parse(literal)
 
 	return response.ItemRFC822Header(section.Header()), nil
 }
 
-func fetchRFC822Size(_ snapMsgWithSeq, message *ent.Message, _ []byte) (response.Item, error) {
+func fetchRFC822Size(_ snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
 	return response.ItemRFC822Size(message.Size), nil
 }
 
-func fetchRFC822Text(_ snapMsgWithSeq, _ *ent.Message, literal []byte) (response.Item, error) {
+func fetchRFC822Text(_ snapMsgWithSeq, _ *db.Message, literal []byte) (response.Item, error) {
 	section := rfc822.Parse(literal)
 
 	return response.ItemRFC822Text(section.Body()), nil
 }
 
-func fetchBody(_ snapMsgWithSeq, message *ent.Message, _ []byte) (response.Item, error) {
+func fetchBody(_ snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
 	return response.ItemBody(message.Body), nil
 }
 
-func fetchBodyStructure(_ snapMsgWithSeq, message *ent.Message, _ []byte) (response.Item, error) {
+func fetchBodyStructure(_ snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
 	return response.ItemBodyStructure(message.BodyStructure), nil
 }
 
-func fetchUID(msg snapMsgWithSeq, _ *ent.Message, _ []byte) (response.Item, error) {
+func fetchUID(msg snapMsgWithSeq, _ *db.Message, _ []byte) (response.Item, error) {
 	return response.ItemUID(msg.UID), nil
 }
 

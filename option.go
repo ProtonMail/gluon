@@ -2,6 +2,7 @@ package gluon
 
 import (
 	"crypto/tls"
+	"github.com/ProtonMail/gluon/db"
 	"io"
 	"time"
 
@@ -229,4 +230,16 @@ func (w withUIDValidityGenerator) config(builder *serverBuilder) {
 
 func WithUIDValidityGenerator(generator imap.UIDValidityGenerator) Option {
 	return &withUIDValidityGenerator{generator: generator}
+}
+
+type withDBClient struct {
+	ci db.ClientInterface
+}
+
+func (w withDBClient) config(builder *serverBuilder) {
+	builder.dbCI = w.ci
+}
+
+func WithDBClient(ci db.ClientInterface) Option {
+	return &withDBClient{ci: ci}
 }

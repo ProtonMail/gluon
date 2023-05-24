@@ -2,7 +2,7 @@ package tests
 
 import (
 	"errors"
-	"github.com/ProtonMail/gluon/internal/db"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"

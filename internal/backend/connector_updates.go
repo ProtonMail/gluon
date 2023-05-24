@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/db"
 	"io"
 	"os"
 	"runtime"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -79,8 +78,8 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 		return fmt.Errorf("attempting to create protected mailbox (recovery)")
 	}
 
-	if exists, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (bool, error) {
-		return db.MailboxExistsWithRemoteID(ctx, client, update.Mailbox.ID)
+	if exists, err := db.ClientReadType(ctx, user.db, func(ctx context.Context, client db.ReadOnly) (bool, error) {
+		return client.MailboxExistsWithRemoteID(ctx, update.Mailbox.ID)
 	}); err != nil {
 		return err
 	} else if exists {
@@ -96,16 +95,15 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 		return err
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		if mailboxCount, err := db.GetMailboxCount(ctx, tx.Client()); err != nil {
+	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+		if mailboxCount, err := tx.GetMailboxCount(ctx); err != nil {
 			return err
 		} else if err := user.imapLimits.CheckMailBoxCount(mailboxCount); err != nil {
 			return err
 		}
 
-		if _, err := db.CreateMailbox(
+		if _, err := tx.CreateMailbox(
 			ctx,
-			tx,
 			update.Mailbox.ID,
 			strings.Join(update.Mailbox.Name, user.delimiter),
 			update.Mailbox.Flags,
@@ -126,21 +124,21 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 		return fmt.Errorf("attempting to delete protected mailbox (recovery)")
 	}
 
-	stateUpdate, err := db.WriteResult(ctx, user.db, func(ctx context.Context, tx *ent.Tx) (state.Update, error) {
-		mailbox, err := db.GetMailboxByRemoteID(ctx, tx.Client(), update.MailboxID)
+	stateUpdate, err := db.ClientWriteType(ctx, user.db, func(ctx context.Context, tx db.Transaction) (state.Update, error) {
+		mailbox, err := tx.GetMailboxByRemoteID(ctx, update.MailboxID)
 		if err != nil {
-			if ent.IsNotFound(err) {
+			if db.IsErrNotFound(err) {
 				return nil, nil
 			}
 
 			return nil, err
 		}
 
-		if err := db.DeleteMailboxWithRemoteID(ctx, tx, update.MailboxID); err != nil {
+		if err := tx.DeleteMailboxWithRemoteID(ctx, update.MailboxID); err != nil {
 			return nil, err
 		}
 
-		if _, err := db.RemoveDeletedSubscriptionWithName(ctx, tx, mailbox.Name); err != nil {
+		if _, err := tx.RemoveDeletedSubscriptionWithName(ctx, mailbox.Name); err != nil {
 			return nil, err
 		}
 
@@ -163,16 +161,14 @@ func (user *user) applyMailboxUpdated(ctx context.Context, update *imap.MailboxU
 		return fmt.Errorf("attempting to rename protected mailbox (recovery)")
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		client := tx.Client()
-
-		if exists, err := db.MailboxExistsWithRemoteID(ctx, client, update.MailboxID); err != nil {
+	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+		if exists, err := tx.MailboxExistsWithRemoteID(ctx, update.MailboxID); err != nil {
 			return err
 		} else if !exists {
 			return nil
 		}
 
-		currentName, err := db.GetMailboxNameWithRemoteID(ctx, client, update.MailboxID)
+		currentName, err := tx.GetMailboxNameWithRemoteID(ctx, update.MailboxID)
 		if err != nil {
 			return err
 		}
@@ -181,7 +177,7 @@ func (user *user) applyMailboxUpdated(ctx context.Context, update *imap.MailboxU
 			return nil
 		}
 
-		return db.RenameMailboxWithRemoteID(ctx, tx, update.MailboxID, strings.Join(update.MailboxName, user.delimiter))
+		return tx.RenameMailboxWithRemoteID(ctx, update.MailboxID, strings.Join(update.MailboxName, user.delimiter))
 	})
 }
 
@@ -191,8 +187,8 @@ func (user *user) applyMailboxIDChanged(ctx context.Context, update *imap.Mailbo
 		return fmt.Errorf("attempting to change protected mailbox (recovery) remote ID")
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		if err := db.UpdateRemoteMailboxID(ctx, tx, update.InternalID, update.RemoteID); err != nil {
+	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+		if err := tx.UpdateRemoteMailboxID(ctx, update.InternalID, update.RemoteID); err != nil {
 			return err
 		}
 
@@ -215,9 +211,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	messageForMBox := make(map[imap.InternalMailboxID][]imap.InternalMessageID)
 	mboxInternalIDMap := make(map[imap.MailboxID]imap.InternalMailboxID)
 
-	err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		client := tx.Client()
-
+	err := user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
 		for _, message := range update.Messages {
 			if slices.Contains(message.MailboxIDs, ids.GluonInternalRecoveryMailboxRemoteID) {
 				logrus.Errorf("attempting to import messages into protected mailbox (recovery), skipping")
@@ -226,8 +220,8 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 			internalID, ok := messagesToCreateFilter[message.Message.ID]
 			if !ok {
-				messageID, err := db.GetMessageIDFromRemoteID(ctx, client, message.Message.ID)
-				if ent.IsNotFound(err) {
+				messageID, err := tx.GetMessageIDFromRemoteID(ctx, message.Message.ID)
+				if db.IsErrNotFound(err) {
 					internalID = imap.NewInternalMessageID()
 
 					literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(message.Literal, ids.InternalIDKey, internalID.String())
@@ -259,7 +253,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 			for _, mboxID := range message.MailboxIDs {
 				v, ok := mboxInternalIDMap[mboxID]
 				if !ok {
-					internalMBoxID, err := db.GetMailboxIDWithRemoteID(ctx, client, mboxID)
+					internalMBoxID, err := tx.GetMailboxIDFromRemoteID(ctx, mboxID)
 					if err != nil {
 						// If a mailbox doesn't exist and we are allowed to skip move to next mailbox.
 						if update.IgnoreUnknownMailboxIDs {
@@ -310,7 +304,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 			}
 
 			// Create message in the database
-			if _, err := db.CreateMessages(ctx, tx, xslices.Map(chunk, func(req *DBRequestWithLiteral) *db.CreateMessageReq {
+			if _, err := tx.CreateMessages(ctx, xslices.Map(chunk, func(req *DBRequestWithLiteral) *db.CreateMessageReq {
 				return &req.CreateMessageReq
 			})...); err != nil {
 				return err
@@ -319,7 +313,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 		// Assign all the messages to the mailbox
 		for mboxID, msgList := range messageForMBox {
-			inMailbox, err := db.FilterMailboxContainsInternalID(ctx, tx.Client(), mboxID, msgList)
+			inMailbox, err := tx.MailboxFilterContainsInternalID(ctx, mboxID, msgList)
 			if err != nil {
 				return err
 			}
@@ -358,23 +352,24 @@ func (user *user) applyMessageMailboxesUpdated(ctx context.Context, update *imap
 		return fmt.Errorf("attempting to move messages into protected mailbox (recovery)")
 	}
 
-	if exists, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (bool, error) {
-		return db.MessageExistsWithRemoteID(ctx, client, update.MessageID)
+	if exists, err := db.ClientReadType(ctx, user.db, func(ctx context.Context, client db.ReadOnly) (bool, error) {
+		return client.MessageExistsWithRemoteID(ctx, update.MessageID)
 	}); err != nil {
 		return err
 	} else if !exists {
 		return state.ErrNoSuchMessage
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		client := tx.Client()
-
-		internalMsgID, err := db.GetMessageIDFromRemoteID(ctx, client, update.MessageID)
+	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+		internalMsgID, err := tx.GetMessageIDFromRemoteID(ctx, update.MessageID)
 		if err != nil {
+			if db.IsErrNotFound(err) {
+				return state.ErrNoSuchMessage
+			}
 			return err
 		}
 
-		internalMBoxIDs, err := db.TranslateRemoteMailboxIDs(ctx, client, update.MailboxIDs)
+		internalMBoxIDs, err := tx.MailboxTranslateRemoteIDs(ctx, update.MailboxIDs)
 		if err != nil {
 			return err
 		}
@@ -393,19 +388,19 @@ func (user *user) applyMessageMailboxesUpdated(ctx context.Context, update *imap
 
 // applyMessageFlagsUpdated applies a MessageFlagsUpdated update.
 func (user *user) applyMessageFlagsUpdated(ctx context.Context, update *imap.MessageFlagsUpdated) error {
-	if exists, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (bool, error) {
-		return db.MessageExistsWithRemoteID(ctx, client, update.MessageID)
+	if exists, err := db.ClientReadType(ctx, user.db, func(ctx context.Context, client db.ReadOnly) (bool, error) {
+		return client.MessageExistsWithRemoteID(ctx, update.MessageID)
 	}); err != nil {
 		return err
 	} else if !exists {
 		return state.ErrNoSuchMessage
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		internalMsgID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), update.MessageID)
+	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+		internalMsgID, err := tx.GetMessageIDFromRemoteID(ctx, update.MessageID)
 
 		if err != nil {
-			if ent.IsNotFound(err) {
+			if db.IsErrNotFound(err) {
 				return state.ErrNoSuchMessage
 			}
 			return err
@@ -421,8 +416,8 @@ func (user *user) applyMessageFlagsUpdated(ctx context.Context, update *imap.Mes
 
 // applyMessageIDChanged applies a MessageIDChanged update.
 func (user *user) applyMessageIDChanged(ctx context.Context, update *imap.MessageIDChanged) error {
-	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		return db.UpdateRemoteMessageID(ctx, tx, update.InternalID, update.RemoteID)
+	if err := user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+		return tx.UpdateRemoteMessageID(ctx, update.InternalID, update.RemoteID)
 	}); err != nil {
 		return err
 	}
@@ -436,8 +431,8 @@ func (user *user) applyMessageIDChanged(ctx context.Context, update *imap.Messag
 	return nil
 }
 
-func (user *user) setMessageMailboxes(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, mboxIDs []imap.InternalMailboxID) error {
-	curMailboxIDs, err := db.GetMessageMailboxIDs(ctx, tx.Client(), messageID)
+func (user *user) setMessageMailboxes(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, mboxIDs []imap.InternalMailboxID) error {
+	curMailboxIDs, err := tx.GetMessageMailboxIDs(ctx, messageID)
 	if err != nil {
 		return err
 	}
@@ -458,7 +453,7 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx *ent.Tx, messageID
 }
 
 // applyMessagesAddedToMailbox adds the messages to the given mailbox.
-func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]db.UIDWithFlags, error) {
+func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx db.Transaction, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]db.UIDWithFlags, error) {
 	messageUIDs, update, err := state.AddMessagesToMailbox(ctx, tx, mboxID, messageIDs, nil, user.imapLimits)
 	if err != nil {
 		return nil, err
@@ -470,7 +465,7 @@ func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx *ent.Tx, m
 }
 
 // applyMessagesRemovedFromMailbox removes the messages from the given mailbox.
-func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) error {
+func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx db.Transaction, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) error {
 	updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mboxID, messageIDs)
 	if err != nil {
 		return err
@@ -483,8 +478,8 @@ func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx *ent.T
 	return nil
 }
 
-func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, flags imap.FlagSet) error {
-	curFlags, err := db.GetMessageFlags(ctx, tx.Client(), []imap.InternalMessageID{messageID})
+func (user *user) setMessageFlags(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, flags imap.FlagSet) error {
+	curFlags, err := tx.GetMessagesFlags(ctx, []imap.InternalMessageID{messageID})
 	if err != nil {
 		return err
 	}
@@ -510,8 +505,8 @@ func (user *user) setMessageFlags(ctx context.Context, tx *ent.Tx, messageID ima
 	return nil
 }
 
-func (user *user) addMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, flag string) error {
-	if err := db.AddMessageFlag(ctx, tx, []imap.InternalMessageID{messageID}, flag); err != nil {
+func (user *user) addMessageFlags(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, flag string) error {
+	if err := tx.AddFlagToMessages(ctx, []imap.InternalMessageID{messageID}, flag); err != nil {
 		return err
 	}
 
@@ -520,8 +515,8 @@ func (user *user) addMessageFlags(ctx context.Context, tx *ent.Tx, messageID ima
 	return nil
 }
 
-func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID imap.InternalMessageID, flag string) error {
-	if err := db.RemoveMessageFlag(ctx, tx, []imap.InternalMessageID{messageID}, flag); err != nil {
+func (user *user) removeMessageFlags(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, flag string) error {
+	if err := tx.RemoveFlagFromMessages(ctx, []imap.InternalMessageID{messageID}, flag); err != nil {
 		return err
 	}
 
@@ -533,25 +528,25 @@ func (user *user) removeMessageFlags(ctx context.Context, tx *ent.Tx, messageID 
 func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageDeleted) error {
 	var stateUpdates []state.Update
 
-	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		if err := db.MarkMessageAsDeletedWithRemoteID(ctx, tx, update.MessageID); err != nil {
-			if ent.IsNotFound(err) {
+	if err := user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+		if err := tx.MarkMessageAsDeletedWithRemoteID(ctx, update.MessageID); err != nil {
+			if db.IsErrNotFound(err) {
 				return nil
 			}
 
 			return err
 		}
 
-		internalMessageID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), update.MessageID)
+		internalMessageID, err := tx.GetMessageIDFromRemoteID(ctx, update.MessageID)
 		if err != nil {
-			if ent.IsNotFound(err) {
+			if db.IsErrNotFound(err) {
 				return nil
 			}
 
 			return err
 		}
 
-		mailboxes, err := db.GetMessageMailboxIDs(ctx, tx.Client(), internalMessageID)
+		mailboxes, err := tx.GetMessageMailboxIDs(ctx, internalMessageID)
 		if err != nil {
 			return err
 		}
@@ -582,10 +577,10 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageUpdated) error {
 	log := logrus.WithField("message updated", update.Message.ID.ShortID())
 
-	internalMessageID, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (imap.InternalMessageID, error) {
-		return db.GetMessageIDFromRemoteID(ctx, client, update.Message.ID)
+	internalMessageID, err := db.ClientReadType(ctx, user.db, func(ctx context.Context, client db.ReadOnly) (imap.InternalMessageID, error) {
+		return client.GetMessageIDFromRemoteID(ctx, update.Message.ID)
 	})
-	if ent.IsNotFound(err) {
+	if db.IsErrNotFound(err) {
 		if update.AllowCreate {
 			log.Warn("Message not found, creating it instead")
 
@@ -603,7 +598,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		return err
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
 		// compare and see if the literal has changed.
 		onDiskLiteral, err := user.store.Get(internalMessageID)
 		if err != nil {
@@ -630,7 +625,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 			targetMailboxes := make([]imap.InternalMailboxID, 0, len(update.MailboxIDs))
 
 			for _, mbox := range update.MailboxIDs {
-				internalMBoxID, err := db.GetMailboxIDFromRemoteID(ctx, tx.Client(), mbox)
+				internalMBoxID, err := tx.GetMailboxIDFromRemoteID(ctx, mbox)
 				if err != nil {
 					return err
 				}
@@ -645,7 +640,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 			var stateUpdates []state.Update
 			{
 				// delete the message and remove from the mailboxes.
-				mailboxes, err := db.GetMessageMailboxIDs(ctx, tx.Client(), internalMessageID)
+				mailboxes, err := tx.GetMessageMailboxIDs(ctx, internalMessageID)
 				if err != nil {
 					return err
 				}
@@ -663,7 +658,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 
 				// We need change the old remote id as it will break our table constraint otherwise and everything
 				// will silently fail.
-				if err := db.MarkMessageAsDeletedAndAssignRandomRemoteID(ctx, tx, internalMessageID); err != nil {
+				if err := tx.MarkMessageAsDeletedAndAssignRandomRemoteID(ctx, internalMessageID); err != nil {
 					return err
 				}
 			}
@@ -685,7 +680,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 					InternalID:  newInternalID,
 				}
 
-				if m, err := db.CreateMessages(ctx, tx, request); err != nil {
+				if m, err := tx.CreateMessages(ctx, request); err != nil {
 					return err
 				} else if len(m) == 0 {
 					return fmt.Errorf("no messages were inserted")
@@ -696,7 +691,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 				}
 
 				for _, mbox := range update.MailboxIDs {
-					internalMBoxID, err := db.GetMailboxIDFromRemoteID(ctx, tx.Client(), mbox)
+					internalMBoxID, err := tx.GetMailboxIDFromRemoteID(ctx, mbox)
 					if err != nil {
 						return err
 					}
@@ -721,8 +716,8 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 
 // applyUIDValidityBumped applies a UIDValidityBumped event to the user.
 func (user *user) applyUIDValidityBumped(ctx context.Context, update *imap.UIDValidityBumped) error {
-	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		mailboxes, err := db.GetAllMailboxes(ctx, tx.Client())
+	if err := user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+		mailboxes, err := tx.GetAllMailboxes(ctx)
 		if err != nil {
 			return err
 		}
@@ -733,7 +728,7 @@ func (user *user) applyUIDValidityBumped(ctx context.Context, update *imap.UIDVa
 				return err
 			}
 
-			if _, err := mailbox.Update().SetUIDValidity(uidValidity).Save(ctx); err != nil {
+			if err := tx.SetMailboxUIDValidity(ctx, mailbox.ID, uidValidity); err != nil {
 				return err
 			}
 		}

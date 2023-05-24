@@ -3,12 +3,11 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/db"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
 )
@@ -17,7 +16,7 @@ type Update interface {
 	// Filter returns true when the state can be passed into A.
 	Filter(s *State) bool
 	// Apply the update to a given state.
-	Apply(cxt context.Context, tx *ent.Tx, s *State) error
+	Apply(cxt context.Context, tx db.Transaction, s *State) error
 
 	String() string
 }
@@ -31,7 +30,7 @@ func newMessageFlagsComboStateUpdate() *messageFlagsComboStateUpdate {
 	return &messageFlagsComboStateUpdate{}
 }
 
-func (u *messageFlagsComboStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (u *messageFlagsComboStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
 	for _, v := range u.updates {
 		if err := v.Apply(ctx, tx, s); err != nil {
 			return err
@@ -53,11 +52,11 @@ type messageFlagsAddedStateUpdate struct {
 	AllStateFilter
 	messageIDs []imap.InternalMessageID
 	flags      imap.FlagSet
-	mboxID     ids.MailboxIDPair
+	mboxID     db.MailboxIDPair
 	stateID    StateID
 }
 
-func newMessageFlagsAddedStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID StateID) Update {
+func newMessageFlagsAddedStateUpdate(flags imap.FlagSet, mboxID db.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID StateID) Update {
 	return &messageFlagsAddedStateUpdate{
 		flags:      flags,
 		mboxID:     mboxID,
@@ -66,7 +65,7 @@ func newMessageFlagsAddedStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPai
 	}
 }
 
-func (u *messageFlagsAddedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (u *messageFlagsAddedStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
 	for _, messageID := range u.messageIDs {
 		newFlags := u.flags
 
@@ -96,7 +95,7 @@ func (u *messageFlagsAddedStateUpdate) String() string {
 
 // applyMessageFlagsAdded adds the flags to the given messages.
 func (state *State) applyMessageFlagsAdded(ctx context.Context,
-	tx *ent.Tx,
+	tx db.Transaction,
 	messageIDs []imap.InternalMessageID,
 	addFlags imap.FlagSet) ([]Update, error) {
 	if addFlags.ContainsUnchecked(imap.FlagRecentLowerCase) {
@@ -106,9 +105,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context,
 	// Since DB state can be more up to date then the flag state we should only emit add flag updates for values
 	// that actually changed.
 
-	client := tx.Client()
-
-	curFlags, err := db.GetMessageFlags(ctx, client, messageIDs)
+	curFlags, err := tx.GetMessagesFlags(ctx, messageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +147,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context,
 	flagStateUpdate := newMessageFlagsComboStateUpdate()
 
 	if addFlags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
-		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, true); err != nil {
+		if err := tx.SetMailboxMessagesDeletedFlag(ctx, state.snap.mboxID.InternalID, messageIDs, true); err != nil {
 			return nil, err
 		}
 
@@ -169,7 +166,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context,
 			}
 		}
 
-		if err := db.AddMessageFlag(ctx, tx, messagesToFlag, flag); err != nil {
+		if err := tx.AddFlagToMessages(ctx, messagesToFlag, flag); err != nil {
 			return nil, err
 		}
 
@@ -183,11 +180,11 @@ type messageFlagsRemovedStateUpdate struct {
 	AllStateFilter
 	messageIDs []imap.InternalMessageID
 	flags      imap.FlagSet
-	mboxID     ids.MailboxIDPair
+	mboxID     db.MailboxIDPair
 	stateID    StateID
 }
 
-func NewMessageFlagsRemovedStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID StateID) Update {
+func NewMessageFlagsRemovedStateUpdate(flags imap.FlagSet, mboxID db.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID StateID) Update {
 	return &messageFlagsRemovedStateUpdate{
 		flags:      flags,
 		mboxID:     mboxID,
@@ -196,7 +193,7 @@ func NewMessageFlagsRemovedStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDP
 	}
 }
 
-func (u *messageFlagsRemovedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (u *messageFlagsRemovedStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
 	for _, messageID := range u.messageIDs {
 		newFlags := u.flags
 
@@ -226,16 +223,14 @@ func (u *messageFlagsRemovedStateUpdate) String() string {
 
 // applyMessageFlagsRemoved removes the flags from the given messages.
 func (state *State) applyMessageFlagsRemoved(ctx context.Context,
-	tx *ent.Tx,
+	tx db.Transaction,
 	messageIDs []imap.InternalMessageID,
 	remFlags imap.FlagSet) ([]Update, error) {
 	if remFlags.ContainsUnchecked(imap.FlagRecentLowerCase) {
 		return nil, fmt.Errorf("the recent flag is read-only")
 	}
 
-	client := tx.Client()
-
-	curFlags, err := db.GetMessageFlags(ctx, client, messageIDs)
+	curFlags, err := tx.GetMessagesFlags(ctx, messageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +271,7 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context,
 	flagStateUpdate := newMessageFlagsComboStateUpdate()
 
 	if remFlags.ContainsUnchecked(imap.FlagDeletedLowerCase) {
-		if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, false); err != nil {
+		if err := tx.SetMailboxMessagesDeletedFlag(ctx, state.snap.mboxID.InternalID, messageIDs, false); err != nil {
 			return nil, err
 		}
 
@@ -295,7 +290,7 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context,
 			}
 		}
 
-		if err := db.RemoveMessageFlag(ctx, tx, messagesToFlag, flag); err != nil {
+		if err := tx.RemoveFlagFromMessages(ctx, messagesToFlag, flag); err != nil {
 			return nil, err
 		}
 
@@ -309,11 +304,11 @@ type messageFlagsSetStateUpdate struct {
 	AllStateFilter
 	messageIDs []imap.InternalMessageID
 	flags      imap.FlagSet
-	mboxID     ids.MailboxIDPair
+	mboxID     db.MailboxIDPair
 	stateID    StateID
 }
 
-func NewMessageFlagsSetStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID StateID) Update {
+func NewMessageFlagsSetStateUpdate(flags imap.FlagSet, mboxID db.MailboxIDPair, messageIDs []imap.InternalMessageID, stateID StateID) Update {
 	return &messageFlagsSetStateUpdate{
 		flags:      flags,
 		mboxID:     mboxID,
@@ -322,7 +317,7 @@ func NewMessageFlagsSetStateUpdate(flags imap.FlagSet, mboxID ids.MailboxIDPair,
 	}
 }
 
-func (u *messageFlagsSetStateUpdate) Apply(ctx context.Context, tx *ent.Tx, state *State) error {
+func (u *messageFlagsSetStateUpdate) Apply(ctx context.Context, tx db.Transaction, state *State) error {
 	for _, messageID := range u.messageIDs {
 		newFlags := u.flags
 
@@ -352,7 +347,7 @@ func (u *messageFlagsSetStateUpdate) String() string {
 
 // applyMessageFlagsSet sets the flags of the given messages.
 func (state *State) applyMessageFlagsSet(ctx context.Context,
-	tx *ent.Tx,
+	tx db.Transaction,
 	messageIDs []imap.InternalMessageID,
 	setFlags imap.FlagSet) ([]Update, error) {
 	if setFlags.ContainsUnchecked(imap.FlagRecentLowerCase) {
@@ -363,7 +358,7 @@ func (state *State) applyMessageFlagsSet(ctx context.Context,
 		return nil, nil
 	}
 
-	curFlags, err := db.GetMessageFlags(ctx, tx.Client(), messageIDs)
+	curFlags, err := tx.GetMessagesFlags(ctx, messageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -398,11 +393,11 @@ func (state *State) applyMessageFlagsSet(ctx context.Context,
 		}
 	}
 
-	if err := db.SetDeletedFlag(ctx, tx, state.snap.mboxID.InternalID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {
+	if err := tx.SetMailboxMessagesDeletedFlag(ctx, state.snap.mboxID.InternalID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {
 		return nil, err
 	}
 
-	if err := db.SetMessageFlags(ctx, tx, messageIDs, setFlags.Remove(imap.FlagDeleted)); err != nil {
+	if err := tx.SetFlagsOnMessages(ctx, messageIDs, setFlags.Remove(imap.FlagDeleted)); err != nil {
 		return nil, err
 	}
 
@@ -421,7 +416,7 @@ func NewMailboxRemoteIDUpdateStateUpdate(internalID imap.InternalMailboxID, remo
 	}
 }
 
-func (u *mailboxRemoteIDUpdateStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (u *mailboxRemoteIDUpdateStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
 	s.snap.mboxID.RemoteID = u.remoteID
 
 	return nil
@@ -439,7 +434,7 @@ func NewMailboxDeletedStateUpdate(mboxID imap.InternalMailboxID) Update {
 	return &mailboxDeletedStateUpdate{MBoxIDStateFilter: MBoxIDStateFilter{MboxID: mboxID}}
 }
 
-func (u *mailboxDeletedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (u *mailboxDeletedStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
 	s.markInvalid()
 
 	return nil
@@ -457,7 +452,7 @@ func NewUIDValidityBumpedStateUpdate() Update {
 	return &uidValidityBumpedStateUpdate{}
 }
 
-func (u *uidValidityBumpedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (u *uidValidityBumpedStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
 	s.markInvalid()
 
 	return nil

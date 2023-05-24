@@ -3,12 +3,11 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/db"
 	"regexp"
 	"strings"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/bradenaw/juniper/xslices"
 )
 
@@ -22,12 +21,12 @@ type matchMailbox struct {
 	Name       string
 	Subscribed bool
 	// EntMBox should be set to nil if there is no such value.
-	EntMBox *ent.Mailbox
+	EntMBox *db.Mailbox
 }
 
 func getMatches(
 	ctx context.Context,
-	client *ent.Client,
+	client db.ReadOnly,
 	allMailboxes []matchMailbox,
 	ref, pattern, delimiter string,
 	subscribed bool,
@@ -79,7 +78,7 @@ func getMatches(
 
 func prepareMatch(
 	ctx context.Context,
-	client *ent.Client,
+	client db.ReadOnly,
 	matchedName string,
 	mbox *matchMailbox,
 	pattern, delimiter string,
@@ -108,13 +107,13 @@ func prepareMatch(
 
 	if mbox.EntMBox != nil {
 		atts = imap.NewFlagSetFromSlice(xslices.Map(
-			mbox.EntMBox.Edges.Attributes,
-			func(flag *ent.MailboxAttr) string {
+			mbox.EntMBox.Attributes,
+			func(flag *db.MailboxAttr) string {
 				return flag.Value
 			},
 		))
 
-		recent, err := db.GetMailboxRecentCount(ctx, client, mbox.EntMBox)
+		recent, err := client.GetMailboxRecentCount(ctx, mbox.EntMBox.ID)
 		if err != nil {
 			return Match{}, false, err
 		}

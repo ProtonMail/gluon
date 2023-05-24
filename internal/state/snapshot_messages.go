@@ -2,10 +2,10 @@ package state
 
 import (
 	"fmt"
+	"github.com/ProtonMail/gluon/db"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
-	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
@@ -14,7 +14,7 @@ var ErrOutOfOrderUIDInsertion = fmt.Errorf("UIDs must be strictly ascending")
 
 // snapMsg is a single message inside a snapshot.
 type snapMsg struct {
-	ID        ids.MessageIDPair
+	ID        db.MessageIDPair
 	UID       imap.UID
 	flags     imap.FlagSet
 	toExpunge bool
@@ -48,7 +48,7 @@ func (list *snapMsgList) binarySearchByUID(uid imap.UID) (int, bool) {
 	return index, ok
 }
 
-func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) error {
+func (list *snapMsgList) insert(msgID db.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) error {
 	if len(list.msg) > 0 && list.msg[len(list.msg)-1].UID >= msgUID {
 		return fmt.Errorf("UID-Last=%v UID-Msg=%v: %w", list.msg[len(list.msg)-1].UID, msgUID, ErrOutOfOrderUIDInsertion)
 	}
@@ -67,7 +67,7 @@ func (list *snapMsgList) insert(msgID ids.MessageIDPair, msgUID imap.UID, flags 
 	return nil
 }
 
-func (list *snapMsgList) insertOutOfOrder(msgID ids.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
+func (list *snapMsgList) insertOutOfOrder(msgID db.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
 	index, ok := list.binarySearchByUID(msgUID)
 	if ok {
 		panic("Duplicate UID added")

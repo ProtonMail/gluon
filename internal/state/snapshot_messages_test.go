@@ -1,11 +1,11 @@
 package state
 
 import (
+	"github.com/ProtonMail/gluon/db"
 	"testing"
 
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
-	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/stretchr/testify/require"
 )
 
@@ -221,8 +221,8 @@ func TestSnapListGetMessages(t *testing.T) {
 	}
 }
 
-func messageIDPair(internalID imap.InternalMessageID, remoteID imap.MessageID) ids.MessageIDPair {
-	return ids.MessageIDPair{InternalID: internalID, RemoteID: remoteID}
+func messageIDPair(internalID imap.InternalMessageID, remoteID imap.MessageID) db.MessageIDPair {
+	return db.MessageIDPair{InternalID: internalID, RemoteID: remoteID}
 }
 
 func must[T any](val T, ok bool) T {

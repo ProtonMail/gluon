@@ -2,11 +2,9 @@ package state
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/db"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/bradenaw/juniper/xslices"
 )
@@ -16,14 +14,14 @@ import (
 // MoveMessagesFromMailbox moves messages from one mailbox to the other.
 func MoveMessagesFromMailbox(
 	ctx context.Context,
-	tx *ent.Tx,
+	tx db.Transaction,
 	mboxFromID, mboxToID imap.InternalMailboxID,
 	messageIDs []imap.InternalMessageID,
 	s *State,
 	imapLimits limits.IMAP,
 	removeOldMessages bool,
 ) ([]db.UIDWithFlags, []Update, error) {
-	messageCount, uid, err := db.GetMailboxMessageCountAndUID(ctx, tx.Client(), mboxToID)
+	messageCount, uid, err := tx.GetMailboxMessageCountAndUID(ctx, mboxToID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -37,12 +35,12 @@ func MoveMessagesFromMailbox(
 	}
 
 	if mboxFromID != mboxToID && removeOldMessages {
-		if err := db.RemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxFromID); err != nil {
+		if err := tx.RemoveMessagesFromMailbox(ctx, mboxFromID, messageIDs); err != nil {
 			return nil, nil, err
 		}
 	}
 
-	messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxToID)
+	messageUIDs, err := tx.AddMessagesToMailbox(ctx, mboxToID, messageIDs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -50,7 +48,7 @@ func MoveMessagesFromMailbox(
 	stateUpdates := make([]Update, 0, len(messageIDs)+1)
 	{
 		responders := xslices.Map(messageUIDs, func(uid db.UIDWithFlags) *exists {
-			return newExists(ids.MessageIDPair{
+			return newExists(db.MessageIDPair{
 				InternalID: uid.InternalID,
 				RemoteID:   uid.RemoteID,
 			}, uid.UID, uid.GetFlagSet())
@@ -68,8 +66,13 @@ func MoveMessagesFromMailbox(
 }
 
 // AddMessagesToMailbox adds the messages to the given mailbox.
-func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, s *State, imapLimits limits.IMAP) ([]db.UIDWithFlags, Update, error) {
-	messageCount, uid, err := db.GetMailboxMessageCountAndUID(ctx, tx.Client(), mboxID)
+func AddMessagesToMailbox(ctx context.Context,
+	tx db.Transaction,
+	mboxID imap.InternalMailboxID,
+	messageIDs []imap.InternalMessageID,
+	s *State,
+	imapLimits limits.IMAP) ([]db.UIDWithFlags, Update, error) {
+	messageCount, uid, err := tx.GetMailboxMessageCountAndUID(ctx, mboxID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -82,13 +85,13 @@ func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalM
 		return nil, nil, err
 	}
 
-	messageUIDs, err := db.AddMessagesToMailbox(ctx, tx, messageIDs, mboxID)
+	messageUIDs, err := tx.AddMessagesToMailbox(ctx, mboxID, messageIDs)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	responders := xslices.Map(messageUIDs, func(uid db.UIDWithFlags) *exists {
-		return newExists(ids.MessageIDPair{
+		return newExists(db.MessageIDPair{
 			InternalID: uid.InternalID,
 			RemoteID:   uid.RemoteID,
 		}, uid.UID, uid.GetFlagSet())
@@ -98,9 +101,9 @@ func AddMessagesToMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalM
 }
 
 // RemoveMessagesFromMailbox removes the messages from the given mailbox.
-func RemoveMessagesFromMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]Update, error) {
+func RemoveMessagesFromMailbox(ctx context.Context, tx db.Transaction, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]Update, error) {
 	if len(messageIDs) > 0 {
-		if err := db.RemoveMessagesFromMailbox(ctx, tx, messageIDs, mboxID); err != nil {
+		if err := tx.RemoveMessagesFromMailbox(ctx, mboxID, messageIDs); err != nil {
 			return nil, err
 		}
 	}
