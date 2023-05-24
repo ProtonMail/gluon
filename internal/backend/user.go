@@ -7,9 +7,8 @@ import (
 
 	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/internal/utils"
@@ -30,7 +29,7 @@ type user struct {
 	store          *store.WriteControlledStore
 	delimiter      string
 
-	db *db.DB
+	db db.Client
 
 	states     map[state.StateID]*state.State
 	statesLock sync.RWMutex
@@ -53,7 +52,7 @@ type user struct {
 func newUser(
 	ctx context.Context,
 	userID string,
-	database *db.DB,
+	database db.Client,
 	conn connector.Connector,
 	st store.Store,
 	delimiter string,
@@ -68,7 +67,7 @@ func newUser(
 	recoveredMessageHashes := utils.NewMessageHashesMap()
 
 	// Create recovery mailbox if it does not exist
-	recoveryMBox, err := db.WriteResult(ctx, database, func(ctx context.Context, tx *ent.Tx) (*ent.Mailbox, error) {
+	recoveryMBox, err := db.ClientWriteType(ctx, database, func(ctx context.Context, tx db.Transaction) (*db.Mailbox, error) {
 		uidValidity, err := uidValidityGenerator.Generate()
 		if err != nil {
 			return nil, err
@@ -83,13 +82,13 @@ func newUser(
 			Attributes:     imap.NewFlagSet(imap.AttrNoInferiors),
 		}
 
-		recoveryMBox, err := db.GetOrCreateMailbox(ctx, tx, mbox, delimiter, uidValidity)
+		recoveryMBox, err := tx.GetOrCreateMailboxAlt(ctx, mbox, delimiter, uidValidity)
 		if err != nil {
 			return nil, err
 		}
 
 		// Pre-fill the message hashes map
-		messages, err := db.GetMailboxMessageIDPairs(ctx, tx.Client(), recoveryMBox.ID)
+		messages, err := tx.GetMailboxMessageIDPairs(ctx, recoveryMBox.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -218,13 +217,13 @@ func (user *user) close(ctx context.Context) error {
 
 func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 	// Delete messages in database first before deleting from the storage to avoid data loss.
-	ids, err := db.WriteResult(ctx, user.db, func(ctx context.Context, tx *ent.Tx) ([]imap.InternalMessageID, error) {
-		ids, err := db.GetMessageIDsMarkedDeleted(ctx, tx.Client())
+	ids, err := db.ClientWriteType(ctx, user.db, func(ctx context.Context, tx db.Transaction) ([]imap.InternalMessageID, error) {
+		ids, err := tx.GetMessageIDsMarkedAsDelete(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := db.DeleteMessages(ctx, tx, ids...); err != nil {
+		if err := tx.DeleteMessages(ctx, ids); err != nil {
 			return nil, err
 		}
 
@@ -270,8 +269,8 @@ func (user *user) newState() (*state.State, error) {
 }
 
 func (user *user) removeState(ctx context.Context, st *state.State) error {
-	messageIDs, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) ([]imap.InternalMessageID, error) {
-		return db.GetMessageIDsMarkedDeleted(ctx, client)
+	messageIDs, err := db.ClientReadType(ctx, user.db, func(ctx context.Context, client db.ReadOnly) ([]imap.InternalMessageID, error) {
+		return client.GetMessageIDsMarkedAsDelete(ctx)
 	})
 	if err != nil {
 		return err
@@ -309,8 +308,8 @@ func (user *user) removeState(ctx context.Context, st *state.State) error {
 	defer user.statesWG.Done()
 
 	// Delete messages in database first before deleting from the storage to avoid data loss.
-	if err := user.db.Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
-		if err := db.DeleteMessages(ctx, tx, messageIDs...); err != nil {
+	if err := user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+		if err := tx.DeleteMessages(ctx, messageIDs); err != nil {
 			return err
 		}
 
@@ -356,8 +355,8 @@ func (user *user) cleanupStaleStoreData(ctx context.Context) error {
 		return err
 	}
 
-	dbIdMap, err := db.ReadResult(ctx, user.db, func(ctx context.Context, client *ent.Client) (map[imap.InternalMessageID]struct{}, error) {
-		return db.GetAllMessagesIDsAsMap(ctx, client)
+	dbIdMap, err := db.ClientReadType(ctx, user.db, func(ctx context.Context, client db.ReadOnly) (map[imap.InternalMessageID]struct{}, error) {
+		return client.GetAllMessagesIDsAsMap(ctx)
 	})
 	if err != nil {
 		return err

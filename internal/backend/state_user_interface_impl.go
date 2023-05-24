@@ -2,11 +2,10 @@ package backend
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/internal/utils"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/store"
@@ -31,7 +30,7 @@ func (s *StateUserInterfaceImpl) GetDelimiter() string {
 	return s.u.delimiter
 }
 
-func (s *StateUserInterfaceImpl) GetDB() *db.DB {
+func (s *StateUserInterfaceImpl) GetDB() db.Client {
 	return s.u.db
 }
 
@@ -43,7 +42,7 @@ func (s *StateUserInterfaceImpl) GetStore() *store.WriteControlledStore {
 	return s.u.store
 }
 
-func (s *StateUserInterfaceImpl) QueueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, updates ...state.Update) error {
+func (s *StateUserInterfaceImpl) QueueOrApplyStateUpdate(ctx context.Context, tx db.Transaction, updates ...state.Update) error {
 	// If we detect a state id in the context, it means this function call is a result of a User interaction.
 	// When that happens the update needs to be applied to the state matching the state ID immediately. If no such
 	// stateID exists or the context information is not present, all updates are queued for later execution.
@@ -84,8 +83,8 @@ func (s *StateUserInterfaceImpl) GenerateUIDValidity() (imap.UID, error) {
 	return s.u.uidValidityGenerator.Generate()
 }
 
-func (s *StateUserInterfaceImpl) GetRecoveryMailboxID() ids.MailboxIDPair {
-	return ids.MailboxIDPair{
+func (s *StateUserInterfaceImpl) GetRecoveryMailboxID() db.MailboxIDPair {
+	return db.MailboxIDPair{
 		InternalID: s.u.recoveryMailboxID,
 		RemoteID:   ids.GluonInternalRecoveryMailboxRemoteID,
 	}

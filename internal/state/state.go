@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/db"
 	"strings"
 	"sync/atomic"
 
 	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/limits"
@@ -77,20 +76,20 @@ func (state *State) UserID() string {
 }
 
 func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn func(map[string]Match) error) error {
-	return stateDBRead(ctx, state, func(ctx context.Context, client *ent.Client) error {
-		mailboxes, err := db.GetAllMailboxes(ctx, client)
+	return stateDBRead(ctx, state, func(ctx context.Context, client db.ReadOnly) error {
+		mailboxes, err := client.GetAllMailboxes(ctx)
 		if err != nil {
 			return err
 		}
 
 		recoveryMailboxID := state.user.GetRecoveryMailboxID().InternalID
-		recoveryMBoxMessageCount, err := db.GetMailboxMessageCount(ctx, client, recoveryMailboxID)
+		recoveryMBoxMessageCount, err := client.GetMailboxMessageCount(ctx, recoveryMailboxID)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to get recovery mailbox message count, assuming empty")
 			recoveryMBoxMessageCount = 0
 		}
 
-		mailboxes = xslices.Filter(mailboxes, func(mailbox *ent.Mailbox) bool {
+		mailboxes = xslices.Filter(mailboxes, func(mailbox *db.Mailbox) bool {
 			if mailbox.ID == recoveryMailboxID && recoveryMBoxMessageCount == 0 {
 				return false
 			}
@@ -101,7 +100,7 @@ func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn
 			case imap.Visible:
 				return true
 			case imap.HiddenIfEmpty:
-				count, err := db.GetMailboxMessageCount(ctx, client, mailbox.ID)
+				count, err := client.GetMailboxMessageCount(ctx, mailbox.ID)
 				if err != nil {
 					logrus.WithError(err).Error("Failed to get recovery mailbox message count, assuming not empty")
 					return true
@@ -113,10 +112,10 @@ func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn
 			}
 		})
 
-		var deletedSubscriptions map[imap.MailboxID]*ent.DeletedSubscription
+		var deletedSubscriptions map[imap.MailboxID]*db.DeletedSubscription
 
 		if lsub {
-			deletedSubscriptions, err = db.GetDeletedSubscriptionSet(ctx, client)
+			deletedSubscriptions, err = client.GetDeletedSubscriptionSet(ctx)
 			if err != nil {
 				return err
 			}
@@ -164,8 +163,8 @@ func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn
 }
 
 func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) error) error {
-	mbox, err := stateDBReadResult(ctx, state, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return db.GetMailboxByName(ctx, client, name)
+	mbox, err := stateDBReadResult(ctx, state, func(ctx context.Context, client db.ReadOnly) (*db.Mailbox, error) {
+		return client.GetMailboxByName(ctx, name)
 	})
 	if err != nil {
 		return ErrNoSuchMailbox
@@ -177,15 +176,15 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 		}
 	}
 
-	snap, err := stateDBReadResult(ctx, state, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
+	snap, err := stateDBReadResult(ctx, state, func(ctx context.Context, client db.ReadOnly) (*snapshot, error) {
 		return newSnapshot(ctx, state, client, mbox)
 	})
 	if err != nil {
 		return err
 	}
 
-	if err := stateDBWrite(ctx, state, func(ctx context.Context, tx *ent.Tx) ([]Update, error) {
-		return nil, db.ClearRecentFlags(ctx, tx, mbox.ID)
+	if err := stateDBWrite(ctx, state, func(ctx context.Context, tx db.Transaction) ([]Update, error) {
+		return nil, tx.ClearRecentFlagsInMailbox(ctx, mbox.ID)
 	}); err != nil {
 		return err
 	}
@@ -197,8 +196,8 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 }
 
 func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) error) error {
-	mbox, err := stateDBReadResult(ctx, state, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return db.GetMailboxByName(ctx, client, name)
+	mbox, err := stateDBReadResult(ctx, state, func(ctx context.Context, client db.ReadOnly) (*db.Mailbox, error) {
+		return client.GetMailboxByName(ctx, name)
 	})
 	if err != nil {
 		return ErrNoSuchMailbox
@@ -210,7 +209,7 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 		}
 	}
 
-	snap, err := stateDBReadResult(ctx, state, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
+	snap, err := stateDBReadResult(ctx, state, func(ctx context.Context, client db.ReadOnly) (*snapshot, error) {
 		return newSnapshot(ctx, state, client, mbox)
 	})
 	if err != nil {
@@ -247,10 +246,8 @@ func (state *State) Create(ctx context.Context, name string) error {
 		}
 	}
 
-	return stateDBWrite(ctx, state, func(ctx context.Context, tx *ent.Tx) ([]Update, error) {
-		client := tx.Client()
-
-		if mailboxCount, err := db.GetMailboxCount(ctx, client); err != nil {
+	return stateDBWrite(ctx, state, func(ctx context.Context, tx db.Transaction) ([]Update, error) {
+		if mailboxCount, err := tx.GetMailboxCount(ctx); err != nil {
 			return nil, err
 		} else if err := state.imapLimits.CheckMailBoxCount(mailboxCount); err != nil {
 			return nil, err
@@ -263,14 +260,14 @@ func (state *State) Create(ctx context.Context, name string) error {
 			name = strings.TrimRight(name, state.delimiter)
 		}
 
-		if exists, err := db.MailboxExistsWithName(ctx, client, name); err != nil {
+		if exists, err := tx.MailboxExistsWithName(ctx, name); err != nil {
 			return nil, err
 		} else if exists {
 			return nil, ErrExistingMailbox
 		}
 
 		for _, superior := range listSuperiors(name, state.delimiter) {
-			if exists, err := db.MailboxExistsWithName(ctx, client, superior); err != nil {
+			if exists, err := tx.MailboxExistsWithName(ctx, superior); err != nil {
 				return nil, err
 			} else if exists {
 				continue
@@ -297,13 +294,13 @@ func (state *State) Delete(ctx context.Context, name string) (bool, error) {
 		return false, ErrOperationNotAllowed
 	}
 
-	mboxID, err := stateDBWriteResult(ctx, state, func(ctx context.Context, tx *ent.Tx) ([]Update, imap.InternalMailboxID, error) {
-		mbox, err := db.GetMailboxByName(ctx, tx.Client(), name)
+	mboxID, err := stateDBWriteResult(ctx, state, func(ctx context.Context, tx db.Transaction) ([]Update, imap.InternalMailboxID, error) {
+		mbox, err := tx.GetMailboxByName(ctx, name)
 		if err != nil {
 			return nil, 0, ErrNoSuchMailbox
 		}
 
-		update, err := state.actionDeleteMailbox(ctx, tx, ids.NewMailboxIDPair(mbox))
+		update, err := state.actionDeleteMailbox(ctx, tx, db.NewMailboxIDPair(mbox))
 		if err != nil {
 			return nil, 0, err
 		}
@@ -319,7 +316,7 @@ func (state *State) Delete(ctx context.Context, name string) (bool, error) {
 
 func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 	type Result struct {
-		MBox           *ent.Mailbox
+		MBox           *db.Mailbox
 		MBoxesToCreate []string
 	}
 
@@ -327,15 +324,13 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		return ErrOperationNotAllowed
 	}
 
-	return stateDBWrite(ctx, state, func(ctx context.Context, tx *ent.Tx) ([]Update, error) {
-		client := tx.Client()
-
-		mbox, err := db.GetMailboxByName(ctx, client, oldName)
+	return stateDBWrite(ctx, state, func(ctx context.Context, tx db.Transaction) ([]Update, error) {
+		mbox, err := tx.GetMailboxByName(ctx, oldName)
 		if err != nil {
 			return nil, ErrNoSuchMailbox
 		}
 
-		if exists, err := db.MailboxExistsWithName(ctx, client, newName); err != nil {
+		if exists, err := tx.MailboxExistsWithName(ctx, newName); err != nil {
 			return nil, err
 		} else if exists {
 			return nil, ErrExistingMailbox
@@ -343,7 +338,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 
 		var mboxesToCreate []string
 		for _, superior := range listSuperiors(newName, state.delimiter) {
-			if exists, err := db.MailboxExistsWithName(ctx, client, superior); err != nil {
+			if exists, err := tx.MailboxExistsWithName(ctx, superior); err != nil {
 				return nil, err
 			} else if exists {
 				if superior == oldName {
@@ -366,7 +361,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 				return nil, err
 			}
 
-			if err := db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, uidValidity); err != nil {
+			if err := tx.CreateMailboxIfNotExists(ctx, res, state.delimiter, uidValidity); err != nil {
 				return nil, err
 			}
 		}
@@ -380,24 +375,24 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		}
 
 		// Locally update all inferiors so we don't wait for update
-		mailboxes, err := db.GetAllMailboxes(ctx, tx.Client())
+		mailboxes, err := tx.GetAllMailboxes(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		inferiors := listInferiors(oldName, state.delimiter, xslices.Map(mailboxes, func(mailbox *ent.Mailbox) string {
+		inferiors := listInferiors(oldName, state.delimiter, xslices.Map(mailboxes, func(mailbox *db.Mailbox) string {
 			return mailbox.Name
 		}))
 
 		for _, inferior := range inferiors {
-			mbox, err := db.GetMailboxByName(ctx, tx.Client(), inferior)
+			mbox, err := tx.GetMailboxByName(ctx, inferior)
 			if err != nil {
 				return nil, ErrNoSuchMailbox
 			}
 
 			newInferior := newName + strings.TrimPrefix(inferior, oldName)
 
-			if err := db.RenameMailboxWithRemoteID(ctx, tx, mbox.RemoteID, newInferior); err != nil {
+			if err := tx.RenameMailboxWithRemoteID(ctx, mbox.RemoteID, newInferior); err != nil {
 				return nil, err
 			}
 		}
@@ -407,8 +402,8 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 }
 
 func (state *State) Subscribe(ctx context.Context, name string) error {
-	return stateDBWrite(ctx, state, func(ctx context.Context, tx *ent.Tx) ([]Update, error) {
-		mbox, err := db.GetMailboxByName(ctx, tx.Client(), name)
+	return stateDBWrite(ctx, state, func(ctx context.Context, tx db.Transaction) ([]Update, error) {
+		mbox, err := tx.GetMailboxByName(ctx, name)
 		if err != nil {
 			return nil, ErrNoSuchMailbox
 		}
@@ -417,16 +412,16 @@ func (state *State) Subscribe(ctx context.Context, name string) error {
 			return nil, ErrAlreadySubscribed
 		}
 
-		return nil, mbox.Update().SetSubscribed(true).Exec(ctx)
+		return nil, tx.SetMailboxSubscribed(ctx, mbox.ID, true)
 	})
 }
 
 func (state *State) Unsubscribe(ctx context.Context, name string) error {
-	return stateDBWrite(ctx, state, func(ctx context.Context, tx *ent.Tx) ([]Update, error) {
-		mbox, err := db.GetMailboxByName(ctx, tx.Client(), name)
+	return stateDBWrite(ctx, state, func(ctx context.Context, tx db.Transaction) ([]Update, error) {
+		mbox, err := tx.GetMailboxByName(ctx, name)
 		if err != nil {
 			// If mailbox does not exist, check that if it is present in the deleted subscription table
-			if count, err := db.RemoveDeletedSubscriptionWithName(ctx, tx, name); err != nil {
+			if count, err := tx.RemoveDeletedSubscriptionWithName(ctx, name); err != nil {
 				return nil, err
 			} else if count == 0 {
 				return nil, ErrNoSuchMailbox
@@ -439,7 +434,7 @@ func (state *State) Unsubscribe(ctx context.Context, name string) error {
 			return nil, ErrAlreadyUnsubscribed
 		}
 
-		return nil, mbox.Update().SetSubscribed(false).Exec(ctx)
+		return nil, tx.SetMailboxSubscribed(ctx, mbox.ID, false)
 	})
 }
 
@@ -455,8 +450,8 @@ func (state *State) Idle(ctx context.Context, fn func([]response.Response, chan 
 }
 
 func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) error) error {
-	mbox, err := stateDBReadResult(ctx, state, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return db.GetMailboxByName(ctx, client, name)
+	mbox, err := stateDBReadResult(ctx, state, func(ctx context.Context, client db.ReadOnly) (*db.Mailbox, error) {
+		return client.GetMailboxByName(ctx, name)
 	})
 	if err != nil {
 		return ErrNoSuchMailbox
@@ -466,7 +461,7 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 		return fn(newMailbox(mbox, state, state.snap))
 	}
 
-	snap, err := stateDBReadResult(ctx, state, func(ctx context.Context, client *ent.Client) (*snapshot, error) {
+	snap, err := stateDBReadResult(ctx, state, func(ctx context.Context, client db.ReadOnly) (*snapshot, error) {
 		return newSnapshot(ctx, state, client, mbox)
 	})
 	if err != nil {
@@ -484,8 +479,8 @@ func (state *State) AppendOnlyMailbox(ctx context.Context, name string, fn func(
 		return ErrOperationNotAllowed
 	}
 
-	mbox, err := stateDBReadResult(ctx, state, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return db.GetMailboxByName(ctx, client, name)
+	mbox, err := stateDBReadResult(ctx, state, func(ctx context.Context, client db.ReadOnly) (*db.Mailbox, error) {
+		return client.GetMailboxByName(ctx, name)
 	})
 	if err != nil {
 		return ErrNoSuchMailbox
@@ -505,8 +500,8 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 		return ErrSessionNotSelected
 	}
 
-	mbox, err := stateDBReadResult(ctx, state, func(ctx context.Context, client *ent.Client) (*ent.Mailbox, error) {
-		return db.GetMailboxByID(ctx, client, state.snap.mboxID.InternalID)
+	mbox, err := stateDBReadResult(ctx, state, func(ctx context.Context, client db.ReadOnly) (*db.Mailbox, error) {
+		return client.GetMailboxByID(ctx, state.snap.mboxID.InternalID)
 	})
 	if err != nil {
 		return ErrNoSuchMailbox
@@ -572,7 +567,7 @@ func (state *State) ApplyUpdate(ctx context.Context, update Update) error {
 		return nil
 	}
 
-	if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx db.Transaction) error {
 		return update.Apply(ctx, tx, state)
 	}); err != nil {
 		reporter.MessageWithContext(ctx,
@@ -599,7 +594,7 @@ func (state *State) markInvalid() {
 }
 
 // renameInbox creates a new mailbox and moves everything there.
-func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mailbox, newName string) ([]Update, error) {
+func (state *State) renameInbox(ctx context.Context, tx db.Transaction, inbox *db.Mailbox, newName string) ([]Update, error) {
 	uidValidity, err := state.user.GenerateUIDValidity()
 	if err != nil {
 		return nil, err
@@ -610,14 +605,14 @@ func (state *State) renameInbox(ctx context.Context, tx *ent.Tx, inbox *ent.Mail
 		return nil, err
 	}
 
-	messageIDs, err := db.GetMailboxMessageIDPairs(ctx, tx.Client(), inbox.ID)
+	messageIDs, err := tx.GetMailboxMessageIDPairs(ctx, inbox.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	mboxIDPair := ids.NewMailboxIDPair(mbox)
+	mboxIDPair := db.NewMailboxIDPair(mbox)
 
-	updates, _, err := state.actionMoveMessages(ctx, tx, messageIDs, ids.NewMailboxIDPair(inbox), mboxIDPair)
+	updates, _, err := state.actionMoveMessages(ctx, tx, messageIDs, db.NewMailboxIDPair(inbox), mboxIDPair)
 	if err != nil {
 		return nil, err
 	}
@@ -644,7 +639,7 @@ func (state *State) endIdle() {
 	state.idleCh = nil
 }
 
-func (state *State) getLiteral(ctx context.Context, messageID ids.MessageIDPair) ([]byte, error) {
+func (state *State) getLiteral(ctx context.Context, messageID db.MessageIDPair) ([]byte, error) {
 	var literal []byte
 
 	storeLiteral, firstErr := state.user.GetStore().Get(messageID.InternalID)
@@ -710,7 +705,7 @@ func (state *State) flushResponses(ctx context.Context, permitExpunge bool) ([]r
 		}
 	}
 
-	if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx db.Transaction) error {
 		for _, update := range dbUpdates {
 			if err := update.apply(ctx, tx); err != nil {
 				return err
@@ -725,7 +720,7 @@ func (state *State) flushResponses(ctx context.Context, permitExpunge bool) ([]r
 	return response.Merge(responses), nil
 }
 
-func (state *State) PushResponder(ctx context.Context, tx *ent.Tx, responder ...Responder) error {
+func (state *State) PushResponder(ctx context.Context, tx db.Transaction, responder ...Responder) error {
 	if state.idleCh == nil {
 		return state.queueResponder(responder...)
 	}
@@ -833,18 +828,18 @@ func (state *State) close() error {
 	return nil
 }
 
-func stateDBRead(ctx context.Context, state *State, fn func(context.Context, *ent.Client) error) error {
+func stateDBRead(ctx context.Context, state *State, fn func(context.Context, db.ReadOnly) error) error {
 	return state.user.GetDB().Read(ctx, fn)
 }
 
-func stateDBReadResult[T any](ctx context.Context, state *State, fn func(context.Context, *ent.Client) (T, error)) (T, error) {
-	return db.ReadResult(ctx, state.user.GetDB(), fn)
+func stateDBReadResult[T any](ctx context.Context, state *State, fn func(context.Context, db.ReadOnly) (T, error)) (T, error) {
+	return db.ClientReadType(ctx, state.user.GetDB(), fn)
 }
 
-func stateDBWrite(ctx context.Context, state *State, fn func(context.Context, *ent.Tx) ([]Update, error)) error {
+func stateDBWrite(ctx context.Context, state *State, fn func(context.Context, db.Transaction) ([]Update, error)) error {
 	var updates []Update
 
-	if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+	if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx db.Transaction) error {
 		up, err := fn(ctx, tx)
 		updates = up
 		return err
@@ -854,7 +849,7 @@ func stateDBWrite(ctx context.Context, state *State, fn func(context.Context, *e
 
 	// need to create a separate transaction for the state updates so that import changes get written first.
 	if len(updates) != 0 {
-		if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx db.Transaction) error {
 			return state.user.QueueOrApplyStateUpdate(ctx, tx, updates...)
 		}); err != nil {
 			return err
@@ -864,10 +859,10 @@ func stateDBWrite(ctx context.Context, state *State, fn func(context.Context, *e
 	return nil
 }
 
-func stateDBWriteResult[T any](ctx context.Context, state *State, fn func(context.Context, *ent.Tx) ([]Update, T, error)) (T, error) {
+func stateDBWriteResult[T any](ctx context.Context, state *State, fn func(context.Context, db.Transaction) ([]Update, T, error)) (T, error) {
 	var updates []Update
 
-	result, err := db.WriteResult(ctx, state.user.GetDB(), func(ctx context.Context, tx *ent.Tx) (T, error) {
+	result, err := db.ClientWriteType(ctx, state.user.GetDB(), func(ctx context.Context, tx db.Transaction) (T, error) {
 		up, val, err := fn(ctx, tx)
 		updates = up
 		return val, err
@@ -879,7 +874,7 @@ func stateDBWriteResult[T any](ctx context.Context, state *State, fn func(contex
 
 	// need to create a separate transaction for the state updates so that import changes get written first.
 	if len(updates) != 0 {
-		if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx *ent.Tx) error {
+		if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx db.Transaction) error {
 			return state.user.QueueOrApplyStateUpdate(ctx, tx, updates...)
 		}); err != nil {
 			return result, err

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ProtonMail/gluon/db"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -13,8 +14,6 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/rfc5322"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
@@ -88,15 +87,16 @@ func buildSearchData(ctx context.Context, m *Mailbox, op *buildSearchOpResult, m
 	data := searchData{message: message}
 
 	if op.needsMessage {
-		dbm, err := stateDBReadResult(ctx, m.state, func(ctx context.Context, client *ent.Client) (*ent.Message, error) {
-			return db.GetMessageDateAndSize(ctx, client, message.ID.InternalID)
-		})
-		if err != nil {
+		if err := stateDBRead(ctx, m.state, func(ctx context.Context, client db.ReadOnly) error {
+			date, size, err := client.GetMessageDateAndSize(ctx, message.ID.InternalID)
+
+			data.dbMessage.size = size
+			data.dbMessage.date = date
+
+			return err
+		}); err != nil {
 			return searchData{}, err
 		}
-
-		data.dbMessage.size = dbm.Size
-		data.dbMessage.date = dbm.Date
 	}
 
 	if op.needsLiteral {

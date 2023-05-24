@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -18,21 +17,20 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, name string, uidValidity imap.UID) (*ent.Mailbox, error) {
+func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx db.Transaction, name string, uidValidity imap.UID) (*db.Mailbox, error) {
 	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
 	if err != nil {
 		return nil, err
 	}
 
-	exists, err := db.MailboxExistsWithRemoteID(ctx, tx.Client(), res.ID)
+	exists, err := tx.MailboxExistsWithRemoteID(ctx, res.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	if !exists {
-		mbox, err := db.CreateMailbox(
+		mbox, err := tx.CreateMailbox(
 			ctx,
-			tx,
 			res.ID,
 			strings.Join(res.Name, state.user.GetDelimiter()),
 			res.Flags,
@@ -47,31 +45,31 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx *ent.Tx, n
 		return mbox, nil
 	}
 
-	return db.GetMailboxByRemoteID(ctx, tx.Client(), res.ID)
+	return tx.GetMailboxByRemoteID(ctx, res.ID)
 }
 
-func (state *State) actionCreateMailbox(ctx context.Context, tx *ent.Tx, name string, uidValidity imap.UID) error {
+func (state *State) actionCreateMailbox(ctx context.Context, tx db.Transaction, name string, uidValidity imap.UID) error {
 	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
 	if err != nil {
 		return err
 	}
 
-	return db.CreateMailboxIfNotExists(ctx, tx, res, state.delimiter, uidValidity)
+	return tx.CreateMailboxIfNotExists(ctx, res, state.delimiter, uidValidity)
 }
 
-func (state *State) actionDeleteMailbox(ctx context.Context, tx *ent.Tx, mboxID ids.MailboxIDPair) ([]Update, error) {
+func (state *State) actionDeleteMailbox(ctx context.Context, tx db.Transaction, mboxID db.MailboxIDPair) ([]Update, error) {
 	if err := state.user.GetRemote().DeleteMailbox(ctx, mboxID.RemoteID); err != nil {
 		return nil, err
 	}
 
-	if err := db.DeleteMailboxWithRemoteID(ctx, tx, mboxID.RemoteID); err != nil {
+	if err := tx.DeleteMailboxWithRemoteID(ctx, mboxID.RemoteID); err != nil {
 		return nil, err
 	}
 
 	return []Update{NewMailboxDeletedStateUpdate(mboxID.InternalID)}, nil
 }
 
-func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID imap.MailboxID, newName string) error {
+func (state *State) actionUpdateMailbox(ctx context.Context, tx db.Transaction, mboxID imap.MailboxID, newName string) error {
 	if err := state.user.GetRemote().UpdateMailbox(
 		ctx,
 		mboxID,
@@ -80,13 +78,13 @@ func (state *State) actionUpdateMailbox(ctx context.Context, tx *ent.Tx, mboxID 
 		return err
 	}
 
-	return db.RenameMailboxWithRemoteID(ctx, tx, mboxID, newName)
+	return tx.RenameMailboxWithRemoteID(ctx, mboxID, newName)
 }
 
 func (state *State) actionCreateMessage(
 	ctx context.Context,
-	tx *ent.Tx,
-	mboxID ids.MailboxIDPair,
+	tx db.Transaction,
+	mboxID db.MailboxIDPair,
 	literal []byte,
 	flags imap.FlagSet,
 	date time.Time,
@@ -100,14 +98,14 @@ func (state *State) actionCreateMessage(
 
 	{
 		// Handle the case where duplicate messages can return the same remote ID.
-		knownInternalID, knownErr := db.GetMessageIDFromRemoteID(ctx, tx.Client(), res.ID)
-		if knownErr != nil && !ent.IsNotFound(knownErr) {
+		knownInternalID, knownErr := tx.GetMessageIDFromRemoteID(ctx, res.ID)
+		if knownErr != nil && !db.IsErrNotFound(knownErr) {
 			return nil, 0, knownErr
 		}
 		if knownErr == nil {
 			// Try to collect the original message date.
 			var existingMessageDate time.Time
-			if existingMessage, msgErr := db.GetMessage(ctx, tx.Client(), internalID); msgErr == nil {
+			if existingMessage, msgErr := tx.GetMessage(ctx, internalID); msgErr == nil {
 				existingMessageDate = existingMessage.Date
 			}
 
@@ -128,7 +126,7 @@ func (state *State) actionCreateMessage(
 
 			updates, result, err := state.actionAddMessagesToMailbox(ctx,
 				tx,
-				[]ids.MessageIDPair{{InternalID: knownInternalID, RemoteID: res.ID}},
+				[]db.MessageIDPair{{InternalID: knownInternalID, RemoteID: res.ID}},
 				mboxID,
 				isSelectedMailbox,
 			)
@@ -163,7 +161,7 @@ func (state *State) actionCreateMessage(
 		InternalID:  internalID,
 	}
 
-	messageUID, flagSet, err := db.CreateAndAddMessageToMailbox(ctx, tx, mboxID.InternalID, &req)
+	messageUID, flagSet, err := tx.CreateMessageAndAddToMailbox(ctx, mboxID.InternalID, &req)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -177,7 +175,7 @@ func (state *State) actionCreateMessage(
 
 	updates := []Update{newExistsStateUpdateWithExists(
 		mboxID.InternalID,
-		[]*exists{newExists(ids.MessageIDPair{InternalID: internalID, RemoteID: res.ID}, messageUID, flagSet)},
+		[]*exists{newExists(db.MessageIDPair{InternalID: internalID, RemoteID: res.ID}, messageUID, flagSet)},
 		st,
 	),
 	}
@@ -187,7 +185,7 @@ func (state *State) actionCreateMessage(
 
 func (state *State) actionCreateRecoveredMessage(
 	ctx context.Context,
-	tx *ent.Tx,
+	tx db.Transaction,
 	literal []byte,
 	flags imap.FlagSet,
 	date time.Time,
@@ -225,14 +223,14 @@ func (state *State) actionCreateRecoveredMessage(
 
 	recoveryMBoxID := state.user.GetRecoveryMailboxID()
 
-	messageUID, flagSet, err := db.CreateAndAddMessageToMailbox(ctx, tx, recoveryMBoxID.InternalID, &req)
+	messageUID, flagSet, err := tx.CreateMessageAndAddToMailbox(ctx, recoveryMBoxID.InternalID, &req)
 	if err != nil {
 		return nil, false, err
 	}
 
 	var updates = []Update{newExistsStateUpdateWithExists(
 		recoveryMBoxID.InternalID,
-		[]*exists{newExists(ids.MessageIDPair{InternalID: internalID, RemoteID: remoteID}, messageUID, flagSet)},
+		[]*exists{newExists(db.MessageIDPair{InternalID: internalID, RemoteID: remoteID}, messageUID, flagSet)},
 		nil,
 	),
 	}
@@ -242,20 +240,20 @@ func (state *State) actionCreateRecoveredMessage(
 
 func (state *State) actionAddMessagesToMailbox(
 	ctx context.Context,
-	tx *ent.Tx,
-	messageIDs []ids.MessageIDPair,
-	mboxID ids.MailboxIDPair,
+	tx db.Transaction,
+	messageIDs []db.MessageIDPair,
+	mboxID db.MailboxIDPair,
 	isMailboxSelected bool,
 ) ([]Update, []db.UIDWithFlags, error) {
 	var allUpdates []Update
 
 	{
-		haveMessageIDs, err := db.FilterMailboxContains(ctx, tx.Client(), mboxID.InternalID, messageIDs)
+		haveMessageIDs, err := tx.MailboxFilterContains(ctx, mboxID.InternalID, messageIDs)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		if remMessageIDs := xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
+		if remMessageIDs := xslices.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 			return slices.Contains(haveMessageIDs, messageID.InternalID)
 		}); len(remMessageIDs) > 0 {
 			updates, err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxID)
@@ -267,7 +265,7 @@ func (state *State) actionAddMessagesToMailbox(
 		}
 	}
 
-	internalIDs, remoteIDs := ids.SplitMessageIDPairSlice(messageIDs)
+	internalIDs, remoteIDs := db.SplitMessageIDPairSlice(messageIDs)
 
 	if err := state.user.GetRemote().AddMessagesToMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
 		return nil, nil, err
@@ -291,11 +289,11 @@ func (state *State) actionAddMessagesToMailbox(
 
 func (state *State) actionAddRecoveredMessagesToMailbox(
 	ctx context.Context,
-	tx *ent.Tx,
-	messageIDs []ids.MessageIDPair,
-	mboxID ids.MailboxIDPair,
+	tx db.Transaction,
+	messageIDs []db.MessageIDPair,
+	mboxID db.MailboxIDPair,
 ) ([]db.UIDWithFlags, Update, error) {
-	internalIDs, remoteIDs := ids.SplitMessageIDPairSlice(messageIDs)
+	internalIDs, remoteIDs := db.SplitMessageIDPairSlice(messageIDs)
 
 	if err := state.user.GetRemote().AddMessagesToMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
 		return nil, nil, err
@@ -306,39 +304,39 @@ func (state *State) actionAddRecoveredMessagesToMailbox(
 
 func (state *State) actionImportRecoveredMessage(
 	ctx context.Context,
-	tx *ent.Tx,
+	tx db.Transaction,
 	id imap.InternalMessageID,
 	mboxID imap.MailboxID,
-) (ids.MessageIDPair, bool, error) {
-	message, err := db.GetImportedMessageData(ctx, tx.Client(), id)
+) (db.MessageIDPair, bool, error) {
+	message, err := tx.GetImportedMessageData(ctx, id)
 	if err != nil {
-		return ids.MessageIDPair{}, false, err
+		return db.MessageIDPair{}, false, err
 	}
 
 	literal, err := state.user.GetStore().Get(id)
 	if err != nil {
-		return ids.MessageIDPair{}, false, err
+		return db.MessageIDPair{}, false, err
 	}
 
 	messageFlags := imap.NewFlagSet()
-	for _, flag := range message.Edges.Flags {
+	for _, flag := range message.Flags {
 		messageFlags.AddToSelf(flag.Value)
 	}
 
 	internalID, res, newLiteral, err := state.user.GetRemote().CreateMessage(ctx, mboxID, literal, messageFlags, message.Date)
 	if err != nil {
-		return ids.MessageIDPair{}, false, err
+		return db.MessageIDPair{}, false, err
 	}
 
 	{
 		// Handle the unlikely case where duplicate messages can return the same remote ID.
-		internalID, err := db.GetMessageIDFromRemoteID(ctx, tx.Client(), res.ID)
-		if err != nil && !ent.IsNotFound(err) {
-			return ids.MessageIDPair{}, false, err
+		internalID, err := tx.GetMessageIDFromRemoteID(ctx, res.ID)
+		if err != nil && !db.IsErrNotFound(err) {
+			return db.MessageIDPair{}, false, err
 		}
 
 		if err == nil {
-			return ids.MessageIDPair{
+			return db.MessageIDPair{
 				InternalID: internalID,
 				RemoteID:   res.ID,
 			}, true, nil
@@ -347,16 +345,16 @@ func (state *State) actionImportRecoveredMessage(
 
 	parsedMessage, err := imap.NewParsedMessage(newLiteral)
 	if err != nil {
-		return ids.MessageIDPair{}, false, err
+		return db.MessageIDPair{}, false, err
 	}
 
 	literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(newLiteral, ids.InternalIDKey, internalID.String())
 	if err != nil {
-		return ids.MessageIDPair{}, false, fmt.Errorf("failed to set internal ID: %w", err)
+		return db.MessageIDPair{}, false, fmt.Errorf("failed to set internal ID: %w", err)
 	}
 
 	if err := state.user.GetStore().SetUnchecked(internalID, literalReader); err != nil {
-		return ids.MessageIDPair{}, false, fmt.Errorf("failed to store message literal: %w", err)
+		return db.MessageIDPair{}, false, fmt.Errorf("failed to store message literal: %w", err)
 	}
 
 	req := db.CreateMessageReq{
@@ -368,11 +366,11 @@ func (state *State) actionImportRecoveredMessage(
 		InternalID:  internalID,
 	}
 
-	if _, err := db.CreateMessages(ctx, tx, &req); err != nil {
-		return ids.MessageIDPair{}, false, err
+	if _, err := tx.CreateMessages(ctx, &req); err != nil {
+		return db.MessageIDPair{}, false, err
 	}
 
-	return ids.MessageIDPair{
+	return db.MessageIDPair{
 		InternalID: internalID,
 		RemoteID:   res.ID,
 	}, false, nil
@@ -380,11 +378,11 @@ func (state *State) actionImportRecoveredMessage(
 
 func (state *State) actionCopyMessagesOutOfRecoveryMailbox(
 	ctx context.Context,
-	tx *ent.Tx,
-	messageIDs []ids.MessageIDPair,
-	mboxID ids.MailboxIDPair,
+	tx db.Transaction,
+	messageIDs []db.MessageIDPair,
+	mboxID db.MailboxIDPair,
 ) ([]Update, []db.UIDWithFlags, error) {
-	ids := make([]ids.MessageIDPair, 0, len(messageIDs))
+	ids := make([]db.MessageIDPair, 0, len(messageIDs))
 
 	// Import messages to remote.
 	for _, id := range messageIDs {
@@ -407,11 +405,11 @@ func (state *State) actionCopyMessagesOutOfRecoveryMailbox(
 
 func (state *State) actionMoveMessagesOutOfRecoveryMailbox(
 	ctx context.Context,
-	tx *ent.Tx,
-	messageIDs []ids.MessageIDPair,
-	mboxID ids.MailboxIDPair,
+	tx db.Transaction,
+	messageIDs []db.MessageIDPair,
+	mboxID db.MailboxIDPair,
 ) ([]Update, []db.UIDWithFlags, error) {
-	ids := make([]ids.MessageIDPair, 0, len(messageIDs))
+	ids := make([]db.MessageIDPair, 0, len(messageIDs))
 	oldInternalIDs := make([]imap.InternalMessageID, 0, len(messageIDs))
 
 	// Import messages to remote.
@@ -422,7 +420,7 @@ func (state *State) actionMoveMessagesOutOfRecoveryMailbox(
 		}
 
 		if !deduped {
-			if err := db.MarkMessageAsDeleted(ctx, tx, id.InternalID); err != nil {
+			if err := tx.MarkMessageAsDeleted(ctx, id.InternalID); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -460,11 +458,11 @@ func (state *State) actionMoveMessagesOutOfRecoveryMailbox(
 // have already validated the input beforehand (e.g.: actionAddMessagesToMailbox and actionRemoveMessagesFromMailbox).
 func (state *State) actionRemoveMessagesFromMailboxUnchecked(
 	ctx context.Context,
-	tx *ent.Tx,
-	messageIDs []ids.MessageIDPair,
-	mboxID ids.MailboxIDPair,
+	tx db.Transaction,
+	messageIDs []db.MessageIDPair,
+	mboxID db.MailboxIDPair,
 ) ([]Update, error) {
-	internalIDs, remoteIDs := ids.SplitMessageIDPairSlice(messageIDs)
+	internalIDs, remoteIDs := db.SplitMessageIDPairSlice(messageIDs)
 
 	if mboxID.InternalID != state.user.GetRecoveryMailboxID().InternalID {
 		if err := state.user.GetRemote().RemoveMessagesFromMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
@@ -479,16 +477,16 @@ func (state *State) actionRemoveMessagesFromMailboxUnchecked(
 
 func (state *State) actionRemoveMessagesFromMailbox(
 	ctx context.Context,
-	tx *ent.Tx,
-	messageIDs []ids.MessageIDPair,
-	mboxID ids.MailboxIDPair,
+	tx db.Transaction,
+	messageIDs []db.MessageIDPair,
+	mboxID db.MailboxIDPair,
 ) ([]Update, error) {
-	haveMessageIDs, err := db.FilterMailboxContains(ctx, tx.Client(), mboxID.InternalID, messageIDs)
+	haveMessageIDs, err := tx.MailboxFilterContains(ctx, mboxID.InternalID, messageIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	messageIDs = xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
+	messageIDs = xslices.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 		return slices.Contains(haveMessageIDs, messageID.InternalID)
 	})
 
@@ -501,16 +499,16 @@ func (state *State) actionRemoveMessagesFromMailbox(
 
 func (state *State) actionMoveMessages(
 	ctx context.Context,
-	tx *ent.Tx,
-	messageIDs []ids.MessageIDPair,
-	mboxFromID, mboxToID ids.MailboxIDPair,
+	tx db.Transaction,
+	messageIDs []db.MessageIDPair,
+	mboxFromID, mboxToID db.MailboxIDPair,
 ) ([]Update, []db.UIDWithFlags, error) {
 	var allUpdates []Update
 
 	if mboxFromID.InternalID == mboxToID.InternalID {
-		internalIDs, _ := ids.SplitMessageIDPairSlice(messageIDs)
+		internalIDs, _ := db.SplitMessageIDPairSlice(messageIDs)
 
-		uid, err := db.BumpMailboxUIDsForMessage(ctx, tx, internalIDs, mboxToID.InternalID)
+		uid, err := tx.BumpMailboxUIDsForMessage(ctx, mboxToID.InternalID, internalIDs)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -519,12 +517,12 @@ func (state *State) actionMoveMessages(
 	}
 
 	{
-		messageIDsToAdd, err := db.FilterMailboxContains(ctx, tx.Client(), mboxToID.InternalID, messageIDs)
+		messageIDsToAdd, err := tx.MailboxFilterContains(ctx, mboxToID.InternalID, messageIDs)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		if remMessageIDs := xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
+		if remMessageIDs := xslices.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 			return slices.Contains(messageIDsToAdd, messageID.InternalID)
 		}); len(remMessageIDs) > 0 {
 			updates, err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxToID)
@@ -536,16 +534,16 @@ func (state *State) actionMoveMessages(
 		}
 	}
 
-	messageInFromMBox, err := db.FilterMailboxContains(ctx, tx.Client(), mboxFromID.InternalID, messageIDs)
+	messageInFromMBox, err := tx.MailboxFilterContains(ctx, mboxFromID.InternalID, messageIDs)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	messagesIDsToMove := xslices.Filter(messageIDs, func(messageID ids.MessageIDPair) bool {
+	messagesIDsToMove := xslices.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 		return slices.Contains(messageInFromMBox, messageID.InternalID)
 	})
 
-	internalIDs, remoteIDs := ids.SplitMessageIDPairSlice(messagesIDsToMove)
+	internalIDs, remoteIDs := db.SplitMessageIDPairSlice(messagesIDsToMove)
 
 	shouldRemoveOldMessages, err := state.user.GetRemote().MoveMessagesFromMailbox(ctx, remoteIDs, mboxFromID.RemoteID, mboxToID.RemoteID)
 	if err != nil {
@@ -564,7 +562,7 @@ func (state *State) actionMoveMessages(
 
 func (state *State) actionAddMessageFlags(
 	ctx context.Context,
-	tx *ent.Tx,
+	tx db.Transaction,
 	messages []snapMsgWithSeq,
 	addFlags imap.FlagSet,
 ) ([]Update, error) {
@@ -577,7 +575,7 @@ func (state *State) actionAddMessageFlags(
 
 func (state *State) actionRemoveMessageFlags(
 	ctx context.Context,
-	tx *ent.Tx,
+	tx db.Transaction,
 	messages []snapMsgWithSeq,
 	remFlags imap.FlagSet,
 ) ([]Update, error) {
@@ -589,7 +587,7 @@ func (state *State) actionRemoveMessageFlags(
 }
 
 func (state *State) actionSetMessageFlags(ctx context.Context,
-	tx *ent.Tx,
+	tx db.Transaction,
 	messages []snapMsgWithSeq,
 	setFlags imap.FlagSet) ([]Update, error) {
 	if setFlags.ContainsUnchecked(imap.FlagRecentLowerCase) {
