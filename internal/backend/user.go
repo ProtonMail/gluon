@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/internal/utils"
 	"sync"
 
 	"github.com/ProtonMail/gluon/async"
@@ -13,6 +12,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/reporter"
@@ -146,10 +146,6 @@ func newUser(
 
 	if err := user.cleanupStaleStoreData(ctx); err != nil {
 		logrus.WithError(err).Error("Failed to cleanup stale store data")
-		reporter.MessageWithContext(ctx,
-			"Failed to cleanup stale store data",
-			reporter.Context{"error": err},
-		)
 	}
 
 	user.updateWG.Add(1)
