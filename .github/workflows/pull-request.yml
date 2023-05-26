@@ -14,10 +14,10 @@ jobs:
       - name: Get sources
         uses: actions/checkout@v3
 
-      - name: Set up Go 1.18
+      - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version: '1.20'
 
       - name: Run go mod tidy
         run: go mod tidy
