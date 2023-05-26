@@ -3,13 +3,13 @@ package backend
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/db"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/limits"

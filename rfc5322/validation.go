@@ -3,6 +3,7 @@ package rfc5322
 import (
 	"errors"
 	"fmt"
+
 	"github.com/ProtonMail/gluon/rfc822"
 )
 

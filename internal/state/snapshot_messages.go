@@ -2,8 +2,8 @@ package state
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/db"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/bradenaw/juniper/xslices"

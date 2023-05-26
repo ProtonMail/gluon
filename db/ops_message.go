@@ -2,9 +2,10 @@ package db
 
 import (
 	"context"
+	"time"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/bradenaw/juniper/xslices"
-	"time"
 )
 
 type MessageReadOps interface {

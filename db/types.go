@@ -2,8 +2,9 @@ package db
 
 import (
 	"fmt"
-	"github.com/ProtonMail/gluon/imap"
 	"time"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 type MailboxIDPair struct {

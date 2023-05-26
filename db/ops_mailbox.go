@@ -2,8 +2,9 @@ package db
 
 import (
 	"context"
-	"github.com/ProtonMail/gluon/imap"
 	"strings"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 type MailboxReadOps interface {

@@ -3,10 +3,11 @@ package session
 import (
 	"context"
 	"errors"
+	"net"
+
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/rfc822"
-	"net"
 )
 
 var (

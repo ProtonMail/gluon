@@ -3,10 +3,10 @@ package ent_db
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/db"
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/ent_db/internal"
 	"github.com/ProtonMail/gluon/internal/db_impl/ent_db/internal/mailbox"

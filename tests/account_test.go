@@ -2,11 +2,12 @@ package tests
 
 import (
 	"errors"
-	"github.com/ProtonMail/gluon/db"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/ProtonMail/gluon/db"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAccountRemovalMovesDBToDeferredDeleteFolder(t *testing.T) {

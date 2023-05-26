@@ -5,8 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"github.com/ProtonMail/gluon/db"
-	"github.com/ProtonMail/gluon/internal/db_impl"
 	"net"
 	"path/filepath"
 	"testing"
@@ -14,7 +12,9 @@ import (
 
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/db_impl"
 	"github.com/ProtonMail/gluon/internal/hash"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"

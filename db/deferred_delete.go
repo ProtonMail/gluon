@@ -3,9 +3,10 @@ package db
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"os"
 	"path/filepath"
+
+	"github.com/google/uuid"
 )
 
 // DeleteDB will rename all the database files for the given user to a directory within the same folder to avoid

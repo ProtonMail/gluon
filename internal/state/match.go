@@ -3,10 +3,10 @@ package state
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/db"
 	"regexp"
 	"strings"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/bradenaw/juniper/xslices"
 )

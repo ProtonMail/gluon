@@ -2,12 +2,12 @@ package rfc5322
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"net/mail"
 	"testing"
 
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newTestRFCParser(s string) *rfcparser.Parser {

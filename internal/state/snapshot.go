@@ -2,9 +2,9 @@ package state
 
 import (
 	"context"
-	"github.com/ProtonMail/gluon/db"
 	"strings"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"

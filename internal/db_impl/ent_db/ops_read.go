@@ -2,11 +2,12 @@ package ent_db
 
 import (
 	"context"
+	"time"
+
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/ent_db/internal"
 	"github.com/bradenaw/juniper/xslices"
-	"time"
 )
 
 type EntOpsRead struct {

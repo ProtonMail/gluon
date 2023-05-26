@@ -2,15 +2,15 @@ package gluon
 
 import (
 	"crypto/tls"
-	"github.com/ProtonMail/gluon/db"
-	"github.com/ProtonMail/gluon/internal/db_impl/ent_db"
 	"io"
 	"os"
 	"time"
 
 	"github.com/ProtonMail/gluon/async"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
+	"github.com/ProtonMail/gluon/internal/db_impl/ent_db"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"

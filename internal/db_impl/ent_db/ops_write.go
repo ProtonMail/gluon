@@ -2,6 +2,7 @@ package ent_db
 
 import (
 	"context"
+
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/ent_db/internal"
