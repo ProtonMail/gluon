@@ -1,9 +1,9 @@
 package state
 
 import (
-	"github.com/ProtonMail/gluon/db"
 	"testing"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/stretchr/testify/require"

@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/db"
 	"strings"
 	"sync/atomic"
 
 	"github.com/ProtonMail/gluon/async"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/response"

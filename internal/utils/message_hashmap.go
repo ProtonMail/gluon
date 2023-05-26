@@ -1,9 +1,10 @@
 package utils
 
 import (
+	"sync"
+
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/rfc822"
-	"sync"
 )
 
 // MessageHashesMap tracks the hashes for a literal and it's associated internal IMAP ID.

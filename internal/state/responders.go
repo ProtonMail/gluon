@@ -3,9 +3,9 @@ package state
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/db"
 	"sync"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/response"

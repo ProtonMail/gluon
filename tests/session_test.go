@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ProtonMail/gluon/db"
 	"io"
 	"net"
 	"os"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/utils"
