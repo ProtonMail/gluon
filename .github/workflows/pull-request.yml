@@ -19,27 +19,13 @@ jobs:
         with:
           go-version: '1.18'
 
-      - name: Remove old static libs if modified
-        if: needs.check.outputs.changed  == 'true'
-        run: |
-          rm -r internal/parser/lib
-
-      - name: Download new static libs if modified
-        if: needs.check.outputs.changed == 'true'
-        uses: actions/download-artifact@v3
-        with:
-          name: ${{ matrix.os }}-libs
-          path: internal/parser/lib
-
       - name: Run go mod tidy
         run: go mod tidy
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.51.1
-          args: --timeout=500s
-          skip-cache: true
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@251ceaa228607dd3e0371694a1ab2c45d21cb744
+          golangci-lint run --timeout=500s
 
       - name: Run tests
         run: go test -timeout 15m -v ./...
