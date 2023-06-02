@@ -21,7 +21,7 @@ func TestExistsUpdates(t *testing.T) {
 		c[1].Se("A006 OK [READ-WRITE] SELECT")
 
 		// Second client appends to INBOX to generate EXISTS update.
-		c[2].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
+		c[2].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
 
 		// First client receives the EXISTS update. Apply RECENT update is also received.
 		c[1].C("b001 noop")
@@ -41,7 +41,7 @@ func TestExistsUpdatesInSeparateMailboxes(t *testing.T) {
 		c[1].Se("A006 OK [READ-WRITE] SELECT")
 
 		// Second client appends to INBOX to generate EXISTS update.
-		c[2].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
+		c[2].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
 
 		// First client does not receive the EXISTS update from INBOX.
 		c[1].C("b001 noop")
@@ -51,7 +51,7 @@ func TestExistsUpdatesInSeparateMailboxes(t *testing.T) {
 
 func TestFetchUpdates(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
 
 		// First client selects in INBOX to receive FETCH update.
 		c[1].C("A006 select INBOX")
@@ -79,9 +79,9 @@ func TestFetchUpdates(t *testing.T) {
 func TestExpungeUpdates(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, _ *testSession) {
 		// Generate three messages, the first two unseen, the third seen.
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
 
 		// Both clients select in inbox.
 		c[1].C("A006 select INBOX")
@@ -134,11 +134,11 @@ func TestExpungeUpdates(t *testing.T) {
 func TestSequenceNumbersPerSession(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// Generate five messages.
-		c[1].doAppend(`inbox`, `To: 1@pm.me`).expect("OK")
-		c[1].doAppend(`inbox`, `To: 2@pm.me`).expect("OK")
-		c[1].doAppend(`inbox`, `To: 3@pm.me`).expect("OK")
-		c[1].doAppend(`inbox`, `To: 4@pm.me`).expect("OK")
-		c[1].doAppend(`inbox`, `To: 5@pm.me`).expect("OK")
+		c[1].doAppend(`inbox`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c[1].doAppend(`inbox`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+		c[1].doAppend(`inbox`, buildRFC5322TestLiteral(`To: 3@pm.me`)).expect("OK")
+		c[1].doAppend(`inbox`, buildRFC5322TestLiteral(`To: 4@pm.me`)).expect("OK")
+		c[1].doAppend(`inbox`, buildRFC5322TestLiteral(`To: 5@pm.me`)).expect("OK")
 
 		// Both clients select in inbox.
 		c[1].C("tag select inbox").OK("tag")
@@ -197,7 +197,7 @@ func TestSequenceNumbersPerSession(t *testing.T) {
 
 func TestAddFlagsToExpungedMessage(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
-		c[1].doAppend(`inbox`, `To: 1@pm.me`).expect("OK")
+		c[1].doAppend(`inbox`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		// Both clients select in inbox.
 		c[1].C("tag select inbox").OK("tag")

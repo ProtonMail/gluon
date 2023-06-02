@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/async"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	limits2 "github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
@@ -229,4 +230,16 @@ func (w withUIDValidityGenerator) config(builder *serverBuilder) {
 
 func WithUIDValidityGenerator(generator imap.UIDValidityGenerator) Option {
 	return &withUIDValidityGenerator{generator: generator}
+}
+
+type withDBClient struct {
+	ci db.ClientInterface
+}
+
+func (w withDBClient) config(builder *serverBuilder) {
+	builder.dbCI = w.ci
+}
+
+func WithDBClient(ci db.ClientInterface) Option {
+	return &withDBClient{ci: ci}
 }

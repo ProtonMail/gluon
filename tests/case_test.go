@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -27,12 +28,16 @@ func TestMailboxCase(t *testing.T) {
 		c.C(`tag status iNbOx/other (messages)`).OK(`tag`)
 
 		// We can append INBOX in any case.
-		c.C(`tag append INBOX () {11}`).Continue().C(`To: 1@pm.me`).OK(`tag`)
-		c.C(`tag append inbox () {11}`).Continue().C(`To: 1@pm.me`).OK(`tag`)
-		c.C(`tag append iNbOx () {11}`).Continue().C(`To: 1@pm.me`).OK(`tag`)
-		c.C(`tag append INBOX/other () {11}`).Continue().C(`To: 1@pm.me`).OK(`tag`)
-		c.C(`tag append inbox/other () {11}`).Continue().C(`To: 1@pm.me`).OK(`tag`)
-		c.C(`tag append iNbOx/other () {11}`).Continue().C(`To: 1@pm.me`).OK(`tag`)
+
+		literal := buildRFC5322TestLiteral(`To: 1@pm.me`)
+		literalLen := len(literal)
+
+		c.C(fmt.Sprintf(`tag append INBOX () {%v}`, literalLen)).Continue().C(literal).OK(`tag`)
+		c.C(fmt.Sprintf(`tag append inbox () {%v}`, literalLen)).Continue().C(literal).OK(`tag`)
+		c.C(fmt.Sprintf(`tag append iNbOx () {%v}`, literalLen)).Continue().C(literal).OK(`tag`)
+		c.C(fmt.Sprintf(`tag append INBOX/other () {%v}`, literalLen)).Continue().C(literal).OK(`tag`)
+		c.C(fmt.Sprintf(`tag append inbox/other () {%v}`, literalLen)).Continue().C(literal).OK(`tag`)
+		c.C(fmt.Sprintf(`tag append iNbOx/other () {%v}`, literalLen)).Continue().C(literal).OK(`tag`)
 
 		// We can list inbox in any case.
 		c.C(`tag LIST "" "INBOX"`).Sx(`INBOX`).OK(`tag`)

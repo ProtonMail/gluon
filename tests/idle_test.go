@@ -19,8 +19,10 @@ func TestIDLEExistsUpdates(t *testing.T) {
 
 		// Second client appends to INBOX to generate EXISTS updates.
 		// The client is not selected and thus doesn't itself receive responses.
-		c[2].doAppend(`INBOX`, `To: 1@pm.me`, `\Seen`).expect("OK")
-		c[2].doAppend(`INBOX`, `To: 2@pm.me`, `\Seen`).expect("OK")
+		c[2].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
+		c[2].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 2@pm.me`), `\Seen`).expect("OK")
+
+		s.flush("user")
 
 		// First client receives the EXISTS and RECENT updates while idling.
 		c[1].S(`* 2 EXISTS`, `* 2 RECENT`)
@@ -30,7 +32,7 @@ func TestIDLEExistsUpdates(t *testing.T) {
 		c[1].OK(`A007`)
 
 		// Further stuff doesn't trigger any issues.
-		c[2].doAppend(`INBOX`, `To: 3@pm.me`, `\Seen`).expect("OK")
+		c[2].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 3@pm.me`), `\Seen`).expect("OK")
 	})
 }
 
@@ -63,8 +65,8 @@ func TestIDLERecentReceivedOnSelectedClient(t *testing.T) {
 		c[1].C("A001 select INBOX").OK("A001")
 
 		// Generate some pending updates.
-		c[2].doAppend("INBOX", "To: foo.foo").s.OK("")
-		c[2].doAppend("INBOX", "To: bar.bar").s.OK("")
+		c[2].doAppend("INBOX", buildRFC5322TestLiteral("To: foo.foo")).s.OK("")
+		c[2].doAppend("INBOX", buildRFC5322TestLiteral("To: bar.bar")).s.OK("")
 
 		// Begin IDLE.
 		c[1].C("A002 IDLE").S("+ Ready")
@@ -73,14 +75,14 @@ func TestIDLERecentReceivedOnSelectedClient(t *testing.T) {
 		c[1].S(`* 2 EXISTS`, `* 2 RECENT`)
 
 		// And bulked after 500 ms
-		c[2].doAppend("INBOX", "To: biz.biz").s.OK("")
-		c[2].doAppend("INBOX", "To: gardy.loo").s.OK("")
+		c[2].doAppend("INBOX", buildRFC5322TestLiteral("To: biz.biz")).s.OK("")
+		c[2].doAppend("INBOX", buildRFC5322TestLiteral("To: gardy.loo")).s.OK("")
 
 		// Testing splitting the updates in at least two bulks.
 		time.Sleep(510 * time.Millisecond)
 
-		c[2].doAppend("INBOX", "To: wolo.lo").s.OK("")
-		c[2].doAppend("INBOX", "To: huga.chaga").s.OK("")
+		c[2].doAppend("INBOX", buildRFC5322TestLiteral("To: wolo.lo")).s.OK("")
+		c[2].doAppend("INBOX", buildRFC5322TestLiteral("To: huga.chaga")).s.OK("")
 		c[2].C("C2 LOGOUT").OK("C2")
 
 		// First bulk update should have 4 exists and recent.

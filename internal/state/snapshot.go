@@ -4,73 +4,38 @@ import (
 	"context"
 	"strings"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/ids"
-	"github.com/ProtonMail/gluon/reporter"
 	"github.com/bradenaw/juniper/xslices"
 )
 
 type snapshot struct {
-	mboxID ids.MailboxIDPair
+	mboxID db.MailboxIDPair
 
 	state    *State
 	messages *snapMsgList
 }
 
-func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *ent.Mailbox) (*snapshot, error) {
-	snapshotMessages, err := db.GetMailboxMessagesForNewSnapshot(ctx, client, mbox.ID)
+func newSnapshot(ctx context.Context, state *State, client db.ReadOnly, mbox *db.Mailbox) (*snapshot, error) {
+	snapshotMessages, err := client.GetMailboxMessageForNewSnapshot(ctx, mbox.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	snap := &snapshot{
-		mboxID:   ids.NewMailboxIDPair(mbox),
+		mboxID:   db.NewMailboxIDPair(mbox),
 		state:    state,
 		messages: newMsgList(len(snapshotMessages)),
 	}
 
-	for idx, snapshotMessage := range snapshotMessages {
+	for _, snapshotMessage := range snapshotMessages {
 		if err := snap.messages.insert(
-			ids.MessageIDPair{InternalID: snapshotMessage.InternalID, RemoteID: snapshotMessage.RemoteID},
+			db.MessageIDPair{InternalID: snapshotMessage.InternalID, RemoteID: snapshotMessage.RemoteID},
 			snapshotMessage.UID,
 			snapshotMessage.GetFlagSet(),
 		); err != nil {
-			// Try to collect more info to understand how this can possibly happen.
-			var (
-				isUnsorted           bool
-				duplicateMessageList []ids.MessageIDPair
-				duplicateSet         = make(map[imap.UID]struct{})
-			)
-
-			lastUID := snapshotMessages[0].UID
-			duplicateSet[lastUID] = struct{}{}
-
-			for _, msg := range snapshotMessages[1:] {
-				if msg.UID >= lastUID {
-					isUnsorted = true
-				}
-
-				if _, ok := duplicateSet[msg.UID]; ok {
-					duplicateMessageList = append(duplicateMessageList, ids.MessageIDPair{InternalID: msg.InternalID, RemoteID: msg.RemoteID})
-				} else {
-					duplicateSet[msg.UID] = struct{}{}
-				}
-			}
-
-			reporter.ExceptionWithContext(ctx, "Failed to insert message into new snapshot",
-				reporter.Context{"error": err,
-					"mailbox-id":     mbox.RemoteID,
-					"sorted":         !isUnsorted,
-					"has-duplicates": len(duplicateMessageList) != 0,
-					"duplicates":     duplicateMessageList,
-					"message-idx":    idx,
-				},
-			)
-
 			return nil, err
 		}
 	}
@@ -78,9 +43,9 @@ func newSnapshot(ctx context.Context, state *State, client *ent.Client, mbox *en
 	return snap, nil
 }
 
-func newEmptySnapshot(state *State, mbox *ent.Mailbox) *snapshot {
+func newEmptySnapshot(state *State, mbox *db.Mailbox) *snapshot {
 	return &snapshot{
-		mboxID:   ids.NewMailboxIDPair(mbox),
+		mboxID:   db.NewMailboxIDPair(mbox),
 		state:    state,
 		messages: newMsgList(0),
 	}
@@ -152,14 +117,14 @@ func (snap *snapshot) getAllMessages() []snapMsgWithSeq {
 	return result
 }
 
-func (snap *snapshot) getAllMessageIDs() []ids.MessageIDPair {
-	return xslices.Map(snap.messages.all(), func(msg *snapMsg) ids.MessageIDPair {
+func (snap *snapshot) getAllMessageIDs() []db.MessageIDPair {
+	return xslices.Map(snap.messages.all(), func(msg *snapMsg) db.MessageIDPair {
 		return msg.ID
 	})
 }
 
-func (snap *snapshot) getAllMessagesIDsMarkedDelete() []ids.MessageIDPair {
-	var msgs []ids.MessageIDPair
+func (snap *snapshot) getAllMessagesIDsMarkedDelete() []db.MessageIDPair {
+	var msgs []db.MessageIDPair
 
 	for _, v := range snap.messages.all() {
 		if v.toExpunge {
@@ -270,7 +235,7 @@ func (snap *snapshot) getMessagesWithoutFlagCount(flag string) int {
 	})
 }
 
-func (snap *snapshot) appendMessage(messageID ids.MessageIDPair, uid imap.UID, flags imap.FlagSet) error {
+func (snap *snapshot) appendMessage(messageID db.MessageIDPair, uid imap.UID, flags imap.FlagSet) error {
 	return snap.messages.insert(
 		messageID,
 		uid,
@@ -278,7 +243,7 @@ func (snap *snapshot) appendMessage(messageID ids.MessageIDPair, uid imap.UID, f
 	)
 }
 
-func (snap *snapshot) appendMessageFromOtherState(messageID ids.MessageIDPair, uid imap.UID, flags imap.FlagSet) error {
+func (snap *snapshot) appendMessageFromOtherState(messageID db.MessageIDPair, uid imap.UID, flags imap.FlagSet) error {
 	snap.messages.insertOutOfOrder(
 		messageID,
 		uid,

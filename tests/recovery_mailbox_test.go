@@ -25,7 +25,7 @@ func TestRecoveryMBoxNotVisibleWhenEmpty(t *testing.T) {
 
 func TestRecoveryMBoxVisibleWhenNotEmpty(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&failAppendLabelConnectorBuilder{})), func(c *testConnection, s *testSession) {
-		c.doAppend("INBOX", "INBOX", "To: Test@test.com").expect("NO")
+		c.doAppend("INBOX", buildRFC5322TestLiteral("To: Test@test.com")).expect("NO")
 		c.C(`A103 LIST "" *`)
 		c.S(`* LIST (\Unmarked) "/" "INBOX"`,
 			fmt.Sprintf(`* LIST (\Marked \Noinferiors) "/" "%v"`, ids.GluonRecoveryMailboxName),
@@ -73,7 +73,7 @@ func TestRecoveryMBoxCanNotBeMovedOrCopiedInto(t *testing.T) {
 func TestRecoveryMBoxCanBeMovedOutOf(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&disableRemoveFromMailboxBuilder{})), func(client *client.Client, s *testSession) {
 		// Insert first message, fails.
-		require.Error(t, doAppendWithClient(client, "INBOX", "To: Test@test.com", time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Test@test.com"), time.Now()))
 		status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
 		require.NoError(t, err)
 		require.Equal(t, uint32(1), status.Messages)
@@ -82,7 +82,7 @@ func TestRecoveryMBoxCanBeMovedOutOf(t *testing.T) {
 			require.NoError(t, err)
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", "To: Test@test.com")
+				builder.wantSection("BODY[]", buildRFC5322TestLiteral("To: Test@test.com"))
 			}).checkAndRequireMessageCount(1)
 		}
 
@@ -103,7 +103,7 @@ func TestRecoveryMBoxCanBeMovedOutOf(t *testing.T) {
 			// Check that message has the new internal ID header.
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", "To: Test@test.com")
+				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", buildRFC5322TestLiteral("To: Test@test.com"))
 			}).checkAndRequireMessageCount(1)
 		}
 	})
@@ -112,7 +112,7 @@ func TestRecoveryMBoxCanBeMovedOutOf(t *testing.T) {
 func TestRecoveryMBoxCanBeCopiedOutOf(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&disableRemoveFromMailboxBuilder{})), func(client *client.Client, s *testSession) {
 		// Insert first message, fails.
-		require.Error(t, doAppendWithClient(client, "INBOX", "To: Test@test.com", time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Test@test.com"), time.Now()))
 		status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
 		require.NoError(t, err)
 		require.Equal(t, uint32(1), status.Messages)
@@ -121,7 +121,7 @@ func TestRecoveryMBoxCanBeCopiedOutOf(t *testing.T) {
 			require.NoError(t, err)
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", "To: Test@test.com")
+				builder.wantSection("BODY[]", buildRFC5322TestLiteral("To: Test@test.com"))
 			}).checkAndRequireMessageCount(1)
 		}
 
@@ -142,7 +142,7 @@ func TestRecoveryMBoxCanBeCopiedOutOf(t *testing.T) {
 			// Check that message has the new internal ID header.
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", "To: Test@test.com")
+				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", buildRFC5322TestLiteral("To: Test@test.com"))
 			}).checkAndRequireMessageCount(1)
 		}
 	})
@@ -151,7 +151,7 @@ func TestRecoveryMBoxCanBeCopiedOutOf(t *testing.T) {
 func TestRecoveryMBoxCanBeExpunged(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&disableRemoveFromMailboxBuilder{})), func(client *client.Client, s *testSession) {
 		// Insert first message, fails.
-		require.Error(t, doAppendWithClient(client, "INBOX", "To: Test@test.com", time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Test@test.com"), time.Now()))
 		// Execute expunge
 		status, err := client.Select(ids.GluonRecoveryMailboxName, false)
 		require.NoError(t, err)
@@ -175,7 +175,7 @@ func TestFailedAppendEndsInRecovery(t *testing.T) {
 		status, err := client.Select("INBOX", false)
 		require.NoError(t, err)
 		require.Equal(t, uint32(0), status.Messages)
-		require.Error(t, doAppendWithClient(client, "INBOX", "To: Foo@bar.com", time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Foo@bar.com"), time.Now()))
 
 		{
 			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
@@ -194,8 +194,105 @@ func TestFailedAppendEndsInRecovery(t *testing.T) {
 			// Check that no custom headers are appended to the message.
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", "To: Foo@bar.com")
+				builder.wantSection("BODY[]", buildRFC5322TestLiteral("To: Foo@bar.com"))
 			}).checkAndRequireMessageCount(1)
+		}
+	})
+}
+
+func TestFailedAppendAreDedupedInRecoveryMailbox(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&failAppendLabelConnectorBuilder{})), func(client *client.Client, s *testSession) {
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
+		status, err := client.Select("INBOX", false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(0), status.Messages)
+		require.Error(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Foo@bar.com"), time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Foo@bar.com"), time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Bar@bar.com"), time.Now()))
+
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(2), status.Messages)
+		}
+		{
+			status, err := client.Status("INBOX", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
+		{
+			_, err := client.Select(ids.GluonRecoveryMailboxName, false)
+			require.NoError(t, err)
+			// Check that no custom headers are appended to the message.
+			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
+				builder.ignoreFlags()
+				builder.wantSection("BODY[]", buildRFC5322TestLiteral("To: Foo@bar.com"))
+			}).checkAndRequireMessageCount(1)
+		}
+	})
+}
+
+func TestRecoveryMailboxOnlyReportsOnFirstDedupedMessage(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&failAppendLabelConnectorBuilder{})), func(client *client.Client, s *testSession) {
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
+		status, err := client.Select("INBOX", false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(0), status.Messages)
+		require.Error(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/original.eml", time.Now()))
+		require.Error(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/duplicate.eml", time.Now()))
+
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(1), status.Messages)
+		}
+		{
+			status, err := client.Status("INBOX", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
+		{
+			reports := s.reporter.getReports()
+			require.Equal(t, 1, len(reports))
+		}
+	})
+}
+
+func TestRecoveryMailboxDoesNotStoreMessageWhichExceedLimit(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&sizeExceededAppendConnectorBuilder{})), func(client *client.Client, s *testSession) {
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+
+		status, err := client.Select("INBOX", false)
+		require.NoError(t, err)
+		require.Equal(t, uint32(0), status.Messages)
+		require.Error(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/original.eml", time.Now()))
+		require.Error(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/duplicate.eml", time.Now()))
+
+		{
+			status, err := client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
+		}
+		{
+			status, err := client.Status("INBOX", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(0), status.Messages)
 		}
 	})
 }
@@ -203,25 +300,25 @@ func TestFailedAppendEndsInRecovery(t *testing.T) {
 func TestRecoveryMBoxCanBeCopiedOutOfDedup(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&recoveryDedupConnectorConnectorBuilder{})), func(client *client.Client, s *testSession) {
 		// Insert first message, fails.
-		require.Error(t, doAppendWithClient(client, "INBOX", "To: Test@test.com", time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Test@test.com"), time.Now()))
 		{
 			_, err := client.Select(ids.GluonRecoveryMailboxName, false)
 			require.NoError(t, err)
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", "To: Test@test.com")
+				builder.wantSection("BODY[]", buildRFC5322TestLiteral("To: Test@test.com"))
 			}).checkAndRequireMessageCount(1)
 		}
 
 		// Insert same message, succeeds.
-		require.NoError(t, doAppendWithClient(client, "INBOX", "To: Test@test.com", time.Now()))
+		require.NoError(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Test@test.com"), time.Now()))
 
 		{
 			_, err := client.Select("INBOX", false)
 			require.NoError(t, err)
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", "To: Test@test.com")
+				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", buildRFC5322TestLiteral("To: Test@test.com"))
 			}).checkAndRequireMessageCount(1)
 		}
 
@@ -255,25 +352,25 @@ func TestRecoveryMBoxCanBeCopiedOutOfDedup(t *testing.T) {
 func TestRecoveryMBoxCanBeMovedOutOfDedup(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withConnectorBuilder(&recoveryDedupConnectorConnectorBuilder{})), func(client *client.Client, s *testSession) {
 		// Insert first message, fails.
-		require.Error(t, doAppendWithClient(client, "INBOX", "To: Test@test.com", time.Now()))
+		require.Error(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Test@test.com"), time.Now()))
 		{
 			_, err := client.Select(ids.GluonRecoveryMailboxName, false)
 			require.NoError(t, err)
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSection("BODY[]", "To: Test@test.com")
+				builder.wantSection("BODY[]", buildRFC5322TestLiteral("To: Test@test.com"))
 			}).checkAndRequireMessageCount(1)
 		}
 
 		// Insert same message, succeeds.
-		require.NoError(t, doAppendWithClient(client, "INBOX", "To: Test@test.com", time.Now()))
+		require.NoError(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Test@test.com"), time.Now()))
 
 		{
 			_, err := client.Select("INBOX", false)
 			require.NoError(t, err)
 			newFetchCommand(t, client).withItems("BODY[]").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
 				builder.ignoreFlags()
-				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", "To: Test@test.com")
+				builder.wantSectionAndSkipGLUONHeaderOrPanic("BODY[]", buildRFC5322TestLiteral("To: Test@test.com"))
 			}).checkAndRequireMessageCount(1)
 		}
 
@@ -451,6 +548,36 @@ type failAppendLabelConnectorBuilder struct{}
 
 func (failAppendLabelConnectorBuilder) New(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) Connector {
 	return &failAppendLabelConnector{
+		Dummy: connector.NewDummy(usernames, password, period, flags, permFlags, attrs),
+	}
+}
+
+// failAppendLabelConnector simulate Create Message failures and also ensures that no calls to Add or Move can take place.
+type sizeExceededAppendConnector struct {
+	*connector.Dummy
+}
+
+func (r *sizeExceededAppendConnector) CreateMessage(
+	_ context.Context,
+	_ imap.MailboxID,
+	_ []byte,
+	_ imap.FlagSet,
+	_ time.Time) (imap.Message, []byte, error) {
+	return imap.Message{}, nil, fmt.Errorf("messsage to large: %w", connector.ErrMessageSizeExceedsLimits)
+}
+
+func (r *sizeExceededAppendConnector) AddMessagesToMailbox(
+	_ context.Context,
+	_ []imap.MessageID,
+	_ imap.MailboxID,
+) error {
+	return fmt.Errorf("messsage to large: %w", connector.ErrMessageSizeExceedsLimits)
+}
+
+type sizeExceededAppendConnectorBuilder struct{}
+
+func (sizeExceededAppendConnectorBuilder) New(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) Connector {
+	return &sizeExceededAppendConnector{
 		Dummy: connector.NewDummy(usernames, password, period, flags, permFlags, attrs),
 	}
 }

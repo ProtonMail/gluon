@@ -1,11 +1,11 @@
 module github.com/ProtonMail/gluon
 
-go 1.18
+go 1.20
 
 require (
 	entgo.io/ent v0.11.8
 	github.com/ProtonMail/go-mbox v1.1.0
-	github.com/bradenaw/juniper v0.10.2
+	github.com/bradenaw/juniper v0.12.0
 	github.com/emersion/go-imap v1.2.1
 	github.com/emersion/go-imap-uidplus v0.0.0-20200503180755-e75854c361e9
 	github.com/golang/mock v1.6.0

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+
 	"github.com/google/uuid"
 )
 
@@ -18,17 +19,6 @@ func NewRandomMailboxID() string {
 // NewRandomMessageID return a new random message ID. For debugging purposes, the ID starts with the 'message-' prefix.
 func NewRandomMessageID() string {
 	return "msg-" + uuid.NewString()
-}
-
-// ShortID return a string containing a short version of the given ID. Use only for debug display.
-func ShortID(id string) string {
-	const l = 12
-
-	if len(id) < l {
-		return id
-	}
-
-	return id[0:l] + "..."
 }
 
 // ErrCause returns the cause of the error, the inner-most error in the wrapped chain.

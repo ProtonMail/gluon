@@ -18,11 +18,11 @@ func TestSequenceRange(t *testing.T) {
 		c.C(`A005 FETCH * (FLAGS)`).BAD(`A005`)
 		c.C(`A006 FETCH 1:* (FLAGS)`).BAD(`A006`)
 
-		c.doAppend(`mbox1`, `To: 1@pm.me`).expect("OK")
-		c.doAppend(`mbox1`, `To: 2@pm.me`).expect("OK")
-		c.doAppend(`mbox1`, `To: 3@pm.me`).expect("OK")
-		c.doAppend(`mbox1`, `To: 4@pm.me`).expect("OK")
-		c.doAppend(`mbox1`, `To: 5@pm.me`).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 3@pm.me`)).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 4@pm.me`)).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 5@pm.me`)).expect("OK")
 
 		// test various set of ranges with STORE, FETCH, MOVE & COPY
 		c.C(`A007 FETCH 1 (FLAGS)`)
@@ -51,8 +51,8 @@ func TestSequenceRange(t *testing.T) {
 		c.OK(`A013`)
 
 		// test ranges given in reverse order
-		c.doAppend(`mbox1`, `To: 6@pm.me`).expect("OK")
-		c.doAppend(`mbox1`, `To: 7@pm.me`).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 6@pm.me`)).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 7@pm.me`)).expect("OK")
 		c.C(`A014 STORE 4:2 -FLAGS (flag)`)
 		c.Sx(`\* 2 FETCH `) // 2 was the only message in 4:2 to have flag set
 		c.OK(`A014`)
@@ -84,11 +84,11 @@ func TestUIDSequenceRange(t *testing.T) {
 		c.C(`A006 UID FETCH 1:* (FLAGS)`)
 		c.OK(`A006`)
 
-		c.doAppend(`mbox1`, `To: 1@pm.me`).expect("OK")
-		c.doAppend(`mbox1`, `To: 2@pm.me`).expect("OK")
-		c.doAppend(`mbox1`, `To: 3@pm.me`).expect("OK")
-		c.doAppend(`mbox1`, `To: 4@pm.me`).expect("OK")
-		c.doAppend(`mbox1`, `To: 5@pm.me`).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 3@pm.me`)).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 4@pm.me`)).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 5@pm.me`)).expect("OK")
 
 		//// test various set of ranges with STORE, FETCH, MOVE & COPY
 		c.C(`A007 UID FETCH 1 (FLAGS)`)
@@ -120,8 +120,8 @@ func TestUIDSequenceRange(t *testing.T) {
 		c.OK(`A013`)
 
 		// test ranges given in reverse order
-		c.doAppend(`mbox1`, `To: 6@pm.me`).expect("OK")
-		c.doAppend(`mbox1`, `To: 7@pm.me`).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 6@pm.me`)).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 7@pm.me`)).expect("OK")
 		c.C(`A014 UID STORE 4:2 -FLAGS (flag)`)
 		for i := 0; i < 2; i++ {
 			c.Sx(`\* \d FETCH`)

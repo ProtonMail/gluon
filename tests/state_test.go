@@ -89,7 +89,7 @@ func TestErrNoSuchMessage(t *testing.T) {
 	}
 
 	runOneToOneTestWithAuth(t, defaultServerOptions(t, withConnectorBuilder(connBuilder)), func(c *testConnection, s *testSession) {
-		update := imap.NewMessageMailboxesUpdated("this is not the message you are looking for", []imap.MailboxID{}, imap.MessageCustomFlags{})
+		update := imap.NewMessageMailboxesUpdated("this is not the message you are looking for", []imap.MailboxID{}, imap.NewFlagSet())
 
 		connBuilder.updateCh <- update
 

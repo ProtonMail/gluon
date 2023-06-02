@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ProtonMail/gluon/events"
@@ -30,9 +31,11 @@ func TestIdContextLookup(t *testing.T) {
 
 		// NOTE: We are only recording this with APPEND since it was the easiest command to verify the data has been
 		// record properly in the context, as APPEND will always require a communication with the remote connector.
-		c.C("A004 APPEND INBOX (\\Seen) {26}")
+		literal := buildRFC5322TestLiteral("To: 00010203-0405-4607-880")
+		literalLen := len(literal)
+		c.C(fmt.Sprintf("A004 APPEND INBOX (\\Seen) {%v}", literalLen))
 		c.S("+ Ready")
-		c.C("To: 00010203-0405-4607-880").OK("A004")
+		c.C(literal).OK("A004")
 
 		s.flush("user")
 

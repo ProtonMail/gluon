@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/google/uuid"
 )
 
@@ -13,11 +12,11 @@ type MailboxID string
 type MessageID string
 
 func (l MailboxID) ShortID() string {
-	return utils.ShortID(string(l))
+	return ShortID(string(l))
 }
 
 func (m MessageID) ShortID() string {
-	return utils.ShortID(string(m))
+	return ShortID(string(m))
 }
 
 type InternalMessageID struct {
@@ -31,7 +30,7 @@ func (i InternalMailboxID) ShortID() string {
 }
 
 func (i InternalMessageID) ShortID() string {
-	return utils.ShortID(i.String())
+	return ShortID(i.String())
 }
 
 func (i InternalMailboxID) String() string {

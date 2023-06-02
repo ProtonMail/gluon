@@ -1,11 +1,12 @@
 package tests
 
 import (
-	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeleted(t *testing.T) {
@@ -17,8 +18,8 @@ func TestDeleted(t *testing.T) {
 		c.S("b001 OK CREATE")
 
 		// Create a message in mbox1.
-		c.doAppend(`mbox1`, `To: 1@pm.me`, `\Seen`).expect("OK")
-		c.doAppend(`mbox1`, `To: 2@pm.me`, `\Seen`).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 2@pm.me`), `\Seen`).expect("OK")
 		c.C(`A002 SELECT mbox1`)
 		c.Se(`A002 OK [READ-WRITE] SELECT`)
 
@@ -85,8 +86,8 @@ func TestUIDDeleted(t *testing.T) {
 		c.S("b001 OK CREATE")
 
 		// Create a message in mbox1
-		c.doAppend(`mbox1`, `To: 1@pm.me`, `\Seen`).expect("OK")
-		c.doAppend(`mbox1`, `To: 2@pm.me`, `\Seen`).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 2@pm.me`), `\Seen`).expect("OK")
 		c.C(`A002 SELECT mbox1`)
 		c.Se(`A002 OK [READ-WRITE] SELECT`)
 

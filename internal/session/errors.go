@@ -3,10 +3,11 @@ package session
 import (
 	"context"
 	"errors"
+	"net"
+
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/rfc822"
-	"net"
 )
 
 var (
@@ -36,6 +37,8 @@ func shouldReportIMAPCommandError(err error) bool {
 	case errors.As(err, &netErr):
 		return false
 	case errors.Is(err, rfc822.ErrNoSuchPart):
+		return false
+	case errors.Is(err, state.ErrKnownRecoveredMessage):
 		return false
 	}
 

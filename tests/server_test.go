@@ -12,7 +12,9 @@ import (
 
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/internal/db_impl"
 	"github.com/ProtonMail/gluon/internal/hash"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"
@@ -77,6 +79,7 @@ type serverOptions struct {
 	imapLimits           limits.IMAP
 	reporter             reporter.Reporter
 	uidValidityGenerator imap.UIDValidityGenerator
+	database             db.ClientInterface
 }
 
 func (s *serverOptions) defaultUsername() string {
@@ -179,6 +182,14 @@ type uidValidityGeneratorOption struct {
 	generator imap.UIDValidityGenerator
 }
 
+type withDatabaseOption struct {
+	database db.ClientInterface
+}
+
+func (w withDatabaseOption) apply(options *serverOptions) {
+	options.database = w.database
+}
+
 func (u uidValidityGeneratorOption) apply(options *serverOptions) {
 	options.uidValidityGenerator = u.generator
 }
@@ -227,6 +238,10 @@ func withDatabaseDir(dir string) serverOption {
 	return &databaseDirOption{dir: dir}
 }
 
+func withDatabase(ci db.ClientInterface) serverOption {
+	return &withDatabaseOption{database: ci}
+}
+
 func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
 	options := &serverOptions{
 		credentials: []credentials{{
@@ -241,6 +256,7 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 		storeBuilder:     &store.OnDiskStoreBuilder{},
 		connectorBuilder: &dummyConnectorBuilder{},
 		imapLimits:       limits.DefaultLimits(),
+		database:         db_impl.NewEntDB(),
 	}
 
 	for _, op := range modifiers {

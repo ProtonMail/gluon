@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/ids"
 )
 
 type RemoteAddMessageFlagsStateUpdate struct {
@@ -22,7 +21,7 @@ func NewRemoteAddMessageFlagsStateUpdate(messageID imap.InternalMessageID, flag 
 	}
 }
 
-func (u *RemoteAddMessageFlagsStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (u *RemoteAddMessageFlagsStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
 	return s.PushResponder(ctx, tx, NewFetch(u.MessageID, imap.NewFlagSet(u.flag), contexts.IsUID(ctx), contexts.IsSilent(ctx), false, FetchFlagOpAdd))
 }
 
@@ -42,7 +41,7 @@ func NewRemoteRemoveMessageFlagsStateUpdate(messageID imap.InternalMessageID, fl
 	}
 }
 
-func (u *RemoteRemoveMessageFlagsStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (u *RemoteRemoveMessageFlagsStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
 	return s.PushResponder(ctx, tx, NewFetch(u.MessageID, imap.NewFlagSet(u.flag), contexts.IsUID(ctx), contexts.IsSilent(ctx), false, FetchFlagOpRem))
 }
 
@@ -53,22 +52,4 @@ func (u *RemoteRemoveMessageFlagsStateUpdate) String() string {
 type RemoteMessageDeletedStateUpdate struct {
 	MessageIDStateFilter
 	remoteID imap.MessageID
-}
-
-func NewRemoteMessageDeletedStateUpdate(messageID imap.InternalMessageID, remoteID imap.MessageID) Update {
-	return &RemoteMessageDeletedStateUpdate{
-		MessageIDStateFilter: MessageIDStateFilter{MessageID: messageID},
-		remoteID:             remoteID,
-	}
-}
-
-func (u *RemoteMessageDeletedStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
-	return s.actionRemoveMessagesFromMailbox(ctx, tx, []ids.MessageIDPair{{
-		InternalID: u.MessageID,
-		RemoteID:   u.remoteID,
-	}}, s.snap.mboxID)
-}
-
-func (u *RemoteMessageDeletedStateUpdate) String() string {
-	return fmt.Sprintf("RemoteMessageDeletedStateUpdate %v remote ID = %v", u.MessageIDStateFilter.String(), u.remoteID)
 }

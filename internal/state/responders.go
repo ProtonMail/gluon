@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/contexts"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/bradenaw/juniper/xslices"
@@ -20,7 +18,7 @@ type responderStateUpdate struct {
 	responders []Responder
 }
 
-func (r *responderStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (r *responderStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
 	return s.PushResponder(ctx, tx, r.responders...)
 }
 
@@ -37,7 +35,7 @@ func (r *responderStateUpdate) String() string {
 // Seeing as this is only used right now to clear the recent flags, we can avoid a lot of necessary database locking
 // and transaction overhead.
 type responderDBUpdate interface {
-	apply(ctx context.Context, tx *ent.Tx) error
+	apply(ctx context.Context, tx db.Transaction) error
 }
 
 func NewMailboxIDResponderStateUpdate(id imap.InternalMailboxID, responders ...Responder) Update {
@@ -63,12 +61,12 @@ type Responder interface {
 }
 
 type exists struct {
-	messageID  ids.MessageIDPair
+	messageID  db.MessageIDPair
 	messageUID imap.UID
 	flags      imap.FlagSet
 }
 
-func newExists(messageID ids.MessageIDPair, messageUID imap.UID, flags imap.FlagSet) *exists {
+func newExists(messageID db.MessageIDPair, messageUID imap.UID, flags imap.FlagSet) *exists {
 	return &exists{messageID: messageID, messageUID: messageUID, flags: flags}
 }
 
@@ -81,8 +79,8 @@ type clearRecentFlagRespUpdate struct {
 	mboxID    imap.InternalMailboxID
 }
 
-func (u *clearRecentFlagRespUpdate) apply(ctx context.Context, tx *ent.Tx) error {
-	return db.ClearRecentFlag(ctx, tx, u.mboxID, u.messageID)
+func (u *clearRecentFlagRespUpdate) apply(ctx context.Context, tx db.Transaction) error {
+	return tx.ClearRecentFlagInMailboxOnMessage(ctx, u.mboxID, u.messageID)
 }
 
 // targetedExists needs to be separate so that we update the targetStateID safely when doing concurrent updates
@@ -197,7 +195,7 @@ func newExistsStateUpdateWithExists(mailboxID imap.InternalMailboxID, responders
 	}
 }
 
-func (e *ExistsStateUpdate) Apply(ctx context.Context, tx *ent.Tx, s *State) error {
+func (e *ExistsStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
 	// This check needs to be thread safe since we don't know when a state update
 	// will be executed. Before each of these updates run we check whether at state
 	// target ID has been set and update for the first state that manages to run this code

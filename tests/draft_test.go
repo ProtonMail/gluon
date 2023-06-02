@@ -52,7 +52,7 @@ func TestDraftSavedAgain(t *testing.T) {
 
 		c.C("A002 SELECT Drafts").OK("A002")
 
-		_ = s.messageCreated("user", mailboxID, []byte("To: 3@3.pm"), time.Now())
+		_ = s.messageCreated("user", mailboxID, []byte(buildRFC5322TestLiteral("To: 3@3.pm")), time.Now())
 		s.flush("user")
 
 		c.C("A002 NOOP")
@@ -64,9 +64,9 @@ func TestDraftSavedAgain(t *testing.T) {
 		raw := c.read()
 
 		fetch := regexp.MustCompile(
-			regexp.QuoteMeta("* 1 FETCH (BODY[] {63}\r\nX-Pm-Gluon-Id: ") +
+			regexp.QuoteMeta("* 1 FETCH (BODY[] {134}\r\nX-Pm-Gluon-Id: ") +
 				".*" +
-				regexp.QuoteMeta("\r\nTo: 3@3.pm)\r\n"),
+				regexp.QuoteMeta("\r\n"+buildRFC5322TestLiteral("To: 3@3.pm")+")\r\n"),
 		)
 
 		require.Regexp(t, fetch, string(raw))
@@ -79,7 +79,7 @@ func TestDraftSavedAgain(t *testing.T) {
 
 			c.doAppend(
 				"Drafts",
-				string(raw[24:len(raw)-3]),
+				string(raw[25:len(raw)-3]),
 			).expect("OK")
 
 			c.C("A004 FETCH 1 (BODY.PEEK[])")
@@ -88,11 +88,11 @@ func TestDraftSavedAgain(t *testing.T) {
 			c.OK("A004")
 		}
 
-		newBody2 := string(raw[24:]) + "\r\nThis is body\r\n"
+		newBody2 := string(raw[25:]) + "\r\nThis is body\r\n"
 		fetchUpdated2 := regexp.MustCompile(
-			regexp.QuoteMeta("* 1 FETCH (BODY[] {82}\r\nX-Pm-Gluon-Id: ") +
+			regexp.QuoteMeta("* 1 FETCH (BODY[] {153}\r\nX-Pm-Gluon-Id: ") +
 				".*" +
-				regexp.QuoteMeta("\r\nTo: 3@3.pm)\r\n\r\nThis is body\r\n)"),
+				regexp.QuoteMeta("\r\n"+buildRFC5322TestLiteral("To: 3@3.pm)")+"\r\n\r\nThis is body\r\n)"),
 		)
 		// Expunge+Append different message
 		{
@@ -115,9 +115,9 @@ func TestDraftSavedAgain(t *testing.T) {
 		fetchUpdated3 := regexp.MustCompile(
 			regexp.QuoteMeta("* ") +
 				"\\d" +
-				regexp.QuoteMeta(" FETCH (BODY[] {89}\r\nX-Pm-Gluon-Id: ") +
+				regexp.QuoteMeta(" FETCH (BODY[] {160}\r\nX-Pm-Gluon-Id: ") +
 				".*" +
-				regexp.QuoteMeta("\r\nTo: 3@3.pm)\r\n\r\nThis is body\r\nhello\r\n)"),
+				regexp.QuoteMeta("\r\n"+buildRFC5322TestLiteral("To: 3@3.pm)")+"\r\n\r\nThis is body\r\nhello\r\n)"),
 		)
 		{
 

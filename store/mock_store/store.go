@@ -5,6 +5,7 @@
 package mock_store
 
 import (
+	io "io"
 	reflect "reflect"
 
 	imap "github.com/ProtonMail/gluon/imap"
@@ -97,7 +98,7 @@ func (mr *MockStoreMockRecorder) List() *gomock.Call {
 }
 
 // Set mocks base method.
-func (m *MockStore) Set(arg0 imap.InternalMessageID, arg1 []byte) error {
+func (m *MockStore) Set(arg0 imap.InternalMessageID, arg1 io.Reader) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Set", arg0, arg1)
 	ret0, _ := ret[0].(error)

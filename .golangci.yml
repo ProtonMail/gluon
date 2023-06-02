@@ -13,6 +13,7 @@ linters:
   disable:
     - godox # Annoying, we have too many TODOs at the moment :p
     - scopelint # Deprecated, replaced by exportloopref, which is enabled by default.
+    - errorlint # Too many false positives
 
 issues:
   exclude-rules:

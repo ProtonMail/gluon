@@ -95,8 +95,7 @@ This part does end with a linebreak.
 	}
 }
 
-func TestParseEmbeddedMessage(t *testing.T) {
-	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com> 
+const embeddedLiteral = `From: Nathaniel Borenstein <nsb@bellcore.com> 
 To:  Ned Freed <ned@innosoft.com> 
 Subject: Sample message 
 MIME-Version: 1.0 
@@ -134,9 +133,10 @@ This part is also embedded
 This is the epilogue.  It is also to be ignored.
 `
 
-	section := Parse([]byte(literal))
+func TestParseEmbeddedMessage(t *testing.T) {
+	section := Parse([]byte(embeddedLiteral))
 
-	assert.Equal(t, literal, string(section.Literal()))
+	assert.Equal(t, embeddedLiteral, string(section.Literal()))
 
 	{
 		part, err := section.Part(1)
@@ -321,4 +321,32 @@ Ym9keQ==
 	require.NoError(t, err)
 
 	assert.Equal(t, []byte("body"), body)
+}
+
+func FuzzParseDec(f *testing.F) {
+	f.Add([]byte(`From: Sender <sender@pm.me>
+	To: Receiver <receiver@pm.me>
+	Content-Transfer-Encoding: base64
+	
+	Ym9keQ==
+	`))
+
+	f.Add([]byte("Content-Type: multipart/alternative; boundary=\"------------62DCF50B21CF279F489F0184\"\r\n\r\n\r\n" +
+		"--------------62DCF50B21CF279F489F0184\r\nContent-Type: text/plain; charset=utf-8; format=flowed\r\n" +
+		"Content-Transfer-Encoding: 7bit\r\n\r\n*this */is**/_html_\r\n**\r\n\r\n--------------62DCF50B21CF279F489F0184\r\n" +
+		"Content-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: 7bit\r\n<foo></foo>\r\n--------------62DCF50B21CF279F489F0184--\r\n"))
+
+	f.Fuzz(func(t *testing.T, inputData []byte) {
+
+		_, _ = Parse(inputData).DecodedBody()
+	})
+}
+
+func TestParserAccessingInvalidPartDoesNotCrash(t *testing.T) {
+	section := Parse([]byte(embeddedLiteral))
+
+	assert.Equal(t, embeddedLiteral, string(section.Literal()))
+
+	_, err := section.Part(2, 3)
+	require.Error(t, err)
 }

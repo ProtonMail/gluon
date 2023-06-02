@@ -14,32 +14,18 @@ jobs:
       - name: Get sources
         uses: actions/checkout@v3
 
-      - name: Set up Go 1.18
+      - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
-
-      - name: Remove old static libs if modified
-        if: needs.check.outputs.changed  == 'true'
-        run: |
-          rm -r internal/parser/lib
-
-      - name: Download new static libs if modified
-        if: needs.check.outputs.changed == 'true'
-        uses: actions/download-artifact@v3
-        with:
-          name: ${{ matrix.os }}-libs
-          path: internal/parser/lib
+          go-version: '1.20'
 
       - name: Run go mod tidy
         run: go mod tidy
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.51.1
-          args: --timeout=500s
-          skip-cache: true
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@251ceaa228607dd3e0371694a1ab2c45d21cb744
+          golangci-lint run --timeout=500s
 
       - name: Run tests
         run: go test -timeout 15m -v ./...
@@ -47,3 +33,25 @@ jobs:
       - name: Run tests with race check
         if: runner.os != 'Windows'
         run: go test -race -v ./tests
+
+  Fuzzing:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Build Fuzzers
+      id: build
+      uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+      with:
+        oss-fuzz-project-name: 'gluon'
+        language: go
+    - name: Run Fuzzers
+      uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+      with:
+        oss-fuzz-project-name: 'gluon'
+        language: go
+        fuzz-seconds: 300
+    - name: Upload Crash
+      uses: actions/upload-artifact@v3
+      if: failure() && steps.build.outcome == 'success'
+      with:
+        name: artifacts
+        path: ./out/artifacts

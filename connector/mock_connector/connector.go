@@ -123,18 +123,33 @@ func (mr *MockConnectorMockRecorder) DeleteMailbox(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMailbox", reflect.TypeOf((*MockConnector)(nil).DeleteMailbox), arg0, arg1)
 }
 
-// GetUIDValidity mocks base method.
-func (m *MockConnector) GetUIDValidity() imap.UID {
+// GetMailboxVisibility mocks base method.
+func (m *MockConnector) GetMailboxVisibility(arg0 context.Context, arg1 imap.MailboxID) imap.MailboxVisibility {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUIDValidity")
-	ret0, _ := ret[0].(imap.UID)
+	ret := m.ctrl.Call(m, "GetMailboxVisibility", arg0, arg1)
+	ret0, _ := ret[0].(imap.MailboxVisibility)
 	return ret0
 }
 
-// GetUIDValidity indicates an expected call of GetUIDValidity.
-func (mr *MockConnectorMockRecorder) GetUIDValidity() *gomock.Call {
+// GetMailboxVisibility indicates an expected call of GetMailboxVisibility.
+func (mr *MockConnectorMockRecorder) GetMailboxVisibility(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUIDValidity", reflect.TypeOf((*MockConnector)(nil).GetUIDValidity))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMailboxVisibility", reflect.TypeOf((*MockConnector)(nil).GetMailboxVisibility), arg0, arg1)
+}
+
+// GetMessageLiteral mocks base method.
+func (m *MockConnector) GetMessageLiteral(arg0 context.Context, arg1 imap.MessageID) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMessageLiteral", arg0, arg1)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMessageLiteral indicates an expected call of GetMessageLiteral.
+func (mr *MockConnectorMockRecorder) GetMessageLiteral(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMessageLiteral", reflect.TypeOf((*MockConnector)(nil).GetMessageLiteral), arg0, arg1)
 }
 
 // GetUpdates mocks base method.
@@ -149,20 +164,6 @@ func (m *MockConnector) GetUpdates() <-chan imap.Update {
 func (mr *MockConnectorMockRecorder) GetUpdates() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdates", reflect.TypeOf((*MockConnector)(nil).GetUpdates))
-}
-
-// IsMailboxVisible mocks base method.
-func (m *MockConnector) IsMailboxVisible(arg0 context.Context, arg1 imap.MailboxID) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsMailboxVisible", arg0, arg1)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsMailboxVisible indicates an expected call of IsMailboxVisible.
-func (mr *MockConnectorMockRecorder) IsMailboxVisible(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsMailboxVisible", reflect.TypeOf((*MockConnector)(nil).IsMailboxVisible), arg0, arg1)
 }
 
 // MarkMessagesFlagged mocks base method.
@@ -194,11 +195,12 @@ func (mr *MockConnectorMockRecorder) MarkMessagesSeen(arg0, arg1, arg2 interface
 }
 
 // MoveMessages mocks base method.
-func (m *MockConnector) MoveMessages(arg0 context.Context, arg1 []imap.MessageID, arg2, arg3 imap.MailboxID) error {
+func (m *MockConnector) MoveMessages(arg0 context.Context, arg1 []imap.MessageID, arg2, arg3 imap.MailboxID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MoveMessages", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // MoveMessages indicates an expected call of MoveMessages.
@@ -219,20 +221,6 @@ func (m *MockConnector) RemoveMessagesFromMailbox(arg0 context.Context, arg1 []i
 func (mr *MockConnectorMockRecorder) RemoveMessagesFromMailbox(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMessagesFromMailbox", reflect.TypeOf((*MockConnector)(nil).RemoveMessagesFromMailbox), arg0, arg1, arg2)
-}
-
-// SetUIDValidity mocks base method.
-func (m *MockConnector) SetUIDValidity(arg0 imap.UID) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetUIDValidity", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SetUIDValidity indicates an expected call of SetUIDValidity.
-func (mr *MockConnectorMockRecorder) SetUIDValidity(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUIDValidity", reflect.TypeOf((*MockConnector)(nil).SetUIDValidity), arg0)
 }
 
 // UpdateMailboxName mocks base method.

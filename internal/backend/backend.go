@@ -9,10 +9,8 @@ import (
 
 	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/db/ent/mailbox"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/reporter"
@@ -51,10 +49,19 @@ type Backend struct {
 
 	imapLimits limits.IMAP
 
+	database db.ClientInterface
+
 	panicHandler async.PanicHandler
 }
 
-func New(dataDir, databaseDir string, storeBuilder store.Builder, delim string, loginJailTime time.Duration, imapLimits limits.IMAP, panicHandler async.PanicHandler) (*Backend, error) {
+func New(dataDir, databaseDir string,
+	storeBuilder store.Builder,
+	delim string,
+	loginJailTime time.Duration,
+	imapLimits limits.IMAP,
+	panicHandler async.PanicHandler,
+	database db.ClientInterface,
+) (*Backend, error) {
 	return &Backend{
 		dataDir:       dataDir,
 		databaseDir:   databaseDir,
@@ -64,6 +71,7 @@ func New(dataDir, databaseDir string, storeBuilder store.Builder, delim string, 
 		loginJailTime: loginJailTime,
 		imapLimits:    imapLimits,
 		panicHandler:  panicHandler,
+		database:      database,
 	}, nil
 }
 
@@ -86,7 +94,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		return false, err
 	}
 
-	db, isNew, err := db.NewDB(b.getDBDir(), userID)
+	db, isNew, err := b.database.New(b.getDBDir(), userID)
 	if err != nil {
 		if err := storeBuilder.Close(); err != nil {
 			logrus.WithError(err).Error("Failed to close store builder")
@@ -130,7 +138,7 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string, removeFiles boo
 			return err
 		}
 
-		if err := db.DeleteDB(b.getDBDir(), userID); err != nil {
+		if err := b.database.Delete(b.getDBDir(), userID); err != nil {
 			return err
 		}
 	}
@@ -147,21 +155,21 @@ func (b *Backend) GetMailboxMessageCounts(ctx context.Context, userID string) (m
 		return nil, ErrNoSuchUser
 	}
 
-	return db.ReadResult(ctx, user.db, func(ctx context.Context, c *ent.Client) (map[imap.MailboxID]int, error) {
+	return db.ClientReadType(ctx, user.db, func(ctx context.Context, c db.ReadOnly) (map[imap.MailboxID]int, error) {
 		counts := make(map[imap.MailboxID]int)
 
-		mailboxes, err := c.Mailbox.Query().Select(mailbox.FieldRemoteID).All(ctx)
+		mailboxes, err := c.GetAllMailboxesAsRemoteIDs(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, mailbox := range mailboxes {
-			messageCount, err := mailbox.QueryUIDs().Count(ctx)
+		for _, mailboxID := range mailboxes {
+			messageCount, err := c.GetMailboxMessageCountWithRemoteID(ctx, mailboxID)
 			if err != nil {
 				return nil, err
 			}
 
-			counts[mailbox.RemoteID] = messageCount
+			counts[mailboxID] = messageCount
 		}
 
 		return counts, nil

@@ -427,3 +427,18 @@ func TestUpdatedMessageFetchSucceedsOnSecondTry(t *testing.T) {
 		c.OK("A005")
 	})
 }
+
+func TestDeleteMailboxFromConnectorAlsoRemoveSubscriptionStatus(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		mailboxID := s.mailboxCreated("user", []string{"mbox1"})
+		s.flush("user")
+		s.mailboxDeleted("user", mailboxID)
+		s.flush("user")
+
+		c.C(`S001 LSUB "" "*"`)
+		c.S(
+			`* LSUB (\Unmarked) "/" "INBOX"`,
+		)
+		c.S("S001 OK LSUB")
+	})
+}

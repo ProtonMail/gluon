@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/async"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
-	"github.com/ProtonMail/gluon/internal/db"
+	"github.com/ProtonMail/gluon/internal/db_impl/ent_db"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
@@ -36,6 +37,7 @@ type serverBuilder struct {
 	imapLimits           limits.IMAP
 	uidValidityGenerator imap.UIDValidityGenerator
 	panicHandler         async.PanicHandler
+	dbCI                 db.ClientInterface
 }
 
 func newBuilder() (*serverBuilder, error) {
@@ -48,6 +50,7 @@ func newBuilder() (*serverBuilder, error) {
 		imapLimits:           limits.DefaultLimits(),
 		uidValidityGenerator: imap.DefaultEpochUIDValidityGenerator(),
 		panicHandler:         async.NoopPanicHandler{},
+		dbCI:                 ent_db.NewEntDBBuilder(),
 	}, nil
 }
 
@@ -86,6 +89,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 		builder.loginJailTime,
 		builder.imapLimits,
 		builder.panicHandler,
+		builder.dbCI,
 	)
 	if err != nil {
 		return nil, err

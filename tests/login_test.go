@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -61,8 +62,12 @@ func TestLoginAlias(t *testing.T) {
 		c[2].C("tag2 login alias2 pass").OK("tag2")
 
 		// Create a message with each alias.
-		c[1].C("tag3 append inbox {11}\r\nTo: 1@pm.me").OK("tag3")
-		c[2].C("tag4 append inbox {11}\r\nTo: 2@pm.me").OK("tag4")
+		literal1 := buildRFC5322TestLiteral("To: 1@pm.me")
+		literal2 := buildRFC5322TestLiteral("To: 2@pm.me")
+		literalLen := len(literal2)
+
+		c[1].C(fmt.Sprintf("tag3 append inbox {%v}\r\n%v", literalLen, literal1)).OK("tag3")
+		c[1].C(fmt.Sprintf("tag4 append inbox {%v}\r\n%v", literalLen, literal1)).OK("tag4")
 
 		// Both messages should be visible to both clients.
 		c[1].C("tag5 status inbox (messages)").Sx("MESSAGES 2").OK("tag5")
@@ -90,7 +95,7 @@ func TestLoginLiteralFailure(t *testing.T) {
 func TestLoginCapabilities(t *testing.T) {
 	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
 		c.C("A001 login user pass")
-		c.S(`A001 OK [CAPABILITY IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT] Logged in`)
+		c.S(`A001 OK [CAPABILITY ID IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT] Logged in`)
 	})
 }
 

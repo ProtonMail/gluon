@@ -168,3 +168,19 @@ func TestParseMessage_GODT_2513(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, parsed)
 }
+
+func FuzzNewParsedMessage(f *testing.F) {
+	inSeed1, err1 := os.ReadFile(filepath.Join("testdata", "rfc822.eml"))
+	inSeed2, err2 := os.ReadFile(filepath.Join("testdata", "bounds.eml"))
+
+	require.NoError(f, err1)
+	require.NoError(f, err2)
+
+	f.Add(inSeed1)
+	f.Add(inSeed2)
+
+	f.Fuzz(func(t *testing.T, inputData []byte) {
+
+		_, _ = NewParsedMessage(inputData)
+	})
+}

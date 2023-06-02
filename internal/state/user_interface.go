@@ -3,10 +3,9 @@ package state
 import (
 	"context"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/db"
-	"github.com/ProtonMail/gluon/internal/db/ent"
-	"github.com/ProtonMail/gluon/internal/ids"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/store"
 )
 
@@ -18,17 +17,19 @@ type UserInterface interface {
 
 	GetDelimiter() string
 
-	GetDB() *db.DB
+	GetDB() db.Client
 
 	GetRemote() Connector
 
 	GetStore() *store.WriteControlledStore
 
-	QueueOrApplyStateUpdate(ctx context.Context, tx *ent.Tx, update ...Update) error
+	QueueOrApplyStateUpdate(ctx context.Context, tx db.Transaction, update ...Update) error
 
 	ReleaseState(ctx context.Context, st *State) error
 
-	GetRecoveryMailboxID() ids.MailboxIDPair
+	GetRecoveryMailboxID() db.MailboxIDPair
 
 	GenerateUIDValidity() (imap.UID, error)
+
+	GetRecoveredMessageHashesMap() *utils.MessageHashesMap
 }

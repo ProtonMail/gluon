@@ -9,6 +9,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
+	"github.com/ProtonMail/gluon/rfc5322"
 )
 
 func (s *Session) handleAppend(ctx context.Context, tag string, cmd *command.Append, ch chan response.Response) error {
@@ -22,6 +23,10 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *command.App
 
 	flags, err := validateStoreFlags(cmd.Flags)
 	if err != nil {
+		return response.Bad(tag).WithError(err)
+	}
+
+	if err := rfc5322.ValidateMessageHeaderFields(cmd.Literal); err != nil {
 		return response.Bad(tag).WithError(err)
 	}
 

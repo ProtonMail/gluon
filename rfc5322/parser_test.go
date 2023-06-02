@@ -2,12 +2,12 @@ package rfc5322
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"net/mail"
 	"testing"
 
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newTestRFCParser(s string) *rfcparser.Parser {
@@ -851,4 +851,39 @@ func TestParserAddressEmailValidation(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestParse_GODT_2587_infinite_loop(t *testing.T) {
+	_, err := ParseAddressList("00@[000000000000000")
+	assert.Error(t, err)
+}
+
+func FuzzParseAddress(f *testing.F) {
+	f.Add("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghiklm@iana.org")
+	f.Add("!#$%&`*+/=?^`{|}~@iana.org")
+
+	f.Fuzz(func(t *testing.T, inputData string) {
+
+		_, _ = ParseAddress(inputData)
+		_, _ = ParseAddressList(inputData)
+	})
+}
+
+func FuzzRFC5322(f *testing.F) {
+	f.Add(`pete(his account)@silly.test(his host)`)
+	f.Add(` " foo bar derer " `)
+	f.Add("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghiklm@iana.org")
+
+	f.Fuzz(func(t *testing.T, inputData string) {
+
+		p := newTestRFCParser(inputData)
+		_, _ = parseNameAddr(p)
+	})
+}
+
+func TestParse_AddressAngleAddrOnlyWithSeparator(t *testing.T) {
+	// EOF was not properly handled after separator.
+	addrList, err := ParseAddressList("<test@user.com>,")
+	assert.NoError(t, err)
+	require.Equal(t, addrList[0].Address, "test@user.com")
 }

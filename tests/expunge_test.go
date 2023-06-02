@@ -17,7 +17,7 @@ func TestExpungeUnmarked(t *testing.T) {
 		require.NoError(t, client.Create("mbox"))
 		_, err := client.Select("mbox", false)
 		require.NoError(t, err)
-		require.NoError(t, client.Append("mbox", []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 1@pm.me")))
+		require.NoError(t, client.Append("mbox", []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 1@pm.me"))))
 	})
 }
 
@@ -27,7 +27,7 @@ func TestExpungeSingle(t *testing.T) {
 		_, err := client.Select("mbox", false)
 		require.NoError(t, err)
 
-		require.NoError(t, client.Append("mbox", []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 1@pm.me")))
+		require.NoError(t, client.Append("mbox", []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 1@pm.me"))))
 
 		messages := storeWithRetrievalClient(t, client, createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
 		require.Equal(t, 1, len(messages))
@@ -41,9 +41,9 @@ func TestExpungeSingle(t *testing.T) {
 func TestRemoveSameMessageTwice(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2, 3}, func(c map[int]*testConnection, s *testSession) {
 		// There are three messages in the inbox.
-		c[1].doAppend(`inbox`, `To: 1@pm.me`).expect("OK")
-		c[1].doAppend(`inbox`, `To: 2@pm.me`).expect("OK")
-		c[1].doAppend(`inbox`, `To: 3@pm.me`).expect("OK")
+		c[1].doAppend(`inbox`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c[1].doAppend(`inbox`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+		c[1].doAppend(`inbox`, buildRFC5322TestLiteral(`To: 3@pm.me`)).expect("OK")
 
 		// There are three clients selected in the inbox.
 		for i := range c {
@@ -74,7 +74,7 @@ func TestExpungeInterval(t *testing.T) {
 		_, err := client.Select("mbox", false)
 		require.NoError(t, err)
 		for i := 1; i <= 4; i++ {
-			require.NoError(t, client.Append("mbox", []string{goimap.SeenFlag}, time.Now(), strings.NewReader(fmt.Sprintf(`To: %d@pm.me`, i))))
+			require.NoError(t, client.Append("mbox", []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral(fmt.Sprintf(`To: %d@pm.me`, i)))))
 		}
 		messages := storeWithRetrievalClient(t, client, createSeqSet("1,3"), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
 		require.Equal(t, 2, len(messages))
@@ -124,11 +124,11 @@ func TestExpungeWithAppendBeforeMailboxSelect(t *testing.T) {
 		const mailboxName = "saved-messages"
 		require.NoError(t, client.Create(mailboxName))
 
-		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 1@pm.me")))
-		require.NoError(t, client.Append(mailboxName, []string{}, time.Now(), strings.NewReader("To: 2@pm.me")))
-		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 3@pm.me")))
-		require.NoError(t, client.Append(mailboxName, []string{}, time.Now(), strings.NewReader("To: 4@pm.me")))
-		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 5@pm.me")))
+		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 1@pm.me"))))
+		require.NoError(t, client.Append(mailboxName, []string{}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 2@pm.me"))))
+		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 3@pm.me"))))
+		require.NoError(t, client.Append(mailboxName, []string{}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 4@pm.me"))))
+		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 5@pm.me"))))
 
 		_, err := client.Select(mailboxName, false)
 		require.NoError(t, err)
@@ -147,11 +147,11 @@ func TestExpungeWithAppendAfterMailBoxSelect(t *testing.T) {
 		_, err := client.Select(mailboxName, false)
 		require.NoError(t, err)
 
-		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 1@pm.me")))
-		require.NoError(t, client.Append(mailboxName, []string{}, time.Now(), strings.NewReader("To: 2@pm.me")))
-		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 3@pm.me")))
-		require.NoError(t, client.Append(mailboxName, []string{}, time.Now(), strings.NewReader("To: 4@pm.me")))
-		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 5@pm.me")))
+		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 1@pm.me"))))
+		require.NoError(t, client.Append(mailboxName, []string{}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 2@pm.me"))))
+		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 3@pm.me"))))
+		require.NoError(t, client.Append(mailboxName, []string{}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 4@pm.me"))))
+		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 5@pm.me"))))
 
 		beforeOrAfterExpungeCheck(t, client, mailboxName)
 	})
@@ -165,7 +165,7 @@ func TestExpungeUID(t *testing.T) {
 		_, err := client.Select(mailboxName, false)
 		require.NoError(t, err)
 
-		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 1@pm.me")))
+		require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 1@pm.me"))))
 		uidClient := uidplus.NewClient(client)
 
 		{
@@ -193,7 +193,7 @@ func TestExpungeUID(t *testing.T) {
 
 		// Append new messages
 		for i := 1; i <= 4; i++ {
-			require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(fmt.Sprintf(`To: %d@pm.me`, i))))
+			require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral(fmt.Sprintf(`To: %d@pm.me`, i)))))
 		}
 
 		{
@@ -228,7 +228,7 @@ func TestExpungeResponseSequence(t *testing.T) {
 		require.NoError(t, err)
 
 		for i := 1; i <= 11; i++ {
-			require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(fmt.Sprintf(`To: %d@pm.me`, i))))
+			require.NoError(t, client.Append(mailboxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral(fmt.Sprintf(`To: %d@pm.me`, i)))))
 		}
 
 		{

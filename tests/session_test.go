@@ -11,12 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"entgo.io/ent/dialect"
 	"github.com/ProtonMail/gluon"
 	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/ProtonMail/gluon/internal/db/ent"
 	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/go-mbox"
 	"github.com/emersion/go-imap/client"
@@ -113,13 +112,13 @@ func (s *testSession) newClient() *client.Client {
 	return client
 }
 
-func (s *testSession) withUserDB(user string, fn func(client *ent.Client, ctx context.Context)) error {
-	path, ok := s.userDBPaths[s.userIDs[user]]
+func (s *testSession) withUserDB(user string, fn func(client db.Client, ctx context.Context)) error {
+	userID, ok := s.userIDs[user]
 	if !ok {
 		return fmt.Errorf("User not found")
 	}
 
-	client, err := ent.Open(dialect.SQLite, path)
+	client, _, err := s.options.database.New(s.server.GetDatabasePath(), userID)
 	if err != nil {
 		return err
 	}

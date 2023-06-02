@@ -14,9 +14,9 @@ func TestStore(t *testing.T) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK CREATE")
 
-		c.doAppend(`saved-messages`, `To: 1@pm.me`, `\Seen`).expect("OK")
-		c.doAppend(`saved-messages`, `To: 2@pm.me`).expect("OK")
-		c.doAppend(`saved-messages`, `To: 3@pm.me`, `\Seen`).expect("OK")
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 3@pm.me`), `\Seen`).expect("OK")
 
 		c.C(`A002 SELECT saved-messages`)
 		c.Se(`A002 OK [READ-WRITE] SELECT`)
@@ -61,7 +61,7 @@ func TestStore(t *testing.T) {
 func TestStoreSilent(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// one message in INBOX
-		c[1].doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
+		c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		// 2 sessions with INBOX selected
 		// Message is only recent in the first.
@@ -123,7 +123,7 @@ func TestStoreReadUnread(t *testing.T) {
 		c[2].C(`tag select inbox`).OK(`tag`)
 
 		for i := 1; i <= 10; i++ {
-			c[1].doAppend(`INBOX`, fmt.Sprintf(`To: %v@pm.me`, i)).expect("OK")
+			c[1].doAppend(`INBOX`, buildRFC5322TestLiteral(fmt.Sprintf(`To: %v@pm.me`, i))).expect("OK")
 
 			c[1].C(`tag noop`).OK(`tag`)
 			c[2].C(`tag noop`).OK(`tag`)
@@ -157,9 +157,9 @@ func TestUIDStore(t *testing.T) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK CREATE")
 
-		c.doAppend(`saved-messages`, `To: 1@pm.me`, `\Seen`).expect("OK")
-		c.doAppend(`saved-messages`, `To: 2@pm.me`).expect("OK")
-		c.doAppend(`saved-messages`, `To: 3@pm.me`, `\Seen`).expect("OK")
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 1@pm.me`), `\Seen`).expect("OK")
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 3@pm.me`), `\Seen`).expect("OK")
 
 		c.C(`A002 SELECT saved-messages`)
 		c.Se(`A002 OK [READ-WRITE] SELECT`)
@@ -203,7 +203,7 @@ func TestUIDStore(t *testing.T) {
 
 func TestFlagsDuplicateAndCaseInsensitive(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
-		c.doAppend(`INBOX`, `To: 1@pm.me`).expect("OK")
+		c.doAppend(`INBOX`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		c.C(`A001 SELECT INBOX`)
 		c.Se(`A001 OK [READ-WRITE] SELECT`)
@@ -259,7 +259,7 @@ func TestStoreFlagsPersistBetweenRuns(t *testing.T) {
 	runOneToOneTestWithAuth(t, options, func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK CREATE")
-		c.doAppend(`saved-messages`, `To: 2@pm.me`).expect("OK")
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
 	})
 
 	// Check if recent flag was persisted and then mark the message as deleted.

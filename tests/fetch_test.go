@@ -255,18 +255,24 @@ func TestFetchSequence(t *testing.T) {
 		fetchResult.forSeqNum(1, func(builder *validatorBuilder) {
 			builder.wantUID(1)
 			builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+				builder.skipDateTime()
+				builder.skipFromAndSender()
 				builder.wantTo("1@pm.me")
 			})
 		}).
 			forSeqNum(2, func(builder *validatorBuilder) {
 				builder.wantUID(2)
 				builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+					builder.skipDateTime()
+					builder.skipFromAndSender()
 					builder.wantTo("2@pm.me")
 				})
 			}).
 			forSeqNum(4, func(builder *validatorBuilder) {
 				builder.wantUID(5)
 				builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+					builder.skipDateTime()
+					builder.skipFromAndSender()
 					builder.wantTo("5@pm.me")
 				})
 			}).checkAndRequireMessageCount(3)
@@ -293,18 +299,24 @@ func TestFetchUID(t *testing.T) {
 		fetchResult.forSeqNum(2, func(builder *validatorBuilder) {
 			builder.wantUID(2)
 			builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+				builder.skipDateTime()
+				builder.skipFromAndSender()
 				builder.wantTo("2@pm.me")
 			})
 		}).
 			forSeqNum(3, func(builder *validatorBuilder) {
 				builder.wantUID(3)
 				builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+					builder.skipDateTime()
+					builder.skipFromAndSender()
 					builder.wantTo("3@pm.me")
 				})
 			}).
 			forSeqNum(4, func(builder *validatorBuilder) {
 				builder.wantUID(5)
 				builder.wantEnvelope(func(builder *envelopeValidatorBuilder) {
+					builder.skipDateTime()
+					builder.skipFromAndSender()
 					builder.wantTo("5@pm.me")
 				})
 			}).checkAndRequireMessageCount(3)
@@ -559,11 +571,11 @@ func afternoonMeetingMessageDataSizeWithExtraHeader() uint32 {
 func fillAndSelectMailboxWithMultipleEntries(t *testing.T, client *client.Client) {
 	const messageBoxName = "INBOX"
 
-	require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 1@pm.me")))
-	require.NoError(t, client.Append(messageBoxName, nil, time.Now(), strings.NewReader("To: 2@pm.me")))
-	require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 3@pm.me")))
-	require.NoError(t, client.Append(messageBoxName, nil, time.Now(), strings.NewReader("To: 4@pm.me")))
-	require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader("To: 5@pm.me")))
+	require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 1@pm.me"))))
+	require.NoError(t, client.Append(messageBoxName, nil, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 2@pm.me"))))
+	require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 3@pm.me"))))
+	require.NoError(t, client.Append(messageBoxName, nil, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 4@pm.me"))))
+	require.NoError(t, client.Append(messageBoxName, []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 5@pm.me"))))
 	_, err := client.Select(messageBoxName, false)
 	require.NoError(t, err)
 }

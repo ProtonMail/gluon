@@ -19,7 +19,7 @@ func TestSearchCharSetUTF8(t *testing.T) {
 		b := enc("ééé", "UTF-8")
 
 		// Append a message with that as the body.
-		c.doAppend("inbox", "To: 1@pm.me\r\n\r\nééé").expect("OK")
+		c.doAppend("inbox", buildRFC5322TestLiteral("To: 1@pm.me\r\n\r\nééé")).expect("OK")
 
 		// Search for it with UTF-8 encoding.
 		c.Cf(`TAG SEARCH CHARSET UTF-8 BODY {%v}`, len(b)).Continue().Cb(b).S("* SEARCH 1").OK("TAG")
@@ -37,7 +37,7 @@ func TestSearchCharSetISO88591(t *testing.T) {
 		require.False(t, utf8.Valid(b))
 
 		// Append a message with that as the body.
-		c.doAppend("inbox", "To: 1@pm.me\r\n\r\nééé").expect("OK")
+		c.doAppend("inbox", buildRFC5322TestLiteral("To: 1@pm.me\r\n\r\nééé")).expect("OK")
 
 		// Search for it with ISO-8859-1 encoding (literal).
 		c.Cf(`TAG SEARCH CHARSET ISO-8859-1 BODY {%v}`, len(b)).Continue().Cb(b).S("* SEARCH 1").OK("TAG")
@@ -171,6 +171,7 @@ func TestSearchFlagged(t *testing.T) {
 		// They should show up in search.
 		c.C("A002 search flagged")
 		c.S("* SEARCH 10 20 30 40 50")
+
 		c.OK("A002")
 	})
 }
@@ -277,7 +278,7 @@ func TestSearchOld(t *testing.T) {
 		c.OK("A003")
 
 		// Create a new message; it will be recent and thus not old.
-		c.doAppend(mbox, `To: 1@pm.me`).expect("OK")
+		c.doAppend(mbox, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		// It will be returned in the search result.
 		c.C("A004 search old")
@@ -385,7 +386,7 @@ func TestSearchRecent(t *testing.T) {
 		c.OK("A003")
 
 		// Create a new message; it will be recent.
-		c.doAppend(mbox, `To: 1@pm.me`).expect("OK")
+		c.doAppend(mbox, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
 
 		// It will be returned in the search result.
 		c.C("A004 search recent")
@@ -424,7 +425,7 @@ func TestSearchSentSinceAndSentBefore(t *testing.T) {
 	// mail.ParseDate the date was being converted to 17 Feb 2003 22:29:37 +000, causing the search to pass
 	// rather than fail.
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
-		c.doAppend("INBOX", "Date: 18 Feb 2003 00:29:37 +0200\n\nTo: foo@foo.com\r\n")
+		c.doAppend("INBOX", buildRFC5322TestLiteral("Date: 18 Feb 2003 00:29:37 +0200\n\nTo: foo@foo.com\r\n"))
 		c.C(`A002 SELECT INBOX`)
 		c.Se(`A002 OK [READ-WRITE] SELECT`)
 

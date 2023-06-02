@@ -377,7 +377,7 @@ func TestAppendCanHandleOutOfOrderUIDUpdates(t *testing.T) {
 
 		appendFN := func(clientIndex int) {
 			for i := 0; i < MessageCount; i++ {
-				c[clientIndex+1].doAppend("INBOX", "To: f3@pm.me\r\n", "\\Seen").expect("OK")
+				c[clientIndex+1].doAppend("INBOX", buildRFC5322TestLiteral("To: f3@pm.me\r\n"), "\\Seen").expect("OK")
 			}
 		}
 
@@ -414,7 +414,7 @@ func TestGODT2007AppendInternalIDPresentOnDeletedMessage(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, s *testSession) {
 		// Create message and mark deleted.
 		mboxID := s.mailboxCreated("user", []string{mailboxName})
-		messageID := s.messageCreated("user", mboxID, []byte("To: foo@bar.com\r\n"), time.Now())
+		messageID := s.messageCreated("user", mboxID, []byte(buildRFC5322TestLiteral("To: foo@bar.com\r\n")), time.Now())
 		s.flush("user")
 
 		_, err := client.Select(mailboxName, false)
@@ -424,7 +424,7 @@ func TestGODT2007AppendInternalIDPresentOnDeletedMessage(t *testing.T) {
 			// Check if the header is correctly set.
 			result := newFetchCommand(t, client).withItems("UID", "BODY[HEADER]").fetch("1")
 			result.forSeqNum(1, func(builder *validatorBuilder) {
-				builder.ignoreFlags().wantSectionAndSkipGLUONHeaderOrPanic("BODY[HEADER]", "To: foo@bar.com\r\n")
+				builder.ignoreFlags().wantSectionAndSkipGLUONHeaderOrPanic("BODY[HEADER]", buildRFC5322TestLiteral("To: foo@bar.com\r\n"))
 				builder.wantUID(1)
 			})
 			result.checkAndRequireMessageCount(1)
