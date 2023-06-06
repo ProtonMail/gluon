@@ -13,7 +13,7 @@ type MessageReadOps interface {
 
 	MessageExistsWithRemoteID(ctx context.Context, id imap.MessageID) (bool, error)
 
-	GetMessage(ctx context.Context, id imap.InternalMessageID) (*Message, error)
+	GetMessageNoEdges(ctx context.Context, id imap.InternalMessageID) (*Message, error)
 
 	GetTotalMessageCount(ctx context.Context) (int, error)
 

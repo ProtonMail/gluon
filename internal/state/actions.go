@@ -105,7 +105,7 @@ func (state *State) actionCreateMessage(
 		if knownErr == nil {
 			// Try to collect the original message date.
 			var existingMessageDate time.Time
-			if existingMessage, msgErr := tx.GetMessage(ctx, internalID); msgErr == nil {
+			if existingMessage, msgErr := tx.GetMessageNoEdges(ctx, internalID); msgErr == nil {
 				existingMessageDate = existingMessage.Date
 			}
 

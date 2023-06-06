@@ -22,7 +22,7 @@ type MailboxReadOps interface {
 
 	GetMailboxMessageIDPairs(ctx context.Context, mboxID imap.InternalMailboxID) ([]MessageIDPair, error)
 
-	GetAllMailboxes(ctx context.Context) ([]*Mailbox, error)
+	GetAllMailboxesWithAttr(ctx context.Context) ([]*Mailbox, error)
 
 	GetAllMailboxesAsRemoteIDs(ctx context.Context) ([]imap.MailboxID, error)
 

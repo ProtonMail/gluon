@@ -77,7 +77,7 @@ func (state *State) UserID() string {
 
 func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn func(map[string]Match) error) error {
 	return stateDBRead(ctx, state, func(ctx context.Context, client db.ReadOnly) error {
-		mailboxes, err := client.GetAllMailboxes(ctx)
+		mailboxes, err := client.GetAllMailboxesWithAttr(ctx)
 		if err != nil {
 			return err
 		}
@@ -375,7 +375,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		}
 
 		// Locally update all inferiors so we don't wait for update
-		mailboxes, err := tx.GetAllMailboxes(ctx)
+		mailboxes, err := tx.GetAllMailboxesWithAttr(ctx)
 		if err != nil {
 			return nil, err
 		}
