@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -256,11 +257,17 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 		storeBuilder:     &store.OnDiskStoreBuilder{},
 		connectorBuilder: &dummyConnectorBuilder{},
 		imapLimits:       limits.DefaultLimits(),
-		database:         db_impl.NewEntDB(),
+		database:         db_impl.NewSQLiteDB(),
 	}
 
 	for _, op := range modifiers {
 		op.apply(options)
+	}
+
+	if _, ok := os.LookupEnv("GLUON_TEST_FORCE_ENT_DB"); ok {
+		logrus.Info("Forcing database to ent")
+
+		options.database = db_impl.NewEntDB()
 	}
 
 	return options
@@ -305,6 +312,7 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 		gluon.WithStoreBuilder(options.storeBuilder),
 		gluon.WithReporter(reporter),
 		gluon.WithIMAPLimits(options.imapLimits),
+		gluon.WithDBClient(options.database),
 	}
 
 	if options.disableParallelism {

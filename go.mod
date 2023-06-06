@@ -10,7 +10,7 @@ require (
 	github.com/emersion/go-imap-uidplus v0.0.0-20200503180755-e75854c361e9
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
-	github.com/mattn/go-sqlite3 v1.14.16
+	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/pierrec/lz4/v4 v4.1.17
 	github.com/pkg/profile v1.7.0
 	github.com/sirupsen/logrus v1.9.0

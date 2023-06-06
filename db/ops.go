@@ -7,6 +7,7 @@ type ReadOnly interface {
 }
 
 type Transaction interface {
+	ReadOnly
 	MailboxWriteOps
 	MessageWriteOps
 	SubscriptionWriteOps

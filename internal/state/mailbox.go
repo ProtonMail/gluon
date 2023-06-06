@@ -188,6 +188,10 @@ func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.
 			if messageDeleted, err := stateDBReadResult(ctx, m.state, func(ctx context.Context, client db.ReadOnly) (bool, error) {
 				return client.GetMessageDeletedFlag(ctx, msgID)
 			}); err != nil {
+				if !errors.Is(err, db.ErrNotFound) {
+					return 0, err
+				}
+
 				logrus.WithError(err).Warn("The message has an unknown internal ID")
 			} else if !messageDeleted {
 				logrus.Debugf("Appending duplicate message with Internal ID:%v", msgID.ShortID())

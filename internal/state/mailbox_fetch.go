@@ -118,7 +118,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 
 		msg := snapMessages[i]
 		message, err := stateDBReadResult(ctx, m.state, func(ctx context.Context, client db.ReadOnly) (*db.Message, error) {
-			return client.GetMessage(ctx, msg.ID.InternalID)
+			return client.GetMessageNoEdges(ctx, msg.ID.InternalID)
 		})
 		if err != nil {
 			return err

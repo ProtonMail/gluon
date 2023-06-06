@@ -10,7 +10,7 @@ import (
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/backend"
-	"github.com/ProtonMail/gluon/internal/db_impl/ent_db"
+	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/profiling"
@@ -50,7 +50,7 @@ func newBuilder() (*serverBuilder, error) {
 		imapLimits:           limits.DefaultLimits(),
 		uidValidityGenerator: imap.DefaultEpochUIDValidityGenerator(),
 		panicHandler:         async.NoopPanicHandler{},
-		dbCI:                 ent_db.NewEntDBBuilder(),
+		dbCI:                 sqlite3.NewBuilder(),
 	}, nil
 }
 

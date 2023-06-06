@@ -68,7 +68,7 @@ func (op *EntOpsRead) GetMailboxMessageIDPairs(ctx context.Context, mboxID imap.
 	})
 }
 
-func (op *EntOpsRead) GetAllMailboxes(ctx context.Context) ([]*db.Mailbox, error) {
+func (op *EntOpsRead) GetAllMailboxesWithAttr(ctx context.Context) ([]*db.Mailbox, error) {
 	return wrapEntErrFnTyped(func() ([]*db.Mailbox, error) {
 		val, err := GetAllMailboxes(ctx, op.client)
 
@@ -226,7 +226,7 @@ func (op *EntOpsRead) MessageExistsWithRemoteID(ctx context.Context, id imap.Mes
 	})
 }
 
-func (op *EntOpsRead) GetMessage(ctx context.Context, id imap.InternalMessageID) (*db.Message, error) {
+func (op *EntOpsRead) GetMessageNoEdges(ctx context.Context, id imap.InternalMessageID) (*db.Message, error) {
 	return wrapEntErrFnTyped(func() (*db.Message, error) {
 		msg, err := GetMessage(ctx, op.client, id)
 
