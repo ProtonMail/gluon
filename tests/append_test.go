@@ -449,3 +449,37 @@ func TestGODT2007AppendInternalIDPresentOnDeletedMessage(t *testing.T) {
 		}
 	})
 }
+
+func TestAppendIntoDraftsWithFromOnly(t *testing.T) {
+	const (
+		literalWithFrom    = `From: Foo@bar`
+		literalWithoutFrom = `To: Foo@bar`
+		literalValid       = `From: Foo@bar
+Date: Wed, 26 Apr 2023 08:25:16 +0200
+`
+	)
+
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, s *testSession) {
+
+		s.mailboxCreatedWithAttributes("user", []string{"Drafts"}, imap.NewFlagSet(imap.AttrDrafts))
+		s.flush("user")
+
+		{
+			require.NoError(t, doAppendWithClient(client, "Drafts", literalWithFrom, time.Now()))
+			require.NoError(t, doAppendWithClient(client, "INBOX", literalValid, time.Now()))
+			require.Error(t, doAppendWithClient(client, "Drafts", literalWithoutFrom, time.Now()))
+			require.Error(t, doAppendWithClient(client, "INBOX", literalWithoutFrom, time.Now()))
+		}
+
+		{
+			status, err := client.Status("Drafts", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
+		}
+		{
+			status, err := client.Status("INBOX", []goimap.StatusItem{goimap.StatusMessages})
+			require.NoError(t, err)
+			require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
+		}
+	})
+}
