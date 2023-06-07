@@ -37,6 +37,7 @@ type AppendOnlyMailbox interface {
 	Append(ctx context.Context, literal []byte, flags imap.FlagSet, date time.Time) (imap.UID, error)
 	Flush(ctx context.Context, permitExpunge bool) ([]response.Response, error)
 	UIDValidity() imap.UID
+	IsDrafts(ctx context.Context) (bool, error)
 }
 
 func newMailbox(mbox *db.Mailbox, state *State, snap *snapshot) *Mailbox {
@@ -249,6 +250,15 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 	}
 
 	return uid, err
+}
+
+func (m *Mailbox) IsDrafts(ctx context.Context) (bool, error) {
+	attrs, err := m.Attributes(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return attrs.Contains(imap.AttrDrafts), nil
 }
 
 // Copy copies the messages represented by the given sequence set into the mailbox with the given name.
