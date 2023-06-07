@@ -467,14 +467,14 @@ Date: Wed, 26 Apr 2023 08:25:16 +0200
 		{
 			require.NoError(t, doAppendWithClient(client, "Drafts", literalWithFrom, time.Now()))
 			require.NoError(t, doAppendWithClient(client, "INBOX", literalValid, time.Now()))
-			require.Error(t, doAppendWithClient(client, "Drafts", literalWithoutFrom, time.Now()))
+			require.NoError(t, doAppendWithClient(client, "Drafts", literalWithoutFrom, time.Now()))
 			require.Error(t, doAppendWithClient(client, "INBOX", literalWithoutFrom, time.Now()))
 		}
 
 		{
 			status, err := client.Status("Drafts", []goimap.StatusItem{goimap.StatusMessages})
 			require.NoError(t, err)
-			require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
+			require.Equal(t, uint32(2), status.Messages, "Expected message count does not match")
 		}
 		{
 			status, err := client.Status("INBOX", []goimap.StatusItem{goimap.StatusMessages})

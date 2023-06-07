@@ -35,10 +35,6 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *command.App
 			if err := rfc5322.ValidateMessageHeaderFields(cmd.Literal); err != nil {
 				return response.Bad(tag).WithError(err)
 			}
-		} else {
-			if err := rfc5322.ValidateMessageHeaderFieldsDrafts(cmd.Literal); err != nil {
-				return response.Bad(tag).WithError(err)
-			}
 		}
 
 		messageUID, err := mailbox.Append(ctx, cmd.Literal, flags, cmd.DateTime)
