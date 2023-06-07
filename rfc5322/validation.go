@@ -72,27 +72,3 @@ func ValidateMessageHeaderFields(literal []byte) error {
 
 	return nil
 }
-
-// ValidateMessageHeaderFieldsDrafts checks the headers of message to verify that at least a valid From header is
-// present.
-func ValidateMessageHeaderFieldsDrafts(literal []byte) error {
-	headerBytes, _ := rfc822.Split(literal)
-
-	header, err := rfc822.NewHeader(headerBytes)
-	if err != nil {
-		return err
-	}
-
-	// Check for from.
-	value := header.Get("From")
-	if len(value) == 0 {
-		return fmt.Errorf("%w: Required header field 'From' not found or empty", ErrInvalidMessage)
-	}
-
-	// Check if From is a multi address. If so, a sender filed must be present and non-empty.
-	if _, err := ParseAddressList(value); err != nil {
-		return fmt.Errorf("%w: failed to parse From header: %v", ErrInvalidMessage, err)
-	}
-
-	return nil
-}
