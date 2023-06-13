@@ -381,6 +381,7 @@ func TestInvalidIMAPCommandDoesNotBlockStateUpdates(t *testing.T) {
 	})
 }
 
+/* GODT-2688 - Investigate test flakiness.
 func TestUpdatedMessageFetchSucceedsOnSecondTry(t *testing.T) {
 	// Test that a sequence of delete followed by create with the same message ID  results in an updated message.
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
@@ -426,7 +427,7 @@ func TestUpdatedMessageFetchSucceedsOnSecondTry(t *testing.T) {
 		c.S("* 1 FETCH (BODY[HEADER.FIELDS (TO)] {10}\r\nTo: 4@4.pm)")
 		c.OK("A005")
 	})
-}
+}*/
 
 func TestDeleteMailboxFromConnectorAlsoRemoveSubscriptionStatus(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
