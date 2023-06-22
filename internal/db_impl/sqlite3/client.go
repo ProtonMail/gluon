@@ -11,7 +11,8 @@ import (
 	"sync"
 
 	"github.com/ProtonMail/gluon/db"
-	"github.com/ProtonMail/gluon/internal/utils"
+	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
+	gluon_utils "github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
@@ -40,7 +41,7 @@ func (c *Client) Init(ctx context.Context) error {
 
 	return c.wrapTx(ctx, func(ctx context.Context, tx *sql.Tx, entry *logrus.Entry) error {
 		entry.Debugf("Running database migrations")
-		return RunMigrations(ctx, TXWrapper{tx: tx})
+		return RunMigrations(ctx, utils.TXWrapper{TX: tx})
 	})
 }
 
@@ -57,21 +58,21 @@ func (c *Client) Read(ctx context.Context, op func(context.Context, db.ReadOnly)
 
 	entry := logrus.WithField("rd", rdID)
 
-	var qw QueryWrapper = &DBWrapper{
-		db: c.db,
+	var qw utils.QueryWrapper = &utils.DBWrapper{
+		DB: c.db,
 	}
 
 	if c.debug {
-		qw = &DebugQueryWrapper{
-			entry: entry,
-			qw:    qw,
+		qw = &utils.DebugQueryWrapper{
+			Entry: entry,
+			QW:    qw,
 		}
 	}
 
 	var ops db.ReadOnly = &readOps{qw: qw}
 
 	if c.trace {
-		ops = &ReadTracer{rd: ops, entry: entry}
+		ops = &utils.ReadTracer{RD: ops, Entry: entry}
 	}
 
 	if err := op(ctx, ops); err != nil {
@@ -84,14 +85,14 @@ func (c *Client) Read(ctx context.Context, op func(context.Context, db.ReadOnly)
 func (c *Client) Write(ctx context.Context, op func(context.Context, db.Transaction) error) error {
 	return c.wrapTx(ctx, func(ctx context.Context, tx *sql.Tx, entry *logrus.Entry) error {
 
-		var qw QueryWrapper = &TXWrapper{
-			tx: tx,
+		var qw utils.QueryWrapper = &utils.TXWrapper{
+			TX: tx,
 		}
 
 		if c.debug {
-			qw = &DebugQueryWrapper{
-				qw:    qw,
-				entry: entry,
+			qw = &utils.DebugQueryWrapper{
+				QW:    qw,
+				Entry: entry,
 			}
 		}
 
@@ -103,7 +104,7 @@ func (c *Client) Write(ctx context.Context, op func(context.Context, db.Transact
 		}
 
 		if c.trace {
-			transaction = &WriteTracer{tx: transaction, ReadTracer: ReadTracer{rd: transaction, entry: entry}}
+			transaction = &utils.WriteTracer{TX: transaction, ReadTracer: utils.ReadTracer{RD: transaction, Entry: entry}}
 		}
 
 		return op(ctx, transaction)
@@ -161,7 +162,7 @@ func (c *Client) wrapTx(ctx context.Context, op func(context.Context, *sql.Tx, *
 		if !errors.Is(err, context.Canceled) {
 			reporter.MessageWithContext(ctx,
 				"Failed to commit database transaction",
-				reporter.Context{"error": err, "type": utils.ErrCause(err)},
+				reporter.Context{"error": err, "type": gluon_utils.ErrCause(err)},
 			)
 		}
 

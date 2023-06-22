@@ -1,4 +1,4 @@
-package sqlite3
+package utils
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Collection of SQL utilities to process SQL Rows and to convert SQL errors to db.Errors.
+// Collection of SQL utilities to process SQL Rows and to convert SQL errors to DB.Errors.
 
 type RowScanner interface {
 	Scan(args ...any) error
