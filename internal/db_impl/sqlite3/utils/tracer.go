@@ -153,22 +153,10 @@ func (r ReadTracer) MailboxFilterContains(ctx context.Context, mboxID imap.Inter
 	return r.RD.MailboxFilterContains(ctx, mboxID, messageIDs)
 }
 
-func (r ReadTracer) MailboxFilterContainsInternalID(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]imap.InternalMessageID, error) {
-	r.Entry.Tracef("MailboxFilterContainsInternalID")
-
-	return r.RD.MailboxFilterContainsInternalID(ctx, mboxID, messageIDs)
-}
-
 func (r ReadTracer) GetMailboxCount(ctx context.Context) (int, error) {
 	r.Entry.Tracef("GetMailboxCount")
 
 	return r.RD.GetMailboxCount(ctx)
-}
-
-func (r ReadTracer) GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]db.UIDWithFlags, error) {
-	r.Entry.Tracef("GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump")
-
-	return r.RD.GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx, mboxID, messageIDs)
 }
 
 func (r ReadTracer) MessageExists(ctx context.Context, id imap.InternalMessageID) (bool, error) {
@@ -214,7 +202,7 @@ func (r ReadTracer) GetMessageDateAndSize(ctx context.Context, id imap.InternalM
 }
 
 func (r ReadTracer) GetMessageMailboxIDs(ctx context.Context, id imap.InternalMessageID) ([]imap.InternalMailboxID, error) {
-	r.Entry.Tracef("GetMailboxIDs")
+	r.Entry.Tracef("GetMessageMailboxIDs")
 
 	return r.RD.GetMessageMailboxIDs(ctx, id)
 }
@@ -308,30 +296,14 @@ func (w WriteTracer) DeleteMailboxWithRemoteID(ctx context.Context, mboxID imap.
 	return w.TX.DeleteMailboxWithRemoteID(ctx, mboxID)
 }
 
-func (w WriteTracer) BumpMailboxUIDNext(ctx context.Context, mboxID imap.InternalMailboxID, count int) error {
-	w.Entry.Tracef("BumpMailboxUIDNext")
-
-	return w.TX.BumpMailboxUIDNext(ctx, mboxID, count)
-}
-
 func (w WriteTracer) AddMessagesToMailbox(
 	ctx context.Context,
 	mboxID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
+	messageIDs []db.MessageIDPair,
 ) ([]db.UIDWithFlags, error) {
 	w.Entry.Tracef("AddMessagesToMailbox")
 
 	return w.TX.AddMessagesToMailbox(ctx, mboxID, messageIDs)
-}
-
-func (w WriteTracer) BumpMailboxUIDsForMessage(
-	ctx context.Context,
-	mboxID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
-) ([]db.UIDWithFlags, error) {
-	w.Entry.Tracef("BumpMailboxUIDsForMessage")
-
-	return w.TX.BumpMailboxUIDsForMessage(ctx, mboxID, messageIDs)
 }
 
 func (w WriteTracer) RemoveMessagesFromMailbox(

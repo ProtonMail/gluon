@@ -8,7 +8,7 @@ import (
 func ScanMailbox(scanner utils.RowScanner) (*db.Mailbox, error) {
 	mbox := new(db.Mailbox)
 
-	if err := scanner.Scan(&mbox.ID, &mbox.RemoteID, &mbox.Name, &mbox.UIDNext, &mbox.UIDValidity, &mbox.Subscribed); err != nil {
+	if err := scanner.Scan(&mbox.ID, &mbox.RemoteID, &mbox.Name, &mbox.UIDValidity, &mbox.Subscribed); err != nil {
 		return nil, err
 	}
 

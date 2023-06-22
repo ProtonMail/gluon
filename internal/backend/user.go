@@ -60,7 +60,7 @@ func newUser(
 	uidValidityGenerator imap.UIDValidityGenerator,
 	panicHandler async.PanicHandler,
 ) (*user, error) {
-	if err := database.Init(ctx); err != nil {
+	if err := database.Init(ctx, uidValidityGenerator); err != nil {
 		return nil, err
 	}
 

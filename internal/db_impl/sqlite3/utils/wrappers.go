@@ -91,6 +91,8 @@ func (d DebugQueryWrapper) ExecContext(ctx context.Context, query string, args .
 }
 
 func (d DebugQueryWrapper) PrepareStatement(ctx context.Context, query string) (StmtWrapper, error) {
+	d.Entry.Debugf("Prepare Statement=%v ", query)
+
 	stmt, err := d.QW.PrepareStatement(ctx, query)
 	if err != nil {
 		return nil, err

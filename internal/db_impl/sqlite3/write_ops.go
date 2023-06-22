@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	v1 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v1"
 	"strings"
 
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
-	v0 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v0"
 	"github.com/bradenaw/juniper/xslices"
 )
 
@@ -25,25 +25,31 @@ func (w writeOps) CreateMailbox(
 	flags, permFlags, attrs imap.FlagSet,
 	uidValidity imap.UID,
 ) (*db.Mailbox, error) {
-	createMBoxQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`, `%v`, `%v`) VALUES (?,?,?,?,?) RETURNING `%v`",
-		v0.MailboxesTableName,
-		v0.MailboxesFieldRemoteID,
-		v0.MailboxesFieldName,
-		v0.MailboxesFieldUIDNext,
-		v0.MailboxesFieldUIDValidity,
-		v0.MailboxesFieldSubscribed,
-		v0.MailboxesFieldID,
+	createMBoxQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`, `%v`) VALUES (?,?,?,?) RETURNING `%v`",
+		v1.MailboxesTableName,
+		v1.MailboxesFieldRemoteID,
+		v1.MailboxesFieldName,
+		v1.MailboxesFieldUIDValidity,
+		v1.MailboxesFieldSubscribed,
+		v1.MailboxesFieldID,
 	)
 
 	internalID, err := utils.MapQueryRow[imap.InternalMailboxID](ctx, w.qw, createMBoxQuery,
 		mboxID,
 		name,
-		imap.UID(1),
 		uidValidity,
 		true,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	{
+		query := v1.CreateMailboxMessageTableQuery(internalID)
+
+		if _, err := utils.ExecQuery(ctx, w.qw, query); err != nil {
+			return nil, err
+		}
 	}
 
 	createFlags := func(tableName, fieldID, fieldValue string, flags imap.FlagSet) error {
@@ -69,15 +75,15 @@ func (w writeOps) CreateMailbox(
 		return nil
 	}
 
-	if err := createFlags(v0.MailboxFlagsTableName, v0.MailboxFlagsFieldMailboxID, v0.MailboxFlagsFieldValue, flags); err != nil {
+	if err := createFlags(v1.MailboxFlagsTableName, v1.MailboxFlagsFieldMailboxID, v1.MailboxFlagsFieldValue, flags); err != nil {
 		return nil, err
 	}
 
-	if err := createFlags(v0.MailboxPermFlagsTableName, v0.MailboxPermFlagsFieldMailboxID, v0.MailboxPermFlagsFieldValue, permFlags); err != nil {
+	if err := createFlags(v1.MailboxPermFlagsTableName, v1.MailboxPermFlagsFieldMailboxID, v1.MailboxPermFlagsFieldValue, permFlags); err != nil {
 		return nil, err
 	}
 
-	if err := createFlags(v0.MailboxAttrsTableName, v0.MailboxAttrsFieldMailboxID, v0.MailboxAttrsFieldValue, attrs); err != nil {
+	if err := createFlags(v1.MailboxAttrsTableName, v1.MailboxAttrsFieldMailboxID, v1.MailboxAttrsFieldValue, attrs); err != nil {
 		return nil, err
 	}
 
@@ -85,7 +91,6 @@ func (w writeOps) CreateMailbox(
 		ID:             internalID,
 		RemoteID:       mboxID,
 		Name:           name,
-		UIDNext:        1,
 		UIDValidity:    uidValidity,
 		Subscribed:     true,
 		Flags:          nil,
@@ -127,9 +132,9 @@ func (w writeOps) GetOrCreateMailboxAlt(ctx context.Context, mbox imap.Mailbox, 
 
 func (w writeOps) RenameMailboxWithRemoteID(ctx context.Context, mboxID imap.MailboxID, name string) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = ? WHERE `%v` = ?",
-		v0.MailboxesTableName,
-		v0.MailboxesFieldName,
-		v0.MailboxesFieldRemoteID,
+		v1.MailboxesTableName,
+		v1.MailboxesFieldName,
+		v1.MailboxesFieldRemoteID,
 	)
 
 	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, name, mboxID)
@@ -151,117 +156,19 @@ func (w writeOps) DeleteMailboxWithRemoteID(ctx context.Context, mboxID imap.Mai
 		}
 	}
 
-	query := fmt.Sprintf("DELETE FROM %v WHERE `%v` = ?",
-		v0.MailboxesTableName,
-		v0.MailboxesFieldRemoteID)
+	{
+		query := fmt.Sprintf("DROP TABLE `%v`", v1.MailboxMessageTableName(mbox.ID))
 
-	_, err = utils.ExecQuery(ctx, w.qw, query, mboxID)
-
-	return err
-}
-
-func (w writeOps) BumpMailboxUIDNext(ctx context.Context, mboxID imap.InternalMailboxID, count int) error {
-	mboxUID, err := w.GetMailboxUID(ctx, mboxID)
-	if err != nil {
-		return err
-	}
-
-	query := fmt.Sprintf("UPDATE %v SET `%v` = ? WHERE `%v` = ?",
-		v0.MailboxesTableName,
-		v0.MailboxesFieldUIDNext,
-		v0.MailboxesFieldID,
-	)
-
-	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, mboxUID.Add(uint32(count)), mboxID)
-}
-
-func (w writeOps) AddMessagesToMailbox(
-	ctx context.Context,
-	mboxID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
-) ([]db.UIDWithFlags, error) {
-	if len(messageIDs) == 0 {
-		return nil, nil
-	}
-
-	mboxUID, err := w.GetMailboxUID(ctx, mboxID)
-	if err != nil {
-		return nil, err
-	}
-
-	for chunkIdx, chunk := range xslices.Chunk(messageIDs, db.ChunkLimit/2) {
-		query := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`) VALUES %v",
-			v0.UIDsTableName,
-			v0.UIDsFieldMailboxID,
-			v0.UIDsFieldUID,
-			v0.UIDsFieldMessageID,
-			strings.Join(xslices.Repeat("(?,?,?)", len(chunk)), ","),
-		)
-
-		args := make([]any, 0, 3*len(chunk))
-
-		for idIdx, id := range chunk {
-			nextUID := mboxUID.Add(uint32((chunkIdx * db.ChunkLimit / 2) + idIdx))
-			args = append(args, mboxID, nextUID, id)
-		}
-
-		if _, err := utils.ExecQuery(ctx, w.qw, query, args...); err != nil {
-			return nil, err
+		if _, err = utils.ExecQuery(ctx, w.qw, query); err != nil {
+			return err
 		}
 	}
+	{
+		query := fmt.Sprintf("DELETE FROM %v WHERE `%v` = ?",
+			v1.MailboxesTableName,
+			v1.MailboxesFieldRemoteID)
 
-	if err := w.BumpMailboxUIDNext(ctx, mboxID, len(messageIDs)); err != nil {
-		return nil, err
-	}
-
-	return w.GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx, mboxID, messageIDs)
-}
-
-func (w writeOps) BumpMailboxUIDsForMessage(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]db.UIDWithFlags, error) {
-	mboxUID, err := w.GetMailboxUID(ctx, mboxID)
-	if err != nil {
-		return nil, err
-	}
-
-	query := fmt.Sprintf("UPDATE %v SET `%v` = ? WHERE `%v` = ? AND `%v`= ?",
-		v0.UIDsTableName,
-		v0.UIDsFieldUID,
-		v0.UIDsFieldMessageID,
-		v0.UIDsFieldMailboxID,
-	)
-
-	stmt, err := w.qw.PrepareStatement(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-
-	defer utils.WrapStmtClose(stmt)
-
-	for idx, id := range messageIDs {
-		nextUID := mboxUID.Add(uint32(idx))
-
-		if err := utils.ExecStmtAndCheckUpdatedNotZero(ctx, stmt, nextUID, id, mboxID); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := w.BumpMailboxUIDNext(ctx, mboxID, len(messageIDs)); err != nil {
-		return nil, err
-	}
-
-	return w.GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx, mboxID, messageIDs)
-}
-
-func (w writeOps) RemoveMessagesFromMailbox(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) error {
-	for _, chunk := range xslices.Chunk(messageIDs, db.ChunkLimit) {
-		query := fmt.Sprintf("DELETE FROM %v WHERE `%v` IN (%v) AND `%v` =?",
-			v0.UIDsTableName,
-			v0.UIDsFieldMessageID,
-			utils.GenSQLIn(len(chunk)),
-			v0.UIDsFieldMailboxID,
-		)
-
-		if _, err := utils.ExecQuery(ctx, w.qw, query, append(utils.MapSliceToAny(messageIDs), mboxID)...); err != nil {
+		if _, err = utils.ExecQuery(ctx, w.qw, query, mboxID); err != nil {
 			return err
 		}
 	}
@@ -269,25 +176,113 @@ func (w writeOps) RemoveMessagesFromMailbox(ctx context.Context, mboxID imap.Int
 	return nil
 }
 
+func (w writeOps) AddMessagesToMailbox(
+	ctx context.Context,
+	mboxID imap.InternalMailboxID,
+	messageIDs []db.MessageIDPair,
+) ([]db.UIDWithFlags, error) {
+	if len(messageIDs) == 0 {
+		return nil, nil
+	}
+
+	for _, chunk := range xslices.Chunk(messageIDs, db.ChunkLimit/2) {
+		// Insert into Mailbox table.
+		{
+			query := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
+				v1.MailboxMessageTableName(mboxID),
+				v1.MailboxMessagesFieldMessageID,
+				v1.MailboxMessagesFieldMessageRemoteID,
+				strings.Join(xslices.Repeat("(?,?)", len(chunk)), ","),
+			)
+
+			args := make([]any, 0, 2*len(chunk))
+
+			for _, id := range chunk {
+				args = append(args, id.InternalID, id.RemoteID)
+			}
+
+			if _, err := utils.ExecQuery(ctx, w.qw, query, args...); err != nil {
+				return nil, err
+			}
+		}
+
+		// Insert into Message To Mailbox table.
+		{
+			query := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
+				v1.MessageToMailboxTableName,
+				v1.MessageToMailboxFieldMessageID,
+				v1.MessageToMailboxFieldMailboxID,
+				strings.Join(xslices.Repeat("(?,?)", len(chunk)), ","),
+			)
+
+			args := make([]any, 0, 2*len(chunk))
+
+			for _, id := range chunk {
+				args = append(args, id.InternalID, mboxID)
+			}
+
+			if _, err := utils.ExecQuery(ctx, w.qw, query, args...); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return w.GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx, mboxID, xslices.Map(messageIDs, func(t db.MessageIDPair) imap.InternalMessageID {
+		return t.InternalID
+	}))
+}
+
+func (w writeOps) RemoveMessagesFromMailbox(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) error {
+	for _, chunk := range xslices.Chunk(messageIDs, db.ChunkLimit) {
+		// Delete from mailbox table.
+		{
+			query := fmt.Sprintf("DELETE FROM %v WHERE `%v` IN (%v)",
+				v1.MailboxMessageTableName(mboxID),
+				v1.MailboxMessagesFieldMessageID,
+				utils.GenSQLIn(len(chunk)),
+			)
+
+			if _, err := utils.ExecQuery(ctx, w.qw, query, utils.MapSliceToAny(messageIDs)...); err != nil {
+				return err
+			}
+		}
+
+		// Delete from message to mailbox table.
+		{
+			query := fmt.Sprintf("DELETE FROM %v WHERE `%v` IN (%v) AND `%v` =?",
+				v1.MessageToMailboxTableName,
+				v1.MailboxMessagesFieldMessageID,
+				utils.GenSQLIn(len(chunk)),
+				v1.MessageToMailboxFieldMailboxID,
+			)
+
+			if _, err := utils.ExecQuery(ctx, w.qw, query, append(utils.MapSliceToAny(messageIDs), mboxID)...); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (w writeOps) ClearRecentFlagInMailboxOnMessage(ctx context.Context, mboxID imap.InternalMailboxID, messageID imap.InternalMessageID) error {
-	query := fmt.Sprintf("UPDATE %v SET `%v` = FALSE WHERE `%v` = ? AND `%v` =?",
-		v0.UIDsTableName,
-		v0.UIDsFieldRecent,
-		v0.UIDsFieldMailboxID,
-		v0.UIDsFieldMessageID,
+	query := fmt.Sprintf("UPDATE %v SET `%v` = FALSE WHERE `%v` = ?",
+		v1.MailboxMessageTableName(mboxID),
+		v1.MailboxMessagesFieldRecent,
+		v1.MailboxMessagesFieldMessageID,
 	)
 
-	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, mboxID, messageID)
+	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, messageID)
 }
 
 func (w writeOps) ClearRecentFlagsInMailbox(ctx context.Context, mboxID imap.InternalMailboxID) error {
-	query := fmt.Sprintf("UPDATE %v SET `%v` = FALSE WHERE `%v` = ?",
-		v0.UIDsTableName,
-		v0.UIDsFieldRecent,
-		v0.UIDsFieldMailboxID,
+	query := fmt.Sprintf("UPDATE %v SET `%v` = FALSE WHERE `%v` = TRUE",
+		v1.MailboxMessageTableName(mboxID),
+		v1.MailboxMessagesFieldRecent,
+		v1.MailboxMessagesFieldRecent,
 	)
 
-	_, err := utils.ExecQuery(ctx, w.qw, query, mboxID)
+	_, err := utils.ExecQuery(ctx, w.qw, query)
 
 	return err
 }
@@ -300,18 +295,16 @@ func (w writeOps) CreateMailboxIfNotExists(ctx context.Context, mbox imap.Mailbo
 
 func (w writeOps) SetMailboxMessagesDeletedFlag(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID, deleted bool) error {
 	for _, chunk := range xslices.Chunk(messageIDs, db.ChunkLimit) {
-		query := fmt.Sprintf("UPDATE %v SET `%v` =? WHERE `%v` IN (%v) AND `%v` =? ",
-			v0.UIDsTableName,
-			v0.UIDsFieldDeleted,
-			v0.UIDsFieldMessageID,
+		query := fmt.Sprintf("UPDATE %v SET `%v` =? WHERE `%v` IN (%v)",
+			v1.MailboxMessageTableName(mboxID),
+			v1.MailboxMessagesFieldDeleted,
+			v1.MailboxMessagesFieldMessageID,
 			utils.GenSQLIn(len(chunk)),
-			v0.UIDsFieldMailboxID,
 		)
 
 		args := make([]any, 0, len(chunk)+2)
 		args = append(args, deleted)
 		args = append(args, utils.MapSliceToAny(chunk)...)
-		args = append(args, mboxID)
 
 		if _, err := utils.ExecQuery(ctx, w.qw, query, args...); err != nil {
 			return err
@@ -323,9 +316,9 @@ func (w writeOps) SetMailboxMessagesDeletedFlag(ctx context.Context, mboxID imap
 
 func (w writeOps) SetMailboxSubscribed(ctx context.Context, mboxID imap.InternalMailboxID, subscribed bool) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = ? WHERE `%v` = ?",
-		v0.MailboxesTableName,
-		v0.MailboxesFieldSubscribed,
-		v0.MailboxesFieldID,
+		v1.MailboxesTableName,
+		v1.MailboxesFieldSubscribed,
+		v1.MailboxesFieldID,
 	)
 
 	_, err := utils.ExecQuery(ctx, w.qw, query, subscribed, mboxID)
@@ -335,9 +328,9 @@ func (w writeOps) SetMailboxSubscribed(ctx context.Context, mboxID imap.Internal
 
 func (w writeOps) UpdateRemoteMailboxID(ctx context.Context, mboxID imap.InternalMailboxID, remoteID imap.MailboxID) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = ? WHERE `%v` = ?",
-		v0.MailboxesTableName,
-		v0.MailboxesFieldRemoteID,
-		v0.MailboxesFieldID,
+		v1.MailboxesTableName,
+		v1.MailboxesFieldRemoteID,
+		v1.MailboxesFieldID,
 	)
 
 	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, remoteID, mboxID)
@@ -345,9 +338,9 @@ func (w writeOps) UpdateRemoteMailboxID(ctx context.Context, mboxID imap.Interna
 
 func (w writeOps) SetMailboxUIDValidity(ctx context.Context, mboxID imap.InternalMailboxID, uidValidity imap.UID) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = ? WHERE `%v` = ?",
-		v0.MailboxesTableName,
-		v0.MailboxesFieldUIDValidity,
-		v0.MailboxesFieldID,
+		v1.MailboxesTableName,
+		v1.MailboxesFieldUIDValidity,
+		v1.MailboxesFieldID,
 	)
 
 	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, uidValidity, mboxID)
@@ -358,14 +351,14 @@ func (w writeOps) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageR
 
 	for _, chunk := range xslices.Chunk(reqs, db.ChunkLimit) {
 		createMessageQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`, `%v`, `%v`, `%v`, `%v`) VALUES %v",
-			v0.MessagesTableName,
-			v0.MessagesFieldID,
-			v0.MessagesFieldRemoteID,
-			v0.MessagesFieldDate,
-			v0.MessagesFieldSize,
-			v0.MessagesFieldBody,
-			v0.MessagesFieldBodyStructure,
-			v0.MessagesFieldEnvelope,
+			v1.MessagesTableName,
+			v1.MessagesFieldID,
+			v1.MessagesFieldRemoteID,
+			v1.MessagesFieldDate,
+			v1.MessagesFieldSize,
+			v1.MessagesFieldBody,
+			v1.MessagesFieldBodyStructure,
+			v1.MessagesFieldEnvelope,
 			strings.Join(xslices.Repeat("(?,?,?,?,?,?,?)", len(chunk)), ","),
 		)
 
@@ -406,9 +399,9 @@ func (w writeOps) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageR
 
 		for _, chunk := range xslices.Chunk(flagArgs, db.ChunkLimit) {
 			createFlagsQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
-				v0.MessageFlagsTableName,
-				v0.MessageFlagsFieldMessageID,
-				v0.MessageFlagsFieldValue,
+				v1.MessageFlagsTableName,
+				v1.MessageFlagsFieldMessageID,
+				v1.MessageFlagsFieldValue,
 				strings.Join(xslices.Repeat("(?,?)", len(chunk)/2), ","),
 			)
 
@@ -422,20 +415,15 @@ func (w writeOps) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageR
 }
 
 func (w writeOps) CreateMessageAndAddToMailbox(ctx context.Context, mbox imap.InternalMailboxID, req *db.CreateMessageReq) (imap.UID, imap.FlagSet, error) {
-	mboxUID, err := w.GetMailboxUID(ctx, mbox)
-	if err != nil {
-		return 0, imap.FlagSet{}, err
-	}
-
 	createMessageQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`, `%v`, `%v`, `%v`, `%v`) VALUES (?,?,?,?,?,?,?)",
-		v0.MessagesTableName,
-		v0.MessagesFieldID,
-		v0.MessagesFieldRemoteID,
-		v0.MessagesFieldDate,
-		v0.MessagesFieldSize,
-		v0.MessagesFieldBody,
-		v0.MessagesFieldBodyStructure,
-		v0.MessagesFieldEnvelope,
+		v1.MessagesTableName,
+		v1.MessagesFieldID,
+		v1.MessagesFieldRemoteID,
+		v1.MessagesFieldDate,
+		v1.MessagesFieldSize,
+		v1.MessagesFieldBody,
+		v1.MessagesFieldBodyStructure,
+		v1.MessagesFieldEnvelope,
 	)
 
 	if _, err := utils.ExecQuery(ctx, w.qw,
@@ -453,9 +441,9 @@ func (w writeOps) CreateMessageAndAddToMailbox(ctx context.Context, mbox imap.In
 
 	if req.Message.Flags.Len() != 0 {
 		createFlagsQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
-			v0.MessageFlagsTableName,
-			v0.MessageFlagsFieldMessageID,
-			v0.MessageFlagsFieldValue,
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
+			v1.MessageFlagsFieldValue,
 			strings.Join(xslices.Repeat("(?, ?)", req.Message.Flags.Len()), ","),
 		)
 
@@ -469,18 +457,27 @@ func (w writeOps) CreateMessageAndAddToMailbox(ctx context.Context, mbox imap.In
 		}
 	}
 
-	addToMboxQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`) VALUES (?,?,?)",
-		v0.UIDsTableName,
-		v0.UIDsFieldUID,
-		v0.UIDsFieldMessageID,
-		v0.UIDsFieldMailboxID,
-	)
+	{
+		query := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES (?,?)",
+			v1.MessageToMailboxTableName,
+			v1.MessageToMailboxFieldMessageID,
+			v1.MessageToMailboxFieldMailboxID,
+		)
 
-	if _, err := utils.ExecQuery(ctx, w.qw, addToMboxQuery, mboxUID, req.InternalID, mbox); err != nil {
-		return 0, imap.FlagSet{}, err
+		if _, err := utils.ExecQuery(ctx, w.qw, query, req.InternalID, mbox); err != nil {
+			return 0, imap.FlagSet{}, err
+		}
 	}
 
-	if err := w.BumpMailboxUIDNext(ctx, mbox, 1); err != nil {
+	addToMboxQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES (?,?) RETURNING `%v`",
+		v1.MailboxMessageTableName(mbox),
+		v1.MailboxMessagesFieldMessageID,
+		v1.MailboxMessagesFieldMessageRemoteID,
+		v1.MailboxMessagesFieldUID,
+	)
+
+	mboxUID, err := utils.MapQueryRow[imap.UID](ctx, w.qw, addToMboxQuery, req.InternalID, req.Message.ID)
+	if err != nil {
 		return 0, imap.FlagSet{}, err
 	}
 
@@ -491,9 +488,9 @@ func (w writeOps) CreateMessageAndAddToMailbox(ctx context.Context, mbox imap.In
 
 func (w writeOps) MarkMessageAsDeleted(ctx context.Context, id imap.InternalMessageID) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = TRUE WHERE `%v` = ?",
-		v0.MessagesTableName,
-		v0.MessagesFieldDeleted,
-		v0.MessagesFieldID,
+		v1.MessagesTableName,
+		v1.MessagesFieldDeleted,
+		v1.MessagesFieldID,
 	)
 
 	_, err := utils.ExecQuery(ctx, w.qw, query, id)
@@ -503,10 +500,10 @@ func (w writeOps) MarkMessageAsDeleted(ctx context.Context, id imap.InternalMess
 
 func (w writeOps) MarkMessageAsDeletedAndAssignRandomRemoteID(ctx context.Context, id imap.InternalMessageID) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = TRUE, `%v` = ? WHERE `%v` = ?",
-		v0.MessagesTableName,
-		v0.MessagesFieldDeleted,
-		v0.MessagesFieldRemoteID,
-		v0.MessagesFieldID,
+		v1.MessagesTableName,
+		v1.MessagesFieldDeleted,
+		v1.MessagesFieldRemoteID,
+		v1.MessagesFieldID,
 	)
 
 	randomID := imap.MessageID(fmt.Sprintf("DELETED-%v", imap.NewInternalMessageID()))
@@ -518,9 +515,9 @@ func (w writeOps) MarkMessageAsDeletedAndAssignRandomRemoteID(ctx context.Contex
 
 func (w writeOps) MarkMessageAsDeletedWithRemoteID(ctx context.Context, id imap.MessageID) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = TRUE WHERE `%v` = ?",
-		v0.MessagesTableName,
-		v0.MessagesFieldDeleted,
-		v0.MessagesFieldRemoteID,
+		v1.MessagesTableName,
+		v1.MessagesFieldDeleted,
+		v1.MessagesFieldRemoteID,
 	)
 
 	_, err := utils.ExecQuery(ctx, w.qw, query, id)
@@ -531,8 +528,8 @@ func (w writeOps) MarkMessageAsDeletedWithRemoteID(ctx context.Context, id imap.
 func (w writeOps) DeleteMessages(ctx context.Context, ids []imap.InternalMessageID) error {
 	for _, chunk := range xslices.Chunk(ids, db.ChunkLimit) {
 		query := fmt.Sprintf("DELETE FROM %v WHERE `%v` IN (%v)",
-			v0.MessagesTableName,
-			v0.MessagesFieldID,
+			v1.MessagesTableName,
+			v1.MessagesFieldID,
 			utils.GenSQLIn(len(chunk)),
 		)
 
@@ -546,9 +543,9 @@ func (w writeOps) DeleteMessages(ctx context.Context, ids []imap.InternalMessage
 
 func (w writeOps) UpdateRemoteMessageID(ctx context.Context, internalID imap.InternalMessageID, remoteID imap.MessageID) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = ? WHERE `%v` = ?",
-		v0.MessagesFieldID,
-		v0.MessagesFieldRemoteID,
-		v0.MessagesFieldID,
+		v1.MessagesFieldID,
+		v1.MessagesFieldRemoteID,
+		v1.MessagesFieldID,
 	)
 
 	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, remoteID, internalID)
@@ -556,10 +553,10 @@ func (w writeOps) UpdateRemoteMessageID(ctx context.Context, internalID imap.Int
 
 func (w writeOps) AddFlagToMessages(ctx context.Context, ids []imap.InternalMessageID, flag string) error {
 	for _, chunk := range xslices.Chunk(ids, db.ChunkLimit) {
-		query := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
-			v0.MessageFlagsTableName,
-			v0.MessageFlagsFieldMessageID,
-			v0.MessageFlagsFieldValue,
+		query := fmt.Sprintf("INSERT OR IGNORE INTO %v (`%v`, `%v`) VALUES %v",
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
+			v1.MessageFlagsFieldValue,
 			strings.Join(xslices.Repeat("(?, ?)", len(chunk)), ","),
 		)
 
@@ -580,10 +577,10 @@ func (w writeOps) AddFlagToMessages(ctx context.Context, ids []imap.InternalMess
 func (w writeOps) RemoveFlagFromMessages(ctx context.Context, ids []imap.InternalMessageID, flag string) error {
 	for _, chunk := range xslices.Chunk(ids, db.ChunkLimit) {
 		query := fmt.Sprintf("DELETE FROM %v WHERE `%v` IN (%v) AND `%v` = ?",
-			v0.MessageFlagsTableName,
-			v0.MessageFlagsFieldMessageID,
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
 			utils.GenSQLIn(len(chunk)),
-			v0.MessageFlagsFieldValue,
+			v1.MessageFlagsFieldValue,
 		)
 
 		if _, err := utils.ExecQuery(ctx, w.qw, query, append(utils.MapSliceToAny(chunk), flag)...); err != nil {
@@ -602,17 +599,17 @@ func (w writeOps) SetFlagsOnMessages(ctx context.Context, ids []imap.InternalMes
 
 	for _, chunk := range xslices.Chunk(ids, db.ChunkLimit/2) {
 		deleteQuery := fmt.Sprintf("DELETE FROM %v WHERE `%v` IN (%v) AND `%v` NOT IN(%v)",
-			v0.MessageFlagsTableName,
-			v0.MessageFlagsFieldMessageID,
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
 			utils.GenSQLIn(len(chunk)),
-			v0.MessageFlagsFieldValue,
+			v1.MessageFlagsFieldValue,
 			flagsSQLIn,
 		)
 
-		insertQuery := fmt.Sprintf("INSERT OR REPLACE INTO %v (`%v`, `%v`) VALUES %v",
-			v0.MessageFlagsTableName,
-			v0.MessageFlagsFieldMessageID,
-			v0.MessageFlagsFieldValue,
+		insertQuery := fmt.Sprintf("INSERT OR IGNORE INTO %v (`%v`, `%v`) VALUES %v",
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
+			v1.MessageFlagsFieldValue,
 			strings.Join(xslices.Repeat("(?,?)", len(flagSlice)), ","),
 		)
 
@@ -642,9 +639,9 @@ func (w writeOps) SetFlagsOnMessages(ctx context.Context, ids []imap.InternalMes
 
 func (w writeOps) AddDeletedSubscription(ctx context.Context, mboxName string, mboxID imap.MailboxID) error {
 	updateQuery := fmt.Sprintf("UPDATE %v SET `%v` = ? WHERE `%v` = ?",
-		v0.DeletedSubscriptionsTableName,
-		v0.DeletedSubscriptionsFieldRemoteID,
-		v0.DeletedSubscriptionsFieldName,
+		v1.DeletedSubscriptionsTableName,
+		v1.DeletedSubscriptionsFieldRemoteID,
+		v1.DeletedSubscriptionsFieldName,
 	)
 
 	count, err := utils.ExecQuery(ctx, w.qw, updateQuery, mboxID, mboxName)
@@ -654,9 +651,9 @@ func (w writeOps) AddDeletedSubscription(ctx context.Context, mboxName string, m
 
 	if count == 0 {
 		createQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES (?, ?)",
-			v0.DeletedSubscriptionsTableName,
-			v0.DeletedSubscriptionsFieldName,
-			v0.DeletedSubscriptionsFieldRemoteID,
+			v1.DeletedSubscriptionsTableName,
+			v1.DeletedSubscriptionsFieldName,
+			v1.DeletedSubscriptionsFieldRemoteID,
 		)
 
 		if _, err := utils.ExecQuery(ctx, w.qw, createQuery, mboxName, mboxID); err != nil {
@@ -669,8 +666,8 @@ func (w writeOps) AddDeletedSubscription(ctx context.Context, mboxName string, m
 
 func (w writeOps) RemoveDeletedSubscriptionWithName(ctx context.Context, mboxName string) (int, error) {
 	query := fmt.Sprintf("DELETE FROM %v WHERE `%v` = ?",
-		v0.DeletedSubscriptionsTableName,
-		v0.DeletedSubscriptionsFieldName,
+		v1.DeletedSubscriptionsTableName,
+		v1.DeletedSubscriptionsFieldName,
 	)
 
 	return utils.ExecQuery(ctx, w.qw, query, mboxName)

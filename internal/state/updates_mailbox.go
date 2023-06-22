@@ -16,7 +16,8 @@ func MoveMessagesFromMailbox(
 	ctx context.Context,
 	tx db.Transaction,
 	mboxFromID, mboxToID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
+	messageIDPairs []db.MessageIDPair,
+	messageIDsInternal []imap.InternalMessageID,
 	s *State,
 	imapLimits limits.IMAP,
 	removeOldMessages bool,
@@ -26,26 +27,26 @@ func MoveMessagesFromMailbox(
 		return nil, nil, err
 	}
 
-	if err := imapLimits.CheckMailBoxMessageCount(messageCount, len(messageIDs)); err != nil {
+	if err := imapLimits.CheckMailBoxMessageCount(messageCount, len(messageIDPairs)); err != nil {
 		return nil, nil, err
 	}
 
-	if err := imapLimits.CheckUIDCount(uid, len(messageIDs)); err != nil {
+	if err := imapLimits.CheckUIDCount(uid, len(messageIDPairs)); err != nil {
 		return nil, nil, err
 	}
 
 	if mboxFromID != mboxToID && removeOldMessages {
-		if err := tx.RemoveMessagesFromMailbox(ctx, mboxFromID, messageIDs); err != nil {
+		if err := tx.RemoveMessagesFromMailbox(ctx, mboxFromID, messageIDsInternal); err != nil {
 			return nil, nil, err
 		}
 	}
 
-	messageUIDs, err := tx.AddMessagesToMailbox(ctx, mboxToID, messageIDs)
+	messageUIDs, err := tx.AddMessagesToMailbox(ctx, mboxToID, messageIDPairs)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	stateUpdates := make([]Update, 0, len(messageIDs)+1)
+	stateUpdates := make([]Update, 0, len(messageIDPairs)+1)
 	{
 		responders := xslices.Map(messageUIDs, func(uid db.UIDWithFlags) *exists {
 			return newExists(db.MessageIDPair{
@@ -57,7 +58,7 @@ func MoveMessagesFromMailbox(
 	}
 
 	if removeOldMessages {
-		for _, messageID := range messageIDs {
+		for _, messageID := range messageIDsInternal {
 			stateUpdates = append(stateUpdates, NewMessageIDAndMailboxIDResponderStateUpdate(messageID, mboxFromID, NewExpunge(messageID)))
 		}
 	}
@@ -69,7 +70,7 @@ func MoveMessagesFromMailbox(
 func AddMessagesToMailbox(ctx context.Context,
 	tx db.Transaction,
 	mboxID imap.InternalMailboxID,
-	messageIDs []imap.InternalMessageID,
+	messageIDs []db.MessageIDPair,
 	s *State,
 	imapLimits limits.IMAP) ([]db.UIDWithFlags, Update, error) {
 	messageCount, uid, err := tx.GetMailboxMessageCountAndUID(ctx, mboxID)
