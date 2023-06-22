@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ProtonMail/gluon/imap"
+	v1 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v1"
 
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
@@ -12,14 +14,15 @@ import (
 )
 
 type Migration interface {
-	Run(ctx context.Context, tx utils.TXWrapper) error
+	Run(ctx context.Context, tx utils.QueryWrapper, generator imap.UIDValidityGenerator) error
 }
 
 var migrationList = []Migration{
 	&v0.Migration{},
+	&v1.Migration{},
 }
 
-func RunMigrations(ctx context.Context, tx utils.TXWrapper) error {
+func RunMigrations(ctx context.Context, tx utils.QueryWrapper, generator imap.UIDValidityGenerator) error {
 	dbVersion, err := getDatabaseVersion(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("failed to get db version: %w", err)
@@ -31,7 +34,7 @@ func RunMigrations(ctx context.Context, tx utils.TXWrapper) error {
 		for idx, m := range migrationList {
 			logrus.Debugf("Running migration for version %v", idx)
 
-			if err := m.Run(ctx, tx); err != nil {
+			if err := m.Run(ctx, tx, generator); err != nil {
 				return fmt.Errorf("failed to run migration %v: %w", idx, err)
 			}
 		}
@@ -50,7 +53,7 @@ func RunMigrations(ctx context.Context, tx utils.TXWrapper) error {
 	for i := dbVersion + 1; i < len(migrationList); i++ {
 		logrus.Debugf("Running migration for version %v", i)
 
-		if err := migrationList[i].Run(ctx, tx); err != nil {
+		if err := migrationList[i].Run(ctx, tx, generator); err != nil {
 			return err
 		}
 	}
@@ -65,7 +68,7 @@ func RunMigrations(ctx context.Context, tx utils.TXWrapper) error {
 }
 
 // getDatabaseVersion returns -1 if the version table does not exist or the  version information contained within.
-func getDatabaseVersion(ctx context.Context, tx utils.TXWrapper) (int, error) {
+func getDatabaseVersion(ctx context.Context, tx utils.QueryWrapper) (int, error) {
 	query := "SELECT `name` FROM sqlite_master WHERE `type` = 'table' AND `name` NOT LIKE 'sqlite_%' AND `name` = 'gluon_version'"
 
 	_, err := utils.MapQueryRow[string](ctx, tx, query)
@@ -82,7 +85,7 @@ func getDatabaseVersion(ctx context.Context, tx utils.TXWrapper) (int, error) {
 	return utils.MapQueryRow[int](ctx, tx, versionQuery)
 }
 
-func updateDBVersion(ctx context.Context, tx utils.TXWrapper, version int) error {
+func updateDBVersion(ctx context.Context, tx utils.QueryWrapper, version int) error {
 	query := "UPDATE gluon_version SET `version` = ? WHERE `id` = 0"
 
 	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, tx, query, version)

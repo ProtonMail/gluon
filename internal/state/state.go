@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
@@ -167,7 +168,11 @@ func (state *State) Select(ctx context.Context, name string, fn func(*Mailbox) e
 		return client.GetMailboxByName(ctx, name)
 	})
 	if err != nil {
-		return ErrNoSuchMailbox
+		if errors.Is(err, db.ErrNotFound) {
+			return ErrNoSuchMailbox
+		}
+
+		return err
 	}
 
 	if state.snap != nil {
@@ -200,7 +205,11 @@ func (state *State) Examine(ctx context.Context, name string, fn func(*Mailbox) 
 		return client.GetMailboxByName(ctx, name)
 	})
 	if err != nil {
-		return ErrNoSuchMailbox
+		if errors.Is(err, db.ErrNotFound) {
+			return ErrNoSuchMailbox
+		}
+
+		return err
 	}
 
 	if state.snap != nil {
@@ -297,7 +306,11 @@ func (state *State) Delete(ctx context.Context, name string) (bool, error) {
 	mboxID, err := stateDBWriteResult(ctx, state, func(ctx context.Context, tx db.Transaction) ([]Update, imap.InternalMailboxID, error) {
 		mbox, err := tx.GetMailboxByName(ctx, name)
 		if err != nil {
-			return nil, 0, ErrNoSuchMailbox
+			if errors.Is(err, db.ErrNotFound) {
+				return nil, 0, ErrNoSuchMailbox
+			}
+
+			return nil, 0, err
 		}
 
 		update, err := state.actionDeleteMailbox(ctx, tx, db.NewMailboxIDPair(mbox))
@@ -327,7 +340,11 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 	return stateDBWrite(ctx, state, func(ctx context.Context, tx db.Transaction) ([]Update, error) {
 		mbox, err := tx.GetMailboxByName(ctx, oldName)
 		if err != nil {
-			return nil, ErrNoSuchMailbox
+			if errors.Is(err, db.ErrNotFound) {
+				return nil, ErrNoSuchMailbox
+			}
+
+			return nil, err
 		}
 
 		if exists, err := tx.MailboxExistsWithName(ctx, newName); err != nil {
@@ -387,7 +404,11 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 		for _, inferior := range inferiors {
 			mbox, err := tx.GetMailboxByName(ctx, inferior)
 			if err != nil {
-				return nil, ErrNoSuchMailbox
+				if errors.Is(err, db.ErrNotFound) {
+					return nil, ErrNoSuchMailbox
+				}
+
+				return nil, err
 			}
 
 			newInferior := newName + strings.TrimPrefix(inferior, oldName)
@@ -405,7 +426,11 @@ func (state *State) Subscribe(ctx context.Context, name string) error {
 	return stateDBWrite(ctx, state, func(ctx context.Context, tx db.Transaction) ([]Update, error) {
 		mbox, err := tx.GetMailboxByName(ctx, name)
 		if err != nil {
-			return nil, ErrNoSuchMailbox
+			if errors.Is(err, db.ErrNotFound) {
+				return nil, ErrNoSuchMailbox
+			}
+
+			return nil, err
 		}
 
 		if mbox.Subscribed {
@@ -454,7 +479,11 @@ func (state *State) Mailbox(ctx context.Context, name string, fn func(*Mailbox) 
 		return client.GetMailboxByName(ctx, name)
 	})
 	if err != nil {
-		return ErrNoSuchMailbox
+		if errors.Is(err, db.ErrNotFound) {
+			return ErrNoSuchMailbox
+		}
+
+		return err
 	}
 
 	if state.snap != nil && state.snap.mboxID.InternalID == mbox.ID {
@@ -483,7 +512,11 @@ func (state *State) AppendOnlyMailbox(ctx context.Context, name string, fn func(
 		return client.GetMailboxByName(ctx, name)
 	})
 	if err != nil {
-		return ErrNoSuchMailbox
+		if errors.Is(err, db.ErrNotFound) {
+			return ErrNoSuchMailbox
+		}
+
+		return err
 	}
 
 	if state.snap != nil && state.snap.mboxID.InternalID == mbox.ID {
@@ -504,7 +537,11 @@ func (state *State) Selected(ctx context.Context, fn func(*Mailbox) error) error
 		return client.GetMailboxByID(ctx, state.snap.mboxID.InternalID)
 	})
 	if err != nil {
-		return ErrNoSuchMailbox
+		if errors.Is(err, db.ErrNotFound) {
+			return ErrNoSuchMailbox
+		}
+
+		return err
 	}
 
 	return fn(newMailbox(mbox, state, state.snap))

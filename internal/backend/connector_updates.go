@@ -208,7 +208,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	// collect all unique messages to create
 	messagesToCreate := make([]*DBRequestWithLiteral, 0, len(update.Messages))
 	messagesToCreateFilter := make(map[imap.MessageID]imap.InternalMessageID, len(update.Messages)/2)
-	messageForMBox := make(map[imap.InternalMailboxID][]imap.InternalMessageID)
+	messageForMBox := make(map[imap.InternalMailboxID][]db.MessageIDPair)
 	mboxInternalIDMap := make(map[imap.MailboxID]imap.InternalMailboxID)
 
 	err := user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
@@ -271,12 +271,12 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 				messageList, ok := messageForMBox[v]
 				if !ok {
-					messageList = []imap.InternalMessageID{}
+					messageList = []db.MessageIDPair{}
 					messageForMBox[v] = messageList
 				}
 
-				if !slices.Contains(messageList, internalID) {
-					messageList = append(messageList, internalID)
+				if !slices.ContainsFunc(messageList, func(id db.MessageIDPair) bool { return id.InternalID == internalID }) {
+					messageList = append(messageList, db.MessageIDPair{InternalID: internalID, RemoteID: message.Message.ID})
 					messageForMBox[v] = messageList
 				}
 			}
@@ -313,13 +313,13 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 		// Assign all the messages to the mailbox
 		for mboxID, msgList := range messageForMBox {
-			inMailbox, err := tx.MailboxFilterContainsInternalID(ctx, mboxID, msgList)
+			inMailbox, err := tx.MailboxFilterContains(ctx, mboxID, msgList)
 			if err != nil {
 				return err
 			}
 
-			toAdd := xslices.Filter(msgList, func(id imap.InternalMessageID) bool {
-				return !slices.Contains(inMailbox, id)
+			toAdd := xslices.Filter(msgList, func(id db.MessageIDPair) bool {
+				return !slices.Contains(inMailbox, id.InternalID)
 			})
 
 			if len(toAdd) != 0 {
@@ -374,7 +374,10 @@ func (user *user) applyMessageMailboxesUpdated(ctx context.Context, update *imap
 			return err
 		}
 
-		if err := user.setMessageMailboxes(ctx, tx, internalMsgID, internalMBoxIDs); err != nil {
+		if err := user.setMessageMailboxes(ctx, tx, db.MessageIDPair{
+			InternalID: internalMsgID,
+			RemoteID:   update.MessageID,
+		}, internalMBoxIDs); err != nil {
 			return err
 		}
 
@@ -431,20 +434,20 @@ func (user *user) applyMessageIDChanged(ctx context.Context, update *imap.Messag
 	return nil
 }
 
-func (user *user) setMessageMailboxes(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, mboxIDs []imap.InternalMailboxID) error {
-	curMailboxIDs, err := tx.GetMessageMailboxIDs(ctx, messageID)
+func (user *user) setMessageMailboxes(ctx context.Context, tx db.Transaction, messageID db.MessageIDPair, mboxIDs []imap.InternalMailboxID) error {
+	curMailboxIDs, err := tx.GetMessageMailboxIDs(ctx, messageID.InternalID)
 	if err != nil {
 		return err
 	}
 
 	for _, mboxID := range xslices.Filter(mboxIDs, func(mboxID imap.InternalMailboxID) bool { return !slices.Contains(curMailboxIDs, mboxID) }) {
-		if _, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, []imap.InternalMessageID{messageID}); err != nil {
+		if _, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, []db.MessageIDPair{messageID}); err != nil {
 			return err
 		}
 	}
 
 	for _, mboxID := range xslices.Filter(curMailboxIDs, func(mboxID imap.InternalMailboxID) bool { return !slices.Contains(mboxIDs, mboxID) }) {
-		if err := user.applyMessagesRemovedFromMailbox(ctx, tx, mboxID, []imap.InternalMessageID{messageID}); err != nil {
+		if err := user.applyMessagesRemovedFromMailbox(ctx, tx, mboxID, []imap.InternalMessageID{messageID.InternalID}); err != nil {
 			return err
 		}
 	}
@@ -453,7 +456,7 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx db.Transaction, me
 }
 
 // applyMessagesAddedToMailbox adds the messages to the given mailbox.
-func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx db.Transaction, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]db.UIDWithFlags, error) {
+func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx db.Transaction, mboxID imap.InternalMailboxID, messageIDs []db.MessageIDPair) ([]db.UIDWithFlags, error) {
 	messageUIDs, update, err := state.AddMessagesToMailbox(ctx, tx, mboxID, messageIDs, nil, user.imapLimits)
 	if err != nil {
 		return nil, err
@@ -633,7 +636,10 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 				targetMailboxes = append(targetMailboxes, internalMBoxID)
 			}
 
-			return user.setMessageMailboxes(ctx, tx, internalMessageID, targetMailboxes)
+			return user.setMessageMailboxes(ctx, tx, db.MessageIDPair{
+				InternalID: internalMessageID,
+				RemoteID:   update.Message.ID,
+			}, targetMailboxes)
 		} else {
 			log.Debug("Message has new literal, applying update")
 
@@ -696,7 +702,14 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 						return err
 					}
 
-					_, update, err := state.AddMessagesToMailbox(ctx, tx, internalMBoxID, []imap.InternalMessageID{newInternalID}, nil, user.imapLimits)
+					_, update, err := state.AddMessagesToMailbox(
+						ctx,
+						tx,
+						internalMBoxID,
+						[]db.MessageIDPair{{InternalID: newInternalID, RemoteID: update.Message.ID}},
+						nil,
+						user.imapLimits,
+					)
 					if err != nil {
 						return err
 					}

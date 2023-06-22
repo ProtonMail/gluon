@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/ProtonMail/gluon/imap"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -26,12 +27,29 @@ type Client struct {
 	trace bool
 }
 
-func (c *Client) Init(ctx context.Context) error {
-	if _, err := c.db.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
-		return fmt.Errorf("failed to enable db pragma: %w", err)
+func NewClient(dir string, userID string, debug, trace bool) (*Client, bool, error) {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, false, err
 	}
 
-	if _, err := c.db.ExecContext(ctx, "PRAGMA journal_mode = WAL"); err != nil {
+	path := getDatabasePath(dir, userID)
+
+	// Check if the database already exists.
+	exists, err := pathExists(path)
+	if err != nil {
+		return nil, false, err
+	}
+
+	client, err := sql.Open("sqlite3", getDatabaseConn(dir, userID, path))
+	if err != nil {
+		return nil, false, err
+	}
+
+	return &Client{db: client, debug: debug, trace: trace}, !exists, nil
+}
+
+func (c *Client) Init(ctx context.Context, generator imap.UIDValidityGenerator) error {
+	if _, err := c.db.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
 		return fmt.Errorf("failed to enable db pragma: %w", err)
 	}
 
@@ -41,7 +59,22 @@ func (c *Client) Init(ctx context.Context) error {
 
 	return c.wrapTx(ctx, func(ctx context.Context, tx *sql.Tx, entry *logrus.Entry) error {
 		entry.Debugf("Running database migrations")
-		return RunMigrations(ctx, utils.TXWrapper{TX: tx})
+		var qw utils.QueryWrapper = &utils.TXWrapper{
+			TX: tx,
+		}
+
+		if c.debug {
+			qw = &utils.DebugQueryWrapper{
+				QW:    qw,
+				Entry: entry,
+			}
+		}
+
+		if err := RunMigrations(ctx, qw, generator); err != nil {
+			return fmt.Errorf("%w: %v", db.ErrMigrationFailed, err)
+		}
+
+		return nil
 	})
 }
 
@@ -232,24 +265,7 @@ func NewBuilder(options ...Option) db.ClientInterface {
 }
 
 func (b Builder) New(dir string, userID string) (db.Client, bool, error) {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, false, err
-	}
-
-	path := getDatabasePath(dir, userID)
-
-	// Check if the database already exists.
-	exists, err := pathExists(path)
-	if err != nil {
-		return nil, false, err
-	}
-
-	client, err := sql.Open("sqlite3", getDatabaseConn(dir, userID, path))
-	if err != nil {
-		return nil, false, err
-	}
-
-	return &Client{db: client, debug: b.debug, trace: b.trace}, !exists, nil
+	return NewClient(dir, userID, b.debug, b.trace)
 }
 
 func (Builder) Delete(dir string, userID string) error {

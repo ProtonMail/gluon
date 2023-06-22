@@ -24,7 +24,6 @@ type Mailbox struct {
 	name        string
 	subscribed  bool
 	uidValidity imap.UID
-	uidNext     imap.UID
 
 	state *State
 	snap  *snapshot
@@ -45,7 +44,6 @@ func newMailbox(mbox *db.Mailbox, state *State, snap *snapshot) *Mailbox {
 		id:          db.NewMailboxIDPair(mbox),
 		name:        mbox.Name,
 		uidValidity: mbox.UIDValidity,
-		uidNext:     mbox.UIDNext,
 
 		state: state,
 
@@ -102,8 +100,10 @@ func (m *Mailbox) Attributes(ctx context.Context) (imap.FlagSet, error) {
 	})
 }
 
-func (m *Mailbox) UIDNext() imap.UID {
-	return m.uidNext
+func (m *Mailbox) UIDNext(ctx context.Context) (imap.UID, error) {
+	return stateDBReadResult(ctx, m.state, func(ctx context.Context, client db.ReadOnly) (imap.UID, error) {
+		return client.GetMailboxUID(ctx, m.id.InternalID)
+	})
 }
 
 func (m *Mailbox) UIDValidity() imap.UID {
@@ -277,7 +277,11 @@ func (m *Mailbox) Copy(ctx context.Context, seq []command.SeqRange, name string)
 		return client.GetMailboxByName(ctx, name)
 	})
 	if err != nil {
-		return nil, ErrNoSuchMailbox
+		if errors.Is(err, db.ErrNotFound) {
+			return nil, ErrNoSuchMailbox
+		}
+
+		return nil, err
 	}
 
 	messages, err := m.snap.getMessagesInRange(ctx, seq)
@@ -328,7 +332,11 @@ func (m *Mailbox) Move(ctx context.Context, seq []command.SeqRange, name string)
 		return client.GetMailboxByName(ctx, name)
 	})
 	if err != nil {
-		return nil, ErrNoSuchMailbox
+		if errors.Is(err, db.ErrNotFound) {
+			return nil, ErrNoSuchMailbox
+		}
+
+		return nil, err
 	}
 
 	messages, err := m.snap.getMessagesInRange(ctx, seq)

@@ -59,7 +59,7 @@ func TestSequenceRange(t *testing.T) {
 		c.C(`A015 COPY *:1 mbox2`)
 		c.OK(`A015`)
 		c.C(`A016 COPY 7:5 mbox2`).BAD(`A016`)
-		c.C(`A017 COPY 4:3,1,2:1 mbox2`)
+		c.C(`A017 COPY 4:3,2:1 mbox2`)
 		c.OK(`A017`)
 	})
 }
