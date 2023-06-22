@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	v1 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v1"
+	"strings"
 	"time"
 
 	"github.com/ProtonMail/gluon/db"
@@ -261,7 +263,7 @@ func (r readOps) GetMailboxMessageCountAndUID(ctx context.Context, mboxID imap.I
 func (r readOps) GetMailboxMessageForNewSnapshot(ctx context.Context, mboxID imap.InternalMailboxID) ([]db.SnapshotMessageResult, error) {
 	query := "SELECT `t1`.`remote_id`, GROUP_CONCAT(`t2`.`value`) AS `flags`, `ui_ds`.`recent`, `ui_ds`.`deleted`, `ui_ds`.`uid`, `ui_ds`.`uid_message` FROM `ui_ds`" +
 		" JOIN `messages` AS `t1` ON `ui_ds`.`uid_message` = `t1`.`id`" +
-		" LEFT JOIN `message_flags` AS `t2` ON `ui_ds`.`uid_message` = `t2`.`message_flags` WHERE `mailbox_ui_ds` = ?" +
+		" LEFT JOIN `message_flags_v2` AS `t2` ON `ui_ds`.`uid_message` = `t2`.`message_id` WHERE `mailbox_ui_ds` = ?" +
 		" GROUP BY `ui_ds`.`uid_message` ORDER BY `ui_ds`.`uid`"
 
 	return utils.MapQueryRowsFn(ctx, r.qw, query, func(scanner utils.RowScanner) (db.SnapshotMessageResult, error) {
@@ -341,7 +343,7 @@ func (r readOps) GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Con
 	for _, chunk := range xslices.Chunk(messageIDs, db.ChunkLimit) {
 		query := fmt.Sprintf("SELECT `t1`.`remote_id`, GROUP_CONCAT(`t2`.`value`) AS `flags`, `ui_ds`.`recent`, `ui_ds`.`deleted`, `ui_ds`.`uid`, `ui_ds`.`uid_message` FROM `ui_ds`"+
 			" JOIN `messages` AS `t1` ON `ui_ds`.`uid_message` = `t1`.`id`"+
-			" LEFT JOIN `message_flags` AS `t2` ON `ui_ds`.`uid_message` = `t2`.`message_flags` WHERE `mailbox_ui_ds` = ? AND `uid_message` in (%v)"+
+			" LEFT JOIN `message_flags_v2` AS `t2` ON `ui_ds`.`uid_message` = `t2`.`message_id` WHERE `mailbox_ui_ds` = ? AND `uid_message` in (%v)"+
 			" GROUP BY `ui_ds`.`uid_message` ORDER BY `ui_ds`.`uid`",
 			utils.GenSQLIn(len(chunk)))
 
@@ -403,9 +405,9 @@ func (r readOps) GetMessageRemoteID(ctx context.Context, id imap.InternalMessage
 
 func (r readOps) GetImportedMessageData(ctx context.Context, id imap.InternalMessageID) (*db.Message, error) {
 	flagsQuery := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = ?",
-		v0.MessageFlagsFieldValue,
-		v0.MessageFlagsTableName,
-		v0.MessageFlagsFieldMessageID,
+		v1.MessageFlagsFieldValue,
+		v1.MessageFlagsTableName,
+		v1.MessageFlagsFieldMessageID,
 	)
 
 	messageQuery := fmt.Sprintf("SELECT * FROM %v WHERE `%v` = ?",
@@ -478,51 +480,50 @@ func (r readOps) GetMessageMailboxIDs(ctx context.Context, id imap.InternalMessa
 func (r readOps) GetMessagesFlags(ctx context.Context, ids []imap.InternalMessageID) ([]db.MessageFlagSet, error) {
 	var result = make([]db.MessageFlagSet, 0, len(ids))
 
-	flagQuery := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = ?",
-		v0.MessageFlagsFieldValue,
-		v0.MessageFlagsTableName,
-		v0.MessageFlagsFieldMessageID,
-	)
+	for _, chunk := range xslices.Chunk(ids, db.ChunkLimit) {
+		flagQuery := fmt.Sprintf("SELECT GROUP_CONCAT(f.`%v`, ','), m.`%v`, m.`%v` FROM %v AS m "+
+			"LEFT JOIN %v AS f ON f.`%v` = m.`%v` "+
+			"WHERE m.`%v` IN (%v) "+
+			"GROUP BY m.`%v`",
+			v1.MessageFlagsFieldValue,
+			v0.MessagesFieldID,
+			v0.MessagesFieldRemoteID,
+			v0.MessagesTableName,
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
+			v0.MessagesFieldID,
+			v0.MessagesFieldID,
+			utils.GenSQLIn(len(chunk)),
+			v0.MessagesFieldID,
+		)
 
-	remoteIDQuery := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = ?",
-		v0.MessagesFieldRemoteID,
-		v0.MessagesTableName,
-		v0.MessagesFieldID,
-	)
+		args := utils.MapSliceToAny(chunk)
 
-	flagStmt, err := r.qw.PrepareStatement(ctx, flagQuery)
-	if err != nil {
-		return nil, err
-	}
+		type DBFlag struct {
+			MessageID imap.InternalMessageID
+			RemoteID  imap.MessageID
+			Value     string
+		}
 
-	defer utils.WrapStmtClose(flagStmt)
+		r, err := utils.MapQueryRowsFn(ctx, r.qw, flagQuery, func(scanner utils.RowScanner) (db.MessageFlagSet, error) {
+			var f db.MessageFlagSet
+			var flags sql.NullString
 
-	remoteIDStmt, err := r.qw.PrepareStatement(ctx, remoteIDQuery)
-	if err != nil {
-		return nil, err
-	}
+			if err := scanner.Scan(&flags, &f.ID, &f.RemoteID); err != nil {
+				return db.MessageFlagSet{}, err
+			}
 
-	defer utils.WrapStmtClose(remoteIDStmt)
+			if flags.Valid {
+				f.FlagSet = imap.NewFlagSetFromSlice(strings.Split(flags.String, ","))
+			}
 
-	// GODT:2522 - Would SELECT GROUP BY id and then reconstructing the flag list over that be faster?
-	// GODT:2522 - Store remote ID in message flags
-
-	for _, id := range ids {
-		flags, err := utils.MapStmtRows[string](ctx, flagStmt, id)
+			return f, nil
+		}, args...)
 		if err != nil {
 			return nil, err
 		}
 
-		remoteID, err := utils.MapStmtRow[imap.MessageID](ctx, remoteIDStmt, id)
-		if err != nil {
-			return nil, err
-		}
-
-		result = append(result, db.MessageFlagSet{
-			ID:       id,
-			RemoteID: remoteID,
-			FlagSet:  imap.NewFlagSetFromSlice(flags),
-		})
+		result = append(result, r...)
 	}
 
 	return result, nil

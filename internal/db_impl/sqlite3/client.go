@@ -39,9 +39,23 @@ func (c *Client) Init(ctx context.Context) error {
 		return fmt.Errorf("failed to enable db pragma: %w", err)
 	}
 
+	c.debug = true
+	c.trace = true
+
 	return c.wrapTx(ctx, func(ctx context.Context, tx *sql.Tx, entry *logrus.Entry) error {
 		entry.Debugf("Running database migrations")
-		return RunMigrations(ctx, utils.TXWrapper{TX: tx})
+		var qw utils.QueryWrapper = &utils.TXWrapper{
+			TX: tx,
+		}
+
+		if c.debug {
+			qw = &utils.DebugQueryWrapper{
+				QW:    qw,
+				Entry: entry,
+			}
+		}
+
+		return RunMigrations(ctx, qw)
 	})
 }
 

@@ -12,7 +12,7 @@ import (
 
 type Migration struct{}
 
-func (m Migration) Run(ctx context.Context, tx utils.TXWrapper) error {
+func (m Migration) Run(ctx context.Context, tx utils.QueryWrapper) error {
 	tables := []Table{
 		&DeletedSubscriptionsTable{},
 		&MailboxesTable{},

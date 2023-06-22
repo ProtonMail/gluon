@@ -62,6 +62,15 @@ func MapQueryRowsFn[T any](ctx context.Context, qw QueryWrapper, query string, m
 	return mapSQLRowsFn(rows, m)
 }
 
+func QueryForEachRow(ctx context.Context, qw QueryWrapper, query string, m func(RowScanner) error, args ...any) error {
+	rows, err := qw.QueryContext(ctx, query, args...)
+	if err != nil {
+		return mapSQLError(err)
+	}
+
+	return mapSQLRowsForEach(rows, m)
+}
+
 func MapQueryRows[T any](ctx context.Context, qw QueryWrapper, query string, args ...any) ([]T, error) {
 	return MapQueryRowsFn(ctx, qw, query, func(scanner RowScanner) (T, error) {
 		var v T
@@ -205,6 +214,18 @@ func mapSQLRowsFn[T any](rows *sql.Rows, m func(RowScanner) (T, error)) ([]T, er
 	}
 
 	return result, nil
+}
+
+func mapSQLRowsForEach(rows *sql.Rows, m func(RowScanner) error) error {
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		if err := m(rows); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func mapSQLRowFn[T any](row *sql.Row, m func(scanner RowScanner) (T, error)) (T, error) {

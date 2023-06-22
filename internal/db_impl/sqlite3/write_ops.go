@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	v1 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v1"
 	"strings"
 
 	"github.com/ProtonMail/gluon/db"
@@ -406,9 +407,9 @@ func (w writeOps) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageR
 
 		for _, chunk := range xslices.Chunk(flagArgs, db.ChunkLimit) {
 			createFlagsQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
-				v0.MessageFlagsTableName,
-				v0.MessageFlagsFieldMessageID,
-				v0.MessageFlagsFieldValue,
+				v1.MessageFlagsTableName,
+				v1.MessageFlagsFieldMessageID,
+				v1.MessageFlagsFieldValue,
 				strings.Join(xslices.Repeat("(?,?)", len(chunk)/2), ","),
 			)
 
@@ -453,9 +454,9 @@ func (w writeOps) CreateMessageAndAddToMailbox(ctx context.Context, mbox imap.In
 
 	if req.Message.Flags.Len() != 0 {
 		createFlagsQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
-			v0.MessageFlagsTableName,
-			v0.MessageFlagsFieldMessageID,
-			v0.MessageFlagsFieldValue,
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
+			v1.MessageFlagsFieldValue,
 			strings.Join(xslices.Repeat("(?, ?)", req.Message.Flags.Len()), ","),
 		)
 
@@ -556,10 +557,10 @@ func (w writeOps) UpdateRemoteMessageID(ctx context.Context, internalID imap.Int
 
 func (w writeOps) AddFlagToMessages(ctx context.Context, ids []imap.InternalMessageID, flag string) error {
 	for _, chunk := range xslices.Chunk(ids, db.ChunkLimit) {
-		query := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
-			v0.MessageFlagsTableName,
-			v0.MessageFlagsFieldMessageID,
-			v0.MessageFlagsFieldValue,
+		query := fmt.Sprintf("INSERT OR IGNORE INTO %v (`%v`, `%v`) VALUES %v",
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
+			v1.MessageFlagsFieldValue,
 			strings.Join(xslices.Repeat("(?, ?)", len(chunk)), ","),
 		)
 
@@ -580,10 +581,10 @@ func (w writeOps) AddFlagToMessages(ctx context.Context, ids []imap.InternalMess
 func (w writeOps) RemoveFlagFromMessages(ctx context.Context, ids []imap.InternalMessageID, flag string) error {
 	for _, chunk := range xslices.Chunk(ids, db.ChunkLimit) {
 		query := fmt.Sprintf("DELETE FROM %v WHERE `%v` IN (%v) AND `%v` = ?",
-			v0.MessageFlagsTableName,
-			v0.MessageFlagsFieldMessageID,
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
 			utils.GenSQLIn(len(chunk)),
-			v0.MessageFlagsFieldValue,
+			v1.MessageFlagsFieldValue,
 		)
 
 		if _, err := utils.ExecQuery(ctx, w.qw, query, append(utils.MapSliceToAny(chunk), flag)...); err != nil {
@@ -602,17 +603,17 @@ func (w writeOps) SetFlagsOnMessages(ctx context.Context, ids []imap.InternalMes
 
 	for _, chunk := range xslices.Chunk(ids, db.ChunkLimit/2) {
 		deleteQuery := fmt.Sprintf("DELETE FROM %v WHERE `%v` IN (%v) AND `%v` NOT IN(%v)",
-			v0.MessageFlagsTableName,
-			v0.MessageFlagsFieldMessageID,
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
 			utils.GenSQLIn(len(chunk)),
-			v0.MessageFlagsFieldValue,
+			v1.MessageFlagsFieldValue,
 			flagsSQLIn,
 		)
 
-		insertQuery := fmt.Sprintf("INSERT OR REPLACE INTO %v (`%v`, `%v`) VALUES %v",
-			v0.MessageFlagsTableName,
-			v0.MessageFlagsFieldMessageID,
-			v0.MessageFlagsFieldValue,
+		insertQuery := fmt.Sprintf("INSERT OR IGNORE INTO %v (`%v`, `%v`) VALUES %v",
+			v1.MessageFlagsTableName,
+			v1.MessageFlagsFieldMessageID,
+			v1.MessageFlagsFieldValue,
 			strings.Join(xslices.Repeat("(?,?)", len(flagSlice)), ","),
 		)
 
