@@ -1,4 +1,4 @@
-package sqlite3
+package utils
 
 import (
 	"context"
@@ -11,254 +11,254 @@ import (
 
 // ReadTracer prints all method names to a trace log.
 type ReadTracer struct {
-	rd    db.ReadOnly
-	entry *logrus.Entry
+	RD    db.ReadOnly
+	Entry *logrus.Entry
 }
 
 func (r ReadTracer) MailboxExistsWithID(ctx context.Context, mboxID imap.InternalMailboxID) (bool, error) {
-	r.entry.Tracef("MailboxExistsWithID")
+	r.Entry.Tracef("MailboxExistsWithID")
 
-	return r.rd.MailboxExistsWithID(ctx, mboxID)
+	return r.RD.MailboxExistsWithID(ctx, mboxID)
 }
 
 func (r ReadTracer) MailboxExistsWithRemoteID(ctx context.Context, mboxID imap.MailboxID) (bool, error) {
-	r.entry.Tracef("MailboxExistsWithRemoteID")
+	r.Entry.Tracef("MailboxExistsWithRemoteID")
 
-	return r.rd.MailboxExistsWithRemoteID(ctx, mboxID)
+	return r.RD.MailboxExistsWithRemoteID(ctx, mboxID)
 }
 
 func (r ReadTracer) MailboxExistsWithName(ctx context.Context, name string) (bool, error) {
-	r.entry.Tracef("MailboxExistsWithName")
+	r.Entry.Tracef("MailboxExistsWithName")
 
-	return r.rd.MailboxExistsWithName(ctx, name)
+	return r.RD.MailboxExistsWithName(ctx, name)
 }
 
 func (r ReadTracer) GetMailboxIDFromRemoteID(ctx context.Context, mboxID imap.MailboxID) (imap.InternalMailboxID, error) {
-	r.entry.Tracef("GetMailboxIDFromRemoteID")
+	r.Entry.Tracef("GetMailboxIDFromRemoteID")
 
-	return r.rd.GetMailboxIDFromRemoteID(ctx, mboxID)
+	return r.RD.GetMailboxIDFromRemoteID(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxName(ctx context.Context, mboxID imap.InternalMailboxID) (string, error) {
-	r.entry.Tracef("GetMailboxName")
+	r.Entry.Tracef("GetMailboxName")
 
-	return r.rd.GetMailboxName(ctx, mboxID)
+	return r.RD.GetMailboxName(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxNameWithRemoteID(ctx context.Context, mboxID imap.MailboxID) (string, error) {
-	r.entry.Tracef("GetMailboxNameWithRemoteID")
+	r.Entry.Tracef("GetMailboxNameWithRemoteID")
 
-	return r.rd.GetMailboxNameWithRemoteID(ctx, mboxID)
+	return r.RD.GetMailboxNameWithRemoteID(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxMessageIDPairs(ctx context.Context, mboxID imap.InternalMailboxID) ([]db.MessageIDPair, error) {
-	r.entry.Tracef("GetMailboxMessageIDPairs")
+	r.Entry.Tracef("GetMailboxMessageIDPairs")
 
-	return r.rd.GetMailboxMessageIDPairs(ctx, mboxID)
+	return r.RD.GetMailboxMessageIDPairs(ctx, mboxID)
 }
 
 func (r ReadTracer) GetAllMailboxesWithAttr(ctx context.Context) ([]*db.Mailbox, error) {
-	r.entry.Tracef("GetAllMailboxesWithAttr")
+	r.Entry.Tracef("GetAllMailboxesWithAttr")
 
-	return r.rd.GetAllMailboxesWithAttr(ctx)
+	return r.RD.GetAllMailboxesWithAttr(ctx)
 }
 
 func (r ReadTracer) GetAllMailboxesAsRemoteIDs(ctx context.Context) ([]imap.MailboxID, error) {
-	r.entry.Tracef("GetAllMailboxesAsRemoteIDs")
+	r.Entry.Tracef("GetAllMailboxesAsRemoteIDs")
 
-	return r.rd.GetAllMailboxesAsRemoteIDs(ctx)
+	return r.RD.GetAllMailboxesAsRemoteIDs(ctx)
 }
 
 func (r ReadTracer) GetMailboxByName(ctx context.Context, name string) (*db.Mailbox, error) {
-	r.entry.Tracef("GetMailboxByName")
+	r.Entry.Tracef("GetMailboxByName")
 
-	return r.rd.GetMailboxByName(ctx, name)
+	return r.RD.GetMailboxByName(ctx, name)
 }
 
 func (r ReadTracer) GetMailboxByID(ctx context.Context, mboxID imap.InternalMailboxID) (*db.Mailbox, error) {
-	r.entry.Tracef("GetMailboxByID")
+	r.Entry.Tracef("GetMailboxByID")
 
-	return r.rd.GetMailboxByID(ctx, mboxID)
+	return r.RD.GetMailboxByID(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxByRemoteID(ctx context.Context, mboxID imap.MailboxID) (*db.Mailbox, error) {
-	r.entry.Tracef("GetMailboxByRemoteID")
+	r.Entry.Tracef("GetMailboxByRemoteID")
 
-	return r.rd.GetMailboxByRemoteID(ctx, mboxID)
+	return r.RD.GetMailboxByRemoteID(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxRecentCount(ctx context.Context, mboxID imap.InternalMailboxID) (int, error) {
-	r.entry.Tracef("GetMailboxRecentCount")
+	r.Entry.Tracef("GetMailboxRecentCount")
 
-	return r.rd.GetMailboxRecentCount(ctx, mboxID)
+	return r.RD.GetMailboxRecentCount(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxMessageCount(ctx context.Context, mboxID imap.InternalMailboxID) (int, error) {
-	r.entry.Tracef("GetMailboxMessageCount")
+	r.Entry.Tracef("GetMailboxMessageCount")
 
-	return r.rd.GetMailboxMessageCount(ctx, mboxID)
+	return r.RD.GetMailboxMessageCount(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxMessageCountWithRemoteID(ctx context.Context, mboxID imap.MailboxID) (int, error) {
-	r.entry.Tracef("GetMailboxMessageCountWithRemoteID")
+	r.Entry.Tracef("GetMailboxMessageCountWithRemoteID")
 
-	return r.rd.GetMailboxMessageCountWithRemoteID(ctx, mboxID)
+	return r.RD.GetMailboxMessageCountWithRemoteID(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxFlags(ctx context.Context, mboxID imap.InternalMailboxID) (imap.FlagSet, error) {
-	r.entry.Tracef("GetMailboxFlags")
+	r.Entry.Tracef("GetMailboxFlags")
 
-	return r.rd.GetMailboxFlags(ctx, mboxID)
+	return r.RD.GetMailboxFlags(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxPermanentFlags(ctx context.Context, mboxID imap.InternalMailboxID) (imap.FlagSet, error) {
-	r.entry.Tracef("GetMailboxPermanentFlags")
+	r.Entry.Tracef("GetMailboxPermanentFlags")
 
-	return r.rd.GetMailboxPermanentFlags(ctx, mboxID)
+	return r.RD.GetMailboxPermanentFlags(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxAttributes(ctx context.Context, mboxID imap.InternalMailboxID) (imap.FlagSet, error) {
-	r.entry.Tracef("GetMailboxAttributes")
+	r.Entry.Tracef("GetMailboxAttributes")
 
-	return r.rd.GetMailboxAttributes(ctx, mboxID)
+	return r.RD.GetMailboxAttributes(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxUID(ctx context.Context, mboxID imap.InternalMailboxID) (imap.UID, error) {
-	r.entry.Tracef("GetMailboxUID")
+	r.Entry.Tracef("GetMailboxUID")
 
-	return r.rd.GetMailboxUID(ctx, mboxID)
+	return r.RD.GetMailboxUID(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxMessageCountAndUID(ctx context.Context, mboxID imap.InternalMailboxID) (int, imap.UID, error) {
-	r.entry.Tracef("GetMailboxMessageCountAndUID")
+	r.Entry.Tracef("GetMailboxMessageCountAndUID")
 
-	return r.rd.GetMailboxMessageCountAndUID(ctx, mboxID)
+	return r.RD.GetMailboxMessageCountAndUID(ctx, mboxID)
 }
 
 func (r ReadTracer) GetMailboxMessageForNewSnapshot(ctx context.Context, mboxID imap.InternalMailboxID) ([]db.SnapshotMessageResult, error) {
-	r.entry.Tracef("GetMailboxMessagesForNewSnapshot")
+	r.Entry.Tracef("GetMailboxMessagesForNewSnapshot")
 
-	return r.rd.GetMailboxMessageForNewSnapshot(ctx, mboxID)
+	return r.RD.GetMailboxMessageForNewSnapshot(ctx, mboxID)
 }
 
 func (r ReadTracer) MailboxTranslateRemoteIDs(ctx context.Context, mboxIDs []imap.MailboxID) ([]imap.InternalMailboxID, error) {
-	r.entry.Tracef("MailboxTranslateRemoteIDs")
+	r.Entry.Tracef("MailboxTranslateRemoteIDs")
 
-	return r.rd.MailboxTranslateRemoteIDs(ctx, mboxIDs)
+	return r.RD.MailboxTranslateRemoteIDs(ctx, mboxIDs)
 }
 
 func (r ReadTracer) MailboxFilterContains(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []db.MessageIDPair) ([]imap.InternalMessageID, error) {
-	r.entry.Tracef("MailboxFilterContains")
+	r.Entry.Tracef("MailboxFilterContains")
 
-	return r.rd.MailboxFilterContains(ctx, mboxID, messageIDs)
+	return r.RD.MailboxFilterContains(ctx, mboxID, messageIDs)
 }
 
 func (r ReadTracer) MailboxFilterContainsInternalID(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]imap.InternalMessageID, error) {
-	r.entry.Tracef("MailboxFilterContainsInternalID")
+	r.Entry.Tracef("MailboxFilterContainsInternalID")
 
-	return r.rd.MailboxFilterContainsInternalID(ctx, mboxID, messageIDs)
+	return r.RD.MailboxFilterContainsInternalID(ctx, mboxID, messageIDs)
 }
 
 func (r ReadTracer) GetMailboxCount(ctx context.Context) (int, error) {
-	r.entry.Tracef("GetMailboxCount")
+	r.Entry.Tracef("GetMailboxCount")
 
-	return r.rd.GetMailboxCount(ctx)
+	return r.RD.GetMailboxCount(ctx)
 }
 
 func (r ReadTracer) GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]db.UIDWithFlags, error) {
-	r.entry.Tracef("GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump")
+	r.Entry.Tracef("GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump")
 
-	return r.rd.GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx, mboxID, messageIDs)
+	return r.RD.GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx, mboxID, messageIDs)
 }
 
 func (r ReadTracer) MessageExists(ctx context.Context, id imap.InternalMessageID) (bool, error) {
-	r.entry.Tracef("MessageExists")
+	r.Entry.Tracef("MessageExists")
 
-	return r.rd.MessageExists(ctx, id)
+	return r.RD.MessageExists(ctx, id)
 }
 
 func (r ReadTracer) MessageExistsWithRemoteID(ctx context.Context, id imap.MessageID) (bool, error) {
-	r.entry.Tracef("MessageExistsWithRemoteID")
+	r.Entry.Tracef("MessageExistsWithRemoteID")
 
-	return r.rd.MessageExistsWithRemoteID(ctx, id)
+	return r.RD.MessageExistsWithRemoteID(ctx, id)
 }
 
 func (r ReadTracer) GetMessageNoEdges(ctx context.Context, id imap.InternalMessageID) (*db.Message, error) {
-	r.entry.Tracef("GetMessagesNoEdges")
+	r.Entry.Tracef("GetMessagesNoEdges")
 
-	return r.rd.GetMessageNoEdges(ctx, id)
+	return r.RD.GetMessageNoEdges(ctx, id)
 }
 
 func (r ReadTracer) GetTotalMessageCount(ctx context.Context) (int, error) {
-	r.entry.Tracef("GetTotalMessagecount")
+	r.Entry.Tracef("GetTotalMessagecount")
 
-	return r.rd.GetTotalMessageCount(ctx)
+	return r.RD.GetTotalMessageCount(ctx)
 }
 
 func (r ReadTracer) GetMessageRemoteID(ctx context.Context, id imap.InternalMessageID) (imap.MessageID, error) {
-	r.entry.Tracef("GetMessageRemoteID")
+	r.Entry.Tracef("GetMessageRemoteID")
 
-	return r.rd.GetMessageRemoteID(ctx, id)
+	return r.RD.GetMessageRemoteID(ctx, id)
 }
 
 func (r ReadTracer) GetImportedMessageData(ctx context.Context, id imap.InternalMessageID) (*db.Message, error) {
-	r.entry.Tracef("GetImportedMessageData")
+	r.Entry.Tracef("GetImportedMessageData")
 
-	return r.rd.GetImportedMessageData(ctx, id)
+	return r.RD.GetImportedMessageData(ctx, id)
 }
 
 func (r ReadTracer) GetMessageDateAndSize(ctx context.Context, id imap.InternalMessageID) (time.Time, int, error) {
-	r.entry.Tracef("GetMessageDateAndSize")
+	r.Entry.Tracef("GetMessageDateAndSize")
 
-	return r.rd.GetMessageDateAndSize(ctx, id)
+	return r.RD.GetMessageDateAndSize(ctx, id)
 }
 
 func (r ReadTracer) GetMessageMailboxIDs(ctx context.Context, id imap.InternalMessageID) ([]imap.InternalMailboxID, error) {
-	r.entry.Tracef("GetMailboxIDs")
+	r.Entry.Tracef("GetMailboxIDs")
 
-	return r.rd.GetMessageMailboxIDs(ctx, id)
+	return r.RD.GetMessageMailboxIDs(ctx, id)
 }
 
 func (r ReadTracer) GetMessagesFlags(ctx context.Context, ids []imap.InternalMessageID) ([]db.MessageFlagSet, error) {
-	r.entry.Tracef("GetMessageFlags")
+	r.Entry.Tracef("GetMessageFlags")
 
-	return r.rd.GetMessagesFlags(ctx, ids)
+	return r.RD.GetMessagesFlags(ctx, ids)
 }
 
 func (r ReadTracer) GetMessageIDsMarkedAsDelete(ctx context.Context) ([]imap.InternalMessageID, error) {
-	r.entry.Tracef("GetMessageIDsMarkedAsDelete")
+	r.Entry.Tracef("GetMessageIDsMarkedAsDelete")
 
-	return r.rd.GetMessageIDsMarkedAsDelete(ctx)
+	return r.RD.GetMessageIDsMarkedAsDelete(ctx)
 }
 
 func (r ReadTracer) GetMessageIDFromRemoteID(ctx context.Context, id imap.MessageID) (imap.InternalMessageID, error) {
-	r.entry.Tracef("GetMessageIDFromRemoteID")
+	r.Entry.Tracef("GetMessageIDFromRemoteID")
 
-	return r.rd.GetMessageIDFromRemoteID(ctx, id)
+	return r.RD.GetMessageIDFromRemoteID(ctx, id)
 }
 
 func (r ReadTracer) GetMessageDeletedFlag(ctx context.Context, id imap.InternalMessageID) (bool, error) {
-	r.entry.Tracef("GetMessageDeletedFlag")
+	r.Entry.Tracef("GetMessageDeletedFlag")
 
-	return r.rd.GetMessageDeletedFlag(ctx, id)
+	return r.RD.GetMessageDeletedFlag(ctx, id)
 }
 
 func (r ReadTracer) GetAllMessagesIDsAsMap(ctx context.Context) (map[imap.InternalMessageID]struct{}, error) {
-	r.entry.Tracef("GetAllMessagesIDsAsMap")
+	r.Entry.Tracef("GetAllMessagesIDsAsMap")
 
-	return r.rd.GetAllMessagesIDsAsMap(ctx)
+	return r.RD.GetAllMessagesIDsAsMap(ctx)
 }
 
 func (r ReadTracer) GetDeletedSubscriptionSet(ctx context.Context) (map[imap.MailboxID]*db.DeletedSubscription, error) {
-	r.entry.Tracef("GetDeletedSubscriptionSet")
+	r.Entry.Tracef("GetDeletedSubscriptionSet")
 
-	return r.rd.GetDeletedSubscriptionSet(ctx)
+	return r.RD.GetDeletedSubscriptionSet(ctx)
 }
 
 // WriteTracer prints all method names to a trace log.
 type WriteTracer struct {
 	ReadTracer
-	tx db.Transaction
+	TX db.Transaction
 }
 
 func (w WriteTracer) CreateMailbox(
@@ -268,9 +268,9 @@ func (w WriteTracer) CreateMailbox(
 	flags, permFlags, attrs imap.FlagSet,
 	uidValidity imap.UID,
 ) (*db.Mailbox, error) {
-	w.entry.Tracef("CreateMailbox")
+	w.Entry.Tracef("CreateMailbox")
 
-	return w.tx.CreateMailbox(ctx, mboxID, name, flags, permFlags, attrs, uidValidity)
+	return w.TX.CreateMailbox(ctx, mboxID, name, flags, permFlags, attrs, uidValidity)
 }
 
 func (w WriteTracer) GetOrCreateMailbox(
@@ -280,9 +280,9 @@ func (w WriteTracer) GetOrCreateMailbox(
 	flags, permFlags, attrs imap.FlagSet,
 	uidValidity imap.UID,
 ) (*db.Mailbox, error) {
-	w.entry.Tracef("GetOrCreateMailbox")
+	w.Entry.Tracef("GetOrCreateMailbox")
 
-	return w.tx.GetOrCreateMailbox(ctx, mboxID, name, flags, permFlags, attrs, uidValidity)
+	return w.TX.GetOrCreateMailbox(ctx, mboxID, name, flags, permFlags, attrs, uidValidity)
 }
 
 func (w WriteTracer) GetOrCreateMailboxAlt(
@@ -291,27 +291,27 @@ func (w WriteTracer) GetOrCreateMailboxAlt(
 	delimiter string,
 	uidValidity imap.UID,
 ) (*db.Mailbox, error) {
-	w.entry.Tracef("GetOrCreateMailboxAlt")
+	w.Entry.Tracef("GetOrCreateMailboxAlt")
 
-	return w.tx.GetOrCreateMailboxAlt(ctx, mbox, delimiter, uidValidity)
+	return w.TX.GetOrCreateMailboxAlt(ctx, mbox, delimiter, uidValidity)
 }
 
 func (w WriteTracer) RenameMailboxWithRemoteID(ctx context.Context, mboxID imap.MailboxID, name string) error {
-	w.entry.Tracef("RenameMailboxWithRemoteID")
+	w.Entry.Tracef("RenameMailboxWithRemoteID")
 
-	return w.tx.RenameMailboxWithRemoteID(ctx, mboxID, name)
+	return w.TX.RenameMailboxWithRemoteID(ctx, mboxID, name)
 }
 
 func (w WriteTracer) DeleteMailboxWithRemoteID(ctx context.Context, mboxID imap.MailboxID) error {
-	w.entry.Tracef("DeleteMailboxWithRemoteID")
+	w.Entry.Tracef("DeleteMailboxWithRemoteID")
 
-	return w.tx.DeleteMailboxWithRemoteID(ctx, mboxID)
+	return w.TX.DeleteMailboxWithRemoteID(ctx, mboxID)
 }
 
 func (w WriteTracer) BumpMailboxUIDNext(ctx context.Context, mboxID imap.InternalMailboxID, count int) error {
-	w.entry.Tracef("BumpMailboxUIDNext")
+	w.Entry.Tracef("BumpMailboxUIDNext")
 
-	return w.tx.BumpMailboxUIDNext(ctx, mboxID, count)
+	return w.TX.BumpMailboxUIDNext(ctx, mboxID, count)
 }
 
 func (w WriteTracer) AddMessagesToMailbox(
@@ -319,9 +319,9 @@ func (w WriteTracer) AddMessagesToMailbox(
 	mboxID imap.InternalMailboxID,
 	messageIDs []imap.InternalMessageID,
 ) ([]db.UIDWithFlags, error) {
-	w.entry.Tracef("AddMessagesToMailbox")
+	w.Entry.Tracef("AddMessagesToMailbox")
 
-	return w.tx.AddMessagesToMailbox(ctx, mboxID, messageIDs)
+	return w.TX.AddMessagesToMailbox(ctx, mboxID, messageIDs)
 }
 
 func (w WriteTracer) BumpMailboxUIDsForMessage(
@@ -329,9 +329,9 @@ func (w WriteTracer) BumpMailboxUIDsForMessage(
 	mboxID imap.InternalMailboxID,
 	messageIDs []imap.InternalMessageID,
 ) ([]db.UIDWithFlags, error) {
-	w.entry.Tracef("BumpMailboxUIDsForMessage")
+	w.Entry.Tracef("BumpMailboxUIDsForMessage")
 
-	return w.tx.BumpMailboxUIDsForMessage(ctx, mboxID, messageIDs)
+	return w.TX.BumpMailboxUIDsForMessage(ctx, mboxID, messageIDs)
 }
 
 func (w WriteTracer) RemoveMessagesFromMailbox(
@@ -339,9 +339,9 @@ func (w WriteTracer) RemoveMessagesFromMailbox(
 	mboxID imap.InternalMailboxID,
 	messageIDs []imap.InternalMessageID,
 ) error {
-	w.entry.Tracef("RemoveMessagesFromMailbox")
+	w.Entry.Tracef("RemoveMessagesFromMailbox")
 
-	return w.tx.RemoveMessagesFromMailbox(ctx, mboxID, messageIDs)
+	return w.TX.RemoveMessagesFromMailbox(ctx, mboxID, messageIDs)
 }
 
 func (w WriteTracer) ClearRecentFlagInMailboxOnMessage(
@@ -349,21 +349,21 @@ func (w WriteTracer) ClearRecentFlagInMailboxOnMessage(
 	mboxID imap.InternalMailboxID,
 	messageID imap.InternalMessageID,
 ) error {
-	w.entry.Tracef("ClearRecentFlagInMailboxOnMessage")
+	w.Entry.Tracef("ClearRecentFlagInMailboxOnMessage")
 
-	return w.tx.ClearRecentFlagInMailboxOnMessage(ctx, mboxID, messageID)
+	return w.TX.ClearRecentFlagInMailboxOnMessage(ctx, mboxID, messageID)
 }
 
 func (w WriteTracer) ClearRecentFlagsInMailbox(ctx context.Context, mboxID imap.InternalMailboxID) error {
-	w.entry.Tracef("ClearRecentFlagsInMailbox")
+	w.Entry.Tracef("ClearRecentFlagsInMailbox")
 
-	return w.tx.ClearRecentFlagsInMailbox(ctx, mboxID)
+	return w.TX.ClearRecentFlagsInMailbox(ctx, mboxID)
 }
 
 func (w WriteTracer) CreateMailboxIfNotExists(ctx context.Context, mbox imap.Mailbox, delimiter string, uidValidity imap.UID) error {
-	w.entry.Tracef("ClearMailboxIfNotExists")
+	w.Entry.Tracef("ClearMailboxIfNotExists")
 
-	return w.tx.CreateMailboxIfNotExists(ctx, mbox, delimiter, uidValidity)
+	return w.TX.CreateMailboxIfNotExists(ctx, mbox, delimiter, uidValidity)
 }
 
 func (w WriteTracer) SetMailboxMessagesDeletedFlag(
@@ -372,33 +372,33 @@ func (w WriteTracer) SetMailboxMessagesDeletedFlag(
 	messageIDs []imap.InternalMessageID,
 	deleted bool,
 ) error {
-	w.entry.Tracef("SetMailboxMessagesDeleteFlag")
+	w.Entry.Tracef("SetMailboxMessagesDeleteFlag")
 
-	return w.tx.SetMailboxMessagesDeletedFlag(ctx, mboxID, messageIDs, deleted)
+	return w.TX.SetMailboxMessagesDeletedFlag(ctx, mboxID, messageIDs, deleted)
 }
 
 func (w WriteTracer) SetMailboxSubscribed(ctx context.Context, mboxID imap.InternalMailboxID, subscribed bool) error {
-	w.entry.Tracef("SetMailboxSubscribed")
+	w.Entry.Tracef("SetMailboxSubscribed")
 
-	return w.tx.SetMailboxSubscribed(ctx, mboxID, subscribed)
+	return w.TX.SetMailboxSubscribed(ctx, mboxID, subscribed)
 }
 
 func (w WriteTracer) UpdateRemoteMailboxID(ctx context.Context, mobxID imap.InternalMailboxID, remoteID imap.MailboxID) error {
-	w.entry.Tracef("UpdateRemoteMailboxID")
+	w.Entry.Tracef("UpdateRemoteMailboxID")
 
-	return w.tx.UpdateRemoteMailboxID(ctx, mobxID, remoteID)
+	return w.TX.UpdateRemoteMailboxID(ctx, mobxID, remoteID)
 }
 
 func (w WriteTracer) SetMailboxUIDValidity(ctx context.Context, mboxID imap.InternalMailboxID, uidValidity imap.UID) error {
-	w.entry.Tracef("SetMailboxUIDValidity")
+	w.Entry.Tracef("SetMailboxUIDValidity")
 
-	return w.tx.SetMailboxUIDValidity(ctx, mboxID, uidValidity)
+	return w.TX.SetMailboxUIDValidity(ctx, mboxID, uidValidity)
 }
 
 func (w WriteTracer) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageReq) ([]*db.Message, error) {
-	w.entry.Tracef("CreateMessages")
+	w.Entry.Tracef("CreateMessages")
 
-	return w.tx.CreateMessages(ctx, reqs...)
+	return w.TX.CreateMessages(ctx, reqs...)
 }
 
 func (w WriteTracer) CreateMessageAndAddToMailbox(
@@ -406,67 +406,67 @@ func (w WriteTracer) CreateMessageAndAddToMailbox(
 	mbox imap.InternalMailboxID,
 	req *db.CreateMessageReq,
 ) (imap.UID, imap.FlagSet, error) {
-	w.entry.Tracef("CreateMessageAndAddToMailbox")
+	w.Entry.Tracef("CreateMessageAndAddToMailbox")
 
-	return w.tx.CreateMessageAndAddToMailbox(ctx, mbox, req)
+	return w.TX.CreateMessageAndAddToMailbox(ctx, mbox, req)
 }
 
 func (w WriteTracer) MarkMessageAsDeleted(ctx context.Context, id imap.InternalMessageID) error {
-	w.entry.Tracef("MarkMessageAsDeleted")
+	w.Entry.Tracef("MarkMessageAsDeleted")
 
-	return w.tx.MarkMessageAsDeleted(ctx, id)
+	return w.TX.MarkMessageAsDeleted(ctx, id)
 }
 
 func (w WriteTracer) MarkMessageAsDeletedAndAssignRandomRemoteID(ctx context.Context, id imap.InternalMessageID) error {
-	w.entry.Tracef("MarkMessageAsDeletedAndAssignRandomRemoteID")
+	w.Entry.Tracef("MarkMessageAsDeletedAndAssignRandomRemoteID")
 
-	return w.tx.MarkMessageAsDeletedAndAssignRandomRemoteID(ctx, id)
+	return w.TX.MarkMessageAsDeletedAndAssignRandomRemoteID(ctx, id)
 }
 
 func (w WriteTracer) MarkMessageAsDeletedWithRemoteID(ctx context.Context, id imap.MessageID) error {
-	w.entry.Tracef("MarkMessageAsDeletedWithRemoteID")
+	w.Entry.Tracef("MarkMessageAsDeletedWithRemoteID")
 
-	return w.tx.MarkMessageAsDeletedWithRemoteID(ctx, id)
+	return w.TX.MarkMessageAsDeletedWithRemoteID(ctx, id)
 }
 
 func (w WriteTracer) DeleteMessages(ctx context.Context, ids []imap.InternalMessageID) error {
-	w.entry.Tracef("DeleteMessages")
+	w.Entry.Tracef("DeleteMessages")
 
-	return w.tx.DeleteMessages(ctx, ids)
+	return w.TX.DeleteMessages(ctx, ids)
 }
 
 func (w WriteTracer) UpdateRemoteMessageID(ctx context.Context, internalID imap.InternalMessageID, remoteID imap.MessageID) error {
-	w.entry.Tracef("UpdateRemoteMessageID")
+	w.Entry.Tracef("UpdateRemoteMessageID")
 
-	return w.tx.UpdateRemoteMessageID(ctx, internalID, remoteID)
+	return w.TX.UpdateRemoteMessageID(ctx, internalID, remoteID)
 }
 
 func (w WriteTracer) AddFlagToMessages(ctx context.Context, ids []imap.InternalMessageID, flag string) error {
-	w.entry.Tracef("AddFlagsToMessage")
+	w.Entry.Tracef("AddFlagsToMessage")
 
-	return w.tx.AddFlagToMessages(ctx, ids, flag)
+	return w.TX.AddFlagToMessages(ctx, ids, flag)
 }
 
 func (w WriteTracer) RemoveFlagFromMessages(ctx context.Context, ids []imap.InternalMessageID, flag string) error {
-	w.entry.Tracef("RemoveFlagsFromMessages")
+	w.Entry.Tracef("RemoveFlagsFromMessages")
 
-	return w.tx.RemoveFlagFromMessages(ctx, ids, flag)
+	return w.TX.RemoveFlagFromMessages(ctx, ids, flag)
 }
 
 func (w WriteTracer) SetFlagsOnMessages(ctx context.Context, ids []imap.InternalMessageID, flags imap.FlagSet) error {
-	w.entry.Tracef("SetFlagsOnMessages")
+	w.Entry.Tracef("SetFlagsOnMessages")
 
-	return w.tx.SetFlagsOnMessages(ctx, ids, flags)
+	return w.TX.SetFlagsOnMessages(ctx, ids, flags)
 }
 
 func (w WriteTracer) AddDeletedSubscription(ctx context.Context, mboxName string, mboxID imap.MailboxID) error {
-	w.entry.Tracef("AddDeletedSubscription")
+	w.Entry.Tracef("AddDeletedSubscription")
 
-	return w.tx.AddDeletedSubscription(ctx, mboxName, mboxID)
+	return w.TX.AddDeletedSubscription(ctx, mboxName, mboxID)
 }
 
 func (w WriteTracer) RemoveDeletedSubscriptionWithName(ctx context.Context, mboxName string) (int, error) {
-	w.entry.Tracef("RemoveDeletedSubscriptionWithName")
+	w.Entry.Tracef("RemoveDeletedSubscriptionWithName")
 
-	return w.tx.RemoveDeletedSubscriptionWithName(ctx, mboxName)
+	return w.TX.RemoveDeletedSubscriptionWithName(ctx, mboxName)
 }

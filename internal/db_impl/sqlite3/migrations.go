@@ -4,19 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/ProtonMail/gluon/db"
+	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
+	v0 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v0"
 	"github.com/sirupsen/logrus"
 )
 
 type Migration interface {
-	Run(ctx context.Context, tx TXWrapper) error
+	Run(ctx context.Context, tx utils.TXWrapper) error
 }
 
 var migrationList = []Migration{
-	&MigrationV0{},
+	&v0.Migration{},
 }
 
-func RunMigrations(ctx context.Context, tx TXWrapper) error {
+func RunMigrations(ctx context.Context, tx utils.TXWrapper) error {
 	dbVersion, err := getDatabaseVersion(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("failed to get db version: %w", err)
@@ -62,10 +65,10 @@ func RunMigrations(ctx context.Context, tx TXWrapper) error {
 }
 
 // getDatabaseVersion returns -1 if the version table does not exist or the  version information contained within.
-func getDatabaseVersion(ctx context.Context, tx TXWrapper) (int, error) {
+func getDatabaseVersion(ctx context.Context, tx utils.TXWrapper) (int, error) {
 	query := "SELECT `name` FROM sqlite_master WHERE `type` = 'table' AND `name` NOT LIKE 'sqlite_%' AND `name` = 'gluon_version'"
 
-	_, err := MapQueryRow[string](ctx, tx, query)
+	_, err := utils.MapQueryRow[string](ctx, tx, query)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return -1, nil
@@ -76,11 +79,11 @@ func getDatabaseVersion(ctx context.Context, tx TXWrapper) (int, error) {
 
 	versionQuery := "SELECT `version` FROM gluon_version WHERE `id` = 0"
 
-	return MapQueryRow[int](ctx, tx, versionQuery)
+	return utils.MapQueryRow[int](ctx, tx, versionQuery)
 }
 
-func updateDBVersion(ctx context.Context, tx TXWrapper, version int) error {
+func updateDBVersion(ctx context.Context, tx utils.TXWrapper, version int) error {
 	query := "UPDATE gluon_version SET `version` = ? WHERE `id` = 0"
 
-	return ExecQueryAndCheckUpdatedNotZero(ctx, tx, query, version)
+	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, tx, query, version)
 }
