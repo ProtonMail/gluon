@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -262,12 +261,6 @@ func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptio
 
 	for _, op := range modifiers {
 		op.apply(options)
-	}
-
-	if _, ok := os.LookupEnv("GLUON_TEST_FORCE_ENT_DB"); ok {
-		logrus.Info("Forcing database to ent")
-
-		options.database = db_impl.NewEntDB()
 	}
 
 	return options
