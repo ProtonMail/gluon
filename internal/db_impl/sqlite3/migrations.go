@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ProtonMail/gluon/imap"
 	v1 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v1"
 
 	"github.com/ProtonMail/gluon/db"
@@ -13,7 +14,7 @@ import (
 )
 
 type Migration interface {
-	Run(ctx context.Context, tx utils.QueryWrapper) error
+	Run(ctx context.Context, tx utils.QueryWrapper, generator imap.UIDValidityGenerator) error
 }
 
 var migrationList = []Migration{
@@ -21,7 +22,7 @@ var migrationList = []Migration{
 	&v1.Migration{},
 }
 
-func RunMigrations(ctx context.Context, tx utils.QueryWrapper) error {
+func RunMigrations(ctx context.Context, tx utils.QueryWrapper, generator imap.UIDValidityGenerator) error {
 	dbVersion, err := getDatabaseVersion(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("failed to get db version: %w", err)
@@ -33,7 +34,7 @@ func RunMigrations(ctx context.Context, tx utils.QueryWrapper) error {
 		for idx, m := range migrationList {
 			logrus.Debugf("Running migration for version %v", idx)
 
-			if err := m.Run(ctx, tx); err != nil {
+			if err := m.Run(ctx, tx, generator); err != nil {
 				return fmt.Errorf("failed to run migration %v: %w", idx, err)
 			}
 		}
@@ -52,7 +53,7 @@ func RunMigrations(ctx context.Context, tx utils.QueryWrapper) error {
 	for i := dbVersion + 1; i < len(migrationList); i++ {
 		logrus.Debugf("Running migration for version %v", i)
 
-		if err := migrationList[i].Run(ctx, tx); err != nil {
+		if err := migrationList[i].Run(ctx, tx, generator); err != nil {
 			return err
 		}
 	}

@@ -13,21 +13,214 @@ import (
 
 type Migration struct{}
 
-func (m Migration) Run(ctx context.Context, tx utils.QueryWrapper) error {
-	// Migrate Messages And Flags
+func (m Migration) Run(ctx context.Context, tx utils.QueryWrapper, generator imap.UIDValidityGenerator) error {
+	// Migrate Messages And Flags.
 	if err := migrateMessagesAndFlags(ctx, tx); err != nil {
 		return err
 	}
 
-	// Create new mailbox flags and attributes tables
+	// Migrate Mailboxes.
+	if err := migrateMailboxesAndFlags(ctx, tx, generator); err != nil {
+		return err
+	}
 
-	// Migrate mailbox and attributes tables
-
-	// Create a new table for each mailbox, use id as mailbox_table name
-
-	// Migrate all entries from UIDs table to new mailbox tables
+	// Migrate Mailbox Messages.
 
 	return deleteOldTables(ctx, tx)
+}
+
+func migrateMailboxesAndFlags(ctx context.Context, tx utils.QueryWrapper, generator imap.UIDValidityGenerator) error {
+	if err := migrateMailboxes(ctx, tx, generator); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap.UIDValidityGenerator) error {
+	// Create mailboxes table
+	{
+		query := fmt.Sprintf("CREATE TABLE `%[1]v` (`%[2]v` integer NOT NULL PRIMARY KEY AUTOINCREMENT, `%[3]v` text NOT NULL UNIQUE, "+
+			"`%[4]v` text NOT NULL UNIQUE, `%[5]v` integer NOT NULL , "+
+			"`%[6]v` bool NOT NULL DEFAULT true)",
+			MailboxesTableName,
+			MailboxesFieldID,
+			MailboxesFieldRemoteID,
+			MailboxesFieldName,
+			MailboxesFieldUIDValidity,
+			MailboxesFieldSubscribed,
+		)
+
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Create mailboxes flags table.
+	{
+		query := fmt.Sprintf("CREATE TABLE `%[1]v` (`%[2]v` text NOT NULL, `%[3]v` uuid NOT NULL, "+
+			"CONSTRAINT `mailbox_flags_mailbox_id` FOREIGN KEY (`%[3]v`) REFERENCES `%[4]v` (`%[5]v`) ON DELETE CASCADE, "+
+			"PRIMARY KEY (%[2]v, %[3]v)"+
+			")",
+			MailboxFlagsTableName,
+			MailboxFlagsFieldValue,
+			MailboxFlagsFieldMailboxID,
+			MailboxesTableName,
+			MailboxesFieldID,
+		)
+
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Create perm mailboxes flags table.
+	{
+		query := fmt.Sprintf("CREATE TABLE `%[1]v` (`%[2]v` text NOT NULL, `%[3]v` uuid NOT NULL, "+
+			"CONSTRAINT `perm_mailbox_flags_mailbox_id` FOREIGN KEY (`%[3]v`) REFERENCES `%[4]v` (`%[5]v`) ON DELETE CASCADE, "+
+			"PRIMARY KEY (%[2]v, %[3]v)"+
+			")",
+			MailboxPermFlagsTableName,
+			MailboxPermFlagsFieldValue,
+			MailboxPermFlagsFieldMailboxID,
+			MailboxesTableName,
+			MailboxesFieldID,
+		)
+
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Create Mailbox Attributes table.
+	{
+		query := fmt.Sprintf("CREATE TABLE `%[1]v` (`%[2]v` text NOT NULL, `%[3]v` uuid NOT NULL, "+
+			"CONSTRAINT `perm_mailbox_flags_mailbox_id` FOREIGN KEY (`%[3]v`) REFERENCES `%[4]v` (`%[5]v`) ON DELETE CASCADE, "+
+			"PRIMARY KEY (%[2]v, %[3]v)"+
+			")",
+			MailboxAttrsTableName,
+			MailboxAttrsFieldValue,
+			MailboxAttrsFieldMailboxID,
+			MailboxesTableName,
+			MailboxesFieldID,
+		)
+
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Migrate mailboxes and assign new UID validity.
+	loadExistingQuery := fmt.Sprintf("SELECT * FROM %v", v0.MailboxesTableName)
+
+	mailboxes, err := utils.MapQueryRowsFn(ctx, tx, loadExistingQuery, scanMailboxV0)
+	if err != nil {
+		return err
+	}
+
+	for _, m := range mailboxes {
+		newUIDValidity, err := generator.Generate()
+		if err != nil {
+			return err
+		}
+
+		m.UIDValidity = newUIDValidity
+	}
+
+	for _, chunk := range xslices.Chunk(mailboxes, db.ChunkLimit) {
+		query := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`, `%v`) VALUES %v RETURNING `%v`",
+			MailboxesTableName,
+			MailboxesFieldRemoteID,
+			MailboxesFieldName,
+			MailboxesFieldUIDValidity,
+			MailboxesFieldSubscribed,
+			strings.Join(xslices.Repeat("(?,?,?,?,?)", len(chunk)), ","),
+			MailboxesFieldID,
+		)
+
+		args := make([]any, 0, len(chunk)*5)
+		for _, m := range chunk {
+			args = append(args, m.ID, m.RemoteID, m.Name, m.UIDValidity, m.Subscribed)
+		}
+
+		newMailboxIDs, err := utils.MapQueryRows[imap.InternalMailboxID](ctx, tx, query, args...)
+		if err != nil {
+			return err
+		}
+
+		for _, mboxID := range newMailboxIDs {
+			query := CreateMailboxMessageTableQuery(mboxID)
+
+			if err := utils.ExecQueryAndCheckUpdatedNotZero(ctx, tx, query); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Copy Messages data
+	oldToNewIDMap := make(map[imap.InternalMailboxID]imap.InternalMailboxID, len(mailboxes))
+
+	for _, m := range mailboxes {
+		query := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = ? LIMIT 1",
+			MailboxesFieldID,
+			MailboxesTableName,
+			MailboxesFieldName,
+		)
+
+		newID, err := utils.MapQueryRow[imap.InternalMailboxID](ctx, tx, query, m.Name)
+		if err != nil {
+			return err
+		}
+
+		oldToNewIDMap[m.ID] = newID
+	}
+
+	// Copy mailbox flags.
+	if err := copyMailboxFlags(
+		ctx,
+		tx,
+		oldToNewIDMap,
+		v0.MailboxFlagsTableName,
+		v0.MailboxFlagsFieldMailboxID,
+		v0.MailboxFlagsFieldValue,
+		MailboxFlagsTableName,
+		MailboxFlagsFieldMailboxID,
+		MailboxFlagsFieldValue,
+	); err != nil {
+		return err
+	}
+
+	// Copy mailbox perm flags.
+	if err := copyMailboxFlags(
+		ctx,
+		tx,
+		oldToNewIDMap,
+		v0.MailboxPermFlagsTableName,
+		v0.MailboxPermFlagsFieldMailboxID,
+		v0.MailboxPermFlagsFieldValue,
+		MailboxPermFlagsTableName,
+		MailboxPermFlagsFieldMailboxID,
+		MailboxPermFlagsFieldValue,
+	); err != nil {
+		return err
+	}
+
+	// Copy mailbox attributes.
+	if err := copyMailboxFlags(
+		ctx,
+		tx,
+		oldToNewIDMap,
+		v0.MailboxAttrsTableName,
+		v0.MailboxAttrsFieldMailboxID,
+		v0.MailboxAttrsFieldValue,
+		MailboxAttrsTableName,
+		MailboxAttrsFieldMailboxID,
+		MailboxAttrsFieldValue,
+	); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func migrateMessagesAndFlags(ctx context.Context, tx utils.QueryWrapper) error {
@@ -115,7 +308,6 @@ func migrateMessageFlags(ctx context.Context, tx utils.QueryWrapper) error {
 		}
 
 		if len(flags) != 0 {
-
 			remoteMessageIDsQuery := fmt.Sprintf("SELECT `%v`, `%v` FROM %v", v0.MessagesFieldID, v0.MessagesFieldRemoteID, v0.MessagesTableName)
 			remoteMessagesIDs := make(map[imap.InternalMessageID]imap.MessageID)
 
@@ -158,11 +350,50 @@ func migrateMessageFlags(ctx context.Context, tx utils.QueryWrapper) error {
 }
 
 func deleteOldTables(ctx context.Context, tx utils.QueryWrapper) error {
-
 	// Drop Messages Flags table.
 	{
 		query := fmt.Sprintf("DROP TABLE `%v`", v0.MessageFlagsTableName)
 
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Drop mailbox flags table.
+	{
+		query := fmt.Sprintf("DROP TABLE `%v`", v0.MailboxFlagsTableName)
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Drop mailbox perm flags table.
+	{
+		query := fmt.Sprintf("DROP TABLE `%v`", v0.MailboxPermFlagsTableName)
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Drop mailbox attr table.
+	{
+		query := fmt.Sprintf("DROP TABLE `%v`", v0.MailboxAttrsTableName)
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Drop ui_ds table
+	{
+		query := fmt.Sprintf("DROP TABLE `%v`", v0.UIDsTableName)
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Drop Mailboxes table.
+	{
+		query := fmt.Sprintf("DROP TABLE `%v`", v0.MailboxesTableName)
 		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
 			return err
 		}

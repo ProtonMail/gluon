@@ -2,13 +2,14 @@ package db
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/imap"
 	"path/filepath"
 )
 
 const ChunkLimit = 1000
 
 type Client interface {
-	Init(ctx context.Context) error
+	Init(ctx context.Context, generator imap.UIDValidityGenerator) error
 	Read(ctx context.Context, op func(context.Context, ReadOnly) error) error
 	Write(ctx context.Context, op func(context.Context, Transaction) error) error
 	Close() error

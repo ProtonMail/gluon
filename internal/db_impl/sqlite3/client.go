@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/ProtonMail/gluon/imap"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -26,7 +27,7 @@ type Client struct {
 	trace bool
 }
 
-func (c *Client) Init(ctx context.Context) error {
+func (c *Client) Init(ctx context.Context, generator imap.UIDValidityGenerator) error {
 	if _, err := c.db.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
 		return fmt.Errorf("failed to enable db pragma: %w", err)
 	}
@@ -55,7 +56,7 @@ func (c *Client) Init(ctx context.Context) error {
 			}
 		}
 
-		return RunMigrations(ctx, qw)
+		return RunMigrations(ctx, qw, generator)
 	})
 }
 
