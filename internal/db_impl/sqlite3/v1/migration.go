@@ -95,7 +95,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 	// Create Mailbox Attributes table.
 	{
 		query := fmt.Sprintf("CREATE TABLE `%[1]v` (`%[2]v` text NOT NULL, `%[3]v` uuid NOT NULL, "+
-			"CONSTRAINT `perm_mailbox_flags_mailbox_id` FOREIGN KEY (`%[3]v`) REFERENCES `%[4]v` (`%[5]v`) ON DELETE CASCADE, "+
+			"CONSTRAINT `perm_attrs_flags_mailbox_id` FOREIGN KEY (`%[3]v`) REFERENCES `%[4]v` (`%[5]v`) ON DELETE CASCADE, "+
 			"PRIMARY KEY (%[2]v, %[3]v)"+
 			")",
 			MailboxAttrsTableName,
@@ -220,7 +220,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 		return err
 	}
 
-	return nil
+	return migrateMailboxMessages(ctx, tx, oldToNewIDMap)
 }
 
 func migrateMessagesAndFlags(ctx context.Context, tx utils.QueryWrapper) error {

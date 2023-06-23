@@ -6,6 +6,7 @@ import (
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
+	v0 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v0"
 	"github.com/bradenaw/juniper/xslices"
 	"strings"
 )
@@ -106,6 +107,82 @@ func copyMailboxFlags(ctx context.Context,
 
 		if _, err := utils.ExecQuery(ctx, tx, insertQuery, args...); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+type uidMessageV0 struct {
+	UID       imap.UID
+	Deleted   bool
+	Recent    bool
+	MessageID imap.InternalMessageID
+	RemoteID  imap.MessageID
+}
+
+func scanUIDMessageV0(scanner utils.RowScanner) (uidMessageV0, error) {
+	var m uidMessageV0
+
+	if err := scanner.Scan(&m.UID, &m.MessageID, &m.RemoteID, &m.Recent, &m.Deleted); err != nil {
+		return uidMessageV0{}, err
+	}
+
+	return m, nil
+}
+
+func migrateMailboxMessages(
+	ctx context.Context,
+	tx utils.QueryWrapper,
+	oldToNewIDMap map[imap.InternalMailboxID]imap.InternalMailboxID,
+) error {
+	loadMessagesQuery := fmt.Sprintf("SELECT u.`%v`, u.`%v`, m.`%v`, u.`%v`, u.`%v` FROM %v AS u "+
+		"JOIN %v AS m ON m.`%v` = u.`%v` "+
+		"WHERE u.`%v` = ? ORDER BY u.`%v`",
+		v0.UIDsFieldUID,
+		v0.UIDsFieldMessageID,
+		v0.MessagesFieldRemoteID,
+		v0.UIDsFieldRecent,
+		v0.UIDsFieldDeleted,
+		v0.UIDsTableName,
+		v0.MessagesTableName,
+		v0.MessagesFieldID,
+		v0.UIDsFieldMessageID,
+		v0.UIDsFieldMailboxID,
+		v0.UIDsFieldUID,
+	)
+
+	loadMessagesStmt, err := tx.PrepareStatement(ctx, loadMessagesQuery)
+	if err != nil {
+		return err
+	}
+
+	defer utils.WrapStmtClose(loadMessagesStmt)
+
+	for oldMboxID, newMBoxId := range oldToNewIDMap {
+		messages, err := utils.MapStmtRowsFn(ctx, loadMessagesStmt, scanUIDMessageV0, oldMboxID)
+		if err != nil {
+			return err
+		}
+
+		for _, chunk := range xslices.Chunk(messages, db.ChunkLimit) {
+			query := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`, `%v`) VALUES %v",
+				MailboxMessageTableName(newMBoxId),
+				MailboxMessagesFieldMessageID,
+				MailboxMessagesFieldMessageRemoteID,
+				MailboxMessagesFieldRecent,
+				MailboxMessagesFieldDeleted,
+				strings.Join(xslices.Repeat("(?,?,?,?)", len(chunk)), ","),
+			)
+
+			args := make([]any, 0, len(chunk)*4)
+			for _, m := range chunk {
+				args = append(args, m.MessageID, m.RemoteID, m.Recent, m.Deleted)
+			}
+
+			if _, err := utils.ExecQuery(ctx, tx, query, args...); err != nil {
+				return err
+			}
 		}
 	}
 
