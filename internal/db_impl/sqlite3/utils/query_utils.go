@@ -170,7 +170,8 @@ func MapSliceToAny[T any](v []T) []any {
 }
 
 func QueryExists(ctx context.Context, qw QueryWrapper, query string, args ...any) (bool, error) {
-	if _, err := MapQueryRow[int](ctx, qw, query, args...); err != nil {
+	v, err := MapQueryRow[int](ctx, qw, query, args...)
+	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return false, nil
 		}
@@ -178,7 +179,7 @@ func QueryExists(ctx context.Context, qw QueryWrapper, query string, args ...any
 		return false, err
 	}
 
-	return true, nil
+	return v > 0, nil
 }
 
 func WrapStmtClose(st StmtWrapper) {

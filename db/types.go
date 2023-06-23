@@ -89,7 +89,6 @@ type Mailbox struct {
 	ID             imap.InternalMailboxID
 	RemoteID       imap.MailboxID
 	Name           string
-	UIDNext        imap.UID
 	UIDValidity    imap.UID
 	Subscribed     bool
 	Flags          []*MailboxFlag

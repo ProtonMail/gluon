@@ -37,7 +37,12 @@ func (s *Session) handleStatus(ctx context.Context, tag string, cmd *command.Sta
 				items = append(items, response.ItemRecent(mailbox.GetMessagesWithFlagCount(imap.FlagRecent)))
 
 			case command.StatusAttributeUIDNext:
-				items = append(items, response.ItemUIDNext(mailbox.UIDNext()))
+				uidNext, err := mailbox.UIDNext(ctx)
+				if err != nil {
+					return err
+				}
+
+				items = append(items, response.ItemUIDNext(uidNext))
 
 			case command.StatusAttributeUIDValidity:
 				items = append(items, response.ItemUIDValidity(mailbox.UIDValidity()))

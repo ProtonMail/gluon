@@ -265,7 +265,9 @@ func (state *State) actionAddMessagesToMailbox(
 		}
 	}
 
-	internalIDs, remoteIDs := db.SplitMessageIDPairSlice(messageIDs)
+	remoteIDs := xslices.Map(messageIDs, func(id db.MessageIDPair) imap.MessageID {
+		return id.RemoteID
+	})
 
 	if err := state.user.GetRemote().AddMessagesToMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
 		return nil, nil, err
@@ -277,7 +279,7 @@ func (state *State) actionAddMessagesToMailbox(
 		st = state
 	}
 
-	messageUIDs, update, err := AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, st, state.imapLimits)
+	messageUIDs, update, err := AddMessagesToMailbox(ctx, tx, mboxID.InternalID, messageIDs, st, state.imapLimits)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -293,13 +295,15 @@ func (state *State) actionAddRecoveredMessagesToMailbox(
 	messageIDs []db.MessageIDPair,
 	mboxID db.MailboxIDPair,
 ) ([]db.UIDWithFlags, Update, error) {
-	internalIDs, remoteIDs := db.SplitMessageIDPairSlice(messageIDs)
+	remoteIDs := xslices.Map(messageIDs, func(id db.MessageIDPair) imap.MessageID {
+		return id.RemoteID
+	})
 
 	if err := state.user.GetRemote().AddMessagesToMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
 		return nil, nil, err
 	}
 
-	return AddMessagesToMailbox(ctx, tx, mboxID.InternalID, internalIDs, state, state.imapLimits)
+	return AddMessagesToMailbox(ctx, tx, mboxID.InternalID, messageIDs, state, state.imapLimits)
 }
 
 func (state *State) actionImportRecoveredMessage(
@@ -506,14 +510,21 @@ func (state *State) actionMoveMessages(
 	var allUpdates []Update
 
 	if mboxFromID.InternalID == mboxToID.InternalID {
-		internalIDs, _ := db.SplitMessageIDPairSlice(messageIDs)
-
-		uid, err := tx.BumpMailboxUIDsForMessage(ctx, mboxToID.InternalID, internalIDs)
+		updates, err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, messageIDs, mboxToID)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		return nil, uid, nil
+		allUpdates = append(allUpdates, updates...)
+
+		updates, uid, err := state.actionAddMessagesToMailbox(ctx, tx, messageIDs, mboxToID, false)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		allUpdates = append(allUpdates, updates...)
+
+		return allUpdates, uid, err
 	}
 
 	{
@@ -550,7 +561,17 @@ func (state *State) actionMoveMessages(
 		return nil, nil, err
 	}
 
-	messageUIDs, updates, err := MoveMessagesFromMailbox(ctx, tx, mboxFromID.InternalID, mboxToID.InternalID, internalIDs, state, state.imapLimits, shouldRemoveOldMessages)
+	messageUIDs, updates, err := MoveMessagesFromMailbox(
+		ctx,
+		tx,
+		mboxFromID.InternalID,
+		mboxToID.InternalID,
+		messagesIDsToMove,
+		internalIDs,
+		state,
+		state.imapLimits,
+		shouldRemoveOldMessages,
+	)
 	if err != nil {
 		return nil, nil, err
 	}

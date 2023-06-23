@@ -30,11 +30,16 @@ func (s *Session) handleExamine(ctx context.Context, tag string, cmd *command.Ex
 			return err
 		}
 
+		uidNext, err := mailbox.UIDNext(ctx)
+		if err != nil {
+			return err
+		}
+
 		ch <- response.Flags().WithFlags(flags)
 		ch <- response.Exists().WithCount(imap.SeqID(mailbox.Count()))
 		ch <- response.Recent().WithCount(uint32(mailbox.GetMessagesWithFlagCount(imap.FlagRecent)))
 		ch <- response.Ok().WithItems(response.ItemPermanentFlags(permFlags))
-		ch <- response.Ok().WithItems(response.ItemUIDNext(mailbox.UIDNext()))
+		ch <- response.Ok().WithItems(response.ItemUIDNext(uidNext))
 		ch <- response.Ok().WithItems(response.ItemUIDValidity(mailbox.UIDValidity()))
 
 		if unseen, ok := mailbox.GetFirstMessageWithoutFlag(imap.FlagSeen); ok {

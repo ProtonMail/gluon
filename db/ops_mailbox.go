@@ -54,13 +54,7 @@ type MailboxReadOps interface {
 
 	MailboxFilterContains(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []MessageIDPair) ([]imap.InternalMessageID, error)
 
-	MailboxFilterContainsInternalID(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]imap.InternalMessageID, error)
-
 	GetMailboxCount(ctx context.Context) (int, error)
-
-	// GetMessageUIDsWithFlagsAfterAddOrUIDBump exploits a property of adding a message to or bumping the UIDs of existing message in mailbox. It can only be
-	// used if you can guarantee that the messageID list contains only IDs that have recently added or bumped in the mailbox.
-	GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]UIDWithFlags, error)
 }
 
 type MailboxWriteOps interface {
@@ -87,11 +81,7 @@ type MailboxWriteOps interface {
 
 	DeleteMailboxWithRemoteID(ctx context.Context, mboxID imap.MailboxID) error
 
-	BumpMailboxUIDNext(ctx context.Context, mboxID imap.InternalMailboxID, count int) error
-
-	AddMessagesToMailbox(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]UIDWithFlags, error)
-
-	BumpMailboxUIDsForMessage(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]UIDWithFlags, error)
+	AddMessagesToMailbox(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []MessageIDPair) ([]UIDWithFlags, error)
 
 	RemoveMessagesFromMailbox(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) error
 

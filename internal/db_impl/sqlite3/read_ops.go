@@ -3,6 +3,7 @@ package sqlite3
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	v1 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v1"
 	"strings"
@@ -232,7 +233,17 @@ func (r readOps) GetMailboxAttributes(ctx context.Context, mboxID imap.InternalM
 func (r readOps) GetMailboxUID(ctx context.Context, mboxID imap.InternalMailboxID) (imap.UID, error) {
 	query := "SELECT `seq` FROM sqlite_sequence WHERE `name` = ?"
 
-	return utils.MapQueryRow[imap.UID](ctx, r.qw, query, v1.MailboxMessageTableName(mboxID))
+	// Until a value is inserted in to mailbox the sequence table will not yet be initialized.
+	uid, err := utils.MapQueryRow[imap.UID](ctx, r.qw, query, v1.MailboxMessageTableName(mboxID))
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			return imap.UID(1), nil
+		}
+
+		return 0, err
+	}
+
+	return uid.Add(1), nil
 }
 
 func (r readOps) GetMailboxMessageCountAndUID(ctx context.Context, mboxID imap.InternalMailboxID) (int, imap.UID, error) {
@@ -250,10 +261,10 @@ func (r readOps) GetMailboxMessageCountAndUID(ctx context.Context, mboxID imap.I
 }
 
 func (r readOps) GetMailboxMessageForNewSnapshot(ctx context.Context, mboxID imap.InternalMailboxID) ([]db.SnapshotMessageResult, error) {
-	query := fmt.Sprintf("SELECT `m`.`%[1]v`, GROUP_CONCAT(`f`.`%[2]v`) AS `flags`, `m`.`%[3]v`, `m`.`%[4]v` "+
-		"`m`.`%[5]v`, `m`.`%[6]v` FROM %[9]v AS M "+
+	query := fmt.Sprintf("SELECT `m`.`%[1]v`, GROUP_CONCAT(`f`.`%[2]v`) AS `flags`, `m`.`%[3]v`, `m`.`%[4]v`, "+
+		"`m`.`%[5]v`, `m`.`%[6]v` FROM %[9]v AS m "+
 		"LEFT JOIN `%[7]v` AS f ON `f`.`%[8]v` = `m`.`%[6]v` "+
-		"GROUB BY `m`.`%[6]v ORDER BY `m`.`%[5]v`",
+		"GROUP BY `m`.`%[6]v` ORDER BY `m`.`%[5]v`",
 		v1.MailboxMessagesFieldMessageRemoteID,
 		v1.MessageFlagsFieldValue,
 		v1.MailboxMessagesFieldRecent,
@@ -339,11 +350,11 @@ func (r readOps) GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Con
 	result := make([]db.UIDWithFlags, 0, len(messageIDs))
 
 	for _, chunk := range xslices.Chunk(messageIDs, db.ChunkLimit) {
-		query := fmt.Sprintf("SELECT `m`.`%[1]v`, GROUP_CONCAT(`f`.`%[2]v`) AS `flags`, `m`.`%[3]v`, `m`.`%[4]v` "+
-			"`m`.`%[5]v`, `m`.`%[6]v` FROM %[9]v AS M "+
+		query := fmt.Sprintf("SELECT `m`.`%[1]v`, GROUP_CONCAT(`f`.`%[2]v`) AS `flags`, `m`.`%[3]v`, `m`.`%[4]v`, "+
+			"`m`.`%[5]v`, `m`.`%[6]v` FROM %[9]v AS m "+
 			"LEFT JOIN `%[7]v` AS f ON `f`.`%[8]v` = `m`.`%[6]v` "+
 			"WHERE `m`.`%[6]v` IN (%[10]v) "+
-			"GROUB BY `m`.`%[6]v ORDER BY `m`.`%[5]v`",
+			"GROUP BY `m`.`%[6]v` ORDER BY `m`.`%[5]v`",
 			v1.MailboxMessagesFieldMessageRemoteID,
 			v1.MessageFlagsFieldValue,
 			v1.MailboxMessagesFieldRecent,
@@ -478,6 +489,8 @@ func (r readOps) GetMessageMailboxIDs(ctx context.Context, id imap.InternalMessa
 	// Get all mailbox ids
 	var mboxIDs []imap.InternalMailboxID
 
+	TODO: Optimize this query with a different lookup table to map message to mailboxes. Its used a lot with the updates
+
 	{
 		query := fmt.Sprintf("SELECT `%v` FROM %v", v1.MailboxesFieldID, v1.MailboxesTableName)
 
@@ -492,7 +505,7 @@ func (r readOps) GetMessageMailboxIDs(ctx context.Context, id imap.InternalMessa
 	var result []imap.InternalMailboxID
 
 	for _, mboxID := range mboxIDs {
-		query := fmt.Sprintf("SELECT `COUNT(*)` FROM %[1]v WHERE `%[2]v = ? LIMIT 1",
+		query := fmt.Sprintf("SELECT COUNT(*) FROM %[1]v WHERE `%[2]v` = ? LIMIT 1",
 			v1.MailboxMessageTableName(mboxID),
 			v1.MailboxMessagesFieldMessageID,
 		)

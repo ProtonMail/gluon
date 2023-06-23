@@ -37,10 +37,10 @@ func MailboxMessageTableName(id imap.InternalMailboxID) string {
 func CreateMailboxMessageTableQuery(id imap.InternalMailboxID) string {
 	tableName := MailboxMessageTableName(id)
 
-	return fmt.Sprintf("CREATE TABLE `%[1]v` (`id` integer NOT NULL PRIMARY KEY AUTOINCREMENT, "+
-		"`%[2]v` integer AUTOINCREMENT, `%[3]v` bool NOT NULL DEFAULT false, `%[4]v` bool NOT NULL DEFAULT true, "+
-		"`%[5]v` uuid NOT NULL UNIQUE"+
-		"`%[6]v` string NOT NULL UNIQUE"+
+	return fmt.Sprintf("CREATE TABLE `%[1]v` ("+
+		"`%[2]v` integer NOT NULL PRIMARY KEY AUTOINCREMENT, `%[3]v` bool NOT NULL DEFAULT false, `%[4]v` bool NOT NULL DEFAULT true, "+
+		"`%[5]v` uuid NOT NULL UNIQUE, "+
+		"`%[6]v` string NOT NULL UNIQUE, "+
 		"CONSTRAINT `%[1]v_message_id` FOREIGN KEY (`%[5]v`) REFERENCES `%[7]v` (`%[8]v`) ON DELETE SET NULL)",
 		tableName,
 		MailboxMessagesFieldUID,
@@ -135,6 +135,7 @@ func migrateMailboxMessages(
 	tx utils.QueryWrapper,
 	oldToNewIDMap map[imap.InternalMailboxID]imap.InternalMailboxID,
 ) error {
+	// nolint:dupword
 	loadMessagesQuery := fmt.Sprintf("SELECT u.`%v`, u.`%v`, m.`%v`, u.`%v`, u.`%v` FROM %v AS u "+
 		"JOIN %v AS m ON m.`%v` = u.`%v` "+
 		"WHERE u.`%v` = ? ORDER BY u.`%v`",
