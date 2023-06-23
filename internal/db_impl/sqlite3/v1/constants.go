@@ -28,7 +28,7 @@ const MessageFlagsTableName = "message_flags_v2"
 const MessageFlagsFieldValue = "value"
 const MessageFlagsFieldMessageID = "message_id"
 
-const MessagesTableName = "messages"
+const MessagesTableName = "messages_v2"
 const MessagesFieldID = "id"
 const MessagesFieldRemoteID = "remote_id"
 const MessagesFieldDate = "date"

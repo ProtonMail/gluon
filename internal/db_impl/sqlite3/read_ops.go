@@ -80,9 +80,9 @@ func (r readOps) GetMailboxNameWithRemoteID(ctx context.Context, mboxID imap.Mai
 
 func (r readOps) GetMailboxMessageIDPairs(ctx context.Context, mboxID imap.InternalMailboxID) ([]db.MessageIDPair, error) {
 	query := fmt.Sprintf("SELECT `%[2]v`, `%[3]v` FROM %[1]v WHERE `%[1]v`.`%[2]v` IN (SELECT `%[4]v`.`%[5]v` FROM %[4]v WHERE `%[4]v`.`%[6]v` = ?)",
-		v0.MessagesTableName,
-		v0.MessagesFieldID,
-		v0.MessagesFieldRemoteID,
+		v1.MessagesTableName,
+		v1.MessagesFieldID,
+		v1.MessagesFieldRemoteID,
 		v0.UIDsTableName,
 		v0.UIDsFieldMessageID,
 		v0.UIDsFieldMailboxID,
@@ -262,7 +262,7 @@ func (r readOps) GetMailboxMessageCountAndUID(ctx context.Context, mboxID imap.I
 
 func (r readOps) GetMailboxMessageForNewSnapshot(ctx context.Context, mboxID imap.InternalMailboxID) ([]db.SnapshotMessageResult, error) {
 	query := "SELECT `t1`.`remote_id`, GROUP_CONCAT(`t2`.`value`) AS `flags`, `ui_ds`.`recent`, `ui_ds`.`deleted`, `ui_ds`.`uid`, `ui_ds`.`uid_message` FROM `ui_ds`" +
-		" JOIN `messages` AS `t1` ON `ui_ds`.`uid_message` = `t1`.`id`" +
+		" JOIN `messages_v2` AS `t1` ON `ui_ds`.`uid_message` = `t1`.`id`" +
 		" LEFT JOIN `message_flags_v2` AS `t2` ON `ui_ds`.`uid_message` = `t2`.`message_id` WHERE `mailbox_ui_ds` = ?" +
 		" GROUP BY `ui_ds`.`uid_message` ORDER BY `ui_ds`.`uid`"
 
@@ -342,7 +342,7 @@ func (r readOps) GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Con
 
 	for _, chunk := range xslices.Chunk(messageIDs, db.ChunkLimit) {
 		query := fmt.Sprintf("SELECT `t1`.`remote_id`, GROUP_CONCAT(`t2`.`value`) AS `flags`, `ui_ds`.`recent`, `ui_ds`.`deleted`, `ui_ds`.`uid`, `ui_ds`.`uid_message` FROM `ui_ds`"+
-			" JOIN `messages` AS `t1` ON `ui_ds`.`uid_message` = `t1`.`id`"+
+			" JOIN `messages_v2` AS `t1` ON `ui_ds`.`uid_message` = `t1`.`id`"+
 			" LEFT JOIN `message_flags_v2` AS `t2` ON `ui_ds`.`uid_message` = `t2`.`message_id` WHERE `mailbox_ui_ds` = ? AND `uid_message` in (%v)"+
 			" GROUP BY `ui_ds`.`uid_message` ORDER BY `ui_ds`.`uid`",
 			utils.GenSQLIn(len(chunk)))
@@ -374,31 +374,31 @@ func (r readOps) GetMailboxMessageUIDsWithFlagsAfterAddOrUIDBump(ctx context.Con
 }
 
 func (r readOps) MessageExists(ctx context.Context, id imap.InternalMessageID) (bool, error) {
-	query := fmt.Sprintf("SELECT 1 FROM %v WHERE `%v` = ? LIMIT 1", v0.MessagesTableName, v0.MessagesFieldID)
+	query := fmt.Sprintf("SELECT 1 FROM %v WHERE `%v` = ? LIMIT 1", v1.MessagesTableName, v1.MessagesFieldID)
 
 	return utils.QueryExists(ctx, r.qw, query, id)
 }
 
 func (r readOps) MessageExistsWithRemoteID(ctx context.Context, id imap.MessageID) (bool, error) {
-	query := fmt.Sprintf("SELECT 1 FROM %v WHERE `%v` = ? LIMIT 1", v0.MessagesTableName, v0.MessagesFieldRemoteID)
+	query := fmt.Sprintf("SELECT 1 FROM %v WHERE `%v` = ? LIMIT 1", v1.MessagesTableName, v1.MessagesFieldRemoteID)
 
 	return utils.QueryExists(ctx, r.qw, query, id)
 }
 
 func (r readOps) GetMessageNoEdges(ctx context.Context, id imap.InternalMessageID) (*db.Message, error) {
-	query := fmt.Sprintf("SELECT * FROM %v WHERE `%v` = ?", v0.MessagesTableName, v0.MessagesFieldID)
+	query := fmt.Sprintf("SELECT * FROM %v WHERE `%v` = ?", v1.MessagesTableName, v1.MessagesFieldID)
 
 	return utils.MapQueryRowFn(ctx, r.qw, query, ScanMessage, id)
 }
 
 func (r readOps) GetTotalMessageCount(ctx context.Context) (int, error) {
-	query := fmt.Sprintf("SELECT COUNT(*) FROM %v", v0.MessagesTableName)
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %v", v1.MessagesTableName)
 
 	return utils.MapQueryRow[int](ctx, r.qw, query)
 }
 
 func (r readOps) GetMessageRemoteID(ctx context.Context, id imap.InternalMessageID) (imap.MessageID, error) {
-	query := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = ?", v0.MessagesFieldRemoteID, v0.MessagesTableName, v0.MessagesFieldID)
+	query := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = ?", v1.MessagesFieldRemoteID, v1.MessagesTableName, v1.MessagesFieldID)
 
 	return utils.MapQueryRow[imap.MessageID](ctx, r.qw, query, id)
 }
@@ -411,8 +411,8 @@ func (r readOps) GetImportedMessageData(ctx context.Context, id imap.InternalMes
 	)
 
 	messageQuery := fmt.Sprintf("SELECT * FROM %v WHERE `%v` = ?",
-		v0.MessagesTableName,
-		v0.MessagesFieldID,
+		v1.MessagesTableName,
+		v1.MessagesFieldID,
 	)
 
 	msg, err := utils.MapQueryRowFn(ctx, r.qw, messageQuery, ScanMessage, id)
@@ -440,10 +440,10 @@ func (r readOps) GetImportedMessageData(ctx context.Context, id imap.InternalMes
 
 func (r readOps) GetMessageDateAndSize(ctx context.Context, id imap.InternalMessageID) (time.Time, int, error) {
 	query := fmt.Sprintf("SELECT `%v`, `%v` FROM %v WHERE `%v` =?",
-		v0.MessagesFieldDate,
-		v0.MessagesFieldSize,
-		v0.MessagesTableName,
-		v0.MessagesFieldID,
+		v1.MessagesFieldDate,
+		v1.MessagesFieldSize,
+		v1.MessagesTableName,
+		v1.MessagesFieldID,
 	)
 
 	type DateSize struct {
@@ -486,15 +486,15 @@ func (r readOps) GetMessagesFlags(ctx context.Context, ids []imap.InternalMessag
 			"WHERE m.`%v` IN (%v) "+
 			"GROUP BY m.`%v`",
 			v1.MessageFlagsFieldValue,
-			v0.MessagesFieldID,
-			v0.MessagesFieldRemoteID,
-			v0.MessagesTableName,
+			v1.MessagesFieldID,
+			v1.MessagesFieldRemoteID,
+			v1.MessagesTableName,
 			v1.MessageFlagsTableName,
 			v1.MessageFlagsFieldMessageID,
-			v0.MessagesFieldID,
-			v0.MessagesFieldID,
+			v1.MessagesFieldID,
+			v1.MessagesFieldID,
 			utils.GenSQLIn(len(chunk)),
-			v0.MessagesFieldID,
+			v1.MessagesFieldID,
 		)
 
 		args := utils.MapSliceToAny(chunk)
@@ -531,9 +531,9 @@ func (r readOps) GetMessagesFlags(ctx context.Context, ids []imap.InternalMessag
 
 func (r readOps) GetMessageIDsMarkedAsDelete(ctx context.Context) ([]imap.InternalMessageID, error) {
 	query := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = TRUE",
-		v0.MessagesFieldID,
-		v0.MessagesTableName,
-		v0.MessagesFieldDeleted,
+		v1.MessagesFieldID,
+		v1.MessagesTableName,
+		v1.MessagesFieldDeleted,
 	)
 
 	return utils.MapQueryRows[imap.InternalMessageID](ctx, r.qw, query)
@@ -541,9 +541,9 @@ func (r readOps) GetMessageIDsMarkedAsDelete(ctx context.Context) ([]imap.Intern
 
 func (r readOps) GetMessageIDFromRemoteID(ctx context.Context, id imap.MessageID) (imap.InternalMessageID, error) {
 	query := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = ?",
-		v0.MessagesFieldID,
-		v0.MessagesTableName,
-		v0.MessagesFieldRemoteID,
+		v1.MessagesFieldID,
+		v1.MessagesTableName,
+		v1.MessagesFieldRemoteID,
 	)
 
 	return utils.MapQueryRow[imap.InternalMessageID](ctx, r.qw, query, id)
@@ -551,16 +551,16 @@ func (r readOps) GetMessageIDFromRemoteID(ctx context.Context, id imap.MessageID
 
 func (r readOps) GetMessageDeletedFlag(ctx context.Context, id imap.InternalMessageID) (bool, error) {
 	query := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = ?",
-		v0.MessagesFieldDeleted,
-		v0.MessagesTableName,
-		v0.MessagesFieldID,
+		v1.MessagesFieldDeleted,
+		v1.MessagesTableName,
+		v1.MessagesFieldID,
 	)
 
 	return utils.MapQueryRow[bool](ctx, r.qw, query, id)
 }
 
 func (r readOps) GetAllMessagesIDsAsMap(ctx context.Context) (map[imap.InternalMessageID]struct{}, error) {
-	query := fmt.Sprintf("SELECT `%v` FROM %v", v0.MessagesFieldID, v0.MessagesTableName)
+	query := fmt.Sprintf("SELECT `%v` FROM %v", v1.MessagesFieldID, v1.MessagesTableName)
 
 	ids, err := utils.MapQueryRows[imap.InternalMessageID](ctx, r.qw, query)
 	if err != nil {

@@ -359,14 +359,14 @@ func (w writeOps) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageR
 
 	for _, chunk := range xslices.Chunk(reqs, db.ChunkLimit) {
 		createMessageQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`, `%v`, `%v`, `%v`, `%v`) VALUES %v",
-			v0.MessagesTableName,
-			v0.MessagesFieldID,
-			v0.MessagesFieldRemoteID,
-			v0.MessagesFieldDate,
-			v0.MessagesFieldSize,
-			v0.MessagesFieldBody,
-			v0.MessagesFieldBodyStructure,
-			v0.MessagesFieldEnvelope,
+			v1.MessagesTableName,
+			v1.MessagesFieldID,
+			v1.MessagesFieldRemoteID,
+			v1.MessagesFieldDate,
+			v1.MessagesFieldSize,
+			v1.MessagesFieldBody,
+			v1.MessagesFieldBodyStructure,
+			v1.MessagesFieldEnvelope,
 			strings.Join(xslices.Repeat("(?,?,?,?,?,?,?)", len(chunk)), ","),
 		)
 
@@ -429,14 +429,14 @@ func (w writeOps) CreateMessageAndAddToMailbox(ctx context.Context, mbox imap.In
 	}
 
 	createMessageQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`, `%v`, `%v`, `%v`, `%v`) VALUES (?,?,?,?,?,?,?)",
-		v0.MessagesTableName,
-		v0.MessagesFieldID,
-		v0.MessagesFieldRemoteID,
-		v0.MessagesFieldDate,
-		v0.MessagesFieldSize,
-		v0.MessagesFieldBody,
-		v0.MessagesFieldBodyStructure,
-		v0.MessagesFieldEnvelope,
+		v1.MessagesTableName,
+		v1.MessagesFieldID,
+		v1.MessagesFieldRemoteID,
+		v1.MessagesFieldDate,
+		v1.MessagesFieldSize,
+		v1.MessagesFieldBody,
+		v1.MessagesFieldBodyStructure,
+		v1.MessagesFieldEnvelope,
 	)
 
 	if _, err := utils.ExecQuery(ctx, w.qw,
@@ -492,9 +492,9 @@ func (w writeOps) CreateMessageAndAddToMailbox(ctx context.Context, mbox imap.In
 
 func (w writeOps) MarkMessageAsDeleted(ctx context.Context, id imap.InternalMessageID) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = TRUE WHERE `%v` = ?",
-		v0.MessagesTableName,
-		v0.MessagesFieldDeleted,
-		v0.MessagesFieldID,
+		v1.MessagesTableName,
+		v1.MessagesFieldDeleted,
+		v1.MessagesFieldID,
 	)
 
 	_, err := utils.ExecQuery(ctx, w.qw, query, id)
@@ -504,10 +504,10 @@ func (w writeOps) MarkMessageAsDeleted(ctx context.Context, id imap.InternalMess
 
 func (w writeOps) MarkMessageAsDeletedAndAssignRandomRemoteID(ctx context.Context, id imap.InternalMessageID) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = TRUE, `%v` = ? WHERE `%v` = ?",
-		v0.MessagesTableName,
-		v0.MessagesFieldDeleted,
-		v0.MessagesFieldRemoteID,
-		v0.MessagesFieldID,
+		v1.MessagesTableName,
+		v1.MessagesFieldDeleted,
+		v1.MessagesFieldRemoteID,
+		v1.MessagesFieldID,
 	)
 
 	randomID := imap.MessageID(fmt.Sprintf("DELETED-%v", imap.NewInternalMessageID()))
@@ -519,9 +519,9 @@ func (w writeOps) MarkMessageAsDeletedAndAssignRandomRemoteID(ctx context.Contex
 
 func (w writeOps) MarkMessageAsDeletedWithRemoteID(ctx context.Context, id imap.MessageID) error {
 	query := fmt.Sprintf("UPDATE %v SET `%v` = TRUE WHERE `%v` = ?",
-		v0.MessagesTableName,
-		v0.MessagesFieldDeleted,
-		v0.MessagesFieldRemoteID,
+		v1.MessagesTableName,
+		v1.MessagesFieldDeleted,
+		v1.MessagesFieldRemoteID,
 	)
 
 	_, err := utils.ExecQuery(ctx, w.qw, query, id)
@@ -532,8 +532,8 @@ func (w writeOps) MarkMessageAsDeletedWithRemoteID(ctx context.Context, id imap.
 func (w writeOps) DeleteMessages(ctx context.Context, ids []imap.InternalMessageID) error {
 	for _, chunk := range xslices.Chunk(ids, db.ChunkLimit) {
 		query := fmt.Sprintf("DELETE FROM %v WHERE `%v` IN (%v)",
-			v0.MessagesTableName,
-			v0.MessagesFieldID,
+			v1.MessagesTableName,
+			v1.MessagesFieldID,
 			utils.GenSQLIn(len(chunk)),
 		)
 

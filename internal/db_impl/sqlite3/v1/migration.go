@@ -14,8 +14,8 @@ import (
 type Migration struct{}
 
 func (m Migration) Run(ctx context.Context, tx utils.QueryWrapper) error {
-	// Create new flags table and migrate data.
-	if err := migrateMessageFlags(ctx, tx); err != nil {
+	// Migrate Messages And Flags
+	if err := migrateMessagesAndFlags(ctx, tx); err != nil {
 		return err
 	}
 
@@ -27,7 +27,50 @@ func (m Migration) Run(ctx context.Context, tx utils.QueryWrapper) error {
 
 	// Migrate all entries from UIDs table to new mailbox tables
 
-	// Delete old flags, mailbox flags and uids table
+	return deleteOldTables(ctx, tx)
+}
+
+func migrateMessagesAndFlags(ctx context.Context, tx utils.QueryWrapper) error {
+	if err := migrateMessages(ctx, tx); err != nil {
+		return err
+	}
+
+	if err := migrateMessageFlags(ctx, tx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func migrateMessages(ctx context.Context, tx utils.QueryWrapper) error {
+	// Create new messages table.
+	{
+		query := fmt.Sprintf("CREATE TABLE `%[9]v` (`%[1]v` uuid NOT NULL, `%[2]v` text NOT NULL UNIQUE, "+
+			"`%[3]v` datetime NOT NULL, `%[4]v` integer NOT NULL, `%[5]v` text NOT NULL, `%[6]v` text NOT NULL, "+
+			"`%[7]v` text NOT NULL, `%[8]v` bool NOT NULL DEFAULT false, PRIMARY KEY (`%[1]v`))",
+			MessagesFieldID,
+			MessagesFieldRemoteID,
+			MessagesFieldDate,
+			MessagesFieldSize,
+			MessagesFieldBody,
+			MessagesFieldBodyStructure,
+			MessagesFieldEnvelope,
+			MessagesFieldDeleted,
+			MessagesTableName,
+		)
+
+		if err := utils.ExecQueryAndCheckUpdatedNotZero(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Copy messages.
+	{
+		query := fmt.Sprintf("INSERT INTO %v SELECT * FROM %v", MessagesTableName, v0.MessagesTableName)
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -36,7 +79,7 @@ func migrateMessageFlags(ctx context.Context, tx utils.QueryWrapper) error {
 	// Create new table.
 	{
 		query := fmt.Sprintf("CREATE TABLE `%[1]v` (`%[2]v` text NOT NULL, `%[3]v` uuid NOT NULL, "+
-			"CONSTRAINT `message_flags_messages_flags` FOREIGN KEY (`%[3]v`) REFERENCES `%[4]v` (`%[5]v`) ON DELETE CASCADE, "+
+			"CONSTRAINT `message_flags_message_id` FOREIGN KEY (`%[3]v`) REFERENCES `%[4]v` (`%[5]v`) ON DELETE CASCADE, "+
 			"PRIMARY KEY (%[2]v, %[3]v)"+
 			")",
 			MessageFlagsTableName,
@@ -71,49 +114,64 @@ func migrateMessageFlags(ctx context.Context, tx utils.QueryWrapper) error {
 			return err
 		}
 
-		remoteMessageIDsQuery := fmt.Sprintf("SELECT `%v`, `%v` FROM %v", v0.MessagesFieldID, v0.MessagesFieldRemoteID, v0.MessagesTableName)
-		remoteMessagesIDs := make(map[imap.InternalMessageID]imap.MessageID)
+		if len(flags) != 0 {
 
-		if err := utils.QueryForEachRow(ctx, tx, remoteMessageIDsQuery, func(scanner utils.RowScanner) error {
-			var id imap.InternalMessageID
-			var remoteID imap.MessageID
+			remoteMessageIDsQuery := fmt.Sprintf("SELECT `%v`, `%v` FROM %v", v0.MessagesFieldID, v0.MessagesFieldRemoteID, v0.MessagesTableName)
+			remoteMessagesIDs := make(map[imap.InternalMessageID]imap.MessageID)
 
-			if err := scanner.Scan(&id, &remoteID); err != nil {
+			if err := utils.QueryForEachRow(ctx, tx, remoteMessageIDsQuery, func(scanner utils.RowScanner) error {
+				var id imap.InternalMessageID
+				var remoteID imap.MessageID
+
+				if err := scanner.Scan(&id, &remoteID); err != nil {
+					return err
+				}
+
+				remoteMessagesIDs[id] = remoteID
+
+				return nil
+			}); err != nil {
 				return err
 			}
 
-			remoteMessagesIDs[id] = remoteID
+			for _, chunk := range xslices.Chunk(flags, db.ChunkLimit) {
+				insertQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
+					MessageFlagsTableName,
+					MessageFlagsFieldMessageID,
+					MessageFlagsFieldValue,
+					strings.Join(xslices.Repeat("(?,?)", len(chunk)), ","),
+				)
 
-			return nil
-		}); err != nil {
-			return err
-		}
+				args := make([]any, 0, len(chunk)*3)
+				for _, flag := range flags {
+					args = append(args, flag.ID, remoteMessagesIDs[flag.ID], flag.Value)
+				}
 
-		for _, chunk := range xslices.Chunk(flags, db.ChunkLimit) {
-			insertQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
-				MessageFlagsTableName,
-				MessageFlagsFieldMessageID,
-				MessageFlagsFieldValue,
-				strings.Join(xslices.Repeat("(?,?)", len(chunk)), ","),
-			)
-
-			args := make([]any, 0, len(chunk)*3)
-			for _, flag := range flags {
-				args = append(args, flag.ID, remoteMessagesIDs[flag.ID], flag.Value)
-			}
-
-			if err := utils.ExecQueryAndCheckUpdatedNotZero(ctx, tx, insertQuery, args...); err != nil {
-				return err
+				if err := utils.ExecQueryAndCheckUpdatedNotZero(ctx, tx, insertQuery, args...); err != nil {
+					return err
+				}
 			}
 		}
-
 	}
 
-	// Delete old messages table.
-	{
-		query := fmt.Sprintf("DROP TABLE %v", v0.MessageFlagsTableName)
+	return nil
+}
 
-		if err := utils.ExecQueryAndCheckUpdatedNotZero(ctx, tx, query); err != nil {
+func deleteOldTables(ctx context.Context, tx utils.QueryWrapper) error {
+
+	// Drop Messages Flags table.
+	{
+		query := fmt.Sprintf("DROP TABLE `%v`", v0.MessageFlagsTableName)
+
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	// Drop messages table.
+	{
+		query := fmt.Sprintf("DROP TABLE `%v`", v0.MessagesTableName)
+		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
 			return err
 		}
 	}
