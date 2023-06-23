@@ -46,7 +46,6 @@ func CreateMailboxMessageTableQuery(id imap.InternalMailboxID) string {
 		MailboxMessagesFieldUID,
 		MailboxMessagesFieldDeleted,
 		MailboxMessagesFieldRecent,
-		MailboxMessagesFieldMailboxID,
 		MailboxMessagesFieldMessageID,
 		MailboxMessagesFieldMessageRemoteID,
 		MessagesTableName,
