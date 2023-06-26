@@ -2,8 +2,9 @@ package db
 
 import (
 	"context"
-	"github.com/ProtonMail/gluon/imap"
 	"path/filepath"
+
+	"github.com/ProtonMail/gluon/imap"
 )
 
 const ChunkLimit = 1000
