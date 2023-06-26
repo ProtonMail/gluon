@@ -3,8 +3,8 @@ package v0
 import (
 	"context"
 	"fmt"
-	"github.com/ProtonMail/gluon/imap"
 
+	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
 	"github.com/bradenaw/juniper/xmaps"
 	"github.com/bradenaw/juniper/xslices"

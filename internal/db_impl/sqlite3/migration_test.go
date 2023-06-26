@@ -5,6 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
@@ -13,9 +17,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestMigration_VersionTooHigh(t *testing.T) {

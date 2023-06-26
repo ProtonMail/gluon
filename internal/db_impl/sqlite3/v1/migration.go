@@ -3,12 +3,13 @@ package v1
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
 	v0 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v0"
 	"github.com/bradenaw/juniper/xslices"
-	"strings"
 )
 
 type Migration struct{}
