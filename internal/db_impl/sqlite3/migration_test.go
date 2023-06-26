@@ -3,6 +3,7 @@ package sqlite3
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
@@ -17,6 +18,41 @@ import (
 	"time"
 )
 
+func TestMigration_VersionTooHigh(t *testing.T) {
+	testDir := t.TempDir()
+
+	setup := func() {
+		client, _, err := NewClient(testDir, "foo", false, false)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		require.NoError(t, client.Init(ctx, &imap.IncrementalUIDValidityGenerator{}))
+
+		defer func() {
+			require.NoError(t, client.Close())
+		}()
+
+		// For version to very high value
+		require.NoError(t, client.wrapTx(ctx, func(ctx context.Context, tx *sql.Tx, entry *logrus.Entry) error {
+			qw := utils.TXWrapper{TX: tx}
+			return updateDBVersion(ctx, qw, 999999)
+		}))
+	}
+
+	setup()
+
+	client, _, err := NewClient(testDir, "foo", false, false)
+	require.NoError(t, err)
+
+	defer func() {
+		require.NoError(t, client.Close())
+	}()
+
+	err = client.Init(context.Background(), imap.DefaultEpochUIDValidityGenerator())
+	require.Error(t, err)
+	require.True(t, errors.Is(err, db.ErrInvalidDatabaseVersion))
+}
+
 func TestRunMigrations(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 
@@ -29,6 +65,14 @@ func TestRunMigrations(t *testing.T) {
 	// Fill v0 database.
 	prepareV0Database(t, testDir, "foo", testData, uidGenerator)
 
+	// First run, incurs migration.
+	runAndValidateDB(t, testDir, "foo", testData, uidGenerator)
+
+	// Second run, no migration.
+	runAndValidateDB(t, testDir, "foo", testData, uidGenerator)
+}
+
+func runAndValidateDB(t *testing.T, testDir, user string, testData *testData, uidGenerator imap.UIDValidityGenerator) {
 	// create client and run all migrations.
 	client, _, err := NewClient(testDir, "foo", false, false)
 	require.NoError(t, err)
