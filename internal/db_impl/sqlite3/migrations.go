@@ -35,12 +35,12 @@ func RunMigrations(ctx context.Context, tx utils.QueryWrapper, generator imap.UI
 			logrus.Debugf("Running migration for version %v", idx)
 
 			if err := m.Run(ctx, tx, generator); err != nil {
-				return fmt.Errorf("failed to run migration %v: %w", idx, err)
+				return fmt.Errorf("%w %v: %v", db.ErrMigrationFailed, idx, err)
 			}
 		}
 
 		if err := updateDBVersion(ctx, tx, len(migrationList)-1); err != nil {
-			return fmt.Errorf("failed to update db version:%w", err)
+			return fmt.Errorf("%w: failed to update db version: %v", db.ErrMigrationFailed, err)
 		}
 
 		logrus.Debug("Migrations completed")
@@ -50,16 +50,32 @@ func RunMigrations(ctx context.Context, tx utils.QueryWrapper, generator imap.UI
 
 	logrus.Debugf("DB Version is %v", dbVersion)
 
-	for i := dbVersion + 1; i < len(migrationList); i++ {
+	dbVersion = dbVersion + 1
+
+	if dbVersion == len(migrationList) {
+		logrus.Debugf("No migrations to run")
+		return nil
+	}
+
+	if dbVersion > len(migrationList) {
+		return fmt.Errorf(
+			"%w: database version is %v, but we only support up to %v",
+			db.ErrInvalidDatabaseVersion,
+			dbVersion,
+			len(migrationList),
+		)
+	}
+
+	for i := dbVersion; i < len(migrationList); i++ {
 		logrus.Debugf("Running migration for version %v", i)
 
 		if err := migrationList[i].Run(ctx, tx, generator); err != nil {
-			return err
+			return fmt.Errorf("%w %v: %v", db.ErrMigrationFailed, i, err)
 		}
 	}
 
 	if err := updateDBVersion(ctx, tx, len(migrationList)-1); err != nil {
-		return fmt.Errorf("failed to update db version:%w", err)
+		return fmt.Errorf("%w: failed to update db version: %v", db.ErrMigrationFailed, err)
 	}
 
 	logrus.Debug("Migrations completed")

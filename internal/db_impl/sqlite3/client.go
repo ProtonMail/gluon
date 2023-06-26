@@ -71,7 +71,7 @@ func (c *Client) Init(ctx context.Context, generator imap.UIDValidityGenerator) 
 		}
 
 		if err := RunMigrations(ctx, qw, generator); err != nil {
-			return fmt.Errorf("%w: %v", db.ErrMigrationFailed, err)
+			return err
 		}
 
 		return nil
