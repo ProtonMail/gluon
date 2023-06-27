@@ -22,7 +22,7 @@ func (m Migration) Run(ctx context.Context, tx utils.QueryWrapper, generator ima
 
 	// Migrate Mailboxes.
 	if err := migrateMailboxes(ctx, tx, generator); err != nil {
-		return fmt.Errorf("failed to migrate mailboxes: %w", err)
+		return err
 	}
 
 	// Migrate Mailbox Messages.
@@ -49,7 +49,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 		)
 
 		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
-			return err
+			return fmt.Errorf("failed to create mailboxes table: %w", err)
 		}
 	}
 
@@ -67,7 +67,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 		)
 
 		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
-			return err
+			return fmt.Errorf("failed to create mailboxes flags table: %w", err)
 		}
 	}
 
@@ -85,7 +85,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 		)
 
 		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
-			return err
+			return fmt.Errorf("failed to create mailboxes perm flags table: %w", err)
 		}
 	}
 
@@ -103,7 +103,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 		)
 
 		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
-			return err
+			return fmt.Errorf("failed to create mailboxes attr table: %w", err)
 		}
 	}
 
@@ -124,7 +124,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 		)
 
 		if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
-			return err
+			return fmt.Errorf("failed to create messages to mailboxes table: %w", err)
 		}
 	}
 
@@ -133,7 +133,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 
 	mailboxes, err := utils.MapQueryRowsFn(ctx, tx, loadExistingQuery, scanMailboxV0)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read existing mailboxes: %w", err)
 	}
 
 	for _, chunk := range xslices.Chunk(mailboxes, db.ChunkLimit) {
@@ -167,7 +167,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 			query := CreateMailboxMessageTableQuery(mboxID)
 
 			if _, err := utils.ExecQuery(ctx, tx, query); err != nil {
-				return err
+				return fmt.Errorf("failed to create mailbox messages table (%v): %w", mboxID, err)
 			}
 		}
 	}
@@ -202,7 +202,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 		MailboxFlagsFieldMailboxID,
 		MailboxFlagsFieldValue,
 	); err != nil {
-		return err
+		return fmt.Errorf("failed to copy mailbox flags: %w", err)
 	}
 
 	// Copy mailbox perm flags.
@@ -217,7 +217,7 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 		MailboxPermFlagsFieldMailboxID,
 		MailboxPermFlagsFieldValue,
 	); err != nil {
-		return err
+		return fmt.Errorf("failed to copy mailbox perm flags: %w", err)
 	}
 
 	// Copy mailbox attributes.
@@ -232,10 +232,14 @@ func migrateMailboxes(ctx context.Context, tx utils.QueryWrapper, generator imap
 		MailboxAttrsFieldMailboxID,
 		MailboxAttrsFieldValue,
 	); err != nil {
-		return err
+		return fmt.Errorf("failed to copy mailbox attr: %w", err)
 	}
 
-	return migrateMailboxMessages(ctx, tx, oldToNewIDMap)
+	if err := migrateMailboxMessages(ctx, tx, oldToNewIDMap); err != nil {
+		return fmt.Errorf("failed to migrate mailbox messages: %w", err)
+	}
+
+	return nil
 }
 
 func migrateMessagesAndFlags(ctx context.Context, tx utils.QueryWrapper) error {
