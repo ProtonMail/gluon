@@ -65,6 +65,7 @@ dGhpcyBpcyBteSBhdHRhY2htZW50Cg==
 const MessageAfterNoonMeeting = `Date: Mon, 7 Feb 1994 21:52:25 -0800 (PST)
 From: Fred Foobar <foobar@Blurdybloop.COM>
 Subject: afternoon meeting
+Date: Fri, 26 Mar 2021 20:01:23 +0100
 To: mooch@owatagu.siam.edu
 Message-Id: <B27397-0100000@Blurdybloop.COM>
 MIME-Version: 1.0
@@ -77,6 +78,7 @@ const MessageEmbedded = `From: Nathaniel Borenstein <nsb@bellcore.com>
 To:  Ned Freed <ned@innosoft.com>
 Subject: Sample message
 MIME-Version: 1.0
+Date: Fri, 26 Mar 2021 20:01:23 +0100
 Content-type: multipart/mixed; boundary="simple boundary"
 
 This is the preamble.  It is to be ignored, though it
