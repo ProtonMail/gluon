@@ -60,10 +60,6 @@ func newUser(
 	uidValidityGenerator imap.UIDValidityGenerator,
 	panicHandler async.PanicHandler,
 ) (*user, error) {
-	if err := database.Init(ctx, uidValidityGenerator); err != nil {
-		return nil, err
-	}
-
 	recoveredMessageHashes := utils.NewMessageHashesMap()
 
 	// Create recovery mailbox if it does not exist

@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -94,16 +95,58 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		return false, err
 	}
 
-	db, isNew, err := b.database.New(b.getDBDir(), userID)
-	if err != nil {
+	onErrorExit := func() {
 		if err := storeBuilder.Close(); err != nil {
 			logrus.WithError(err).Error("Failed to close store builder")
 		}
+	}
 
+	database, isNew, err := b.database.New(b.getDBDir(), userID)
+	if err != nil {
+		onErrorExit()
 		return false, err
 	}
 
-	user, err := newUser(ctx, userID, db, conn, storeBuilder, b.delim, b.imapLimits, uidValidityGenerator, b.panicHandler)
+	if err := database.Init(ctx, uidValidityGenerator); err != nil {
+		if err := database.Close(); err != nil {
+			logrus.WithError(err).Errorf("Failed to close db after migration failure")
+		}
+
+		if !errors.Is(err, db.ErrMigrationFailed) && !errors.Is(err, db.ErrInvalidDatabaseVersion) {
+			onErrorExit()
+			return false, err
+		}
+
+		reporter.ExceptionWithContext(ctx, "database migration failed", reporter.Context{
+			"error": err,
+		})
+
+		if err := b.database.Delete(b.getDBDir(), userID); err != nil {
+			onErrorExit()
+			return false, fmt.Errorf("failed to remove database after migration: %w", err)
+		}
+
+		database, isNew, err = b.database.New(b.getDBDir(), userID)
+		if err != nil {
+			onErrorExit()
+			return false, err
+		}
+
+		if !isNew {
+			if err := database.Close(); err != nil {
+				logrus.WithError(err).Errorf("failed to closed db")
+			}
+
+			return false, fmt.Errorf("expected database to be new after failed migration cleanup")
+		}
+
+		if err := database.Init(ctx, uidValidityGenerator); err != nil {
+			onErrorExit()
+			return false, err
+		}
+	}
+
+	user, err := newUser(ctx, userID, database, conn, storeBuilder, b.delim, b.imapLimits, uidValidityGenerator, b.panicHandler)
 	if err != nil {
 		return false, err
 	}
