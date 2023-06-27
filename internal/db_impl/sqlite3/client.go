@@ -289,3 +289,22 @@ func pathExists(path string) (bool, error) {
 func getDatabaseConn(dir, userID, path string) string {
 	return fmt.Sprintf("file:%v?cache=shared&_fk=1&_journal=WAL", path)
 }
+
+func TestUpdateDBVersion(ctx context.Context, dbPath, userID string, version int) error {
+	client, _, err := NewClient(dbPath, userID, false, false)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := client.Close(); err != nil {
+			logrus.Panic("failed to close db")
+		}
+	}()
+
+	return client.wrapTx(ctx, func(ctx context.Context, tx *sql.Tx, entry *logrus.Entry) error {
+		qw := utils.TXWrapper{TX: tx}
+
+		return updateDBVersion(ctx, qw, version)
+	})
+}
