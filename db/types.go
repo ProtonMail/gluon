@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/bradenaw/juniper/xslices"
 )
 
 type MailboxIDPair struct {
@@ -86,27 +85,16 @@ type MailboxAttr struct {
 }
 
 type Mailbox struct {
-	ID             imap.InternalMailboxID
-	RemoteID       imap.MailboxID
-	Name           string
-	UIDValidity    imap.UID
-	Subscribed     bool
-	Flags          []*MailboxFlag
-	PermanentFlags []*MailboxFlag
-	Attributes     []*MailboxAttr
+	ID          imap.InternalMailboxID
+	RemoteID    imap.MailboxID
+	Name        string
+	UIDValidity imap.UID
+	Subscribed  bool
 }
 
-type MessageFlag struct {
-	ID    int
-	Value string
-}
-
-func MessageFlagsFromFlagSet(set imap.FlagSet) []*MessageFlag {
-	return xslices.Map(set.ToSlice(), func(t string) *MessageFlag {
-		return &MessageFlag{
-			Value: t,
-		}
-	})
+type MailboxWithAttr struct {
+	Mailbox
+	Attributes imap.FlagSet
 }
 
 type Message struct {
@@ -118,8 +106,11 @@ type Message struct {
 	BodyStructure string
 	Envelope      string
 	Deleted       bool
-	Flags         []*MessageFlag
-	UIDs          []*UID
+}
+
+type MessageWithFlags struct {
+	Message
+	Flags imap.FlagSet
 }
 
 type UID struct {

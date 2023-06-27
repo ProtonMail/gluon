@@ -88,14 +88,11 @@ func (w writeOps) CreateMailbox(
 	}
 
 	return &db.Mailbox{
-		ID:             internalID,
-		RemoteID:       mboxID,
-		Name:           name,
-		UIDValidity:    uidValidity,
-		Subscribed:     true,
-		Flags:          nil,
-		PermanentFlags: nil,
-		Attributes:     nil,
+		ID:          internalID,
+		RemoteID:    mboxID,
+		Name:        name,
+		UIDValidity: uidValidity,
+		Subscribed:  true,
 	}, nil
 }
 
@@ -346,9 +343,7 @@ func (w writeOps) SetMailboxUIDValidity(ctx context.Context, mboxID imap.Interna
 	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, uidValidity, mboxID)
 }
 
-func (w writeOps) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageReq) ([]*db.Message, error) {
-	result := make([]*db.Message, 0, len(reqs))
-
+func (w writeOps) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageReq) error {
 	for _, chunk := range xslices.Chunk(reqs, db.ChunkLimit) {
 		createMessageQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`, `%v`, `%v`, `%v`, `%v`, `%v`) VALUES %v",
 			v1.MessagesTableName,
@@ -378,23 +373,10 @@ func (w writeOps) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageR
 			for _, f := range req.Message.Flags.ToSliceUnsorted() {
 				flagArgs = append(flagArgs, req.InternalID, f)
 			}
-
-			result = append(result, &db.Message{
-				ID:            req.InternalID,
-				RemoteID:      req.Message.ID,
-				Date:          req.Message.Date,
-				Size:          req.LiteralSize,
-				Body:          req.Body,
-				BodyStructure: req.Structure,
-				Envelope:      req.Envelope,
-				Deleted:       false,
-				Flags:         db.MessageFlagsFromFlagSet(req.Message.Flags),
-				UIDs:          nil,
-			})
 		}
 
 		if _, err := utils.ExecQuery(ctx, w.qw, createMessageQuery, args...); err != nil {
-			return nil, err
+			return err
 		}
 
 		for _, chunk := range xslices.Chunk(flagArgs, db.ChunkLimit) {
@@ -406,12 +388,12 @@ func (w writeOps) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageR
 			)
 
 			if _, err := utils.ExecQuery(ctx, w.qw, createFlagsQuery, chunk...); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
 
-	return result, nil
+	return nil
 }
 
 func (w writeOps) CreateMessageAndAddToMailbox(ctx context.Context, mbox imap.InternalMailboxID, req *db.CreateMessageReq) (imap.UID, imap.FlagSet, error) {

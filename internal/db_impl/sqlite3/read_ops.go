@@ -96,10 +96,10 @@ func (r readOps) GetMailboxMessageIDPairs(ctx context.Context, mboxID imap.Inter
 	})
 }
 
-func (r readOps) GetAllMailboxesWithAttr(ctx context.Context) ([]*db.Mailbox, error) {
+func (r readOps) GetAllMailboxesWithAttr(ctx context.Context) ([]*db.MailboxWithAttr, error) {
 	query := fmt.Sprintf("SELECT * FROM %v", v1.MailboxesTableName)
 
-	mailboxes, err := utils.MapQueryRowsFn(ctx, r.qw, query, ScanMailbox)
+	mailboxes, err := utils.MapQueryRowsFn(ctx, r.qw, query, ScanMailboxWithAttr)
 	if err != nil {
 		return nil, err
 	}
@@ -123,9 +123,7 @@ func (r readOps) GetAllMailboxesWithAttr(ctx context.Context) ([]*db.Mailbox, er
 			return nil, err
 		}
 
-		mbox.Attributes = xslices.Map(attrs, func(t string) *db.MailboxAttr {
-			return &db.MailboxAttr{Value: t}
-		})
+		mbox.Attributes = imap.NewFlagSet(attrs...)
 	}
 
 	return mailboxes, nil
@@ -421,7 +419,7 @@ func (r readOps) GetMessageRemoteID(ctx context.Context, id imap.InternalMessage
 	return utils.MapQueryRow[imap.MessageID](ctx, r.qw, query, id)
 }
 
-func (r readOps) GetImportedMessageData(ctx context.Context, id imap.InternalMessageID) (*db.Message, error) {
+func (r readOps) GetImportedMessageData(ctx context.Context, id imap.InternalMessageID) (*db.MessageWithFlags, error) {
 	flagsQuery := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = ?",
 		v1.MessageFlagsFieldValue,
 		v1.MessageFlagsTableName,
@@ -433,25 +431,17 @@ func (r readOps) GetImportedMessageData(ctx context.Context, id imap.InternalMes
 		v1.MessagesFieldID,
 	)
 
-	msg, err := utils.MapQueryRowFn(ctx, r.qw, messageQuery, ScanMessage, id)
+	msg, err := utils.MapQueryRowFn(ctx, r.qw, messageQuery, ScanMessageWithFlags, id)
 	if err != nil {
 		return nil, err
 	}
 
-	flags, err := utils.MapQueryRowsFn(ctx, r.qw, flagsQuery, func(scanner utils.RowScanner) (*db.MessageFlag, error) {
-		mf := new(db.MessageFlag)
-
-		if err := scanner.Scan(&mf.Value); err != nil {
-			return nil, err
-		}
-
-		return mf, nil
-	}, id)
+	flags, err := utils.MapQueryRows[string](ctx, r.qw, flagsQuery, id)
 	if err != nil {
 		return nil, err
 	}
 
-	msg.Flags = flags
+	msg.Flags = imap.NewFlagSet(flags...)
 
 	return msg, nil
 }

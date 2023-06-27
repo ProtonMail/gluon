@@ -100,33 +100,21 @@ func runAndValidateDB(t *testing.T, testDir, user string, testData *testData, ui
 			{
 				flags, err := rd.GetMailboxFlags(ctx, dbMBox.ID)
 				require.NoError(t, err)
-				originalFlags := imap.NewFlagSet()
-				for _, f := range m.Flags {
-					originalFlags.AddToSelf(f.Value)
-				}
-				require.True(t, flags.Equals(originalFlags))
+				require.True(t, flags.Equals(m.Flags))
 			}
 
 			// Check Perm Flags.
 			{
 				flags, err := rd.GetMailboxPermanentFlags(ctx, dbMBox.ID)
 				require.NoError(t, err)
-				originalFlags := imap.NewFlagSet()
-				for _, f := range m.PermanentFlags {
-					originalFlags.AddToSelf(f.Value)
-				}
-				require.True(t, flags.Equals(originalFlags))
+				require.True(t, flags.Equals(m.PermanentFlags))
 			}
 
 			// Check Attributes
 			{
 				attr, err := rd.GetMailboxAttributes(ctx, dbMBox.ID)
 				require.NoError(t, err)
-				originalAttr := imap.NewFlagSet()
-				for _, f := range m.Attributes {
-					originalAttr.AddToSelf(f.Value)
-				}
-				require.True(t, attr.Equals(originalAttr))
+				require.True(t, attr.Equals(m.Attributes))
 			}
 		}
 
@@ -149,11 +137,7 @@ func runAndValidateDB(t *testing.T, testDir, user string, testData *testData, ui
 				flags, err := rd.GetMessagesFlags(ctx, []imap.InternalMessageID{m.ID})
 				require.Len(t, flags, 1)
 				require.NoError(t, err)
-				originalFlags := imap.NewFlagSet()
-				for _, f := range m.Flags {
-					originalFlags.AddToSelf(f.Value)
-				}
-				require.True(t, flags[0].FlagSet.Equals(originalFlags))
+				require.True(t, flags[0].FlagSet.Equals(m.Flags))
 
 			}
 		}
@@ -186,9 +170,32 @@ type messageToMBox struct {
 	recent    bool
 }
 
+type mailbox struct {
+	ID             imap.InternalMailboxID
+	RemoteID       imap.MailboxID
+	Name           string
+	UIDValidity    imap.UID
+	Subscribed     bool
+	Flags          imap.FlagSet
+	PermanentFlags imap.FlagSet
+	Attributes     imap.FlagSet
+}
+
+type message struct {
+	ID            imap.InternalMessageID
+	RemoteID      imap.MessageID
+	Date          time.Time
+	Size          int
+	Body          string
+	BodyStructure string
+	Envelope      string
+	Deleted       bool
+	Flags         imap.FlagSet
+}
+
 type testData struct {
-	mailboxes      []db.Mailbox
-	messages       []db.Message
+	mailboxes      []mailbox
+	messages       []message
 	messagesToMBox []messageToMBox
 }
 
@@ -202,62 +209,26 @@ func newTestData(generator imap.UIDValidityGenerator) *testData {
 		return uid
 	}
 
-	mailboxes := []db.Mailbox{
+	mailboxes := []mailbox{
 		{
-			ID:          1,
-			RemoteID:    "RemoteID1",
-			Name:        "Foobar",
-			UIDValidity: newUID(),
-			Subscribed:  true,
-			Flags: []*db.MailboxFlag{
-				{
-					Value: "Flag1",
-				},
-				{
-					Value: "Flag2",
-				},
-			},
-			PermanentFlags: []*db.MailboxFlag{
-				{
-					Value: "PermFlag1",
-				},
-				{
-					Value: "PermFlag2",
-				},
-			},
-			Attributes: []*db.MailboxAttr{
-				{
-					Value: "Attr1",
-				},
-			},
+			ID:             1,
+			RemoteID:       "RemoteID1",
+			Name:           "Foobar",
+			UIDValidity:    newUID(),
+			Subscribed:     true,
+			Flags:          imap.NewFlagSet("Flag1", "Flag2"),
+			PermanentFlags: imap.NewFlagSet("PermFlag1", "PermFlag2"),
+			Attributes:     imap.NewFlagSet("Attr1"),
 		},
 		{
-			ID:          2,
-			RemoteID:    "RemoteID2",
-			Name:        "Abracadabra",
-			UIDValidity: newUID(),
-			Subscribed:  true,
-			Flags: []*db.MailboxFlag{
-				{
-					Value: "Flag3",
-				},
-				{
-					Value: "Flag4",
-				},
-			},
-			PermanentFlags: []*db.MailboxFlag{
-				{
-					Value: "PermFlag3",
-				},
-			},
-			Attributes: []*db.MailboxAttr{
-				{
-					Value: "Attr2",
-				},
-				{
-					Value: "Attr3",
-				},
-			},
+			ID:             2,
+			RemoteID:       "RemoteID2",
+			Name:           "Abracadabra",
+			UIDValidity:    newUID(),
+			Subscribed:     true,
+			Flags:          imap.NewFlagSet("Flag3", "Flag4"),
+			PermanentFlags: imap.NewFlagSet("PermFlag3"),
+			Attributes:     imap.NewFlagSet("Attr2", "Attr3"),
 		},
 		{
 			ID:             3,
@@ -265,13 +236,13 @@ func newTestData(generator imap.UIDValidityGenerator) *testData {
 			Name:           "Mips",
 			UIDValidity:    newUID(),
 			Subscribed:     false,
-			Flags:          nil,
-			PermanentFlags: nil,
-			Attributes:     nil,
+			Flags:          imap.NewFlagSet(),
+			PermanentFlags: imap.NewFlagSet(),
+			Attributes:     imap.NewFlagSet(),
 		},
 	}
 
-	messages := []db.Message{
+	messages := []message{
 		{
 			ID:            imap.NewInternalMessageID(),
 			RemoteID:      "MessageID2",
@@ -281,12 +252,7 @@ func newTestData(generator imap.UIDValidityGenerator) *testData {
 			BodyStructure: "Message Structure 2",
 			Envelope:      "Message Envelope 2",
 			Deleted:       false,
-			Flags: []*db.MessageFlag{
-				{
-					Value: "\\Seen",
-				},
-			},
-			UIDs: nil,
+			Flags:         imap.NewFlagSet("\\Seen"),
 		},
 		{
 			ID:            imap.NewInternalMessageID(),
@@ -297,15 +263,7 @@ func newTestData(generator imap.UIDValidityGenerator) *testData {
 			BodyStructure: "Message Structure 1",
 			Envelope:      "Message Envelope 1",
 			Deleted:       false,
-			Flags: []*db.MessageFlag{
-				{
-					Value: "\\Seen",
-				},
-				{
-					Value: "\\Flagged",
-				},
-			},
-			UIDs: nil,
+			Flags:         imap.NewFlagSet("\\Seen", "\\Flagged"),
 		},
 		{
 			ID:            imap.NewInternalMessageID(),
@@ -316,8 +274,7 @@ func newTestData(generator imap.UIDValidityGenerator) *testData {
 			BodyStructure: "Message Structure 3",
 			Envelope:      "Message Envelope 3",
 			Deleted:       true,
-			Flags:         nil,
-			UIDs:          nil,
+			Flags:         imap.NewFlagSet(),
 		},
 	}
 
@@ -400,8 +357,8 @@ func prepareV0Database(t *testing.T, dir, user string, testData *testData, uidGe
 
 				args := make([]any, 0, len(m.Flags)*2)
 
-				for _, f := range m.Flags {
-					args = append(args, m.ID, f.Value)
+				for _, f := range m.Flags.ToSliceUnsorted() {
+					args = append(args, m.ID, f)
 				}
 
 				require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query, args...))
@@ -421,8 +378,8 @@ func prepareV0Database(t *testing.T, dir, user string, testData *testData, uidGe
 
 				args := make([]any, 0, len(m.PermanentFlags)*2)
 
-				for _, f := range m.PermanentFlags {
-					args = append(args, m.ID, f.Value)
+				for _, f := range m.PermanentFlags.ToSliceUnsorted() {
+					args = append(args, m.ID, f)
 				}
 
 				require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query, args...))
@@ -442,8 +399,8 @@ func prepareV0Database(t *testing.T, dir, user string, testData *testData, uidGe
 
 				args := make([]any, 0, len(m.Attributes)*2)
 
-				for _, f := range m.Attributes {
-					args = append(args, m.ID, f.Value)
+				for _, f := range m.Attributes.ToSliceUnsorted() {
+					args = append(args, m.ID, f)
 				}
 
 				require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query, args...))
@@ -488,8 +445,8 @@ func prepareV0Database(t *testing.T, dir, user string, testData *testData, uidGe
 				args := make([]any, 0, len(testData.messages)*2)
 
 				for _, m := range testData.messages {
-					for _, f := range m.Flags {
-						args = append(args, m.ID, f.Value)
+					for _, f := range m.Flags.ToSliceUnsorted() {
+						args = append(args, m.ID, f)
 					}
 				}
 

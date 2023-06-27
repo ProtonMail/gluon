@@ -304,7 +304,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 			}
 
 			// Create message in the database
-			if _, err := tx.CreateMessages(ctx, xslices.Map(chunk, func(req *DBRequestWithLiteral) *db.CreateMessageReq {
+			if err := tx.CreateMessages(ctx, xslices.Map(chunk, func(req *DBRequestWithLiteral) *db.CreateMessageReq {
 				return &req.CreateMessageReq
 			})...); err != nil {
 				return err
@@ -686,10 +686,8 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 					InternalID:  newInternalID,
 				}
 
-				if m, err := tx.CreateMessages(ctx, request); err != nil {
+				if err := tx.CreateMessages(ctx, request); err != nil {
 					return err
-				} else if len(m) == 0 {
-					return fmt.Errorf("no messages were inserted")
 				}
 
 				if err := user.store.Set(newInternalID, literalReader); err != nil {

@@ -331,12 +331,7 @@ func (state *State) actionImportRecoveredMessage(
 		return db.MessageIDPair{}, false, err
 	}
 
-	messageFlags := imap.NewFlagSet()
-	for _, flag := range message.Flags {
-		messageFlags.AddToSelf(flag.Value)
-	}
-
-	internalID, res, newLiteral, err := state.user.GetRemote().CreateMessage(ctx, mboxID, literal, messageFlags, message.Date)
+	internalID, res, newLiteral, err := state.user.GetRemote().CreateMessage(ctx, mboxID, literal, message.Flags, message.Date)
 	if err != nil {
 		return db.MessageIDPair{}, false, err
 	}
@@ -379,7 +374,7 @@ func (state *State) actionImportRecoveredMessage(
 		InternalID:  internalID,
 	}
 
-	if _, err := tx.CreateMessages(ctx, &req); err != nil {
+	if err := tx.CreateMessages(ctx, &req); err != nil {
 		return db.MessageIDPair{}, false, err
 	}
 

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
-	"github.com/bradenaw/juniper/xslices"
 )
 
 type MessageReadOps interface {
@@ -19,7 +18,7 @@ type MessageReadOps interface {
 
 	GetMessageRemoteID(ctx context.Context, id imap.InternalMessageID) (imap.MessageID, error)
 
-	GetImportedMessageData(ctx context.Context, id imap.InternalMessageID) (*Message, error)
+	GetImportedMessageData(ctx context.Context, id imap.InternalMessageID) (*MessageWithFlags, error)
 
 	GetMessageDateAndSize(ctx context.Context, id imap.InternalMessageID) (time.Time, int, error)
 
@@ -39,7 +38,7 @@ type MessageReadOps interface {
 type MessageWriteOps interface {
 	MessageReadOps
 
-	CreateMessages(ctx context.Context, reqs ...*CreateMessageReq) ([]*Message, error)
+	CreateMessages(ctx context.Context, reqs ...*CreateMessageReq) error
 
 	CreateMessageAndAddToMailbox(ctx context.Context, mbox imap.InternalMailboxID, req *CreateMessageReq) (imap.UID, imap.FlagSet, error)
 
@@ -73,20 +72,4 @@ type MessageFlagSet struct {
 	ID       imap.InternalMessageID
 	RemoteID imap.MessageID
 	FlagSet  imap.FlagSet
-}
-
-func NewFlagSet(msgUID *UID, flags []*MessageFlag) imap.FlagSet {
-	flagSet := imap.NewFlagSetFromSlice(xslices.Map(flags, func(flag *MessageFlag) string {
-		return flag.Value
-	}))
-
-	if msgUID.Deleted {
-		flagSet.AddToSelf(imap.FlagDeleted)
-	}
-
-	if msgUID.Recent {
-		flagSet.AddToSelf(imap.FlagRecent)
-	}
-
-	return flagSet
 }
