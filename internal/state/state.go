@@ -90,7 +90,7 @@ func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn
 			recoveryMBoxMessageCount = 0
 		}
 
-		mailboxes = xslices.Filter(mailboxes, func(mailbox *db.Mailbox) bool {
+		mailboxes = xslices.Filter(mailboxes, func(mailbox *db.MailboxWithAttr) bool {
 			if mailbox.ID == recoveryMailboxID && recoveryMBoxMessageCount == 0 {
 				return false
 			}
@@ -397,7 +397,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			return nil, err
 		}
 
-		inferiors := listInferiors(oldName, state.delimiter, xslices.Map(mailboxes, func(mailbox *db.Mailbox) string {
+		inferiors := listInferiors(oldName, state.delimiter, xslices.Map(mailboxes, func(mailbox *db.MailboxWithAttr) string {
 			return mailbox.Name
 		}))
 

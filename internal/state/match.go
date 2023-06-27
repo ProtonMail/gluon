@@ -21,7 +21,7 @@ type matchMailbox struct {
 	Name       string
 	Subscribed bool
 	// EntMBox should be set to nil if there is no such value.
-	EntMBox *db.Mailbox
+	EntMBox *db.MailboxWithAttr
 }
 
 func getMatches(
@@ -106,12 +106,7 @@ func prepareMatch(
 	)
 
 	if mbox.EntMBox != nil {
-		atts = imap.NewFlagSetFromSlice(xslices.Map(
-			mbox.EntMBox.Attributes,
-			func(flag *db.MailboxAttr) string {
-				return flag.Value
-			},
-		))
+		atts = mbox.EntMBox.Attributes.Clone()
 
 		recent, err := client.GetMailboxRecentCount(ctx, mbox.EntMBox.ID)
 		if err != nil {

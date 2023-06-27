@@ -57,7 +57,7 @@ func (r ReadTracer) GetMailboxMessageIDPairs(ctx context.Context, mboxID imap.In
 	return r.RD.GetMailboxMessageIDPairs(ctx, mboxID)
 }
 
-func (r ReadTracer) GetAllMailboxesWithAttr(ctx context.Context) ([]*db.Mailbox, error) {
+func (r ReadTracer) GetAllMailboxesWithAttr(ctx context.Context) ([]*db.MailboxWithAttr, error) {
 	r.Entry.Tracef("GetAllMailboxesWithAttr")
 
 	return r.RD.GetAllMailboxesWithAttr(ctx)
@@ -189,7 +189,7 @@ func (r ReadTracer) GetMessageRemoteID(ctx context.Context, id imap.InternalMess
 	return r.RD.GetMessageRemoteID(ctx, id)
 }
 
-func (r ReadTracer) GetImportedMessageData(ctx context.Context, id imap.InternalMessageID) (*db.Message, error) {
+func (r ReadTracer) GetImportedMessageData(ctx context.Context, id imap.InternalMessageID) (*db.MessageWithFlags, error) {
 	r.Entry.Tracef("GetImportedMessageData")
 
 	return r.RD.GetImportedMessageData(ctx, id)
@@ -367,7 +367,7 @@ func (w WriteTracer) SetMailboxUIDValidity(ctx context.Context, mboxID imap.Inte
 	return w.TX.SetMailboxUIDValidity(ctx, mboxID, uidValidity)
 }
 
-func (w WriteTracer) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageReq) ([]*db.Message, error) {
+func (w WriteTracer) CreateMessages(ctx context.Context, reqs ...*db.CreateMessageReq) error {
 	w.Entry.Tracef("CreateMessages")
 
 	return w.TX.CreateMessages(ctx, reqs...)
