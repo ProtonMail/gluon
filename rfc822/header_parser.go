@@ -74,8 +74,12 @@ func (hp *headerParser) next() (parsedHeaderEntry, error) {
 							result.valueEnd = result.keyEnd
 							return result, nil
 						}
-					default:
+					case hp.header[hp.offset] == ':':
 						return parsedHeaderEntry{}, fmt.Errorf("unexpected char '%v', for header field value: %w", string(hp.header[hp.offset]), ErrParseHeader)
+					default:
+						if err := validateHeaderField(result); err != nil {
+							return parsedHeaderEntry{}, err
+						}
 					}
 
 					break

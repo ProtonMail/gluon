@@ -394,16 +394,16 @@ func TestHeader_MissingLFAfterCRIsError(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestHeader_InvalidCharAfterColonIsError(t *testing.T) {
-	const literal = "X-Mozilla-Keys:#X-GM-THIRD: 12345\r\n"
-
-	_, err := NewHeader([]byte(literal))
-	require.Error(t, err)
-}
-
 func TestHeader_SingleEmptyField(t *testing.T) {
 	header, err := NewHeader([]byte("Content-tYpe:\r")) //Panic
 	require.NoError(t, err)
 
 	require.Empty(t, header.Get("Content-Type"))
+}
+
+func TestHeader_NoSpaceAfterColonIsValid(t *testing.T) {
+	header, err := NewHeader([]byte("Content-tYpe:Foobar\r\n")) //Panic
+	require.NoError(t, err)
+
+	require.Equal(t, "Foobar", header.Get("Content-Type"))
 }
