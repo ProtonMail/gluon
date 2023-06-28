@@ -308,11 +308,18 @@ func migrateMessageFlags(ctx context.Context, tx utils.QueryWrapper) error {
 
 	// Migrate existing values to new table.
 	{
+		// Due to an issue in Ent's original generate layout it is possible to end up with flag entries that do
+		// not reference any message. This would cause migration failure, but we can easily skip these.
 		type V0MessageFlags struct {
 			ID    imap.InternalMessageID
 			Value string
 		}
-		selectQuery := fmt.Sprintf("SELECT `%v`, `%v` FROM %v", v0.MessageFlagsFieldMessageID, v0.MessageFlagsFieldValue, v0.MessageFlagsTableName)
+		selectQuery := fmt.Sprintf("SELECT `%v`, `%v` FROM %v WHERE `%v` IS NOT NULL",
+			v0.MessageFlagsFieldMessageID,
+			v0.MessageFlagsFieldValue,
+			v0.MessageFlagsTableName,
+			v0.MessageFlagsFieldMessageID,
+		)
 
 		flags, err := utils.MapQueryRowsFn(ctx, tx, selectQuery, func(scanner utils.RowScanner) (V0MessageFlags, error) {
 			var mf V0MessageFlags

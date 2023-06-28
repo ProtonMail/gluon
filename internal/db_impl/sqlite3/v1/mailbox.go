@@ -79,7 +79,13 @@ func copyMailboxFlags(ctx context.Context,
 	toFieldID string,
 	toFieldValue string,
 ) error {
-	loadQuery := fmt.Sprintf("SELECT `%v`, `%v` FROM %v", fromFieldID, fromFieldValue, fromTableName)
+	loadQuery := fmt.Sprintf(
+		"SELECT `%v`, `%v` FROM %v WHERE `%v` IS NOT NULL",
+		fromFieldID,
+		fromFieldValue,
+		fromTableName,
+		fromFieldID,
+	)
 
 	flags, err := utils.MapQueryRowsFn(ctx, tx, loadQuery, scanMailboxFlag)
 	if err != nil {
