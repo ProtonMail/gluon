@@ -346,7 +346,7 @@ func migrateMessageFlags(ctx context.Context, tx utils.QueryWrapper) error {
 			}
 
 			for _, chunk := range xslices.Chunk(flags, db.ChunkLimit) {
-				insertQuery := fmt.Sprintf("INSERT INTO %v (`%v`, `%v`) VALUES %v",
+				insertQuery := fmt.Sprintf("INSERT OR IGNORE INTO %v (`%v`, `%v`) VALUES %v",
 					MessageFlagsTableName,
 					MessageFlagsFieldMessageID,
 					MessageFlagsFieldValue,
