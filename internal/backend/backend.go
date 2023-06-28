@@ -117,22 +117,31 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 			return false, err
 		}
 
+		logrus.WithError(err).Errorf("First database migration failed")
 		reporter.ExceptionWithContext(ctx, "database migration failed", reporter.Context{
 			"error": err,
 		})
 
+		logrus.Debugf("First migration failed, recreating database")
+
 		if err := b.database.Delete(b.getDBDir(), userID); err != nil {
+			logrus.WithError(err).Errorf("Failed to delete old database")
 			onErrorExit()
+
 			return false, fmt.Errorf("failed to remove database after migration: %w", err)
 		}
 
 		database, isNew, err = b.database.New(b.getDBDir(), userID)
 		if err != nil {
+			logrus.WithError(err).Errorf("Failed to create new database")
 			onErrorExit()
+
 			return false, err
 		}
 
 		if !isNew {
+			logrus.Errorf("Expected new database to not exist")
+
 			if err := database.Close(); err != nil {
 				logrus.WithError(err).Errorf("failed to closed db")
 			}
@@ -141,7 +150,9 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		}
 
 		if err := database.Init(ctx, uidValidityGenerator); err != nil {
+			logrus.WithError(err).Errorf("Second database migration failed")
 			onErrorExit()
+
 			return false, err
 		}
 	}
