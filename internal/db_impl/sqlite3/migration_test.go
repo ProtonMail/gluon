@@ -362,6 +362,16 @@ func prepareV0Database(t *testing.T, dir, user string, testData *testData, uidGe
 				}
 
 				require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query, args...))
+
+				// Insert some flags that reference no mailbox.
+				{
+					query := fmt.Sprintf("INSERT INTO %v (`%v`) VALUES ('\\Unrer2'), ('\\Unref1')",
+						v0.MailboxFlagsTableName,
+						v0.MailboxFlagsFieldValue,
+					)
+
+					require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query))
+				}
 			}
 			// Perm flags.
 			for _, m := range testData.mailboxes {
@@ -383,6 +393,16 @@ func prepareV0Database(t *testing.T, dir, user string, testData *testData, uidGe
 				}
 
 				require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query, args...))
+
+				// Insert some permanent flags that reference no mailbox.
+				{
+					query := fmt.Sprintf("INSERT INTO %v (`%v`) VALUES ('\\Unrer2'), ('\\Unref1')",
+						v0.MailboxPermFlagsTableName,
+						v0.MailboxPermFlagsFieldValue,
+					)
+
+					require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query))
+				}
 			}
 			// Attributes
 			for _, m := range testData.mailboxes {
@@ -404,6 +424,16 @@ func prepareV0Database(t *testing.T, dir, user string, testData *testData, uidGe
 				}
 
 				require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query, args...))
+
+				// Insert some attributes that reference no mailbox.
+				{
+					query := fmt.Sprintf("INSERT INTO %v (`%v`) VALUES ('\\Unref2'), ('\\Unref1')",
+						v0.MailboxAttrsTableName,
+						v0.MailboxAttrsFieldValue,
+					)
+
+					require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query))
+				}
 			}
 		}
 
@@ -453,6 +483,16 @@ func prepareV0Database(t *testing.T, dir, user string, testData *testData, uidGe
 				require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query, args...))
 			}
 
+			// Insert some flags that reference no message.
+			{
+
+				query := fmt.Sprintf("INSERT INTO %v (`%v`) VALUES ('\\Seen'), ('\\Foo')",
+					v0.MessageFlagsTableName,
+					v0.MessageFlagsFieldValue,
+				)
+
+				require.NoError(t, utils.ExecQueryAndCheckUpdatedNotZero(ctx, qw, query))
+			}
 		}
 
 		// UIDs
