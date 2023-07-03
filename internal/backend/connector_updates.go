@@ -636,6 +636,10 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 				targetMailboxes = append(targetMailboxes, internalMBoxID)
 			}
 
+			if err := user.setMessageFlags(ctx, tx, internalMessageID, update.Message.Flags); err != nil {
+				return err
+			}
+
 			return user.setMessageMailboxes(ctx, tx, db.MessageIDPair{
 				InternalID: internalMessageID,
 				RemoteID:   update.Message.ID,
