@@ -124,7 +124,7 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 		return fmt.Errorf("attempting to delete protected mailbox (recovery)")
 	}
 
-	stateUpdate, err := db.ClientWriteType(ctx, user.db, func(ctx context.Context, tx db.Transaction) (state.Update, error) {
+	return userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		mailbox, err := tx.GetMailboxByRemoteID(ctx, update.MailboxID)
 		if err != nil {
 			if db.IsErrNotFound(err) {
@@ -142,17 +142,8 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 			return nil, err
 		}
 
-		return state.NewMailboxDeletedStateUpdate(mailbox.ID), nil
+		return []state.Update{state.NewMailboxDeletedStateUpdate(mailbox.ID)}, nil
 	})
-	if err != nil {
-		return err
-	}
-
-	if stateUpdate != nil {
-		user.queueStateUpdate(stateUpdate)
-	}
-
-	return nil
 }
 
 // applyMailboxUpdated applies a MailboxUpdated update.
@@ -187,14 +178,12 @@ func (user *user) applyMailboxIDChanged(ctx context.Context, update *imap.Mailbo
 		return fmt.Errorf("attempting to change protected mailbox (recovery) remote ID")
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+	return userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		if err := tx.UpdateRemoteMailboxID(ctx, update.InternalID, update.RemoteID); err != nil {
-			return err
+			return nil, err
 		}
 
-		user.queueStateUpdate(state.NewMailboxRemoteIDUpdateStateUpdate(update.InternalID, update.RemoteID))
-
-		return nil
+		return []state.Update{state.NewMailboxRemoteIDUpdateStateUpdate(update.InternalID, update.RemoteID)}, nil
 	})
 }
 
@@ -211,7 +200,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	messageForMBox := make(map[imap.InternalMailboxID][]db.MessageIDPair)
 	mboxInternalIDMap := make(map[imap.MailboxID]imap.InternalMailboxID)
 
-	err := user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+	err := userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		for _, message := range update.Messages {
 			if slices.Contains(message.MailboxIDs, ids.GluonInternalRecoveryMailboxRemoteID) {
 				logrus.Errorf("attempting to import messages into protected mailbox (recovery), skipping")
@@ -226,7 +215,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 					literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(message.Literal, ids.InternalIDKey, internalID.String())
 					if err != nil {
-						return fmt.Errorf("failed to set internal ID: %w", err)
+						return nil, fmt.Errorf("failed to set internal ID: %w", err)
 					}
 
 					request := &DBRequestWithLiteral{
@@ -246,7 +235,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 				} else if err == nil {
 					internalID = messageID
 				} else {
-					return err
+					return nil, err
 				}
 			}
 
@@ -262,7 +251,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 								Warn("Unknown Mailbox ID, skipping add to mailbox")
 							continue
 						}
-						return err
+						return nil, err
 					}
 
 					v = internalMBoxID
@@ -283,7 +272,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 		}
 
 		if len(messagesToCreate) == 0 && len(messageForMBox) == 0 {
-			return nil
+			return nil, nil
 		}
 
 		for _, chunk := range xslices.Chunk(messagesToCreate, db.ChunkLimit) {
@@ -300,22 +289,24 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 				return nil
 			}); err != nil {
-				return err
+				return nil, err
 			}
 
 			// Create message in the database
 			if err := tx.CreateMessages(ctx, xslices.Map(chunk, func(req *DBRequestWithLiteral) *db.CreateMessageReq {
 				return &req.CreateMessageReq
 			})...); err != nil {
-				return err
+				return nil, err
 			}
 		}
+
+		var stateUpdates []state.Update
 
 		// Assign all the messages to the mailbox
 		for mboxID, msgList := range messageForMBox {
 			inMailbox, err := tx.MailboxFilterContains(ctx, mboxID, msgList)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			toAdd := xslices.Filter(msgList, func(id db.MessageIDPair) bool {
@@ -323,13 +314,16 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 			})
 
 			if len(toAdd) != 0 {
-				if _, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, toAdd); err != nil {
-					return err
+				_, update, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, toAdd)
+				if err != nil {
+					return nil, err
 				}
+
+				stateUpdates = append(stateUpdates, update)
 			}
 		}
 
-		return nil
+		return stateUpdates, nil
 	})
 
 	// Clean up cache messages that were created if the transaction failed.
@@ -360,32 +354,38 @@ func (user *user) applyMessageMailboxesUpdated(ctx context.Context, update *imap
 		return state.ErrNoSuchMessage
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+	return userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		internalMsgID, err := tx.GetMessageIDFromRemoteID(ctx, update.MessageID)
 		if err != nil {
 			if db.IsErrNotFound(err) {
-				return state.ErrNoSuchMessage
+				return nil, state.ErrNoSuchMessage
 			}
-			return err
+			return nil, err
 		}
 
 		internalMBoxIDs, err := tx.MailboxTranslateRemoteIDs(ctx, update.MailboxIDs)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		if err := user.setMessageMailboxes(ctx, tx, db.MessageIDPair{
+		var stateUpdates []state.Update
+
+		mboxUpdates, err := user.setMessageMailboxes(ctx, tx, db.MessageIDPair{
 			InternalID: internalMsgID,
 			RemoteID:   update.MessageID,
-		}, internalMBoxIDs); err != nil {
-			return err
+		}, internalMBoxIDs)
+		if err != nil {
+			return nil, err
 		}
 
-		if err := user.setMessageFlags(ctx, tx, internalMsgID, update.Flags); err != nil {
-			return err
+		stateUpdates = append(stateUpdates, mboxUpdates...)
+
+		flagUpdates, err := user.setMessageFlags(ctx, tx, internalMsgID, update.Flags)
+		if err != nil {
+			return nil, err
 		}
 
-		return nil
+		return append(stateUpdates, flagUpdates...), nil
 	})
 }
 
@@ -399,21 +399,17 @@ func (user *user) applyMessageFlagsUpdated(ctx context.Context, update *imap.Mes
 		return state.ErrNoSuchMessage
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+	return userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		internalMsgID, err := tx.GetMessageIDFromRemoteID(ctx, update.MessageID)
 
 		if err != nil {
 			if db.IsErrNotFound(err) {
-				return state.ErrNoSuchMessage
+				return nil, state.ErrNoSuchMessage
 			}
-			return err
+			return nil, err
 		}
 
-		if err := user.setMessageFlags(ctx, tx, internalMsgID, update.Flags); err != nil {
-			return err
-		}
-
-		return nil
+		return user.setMessageFlags(ctx, tx, internalMsgID, update.Flags)
 	})
 }
 
@@ -434,144 +430,136 @@ func (user *user) applyMessageIDChanged(ctx context.Context, update *imap.Messag
 	return nil
 }
 
-func (user *user) setMessageMailboxes(ctx context.Context, tx db.Transaction, messageID db.MessageIDPair, mboxIDs []imap.InternalMailboxID) error {
+func (user *user) setMessageMailboxes(ctx context.Context, tx db.Transaction, messageID db.MessageIDPair, mboxIDs []imap.InternalMailboxID) ([]state.Update, error) {
 	curMailboxIDs, err := tx.GetMessageMailboxIDs(ctx, messageID.InternalID)
-	if err != nil {
-		return err
-	}
-
-	for _, mboxID := range xslices.Filter(mboxIDs, func(mboxID imap.InternalMailboxID) bool { return !slices.Contains(curMailboxIDs, mboxID) }) {
-		if _, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, []db.MessageIDPair{messageID}); err != nil {
-			return err
-		}
-	}
-
-	for _, mboxID := range xslices.Filter(curMailboxIDs, func(mboxID imap.InternalMailboxID) bool { return !slices.Contains(mboxIDs, mboxID) }) {
-		if err := user.applyMessagesRemovedFromMailbox(ctx, tx, mboxID, []imap.InternalMessageID{messageID.InternalID}); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// applyMessagesAddedToMailbox adds the messages to the given mailbox.
-func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx db.Transaction, mboxID imap.InternalMailboxID, messageIDs []db.MessageIDPair) ([]db.UIDWithFlags, error) {
-	messageUIDs, update, err := state.AddMessagesToMailbox(ctx, tx, mboxID, messageIDs, nil, user.imapLimits)
 	if err != nil {
 		return nil, err
 	}
 
-	user.queueStateUpdate(update)
+	var updates []state.Update
 
-	return messageUIDs, nil
+	for _, mboxID := range xslices.Filter(mboxIDs, func(mboxID imap.InternalMailboxID) bool { return !slices.Contains(curMailboxIDs, mboxID) }) {
+		_, update, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, []db.MessageIDPair{messageID})
+		if err != nil {
+			return nil, err
+		}
+
+		updates = append(updates, update)
+	}
+
+	for _, mboxID := range xslices.Filter(curMailboxIDs, func(mboxID imap.InternalMailboxID) bool { return !slices.Contains(mboxIDs, mboxID) }) {
+		update, err := user.applyMessagesRemovedFromMailbox(ctx, tx, mboxID, []imap.InternalMessageID{messageID.InternalID})
+		if err != nil {
+			return nil, err
+		}
+
+		updates = append(updates, update...)
+	}
+
+	return updates, nil
+}
+
+// applyMessagesAddedToMailbox adds the messages to the given mailbox.
+func (user *user) applyMessagesAddedToMailbox(ctx context.Context, tx db.Transaction, mboxID imap.InternalMailboxID, messageIDs []db.MessageIDPair) ([]db.UIDWithFlags, state.Update, error) {
+	return state.AddMessagesToMailbox(ctx, tx, mboxID, messageIDs, nil, user.imapLimits)
 }
 
 // applyMessagesRemovedFromMailbox removes the messages from the given mailbox.
-func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx db.Transaction, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) error {
-	updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mboxID, messageIDs)
-	if err != nil {
-		return err
-	}
-
-	for _, update := range updates {
-		user.queueStateUpdate(update)
-	}
-
-	return nil
+func (user *user) applyMessagesRemovedFromMailbox(ctx context.Context, tx db.Transaction, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) ([]state.Update, error) {
+	return state.RemoveMessagesFromMailbox(ctx, tx, mboxID, messageIDs)
 }
 
-func (user *user) setMessageFlags(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, flags imap.FlagSet) error {
+func (user *user) setMessageFlags(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, flags imap.FlagSet) ([]state.Update, error) {
+	var stateUpdates []state.Update
+
 	curFlags, err := tx.GetMessagesFlags(ctx, []imap.InternalMessageID{messageID})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	flagSet := curFlags[0].FlagSet
 
 	for _, v := range flagSet.ToSliceUnsorted() {
 		if !flags.Contains(v) {
-			if err := user.removeMessageFlags(ctx, tx, messageID, v); err != nil {
-				return err
+			update, err := user.removeMessageFlags(ctx, tx, messageID, v)
+			if err != nil {
+				return nil, err
 			}
+
+			stateUpdates = append(stateUpdates, update)
 		}
 	}
 
 	for _, v := range flags.ToSliceUnsorted() {
 		if !flagSet.Contains(v) {
-			if err := user.addMessageFlags(ctx, tx, messageID, v); err != nil {
-				return err
+			update, err := user.addMessageFlags(ctx, tx, messageID, v)
+			if err != nil {
+				return nil, err
 			}
+
+			stateUpdates = append(stateUpdates, update)
 		}
 	}
 
-	return nil
+	return stateUpdates, nil
 }
 
-func (user *user) addMessageFlags(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, flag string) error {
+func (user *user) addMessageFlags(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, flag string) (state.Update, error) {
 	if err := tx.AddFlagToMessages(ctx, []imap.InternalMessageID{messageID}, flag); err != nil {
-		return err
+		return nil, err
 	}
 
-	user.queueStateUpdate(state.NewRemoteAddMessageFlagsStateUpdate(messageID, flag))
-
-	return nil
+	return state.NewRemoteAddMessageFlagsStateUpdate(messageID, flag), nil
 }
 
-func (user *user) removeMessageFlags(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, flag string) error {
+func (user *user) removeMessageFlags(ctx context.Context, tx db.Transaction, messageID imap.InternalMessageID, flag string) (state.Update, error) {
 	if err := tx.RemoveFlagFromMessages(ctx, []imap.InternalMessageID{messageID}, flag); err != nil {
-		return err
+		return nil, err
 	}
 
-	user.queueStateUpdate(state.NewRemoteRemoveMessageFlagsStateUpdate(messageID, flag))
-
-	return nil
+	return state.NewRemoteRemoveMessageFlagsStateUpdate(messageID, flag), nil
 }
 
 func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageDeleted) error {
-	var stateUpdates []state.Update
-
-	if err := user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+	if err := userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		if err := tx.MarkMessageAsDeletedWithRemoteID(ctx, update.MessageID); err != nil {
 			if db.IsErrNotFound(err) {
-				return nil
+				return nil, nil
 			}
 
-			return err
+			return nil, err
 		}
 
 		internalMessageID, err := tx.GetMessageIDFromRemoteID(ctx, update.MessageID)
 		if err != nil {
 			if db.IsErrNotFound(err) {
-				return nil
+				return nil, nil
 			}
 
-			return err
+			return nil, err
 		}
 
 		mailboxes, err := tx.GetMessageMailboxIDs(ctx, internalMessageID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		messageIDs := []imap.InternalMessageID{internalMessageID}
 
+		var stateUpdates []state.Update
+
 		for _, mailbox := range mailboxes {
 			updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mailbox, messageIDs)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			stateUpdates = append(stateUpdates, updates...)
 		}
 
-		return nil
+		return stateUpdates, nil
 	}); err != nil {
 		return err
-	}
-
-	for _, update := range stateUpdates {
-		user.queueStateUpdate(update)
 	}
 
 	return nil
@@ -601,7 +589,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		return err
 	}
 
-	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+	return userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		// compare and see if the literal has changed.
 		onDiskLiteral, err := user.store.Get(internalMessageID)
 		if err != nil {
@@ -622,6 +610,8 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 			log.Debug("Failed to get header value from literal, using update literal")
 		}
 
+		var stateUpdates []state.Update
+
 		if bytes.Equal(onDiskLiteral, updateLiteral) {
 			log.Debug("Message not updated as there are no changes to literals, assigning mailboxes only")
 
@@ -630,29 +620,36 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 			for _, mbox := range update.MailboxIDs {
 				internalMBoxID, err := tx.GetMailboxIDFromRemoteID(ctx, mbox)
 				if err != nil {
-					return err
+					return nil, err
 				}
 
 				targetMailboxes = append(targetMailboxes, internalMBoxID)
 			}
 
-			if err := user.setMessageFlags(ctx, tx, internalMessageID, update.Message.Flags); err != nil {
-				return err
+			flagUpdates, err := user.setMessageFlags(ctx, tx, internalMessageID, update.Message.Flags)
+			if err != nil {
+				return nil, err
 			}
 
-			return user.setMessageMailboxes(ctx, tx, db.MessageIDPair{
+			stateUpdates = append(stateUpdates, flagUpdates...)
+
+			mboxUpdates, err := user.setMessageMailboxes(ctx, tx, db.MessageIDPair{
 				InternalID: internalMessageID,
 				RemoteID:   update.Message.ID,
 			}, targetMailboxes)
+			if err != nil {
+				return nil, err
+			}
+
+			return append(stateUpdates, mboxUpdates...), nil
 		} else {
 			log.Debug("Message has new literal, applying update")
 
-			var stateUpdates []state.Update
 			{
 				// delete the message and remove from the mailboxes.
 				mailboxes, err := tx.GetMessageMailboxIDs(ctx, internalMessageID)
 				if err != nil {
-					return err
+					return nil, err
 				}
 
 				messageIDs := []imap.InternalMessageID{internalMessageID}
@@ -660,7 +657,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 				for _, mailbox := range mailboxes {
 					updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mailbox, messageIDs)
 					if err != nil {
-						return err
+						return nil, err
 					}
 
 					stateUpdates = append(stateUpdates, updates...)
@@ -669,7 +666,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 				// We need change the old remote id as it will break our table constraint otherwise and everything
 				// will silently fail.
 				if err := tx.MarkMessageAsDeletedAndAssignRandomRemoteID(ctx, internalMessageID); err != nil {
-					return err
+					return nil, err
 				}
 			}
 			// create new entry
@@ -678,7 +675,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 
 				literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(update.Literal, ids.InternalIDKey, newInternalID.String())
 				if err != nil {
-					return fmt.Errorf("failed to set internal ID: %w", err)
+					return nil, fmt.Errorf("failed to set internal ID: %w", err)
 				}
 
 				request := &db.CreateMessageReq{
@@ -691,17 +688,17 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 				}
 
 				if err := tx.CreateMessages(ctx, request); err != nil {
-					return err
+					return nil, err
 				}
 
 				if err := user.store.Set(newInternalID, literalReader); err != nil {
-					return err
+					return nil, err
 				}
 
 				for _, mbox := range update.MailboxIDs {
 					internalMBoxID, err := tx.GetMailboxIDFromRemoteID(ctx, mbox)
 					if err != nil {
-						return err
+						return nil, err
 					}
 
 					_, update, err := state.AddMessagesToMailbox(
@@ -713,19 +710,15 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 						user.imapLimits,
 					)
 					if err != nil {
-						return err
+						return nil, err
 					}
 
 					stateUpdates = append(stateUpdates, update)
 				}
 			}
-
-			if len(stateUpdates) != 0 {
-				user.queueStateUpdate(stateUpdates...)
-			}
 		}
 
-		return nil
+		return stateUpdates, nil
 	})
 }
 
@@ -756,4 +749,43 @@ func (user *user) applyUIDValidityBumped(ctx context.Context, update *imap.UIDVa
 	user.queueStateUpdate(state.NewUIDValidityBumpedStateUpdate())
 
 	return nil
+}
+
+func userDBWrite(ctx context.Context, user *user, fn func(context.Context, db.Transaction) ([]state.Update, error)) error {
+	var updates []state.Update
+
+	if err := user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
+		up, err := fn(ctx, tx)
+		updates = up
+		return err
+	}); err != nil {
+		return err
+	}
+
+	if len(updates) != 0 {
+		user.queueStateUpdate(updates...)
+	}
+
+	return nil
+}
+
+func userDBWriteResult[T any](ctx context.Context, user *user, fn func(context.Context, db.Transaction) ([]state.Update, T, error)) (T, error) {
+	var updates []state.Update
+
+	result, err := db.ClientWriteType(ctx, user.db, func(ctx context.Context, tx db.Transaction) (T, error) {
+		up, val, err := fn(ctx, tx)
+		updates = up
+		return val, err
+	})
+	if err != nil {
+		var t T
+		return t, err
+	}
+
+	// need to create a separate transaction for the state updates so that import changes get written first.
+	if len(updates) != 0 {
+		user.queueStateUpdate(updates...)
+	}
+
+	return result, nil
 }
