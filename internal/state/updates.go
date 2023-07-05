@@ -397,8 +397,11 @@ func (state *State) applyMessageFlagsSet(ctx context.Context,
 		return nil, err
 	}
 
-	if err := tx.SetFlagsOnMessages(ctx, messageIDs, setFlags.Remove(imap.FlagDeleted)); err != nil {
-		return nil, err
+	remainingFlags := setFlags.Remove(imap.FlagDeleted)
+	if remainingFlags.Len() != 0 {
+		if err := tx.SetFlagsOnMessages(ctx, messageIDs, remainingFlags); err != nil {
+			return nil, err
+		}
 	}
 
 	return []Update{NewMessageFlagsSetStateUpdate(setFlags, state.snap.mboxID, messageIDs, state.StateID)}, nil
