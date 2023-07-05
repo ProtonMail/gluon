@@ -58,6 +58,22 @@ func TestStore(t *testing.T) {
 	})
 }
 
+func TestSetStoreDeletedDoesNotCrash(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		c.C("b001 CREATE saved-messages")
+		c.S("b001 OK CREATE")
+
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+
+		c.C(`A002 SELECT saved-messages`)
+		c.Se(`A002 OK [READ-WRITE] SELECT`)
+
+		c.C(`A002 STORE 1 FLAGS (\Deleted)`)
+		c.S(`* 1 FETCH (FLAGS (\Deleted \Recent))`)
+		c.OK(`A002`)
+	})
+}
+
 func TestStoreSilent(t *testing.T) {
 	runManyToOneTestWithAuth(t, defaultServerOptions(t), []int{1, 2}, func(c map[int]*testConnection, s *testSession) {
 		// one message in INBOX
