@@ -297,7 +297,7 @@ func (b *Backend) getUserID(ctx context.Context, username string, password []byt
 	b.loginWG.Wait()
 
 	for _, user := range b.users {
-		if user.connector.Authorize(username, password) {
+		if user.connector.Authorize(ctx, username, password) {
 			atomic.StoreInt32(&b.loginErrorCount, 0)
 			return user.userID, nil
 		}
