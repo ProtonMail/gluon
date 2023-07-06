@@ -104,7 +104,7 @@ func NewDummy(usernames []string, password []byte, period time.Duration, flags, 
 	return conn
 }
 
-func (conn *Dummy) Authorize(username string, password []byte) bool {
+func (conn *Dummy) Authorize(_ context.Context, username string, password []byte) bool {
 	if bytes.Compare(password, conn.password) != 0 {
 		return false
 	}
