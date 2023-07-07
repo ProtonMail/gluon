@@ -58,13 +58,9 @@ func ValidateMessageHeaderFields(literal []byte) error {
 					return fmt.Errorf("%w: Required header field 'Sender' should not be empty", ErrInvalidMessage)
 				}
 
-				senderAddr, err := ParseAddress(senderValue)
+				_, err := ParseAddress(senderValue)
 				if err != nil {
 					return fmt.Errorf("%w: failed to parse Sender header: %v", ErrInvalidMessage, err)
-				}
-
-				if len(senderAddr) == 1 && senderAddr[0].Address == addresses[0].Address {
-					return fmt.Errorf("%w: `Sender` should not be present if equal to `From`", ErrInvalidMessage)
 				}
 			}
 		}

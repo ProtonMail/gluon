@@ -28,15 +28,6 @@ func TestValidateMessageHeaderFields_ErrOnMissingDate(t *testing.T) {
 	require.Error(t, ValidateMessageHeaderFields([]byte(literal)))
 }
 
-func TestValidateMessageHeaderFields_ErrOnSingleFromAndSenderEqual(t *testing.T) {
-	const literal = `From: Foo@bar.com
-Date: Mon, 7 Feb 1994 21:52:25 -0800 (PST)
-Sender: Foo@bar.com
-`
-
-	require.Error(t, ValidateMessageHeaderFields([]byte(literal)))
-}
-
 func TestValidateMessageHeaderFields_AllowSingleFromWithDifferentSender(t *testing.T) {
 	const literal = `From: Foo@bar.com
 Date: Mon, 7 Feb 1994 21:52:25 -0800 (PST)
