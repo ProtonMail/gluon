@@ -21,7 +21,10 @@ func startTimeFromContext(ctx context.Context) (time.Time, bool) {
 
 func okMessage(ctx context.Context) string {
 	if startTime, ok := startTimeFromContext(ctx); ok {
-		return fmt.Sprintf("command completed in %v", time.Since(startTime))
+		elapsed := time.Since(startTime)
+		microSec := elapsed.Microseconds()
+
+		return fmt.Sprintf("command completed in %v microsec.", microSec)
 	}
 
 	return ""
