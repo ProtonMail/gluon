@@ -425,8 +425,30 @@ func (u *mailboxRemoteIDUpdateStateUpdate) Apply(ctx context.Context, tx db.Tran
 	return nil
 }
 
+type messageRemoteIDUpdateStateUpdate struct {
+	SnapFilter
+	internalID imap.InternalMessageID
+	remoteID   imap.MessageID
+}
+
 func (u *mailboxRemoteIDUpdateStateUpdate) String() string {
 	return fmt.Sprintf("MailboxRemoteIDUpdateStateUpdate: %v remote = %v", u.SnapFilter.String(), u.remoteID.ShortID())
+}
+
+func NewMessageRemoteIDUpdateStateUpdate(internalID imap.InternalMessageID, remoteID imap.MessageID) Update {
+	return &messageRemoteIDUpdateStateUpdate{
+		SnapFilter: NewAllStateFilter(),
+		remoteID:   remoteID,
+		internalID: internalID,
+	}
+}
+
+func (u *messageRemoteIDUpdateStateUpdate) Apply(ctx context.Context, tx db.Transaction, s *State) error {
+	return s.UpdateMessageRemoteID(u.internalID, u.remoteID)
+}
+
+func (u *messageRemoteIDUpdateStateUpdate) String() string {
+	return fmt.Sprintf("MessageRemoteIDUpdateStateUpdate: %v internal = %v remote = %v", u.SnapFilter.String(), u.internalID.ShortID(), u.remoteID.ShortID())
 }
 
 type mailboxDeletedStateUpdate struct {
