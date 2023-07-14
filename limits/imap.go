@@ -4,20 +4,21 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/bits"
 
 	"github.com/ProtonMail/gluon/imap"
 )
 
 // IMAP contains configurable upper limits that can be enforced by the Gluon server.
 type IMAP struct {
-	maxMailboxCount           int
-	maxMessageCountPerMailbox int
-	maxUIDValidity            int
-	maxUID                    int
+	maxMailboxCount           int64
+	maxMessageCountPerMailbox int64
+	maxUIDValidity            int64
+	maxUID                    int64
 }
 
 func (i IMAP) CheckMailBoxCount(mailboxCount int) error {
-	if mailboxCount >= i.maxMailboxCount {
+	if int64(mailboxCount) >= i.maxMailboxCount {
 		return ErrMaxMailboxCountReached
 	}
 
@@ -25,9 +26,9 @@ func (i IMAP) CheckMailBoxCount(mailboxCount int) error {
 }
 
 func (i IMAP) CheckMailBoxMessageCount(existingCount int, newCount int) error {
-	nextMessageCount := existingCount + newCount
+	nextMessageCount := int64(existingCount) + int64(newCount)
 
-	if nextMessageCount > i.maxMessageCountPerMailbox || nextMessageCount < existingCount {
+	if nextMessageCount > i.maxMessageCountPerMailbox || nextMessageCount < int64(existingCount) {
 		return ErrMaxMailboxMessageCountReached
 	}
 
@@ -35,9 +36,9 @@ func (i IMAP) CheckMailBoxMessageCount(existingCount int, newCount int) error {
 }
 
 func (i IMAP) CheckUIDCount(existingUID imap.UID, newCount int) error {
-	nextUIDCount := int(existingUID) + newCount
+	nextUIDCount := int64(existingUID) + int64(newCount)
 
-	if nextUIDCount > i.maxUID || nextUIDCount < int(existingUID) {
+	if nextUIDCount > i.maxUID || nextUIDCount < int64(existingUID) {
 		return ErrMaxUIDReached
 	}
 
@@ -45,7 +46,7 @@ func (i IMAP) CheckUIDCount(existingUID imap.UID, newCount int) error {
 }
 
 func (i IMAP) CheckUIDValidity(uid imap.UID) error {
-	if int(uid) >= i.maxUIDValidity {
+	if int64(uid) >= i.maxUIDValidity {
 		return ErrMaxUIDValidityReached
 	}
 
@@ -53,20 +54,27 @@ func (i IMAP) CheckUIDValidity(uid imap.UID) error {
 }
 
 func DefaultLimits() IMAP {
+	var maxInt int64
+	if bits.UintSize == 64 {
+		maxInt = math.MaxUint32
+	} else {
+		maxInt = math.MaxInt32
+	}
+
 	return IMAP{
-		maxMailboxCount:           math.MaxUint32,
-		maxMessageCountPerMailbox: math.MaxUint32,
-		maxUIDValidity:            math.MaxUint32,
-		maxUID:                    math.MaxUint32,
+		maxMailboxCount:           maxInt,
+		maxMessageCountPerMailbox: maxInt,
+		maxUIDValidity:            maxInt,
+		maxUID:                    maxInt,
 	}
 }
 
 func NewIMAPLimits(maxMailboxCount uint32, maxMessageCount uint32, maxUID imap.UID, maxUIDValidity imap.UID) IMAP {
 	return IMAP{
-		maxMailboxCount:           int(maxMailboxCount),
-		maxMessageCountPerMailbox: int(maxMessageCount),
-		maxUIDValidity:            int(maxUIDValidity),
-		maxUID:                    int(maxUID),
+		maxMailboxCount:           int64(maxMailboxCount),
+		maxMessageCountPerMailbox: int64(maxMessageCount),
+		maxUIDValidity:            int64(maxUIDValidity),
+		maxUID:                    int64(maxUID),
 	}
 }
 
