@@ -407,3 +407,15 @@ func TestHeader_NoSpaceAfterColonIsValid(t *testing.T) {
 
 	require.Equal(t, "Foobar", header.Get("Content-Type"))
 }
+
+func TestHeader_WithTabs(t *testing.T) {
+	const literal = "From: Bar <bar@bar.com>\n" +
+		"Date: 01 Jan 1980 00:00:00 +0000\n" +
+		"Subject: Weird header field\n" +
+		"To:\t<receiver@pm.test>,\n" +
+		" <another@pm.test>\n"
+
+	header, err := NewHeader([]byte(literal))
+	require.NoError(t, err)
+	require.Equal(t, "<receiver@pm.test>, <another@pm.test>", string(header.Get("To")))
+}

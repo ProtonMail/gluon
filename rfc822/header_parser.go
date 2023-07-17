@@ -49,7 +49,7 @@ func (hp *headerParser) next() (parsedHeaderEntry, error) {
 					}
 
 					switch {
-					case hp.header[hp.offset] == ' ':
+					case isWSP(hp.header[hp.offset]):
 						if err := validateHeaderField(result); err != nil {
 							return parsedHeaderEntry{}, err
 						}
