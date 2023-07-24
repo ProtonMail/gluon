@@ -60,13 +60,15 @@ func nextStateID() StateID {
 }
 
 func NewState(user UserInterface, delimiter string, imapLimits limits.IMAP, panicHandler async.PanicHandler) *State {
+	stateID := nextStateID()
+
 	return &State{
 		user:         user,
-		StateID:      nextStateID(),
+		StateID:      stateID,
 		doneCh:       make(chan struct{}),
 		snap:         nil,
 		delimiter:    delimiter,
-		updatesQueue: async.NewQueuedChannel[Update](32, 128, panicHandler),
+		updatesQueue: async.NewQueuedChannel[Update](32, 128, panicHandler, fmt.Sprintf("gluon-state-%v", stateID)),
 		imapLimits:   imapLimits,
 		panicHandler: panicHandler,
 	}
