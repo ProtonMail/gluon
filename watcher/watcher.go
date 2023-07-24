@@ -20,7 +20,7 @@ func New[T any](panicHandler async.PanicHandler, ofType ...T) *Watcher[T] {
 
 	return &Watcher[T]{
 		types:   types,
-		eventCh: async.NewQueuedChannel[T](1, 1, panicHandler),
+		eventCh: async.NewQueuedChannel[T](1, 1, panicHandler, "Gluon Watcher"),
 	}
 }
 

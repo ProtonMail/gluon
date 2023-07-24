@@ -2,6 +2,7 @@ package async
 
 import (
 	"context"
+	"github.com/ProtonMail/gluon/logging"
 	"sync"
 )
 
@@ -14,14 +15,16 @@ type QueuedChannel[T any] struct {
 	items  []T
 	cond   *sync.Cond
 	closed atomicBool // Should use atomic.Bool once we use Go 1.19!
+	name   string     // for debugging
 }
 
-func NewQueuedChannel[T any](chanBufferSize, queueCapacity int, panicHandler PanicHandler) *QueuedChannel[T] {
+func NewQueuedChannel[T any](chanBufferSize, queueCapacity int, panicHandler PanicHandler, name string) *QueuedChannel[T] {
 	queue := &QueuedChannel[T]{
 		ch:     make(chan T, chanBufferSize),
 		stopCh: make(chan struct{}),
 		items:  make([]T, 0, queueCapacity),
 		cond:   sync.NewCond(&sync.Mutex{}),
+		name:   name,
 	}
 
 	// The queue is initially not closed.
@@ -45,7 +48,7 @@ func NewQueuedChannel[T any](chanBufferSize, queueCapacity int, panicHandler Pan
 				return
 			}
 		}
-	})
+	}, logging.Labels{"name": name})
 
 	return queue
 }

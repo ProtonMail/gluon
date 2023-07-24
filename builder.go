@@ -106,7 +106,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 		databaseDir:          builder.databaseDir,
 		backend:              backend,
 		sessions:             make(map[int]*session.Session),
-		serveErrCh:           async.NewQueuedChannel[error](1, 1, builder.panicHandler),
+		serveErrCh:           async.NewQueuedChannel[error](1, 1, builder.panicHandler, "server-err-ch"),
 		serveDoneCh:          make(chan struct{}),
 		serveWG:              async.MakeWaitGroup(builder.panicHandler),
 		inLogger:             builder.inLogger,
