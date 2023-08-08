@@ -334,24 +334,6 @@ func migrateMessageFlags(ctx context.Context, tx utils.QueryWrapper) error {
 		}
 
 		if len(flags) != 0 {
-			remoteMessageIDsQuery := fmt.Sprintf("SELECT `%v`, `%v` FROM %v", v0.MessagesFieldID, v0.MessagesFieldRemoteID, v0.MessagesTableName)
-			remoteMessagesIDs := make(map[imap.InternalMessageID]imap.MessageID)
-
-			if err := utils.QueryForEachRow(ctx, tx, remoteMessageIDsQuery, func(scanner utils.RowScanner) error {
-				var id imap.InternalMessageID
-				var remoteID imap.MessageID
-
-				if err := scanner.Scan(&id, &remoteID); err != nil {
-					return err
-				}
-
-				remoteMessagesIDs[id] = remoteID
-
-				return nil
-			}); err != nil {
-				return err
-			}
-
 			for _, chunk := range xslices.Chunk(flags, db.ChunkLimit) {
 				insertQuery := fmt.Sprintf("INSERT OR IGNORE INTO %v (`%v`, `%v`) VALUES %v",
 					MessageFlagsTableName,
@@ -361,7 +343,7 @@ func migrateMessageFlags(ctx context.Context, tx utils.QueryWrapper) error {
 				)
 
 				args := make([]any, 0, len(chunk)*2)
-				for _, flag := range flags {
+				for _, flag := range chunk {
 					args = append(args, flag.ID, flag.Value)
 				}
 
