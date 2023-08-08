@@ -25,6 +25,10 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *command.Stor
 		ctx = contexts.AsSilent(ctx)
 	}
 
+	if mailbox.ReadOnly() {
+		return nil, ErrReadOnly
+	}
+
 	flags, err := validateStoreFlags(cmd.Flags)
 	if err != nil {
 		return response.Bad(tag).WithError(err), nil

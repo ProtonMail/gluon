@@ -26,6 +26,10 @@ func (s *Session) handleMove(ctx context.Context, tag string, cmd *command.Move,
 		return nil, err
 	}
 
+	if mailbox.ReadOnly() {
+		return nil, ErrReadOnly
+	}
+
 	item, err := mailbox.Move(ctx, cmd.SeqSet, nameUTF8)
 	if errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err), nil

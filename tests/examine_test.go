@@ -79,5 +79,22 @@ func TestExamineClient(t *testing.T) {
 			require.Equal(t, uint32(1), mailboxStatus.UidValidity)
 			require.Equal(t, true, mailboxStatus.ReadOnly)
 		}
+		{
+			_, err := client.Select("INBOX", true)
+			require.NoError(t, err)
+			// Fetching does not set seen flag on unseen messages in read only mode.
+			newFetchCommand(t, client).withItems("Flags", "UID", "BODY[]").fetch("1:*")
+			mailboxStatus, err := client.Select("INBOX", true)
+			require.NoError(t, err)
+			require.Equal(t, uint32(2), mailboxStatus.Messages)
+			require.Equal(t, uint32(2), mailboxStatus.Recent)
+			require.Equal(t, uint32(2), mailboxStatus.UnseenSeqNum)
+
+			// Can't perform store on read only mailbox.
+			require.Error(t, client.Store(createSeqSet("2"), goimap.AddFlags, []interface{}{goimap.SeenFlag}, nil))
+
+			// Can't move out of read only mailbox
+			require.Error(t, client.Move(createSeqSet("2"), "Archive"))
+		}
 	})
 }
