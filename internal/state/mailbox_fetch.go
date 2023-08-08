@@ -150,7 +150,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 			items = append(items, response.ItemUID(msg.UID))
 		}
 
-		if setSeen {
+		if setSeen && !m.ReadOnly() {
 			if !msg.flags.ContainsUnchecked(imap.FlagSeenLowerCase) {
 				msg.flags.AddToSelf(imap.FlagSeen)
 

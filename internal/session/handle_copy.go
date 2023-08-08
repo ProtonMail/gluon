@@ -21,6 +21,12 @@ func (s *Session) handleCopy(ctx context.Context, tag string, cmd *command.Copy,
 		defer profiling.Stop(ctx, profiling.CmdTypeCopy)
 	}
 
+	// Due to how copies are handled, when the mailbox is read only we can't perform a copy as the message
+	// will get moved.
+	if mailbox.ReadOnly() {
+		return nil, ErrReadOnly
+	}
+
 	nameUTF8, err := s.decodeMailboxName(cmd.Mailbox)
 	if err != nil {
 		return nil, err
