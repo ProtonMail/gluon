@@ -269,7 +269,9 @@ func (w writeOps) ClearRecentFlagInMailboxOnMessage(ctx context.Context, mboxID 
 		v1.MailboxMessagesFieldMessageID,
 	)
 
-	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, messageID)
+	_, err := utils.ExecQuery(ctx, w.qw, query, messageID)
+
+	return err
 }
 
 func (w writeOps) ClearRecentFlagsInMailbox(ctx context.Context, mboxID imap.InternalMailboxID) error {

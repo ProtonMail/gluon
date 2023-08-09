@@ -110,19 +110,6 @@ func ExecQueryAndCheckUpdatedNotZero(ctx context.Context, wrapper QueryWrapper, 
 	return nil
 }
 
-func ExecStmtAndCheckUpdatedNotZero(ctx context.Context, wrapper StmtWrapper, args ...any) error {
-	updated, err := ExecStmt(ctx, wrapper, args...)
-	if err != nil {
-		return err
-	}
-
-	if updated == 0 {
-		return fmt.Errorf("no values changed")
-	}
-
-	return nil
-}
-
 func ExecQuery(ctx context.Context, wrapper QueryWrapper, query string, args ...any) (int, error) {
 	r, err := wrapper.ExecContext(ctx, query, args...)
 	if err != nil {
