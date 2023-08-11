@@ -228,8 +228,8 @@ type simulateLabelConnector struct {
 	mboxID imap.MailboxID
 }
 
-func (r *simulateLabelConnector) CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error) {
-	mbox, err := r.Dummy.CreateMailbox(ctx, name)
+func (r *simulateLabelConnector) CreateMailbox(ctx context.Context, cache connector.IMAPStateWrite, name []string) (imap.Mailbox, error) {
+	mbox, err := r.Dummy.CreateMailbox(ctx, cache, name)
 	if err != nil {
 		return mbox, err
 	}
@@ -243,11 +243,12 @@ func (r *simulateLabelConnector) CreateMailbox(ctx context.Context, name []strin
 
 func (r *simulateLabelConnector) MoveMessages(
 	ctx context.Context,
+	cache connector.IMAPStateWrite,
 	ids []imap.MessageID,
 	from imap.MailboxID,
 	to imap.MailboxID,
 ) (bool, error) {
-	if _, err := r.Dummy.MoveMessages(ctx, ids, from, to); err != nil {
+	if _, err := r.Dummy.MoveMessages(ctx, cache, ids, from, to); err != nil {
 		return false, err
 	}
 

@@ -102,6 +102,8 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context,
 		return nil, fmt.Errorf("the recent flag is read-only")
 	}
 
+	var allUpdates []Update
+
 	// Since DB state can be more up to date then the flag state we should only emit add flag updates for values
 	// that actually changed.
 
@@ -121,9 +123,12 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context,
 		}
 
 		if len(messagesToApply) != 0 {
-			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, true); err != nil {
+			updates, err := state.user.GetRemote().SetMessagesSeen(ctx, tx, messagesToApply, true)
+			if err != nil {
 				return nil, err
 			}
+
+			allUpdates = append(allUpdates, updates...)
 		}
 	}
 
@@ -138,9 +143,12 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context,
 		}
 
 		if len(messagesToApply) != 0 {
-			if err := state.user.GetRemote().SetMessagesFlagged(ctx, messagesToApply, true); err != nil {
+			updates, err := state.user.GetRemote().SetMessagesFlagged(ctx, tx, messagesToApply, true)
+			if err != nil {
 				return nil, err
 			}
+
+			allUpdates = append(allUpdates, updates...)
 		}
 	}
 
@@ -173,7 +181,7 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context,
 		flagStateUpdate.addUpdate(newMessageFlagsAddedStateUpdate(remainingFlags, state.snap.mboxID, messagesToFlag, state.StateID))
 	}
 
-	return []Update{flagStateUpdate}, nil
+	return append(allUpdates, flagStateUpdate), nil
 }
 
 type messageFlagsRemovedStateUpdate struct {
@@ -230,6 +238,8 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context,
 		return nil, fmt.Errorf("the recent flag is read-only")
 	}
 
+	var allUpdates []Update
+
 	curFlags, err := tx.GetMessagesFlags(ctx, messageIDs)
 	if err != nil {
 		return nil, err
@@ -245,9 +255,12 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context,
 		}
 
 		if len(messagesToApply) != 0 {
-			if err := state.user.GetRemote().SetMessagesSeen(ctx, messagesToApply, false); err != nil {
+			updates, err := state.user.GetRemote().SetMessagesSeen(ctx, tx, messagesToApply, false)
+			if err != nil {
 				return nil, err
 			}
+
+			allUpdates = append(allUpdates, updates...)
 		}
 	}
 
@@ -262,9 +275,12 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context,
 		}
 
 		if len(messagesToApply) != 0 {
-			if err := state.user.GetRemote().SetMessagesFlagged(ctx, messagesToApply, false); err != nil {
+			updates, err := state.user.GetRemote().SetMessagesFlagged(ctx, tx, messagesToApply, false)
+			if err != nil {
 				return nil, err
 			}
+
+			allUpdates = append(allUpdates, updates...)
 		}
 	}
 
@@ -297,7 +313,7 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context,
 		flagStateUpdate.addUpdate(NewMessageFlagsRemovedStateUpdate(remainingFlags, state.snap.mboxID, messagesToFlag, state.StateID))
 	}
 
-	return []Update{flagStateUpdate}, nil
+	return append(allUpdates, flagStateUpdate), nil
 }
 
 type messageFlagsSetStateUpdate struct {
@@ -372,10 +388,15 @@ func (state *State) applyMessageFlagsSet(ctx context.Context,
 		}
 	}
 
+	var allUpdates []Update
+
 	for seen, messageIDs := range setSeen {
-		if err := state.user.GetRemote().SetMessagesSeen(ctx, messageIDs, seen); err != nil {
+		updates, err := state.user.GetRemote().SetMessagesSeen(ctx, tx, messageIDs, seen)
+		if err != nil {
 			return nil, err
 		}
+
+		allUpdates = append(allUpdates, updates...)
 	}
 
 	// If setting messages as flagged, only set those messages that aren't currently flagged, and vice versa.
@@ -388,9 +409,12 @@ func (state *State) applyMessageFlagsSet(ctx context.Context,
 	}
 
 	for flagged, messageIDs := range setFlagged {
-		if err := state.user.GetRemote().SetMessagesFlagged(ctx, messageIDs, flagged); err != nil {
+		updates, err := state.user.GetRemote().SetMessagesFlagged(ctx, tx, messageIDs, flagged)
+		if err != nil {
 			return nil, err
 		}
+
+		allUpdates = append(allUpdates, updates...)
 	}
 
 	if err := tx.SetMailboxMessagesDeletedFlag(ctx, state.snap.mboxID.InternalID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {
@@ -404,7 +428,7 @@ func (state *State) applyMessageFlagsSet(ctx context.Context,
 		}
 	}
 
-	return []Update{NewMessageFlagsSetStateUpdate(setFlags, state.snap.mboxID, messageIDs, state.StateID)}, nil
+	return append(allUpdates, NewMessageFlagsSetStateUpdate(setFlags, state.snap.mboxID, messageIDs, state.StateID)), nil
 }
 
 type mailboxRemoteIDUpdateStateUpdate struct {

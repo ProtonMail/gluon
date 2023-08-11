@@ -410,6 +410,7 @@ type disableRemoveFromMailboxConnector struct {
 
 func (r *disableRemoveFromMailboxConnector) CreateMessage(
 	ctx context.Context,
+	cache connector.IMAPStateWrite,
 	mboxID imap.MailboxID,
 	literal []byte,
 	flags imap.FlagSet,
@@ -419,11 +420,12 @@ func (r *disableRemoveFromMailboxConnector) CreateMessage(
 		return imap.Message{}, nil, fmt.Errorf("failed")
 	}
 
-	return r.Dummy.CreateMessage(ctx, mboxID, literal, flags, date)
+	return r.Dummy.CreateMessage(ctx, cache, mboxID, literal, flags, date)
 }
 
 func (r *disableRemoveFromMailboxConnector) RemoveMessagesFromMailbox(
 	_ context.Context,
+	_ connector.IMAPStateWrite,
 	_ []imap.MessageID,
 	_ imap.MailboxID,
 ) error {
@@ -432,6 +434,7 @@ func (r *disableRemoveFromMailboxConnector) RemoveMessagesFromMailbox(
 
 func (r *disableRemoveFromMailboxConnector) MoveMessages(
 	_ context.Context,
+	_ connector.IMAPStateWrite,
 	_ []imap.MessageID,
 	_ imap.MailboxID,
 	_ imap.MailboxID,
@@ -460,6 +463,7 @@ type recoveryDedupConnector struct {
 
 func (r *recoveryDedupConnector) CreateMessage(
 	ctx context.Context,
+	cache connector.IMAPStateWrite,
 	mboxID imap.MailboxID,
 	literal []byte,
 	flags imap.FlagSet,
@@ -470,7 +474,7 @@ func (r *recoveryDedupConnector) CreateMessage(
 	}
 
 	if !r.messageCreated {
-		msg, l, err := r.Dummy.CreateMessage(ctx, mboxID, literal, flags, date)
+		msg, l, err := r.Dummy.CreateMessage(ctx, cache, mboxID, literal, flags, date)
 		if err != nil {
 			return imap.Message{}, nil, err
 		}
@@ -485,6 +489,7 @@ func (r *recoveryDedupConnector) CreateMessage(
 
 func (r *recoveryDedupConnector) AddMessagesToMailbox(
 	ctx context.Context,
+	cache connector.IMAPStateWrite,
 	ids []imap.MessageID,
 	mboxID imap.MailboxID,
 ) error {
@@ -492,7 +497,7 @@ func (r *recoveryDedupConnector) AddMessagesToMailbox(
 		return fmt.Errorf("failed")
 	}
 
-	return r.Dummy.AddMessagesToMailbox(ctx, ids, mboxID)
+	return r.Dummy.AddMessagesToMailbox(ctx, cache, ids, mboxID)
 }
 
 func (r *recoveryDedupConnector) MoveMessagesFromMailbox(
@@ -520,6 +525,7 @@ type failAppendLabelConnector struct {
 
 func (r *failAppendLabelConnector) CreateMessage(
 	_ context.Context,
+	_ connector.IMAPStateWrite,
 	_ imap.MailboxID,
 	_ []byte,
 	_ imap.FlagSet,
@@ -529,6 +535,7 @@ func (r *failAppendLabelConnector) CreateMessage(
 
 func (r *failAppendLabelConnector) AddMessagesToMailbox(
 	_ context.Context,
+	_ connector.IMAPStateWrite,
 	_ []imap.MessageID,
 	_ imap.MailboxID,
 ) error {
@@ -537,6 +544,7 @@ func (r *failAppendLabelConnector) AddMessagesToMailbox(
 
 func (r *failAppendLabelConnector) MoveMessagesFromMailbox(
 	_ context.Context,
+	_ connector.IMAPStateWrite,
 	_ []imap.MessageID,
 	_ imap.MailboxID,
 	_ imap.MailboxID,
@@ -559,6 +567,7 @@ type sizeExceededAppendConnector struct {
 
 func (r *sizeExceededAppendConnector) CreateMessage(
 	_ context.Context,
+	_ connector.IMAPStateWrite,
 	_ imap.MailboxID,
 	_ []byte,
 	_ imap.FlagSet,
@@ -568,6 +577,7 @@ func (r *sizeExceededAppendConnector) CreateMessage(
 
 func (r *sizeExceededAppendConnector) AddMessagesToMailbox(
 	_ context.Context,
+	_ connector.IMAPStateWrite,
 	_ []imap.MessageID,
 	_ imap.MailboxID,
 ) error {

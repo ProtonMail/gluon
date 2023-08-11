@@ -17,15 +17,15 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx db.Transaction, name string, uidValidity imap.UID) (*db.Mailbox, error) {
-	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
+func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx db.Transaction, name string, uidValidity imap.UID) ([]Update, *db.Mailbox, error) {
+	updates, res, err := state.user.GetRemote().CreateMailbox(ctx, tx, strings.Split(name, state.delimiter))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	exists, err := tx.MailboxExistsWithRemoteID(ctx, res.ID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !exists {
@@ -39,26 +39,29 @@ func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx db.Transac
 			uidValidity,
 		)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
-		return mbox, nil
+		return updates, mbox, nil
 	}
 
-	return tx.GetMailboxByRemoteID(ctx, res.ID)
+	mbox, err := tx.GetMailboxByRemoteID(ctx, res.ID)
+
+	return updates, mbox, err
 }
 
-func (state *State) actionCreateMailbox(ctx context.Context, tx db.Transaction, name string, uidValidity imap.UID) error {
-	res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(name, state.delimiter))
+func (state *State) actionCreateMailbox(ctx context.Context, tx db.Transaction, name string, uidValidity imap.UID) ([]Update, error) {
+	updates, res, err := state.user.GetRemote().CreateMailbox(ctx, tx, strings.Split(name, state.delimiter))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return tx.CreateMailboxIfNotExists(ctx, res, state.delimiter, uidValidity)
+	return updates, tx.CreateMailboxIfNotExists(ctx, res, state.delimiter, uidValidity)
 }
 
 func (state *State) actionDeleteMailbox(ctx context.Context, tx db.Transaction, mboxID db.MailboxIDPair) ([]Update, error) {
-	if err := state.user.GetRemote().DeleteMailbox(ctx, mboxID.RemoteID); err != nil {
+	updates, err := state.user.GetRemote().DeleteMailbox(ctx, tx, mboxID.RemoteID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -66,19 +69,21 @@ func (state *State) actionDeleteMailbox(ctx context.Context, tx db.Transaction, 
 		return nil, err
 	}
 
-	return []Update{NewMailboxDeletedStateUpdate(mboxID.InternalID)}, nil
+	return append(updates, NewMailboxDeletedStateUpdate(mboxID.InternalID)), nil
 }
 
-func (state *State) actionUpdateMailbox(ctx context.Context, tx db.Transaction, mboxID imap.MailboxID, newName string) error {
-	if err := state.user.GetRemote().UpdateMailbox(
+func (state *State) actionUpdateMailbox(ctx context.Context, tx db.Transaction, mboxID imap.MailboxID, newName string) ([]Update, error) {
+	updates, err := state.user.GetRemote().UpdateMailbox(
 		ctx,
+		tx,
 		mboxID,
 		strings.Split(newName, state.delimiter),
-	); err != nil {
-		return err
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	return tx.RenameMailboxWithRemoteID(ctx, mboxID, newName)
+	return updates, tx.RenameMailboxWithRemoteID(ctx, mboxID, newName)
 }
 
 func (state *State) actionCreateMessage(
@@ -91,10 +96,14 @@ func (state *State) actionCreateMessage(
 	isSelectedMailbox bool,
 	cameFromDrafts bool,
 ) ([]Update, imap.UID, error) {
-	internalID, res, newLiteral, err := state.user.GetRemote().CreateMessage(ctx, mboxID.RemoteID, literal, flags, date)
+	var updates []Update
+
+	createUpdates, internalID, res, newLiteral, err := state.user.GetRemote().CreateMessage(ctx, tx, mboxID.RemoteID, literal, flags, date)
 	if err != nil {
 		return nil, 0, err
 	}
+
+	updates = append(updates, createUpdates...)
 
 	{
 		// Handle the case where duplicate messages can return the same remote ID.
@@ -124,7 +133,7 @@ func (state *State) actionCreateMessage(
 
 			logrus.Debugf("Deduped message detected, adding existing %v message to mailbox instead.", knownInternalID.ShortID())
 
-			updates, result, err := state.actionAddMessagesToMailbox(ctx,
+			addMsgToMBoxUpdates, result, err := state.actionAddMessagesToMailbox(ctx,
 				tx,
 				[]db.MessageIDPair{{InternalID: knownInternalID, RemoteID: res.ID}},
 				mboxID,
@@ -134,7 +143,7 @@ func (state *State) actionCreateMessage(
 				return nil, 0, err
 			}
 
-			return updates, result[0].UID, nil
+			return append(updates, addMsgToMBoxUpdates...), result[0].UID, nil
 		}
 	}
 
@@ -173,12 +182,11 @@ func (state *State) actionCreateMessage(
 		st = state
 	}
 
-	updates := []Update{newExistsStateUpdateWithExists(
+	updates = append(updates, newExistsStateUpdateWithExists(
 		mboxID.InternalID,
 		[]*exists{newExists(db.MessageIDPair{InternalID: internalID, RemoteID: res.ID}, messageUID, flagSet)},
 		st,
-	),
-	}
+	))
 
 	return updates, messageUID, nil
 }
@@ -269,9 +277,12 @@ func (state *State) actionAddMessagesToMailbox(
 		return id.RemoteID
 	})
 
-	if err := state.user.GetRemote().AddMessagesToMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
+	addMsgUpdates, err := state.user.GetRemote().AddMessagesToMailbox(ctx, tx, remoteIDs, mboxID.RemoteID)
+	if err != nil {
 		return nil, nil, err
 	}
+
+	allUpdates = append(allUpdates, addMsgUpdates...)
 
 	// Messages can be added to a mailbox that is not selected.
 	var st *State
@@ -294,7 +305,7 @@ func (state *State) actionAddRecoveredMessagesToMailbox(
 	tx db.Transaction,
 	messageIDs []db.MessageIDPair,
 	mboxID db.MailboxIDPair,
-) ([]db.UIDWithFlags, Update, error) {
+) ([]Update, []db.UIDWithFlags, error) {
 	filter, err := tx.MailboxFilterContains(ctx, mboxID.InternalID, messageIDs)
 	if err != nil {
 		return nil, nil, err
@@ -308,11 +319,14 @@ func (state *State) actionAddRecoveredMessagesToMailbox(
 		return id.RemoteID
 	})
 
-	if err := state.user.GetRemote().AddMessagesToMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
+	updates, err := state.user.GetRemote().AddMessagesToMailbox(ctx, tx, remoteIDs, mboxID.RemoteID)
+	if err != nil {
 		return nil, nil, err
 	}
 
-	return AddMessagesToMailbox(ctx, tx, mboxID.InternalID, toAdd, state, state.imapLimits)
+	uid, up, err := AddMessagesToMailbox(ctx, tx, mboxID.InternalID, toAdd, state, state.imapLimits)
+
+	return append(updates, up), uid, err
 }
 
 func (state *State) actionImportRecoveredMessage(
@@ -320,31 +334,31 @@ func (state *State) actionImportRecoveredMessage(
 	tx db.Transaction,
 	id imap.InternalMessageID,
 	mboxID imap.MailboxID,
-) (db.MessageIDPair, bool, error) {
+) ([]Update, db.MessageIDPair, bool, error) {
 	message, err := tx.GetImportedMessageData(ctx, id)
 	if err != nil {
-		return db.MessageIDPair{}, false, err
+		return nil, db.MessageIDPair{}, false, err
 	}
 
 	literal, err := state.user.GetStore().Get(id)
 	if err != nil {
-		return db.MessageIDPair{}, false, err
+		return nil, db.MessageIDPair{}, false, err
 	}
 
-	internalID, res, newLiteral, err := state.user.GetRemote().CreateMessage(ctx, mboxID, literal, message.Flags, message.Date)
+	updates, internalID, res, newLiteral, err := state.user.GetRemote().CreateMessage(ctx, tx, mboxID, literal, message.Flags, message.Date)
 	if err != nil {
-		return db.MessageIDPair{}, false, err
+		return nil, db.MessageIDPair{}, false, err
 	}
 
 	{
 		// Handle the unlikely case where duplicate messages can return the same remote ID.
 		internalID, err := tx.GetMessageIDFromRemoteID(ctx, res.ID)
 		if err != nil && !db.IsErrNotFound(err) {
-			return db.MessageIDPair{}, false, err
+			return nil, db.MessageIDPair{}, false, err
 		}
 
 		if err == nil {
-			return db.MessageIDPair{
+			return updates, db.MessageIDPair{
 				InternalID: internalID,
 				RemoteID:   res.ID,
 			}, true, nil
@@ -353,16 +367,16 @@ func (state *State) actionImportRecoveredMessage(
 
 	parsedMessage, err := imap.NewParsedMessage(newLiteral)
 	if err != nil {
-		return db.MessageIDPair{}, false, err
+		return nil, db.MessageIDPair{}, false, err
 	}
 
 	literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(newLiteral, ids.InternalIDKey, internalID.String())
 	if err != nil {
-		return db.MessageIDPair{}, false, fmt.Errorf("failed to set internal ID: %w", err)
+		return nil, db.MessageIDPair{}, false, fmt.Errorf("failed to set internal ID: %w", err)
 	}
 
 	if err := state.user.GetStore().SetUnchecked(internalID, literalReader); err != nil {
-		return db.MessageIDPair{}, false, fmt.Errorf("failed to store message literal: %w", err)
+		return nil, db.MessageIDPair{}, false, fmt.Errorf("failed to store message literal: %w", err)
 	}
 
 	req := db.CreateMessageReq{
@@ -375,10 +389,10 @@ func (state *State) actionImportRecoveredMessage(
 	}
 
 	if err := tx.CreateMessages(ctx, &req); err != nil {
-		return db.MessageIDPair{}, false, err
+		return nil, db.MessageIDPair{}, false, err
 	}
 
-	return db.MessageIDPair{
+	return updates, db.MessageIDPair{
 		InternalID: internalID,
 		RemoteID:   res.ID,
 	}, false, nil
@@ -390,25 +404,29 @@ func (state *State) actionCopyMessagesOutOfRecoveryMailbox(
 	messageIDs []db.MessageIDPair,
 	mboxID db.MailboxIDPair,
 ) ([]Update, []db.UIDWithFlags, error) {
+	var allUpdates []Update
+
 	ids := make([]db.MessageIDPair, 0, len(messageIDs))
 
 	// Import messages to remote.
 	for _, id := range messageIDs {
-		id, _, err := state.actionImportRecoveredMessage(ctx, tx, id.InternalID, mboxID.RemoteID)
+		updates, id, _, err := state.actionImportRecoveredMessage(ctx, tx, id.InternalID, mboxID.RemoteID)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		ids = append(ids, id)
+
+		allUpdates = append(allUpdates, updates...)
 	}
 
 	// Label messages in destination.
-	uidWithFlags, update, err := state.actionAddRecoveredMessagesToMailbox(ctx, tx, ids, mboxID)
+	updates, uidWithFlags, err := state.actionAddRecoveredMessagesToMailbox(ctx, tx, ids, mboxID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return []Update{update}, uidWithFlags, nil
+	return append(allUpdates, updates...), uidWithFlags, nil
 }
 
 func (state *State) actionMoveMessagesOutOfRecoveryMailbox(
@@ -417,12 +435,14 @@ func (state *State) actionMoveMessagesOutOfRecoveryMailbox(
 	messageIDs []db.MessageIDPair,
 	mboxID db.MailboxIDPair,
 ) ([]Update, []db.UIDWithFlags, error) {
+	var updates []Update
+
 	ids := make([]db.MessageIDPair, 0, len(messageIDs))
 	oldInternalIDs := make([]imap.InternalMessageID, 0, len(messageIDs))
 
 	// Import messages to remote.
 	for _, id := range messageIDs {
-		newID, deduped, err := state.actionImportRecoveredMessage(ctx, tx, id.InternalID, mboxID.RemoteID)
+		recoverUpdates, newID, deduped, err := state.actionImportRecoveredMessage(ctx, tx, id.InternalID, mboxID.RemoteID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -435,10 +455,10 @@ func (state *State) actionMoveMessagesOutOfRecoveryMailbox(
 
 		ids = append(ids, newID)
 		oldInternalIDs = append(oldInternalIDs, id.InternalID)
+		updates = append(updates, recoverUpdates...)
 	}
 
 	// Expunge messages
-	var updates []Update
 	{
 		removeUpdates, err := RemoveMessagesFromMailbox(ctx, tx, state.user.GetRecoveryMailboxID().InternalID, oldInternalIDs)
 		if err != nil {
@@ -451,12 +471,12 @@ func (state *State) actionMoveMessagesOutOfRecoveryMailbox(
 	}
 
 	// Label messages in destination.
-	uidWithFlags, update, err := state.actionAddRecoveredMessagesToMailbox(ctx, tx, ids, mboxID)
+	addToMboxUpdates, uidWithFlags, err := state.actionAddRecoveredMessagesToMailbox(ctx, tx, ids, mboxID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	updates = append(updates, update)
+	updates = append(updates, addToMboxUpdates...)
 
 	return updates, uidWithFlags, nil
 }
@@ -470,17 +490,24 @@ func (state *State) actionRemoveMessagesFromMailboxUnchecked(
 	messageIDs []db.MessageIDPair,
 	mboxID db.MailboxIDPair,
 ) ([]Update, error) {
+	var allUpdates []Update
+
 	internalIDs, remoteIDs := db.SplitMessageIDPairSlice(messageIDs)
 
 	if mboxID.InternalID != state.user.GetRecoveryMailboxID().InternalID {
-		if err := state.user.GetRemote().RemoveMessagesFromMailbox(ctx, remoteIDs, mboxID.RemoteID); err != nil {
+		updates, err := state.user.GetRemote().RemoveMessagesFromMailbox(ctx, tx, remoteIDs, mboxID.RemoteID)
+		if err != nil {
 			return nil, err
 		}
+
+		allUpdates = append(allUpdates, updates...)
 	} else {
 		state.user.GetRecoveredMessageHashesMap().Erase(internalIDs...)
 	}
 
-	return RemoveMessagesFromMailbox(ctx, tx, mboxID.InternalID, internalIDs)
+	updates, err := RemoveMessagesFromMailbox(ctx, tx, mboxID.InternalID, internalIDs)
+
+	return append(allUpdates, updates...), err
 }
 
 func (state *State) actionRemoveMessagesFromMailbox(
@@ -560,10 +587,12 @@ func (state *State) actionMoveMessages(
 
 	internalIDs, remoteIDs := db.SplitMessageIDPairSlice(messagesIDsToMove)
 
-	shouldRemoveOldMessages, err := state.user.GetRemote().MoveMessagesFromMailbox(ctx, remoteIDs, mboxFromID.RemoteID, mboxToID.RemoteID)
+	moveUpdates, shouldRemoveOldMessages, err := state.user.GetRemote().MoveMessagesFromMailbox(ctx, tx, remoteIDs, mboxFromID.RemoteID, mboxToID.RemoteID)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	allUpdates = append(allUpdates, moveUpdates...)
 
 	messageUIDs, updates, err := MoveMessagesFromMailbox(
 		ctx,

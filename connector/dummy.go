@@ -104,6 +104,10 @@ func NewDummy(usernames []string, password []byte, period time.Duration, flags, 
 	return conn
 }
 
+func (conn *Dummy) Init(_ context.Context, _ IMAPState) error {
+	return nil
+}
+
 func (conn *Dummy) Authorize(_ context.Context, username string, password []byte) bool {
 	if bytes.Compare(password, conn.password) != 0 {
 		return false
@@ -116,7 +120,7 @@ func (conn *Dummy) GetUpdates() <-chan imap.Update {
 	return conn.updateCh
 }
 
-func (conn *Dummy) CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error) {
+func (conn *Dummy) CreateMailbox(_ context.Context, _ IMAPStateWrite, name []string) (imap.Mailbox, error) {
 	exclusive, err := conn.validateName(name)
 	if err != nil {
 		return imap.Mailbox{}, err
@@ -129,7 +133,7 @@ func (conn *Dummy) CreateMailbox(ctx context.Context, name []string) (imap.Mailb
 	return mbox, nil
 }
 
-func (conn *Dummy) UpdateMailboxName(ctx context.Context, mboxID imap.MailboxID, newName []string) error {
+func (conn *Dummy) UpdateMailboxName(_ context.Context, _ IMAPStateWrite, mboxID imap.MailboxID, newName []string) error {
 	mbox, err := conn.state.getMailbox(mboxID)
 	if err != nil {
 		return err
@@ -146,7 +150,7 @@ func (conn *Dummy) UpdateMailboxName(ctx context.Context, mboxID imap.MailboxID,
 	return nil
 }
 
-func (conn *Dummy) DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) error {
+func (conn *Dummy) DeleteMailbox(_ context.Context, _ IMAPStateWrite, mboxID imap.MailboxID) error {
 	conn.state.deleteMailbox(mboxID)
 
 	conn.pushUpdate(imap.NewMailboxDeleted(mboxID))
@@ -154,11 +158,11 @@ func (conn *Dummy) DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) err
 	return nil
 }
 
-func (conn *Dummy) GetMessageLiteral(ctx context.Context, id imap.MessageID) ([]byte, error) {
+func (conn *Dummy) GetMessageLiteral(_ context.Context, id imap.MessageID) ([]byte, error) {
 	return conn.state.tryGetLiteral(id)
 }
 
-func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.MailboxID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error) {
+func (conn *Dummy) CreateMessage(ctx context.Context, _ IMAPStateWrite, mboxID imap.MailboxID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error) {
 	// NOTE: We are only recording this here since it was the easiest command to verify the data has been record properly
 	// in the context, as APPEND will always require a communication with the remote connector.
 	conn.state.recordIMAPID(ctx)
@@ -190,7 +194,7 @@ func (conn *Dummy) CreateMessage(ctx context.Context, mboxID imap.MailboxID, lit
 	return message, literal, nil
 }
 
-func (conn *Dummy) AddMessagesToMailbox(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.MailboxID) error {
+func (conn *Dummy) AddMessagesToMailbox(_ context.Context, _ IMAPStateWrite, messageIDs []imap.MessageID, mboxID imap.MailboxID) error {
 	for _, messageID := range messageIDs {
 		conn.state.addMessageToMailbox(messageID, mboxID)
 
@@ -204,7 +208,7 @@ func (conn *Dummy) AddMessagesToMailbox(ctx context.Context, messageIDs []imap.M
 	return nil
 }
 
-func (conn *Dummy) RemoveMessagesFromMailbox(ctx context.Context, messageIDs []imap.MessageID, mboxID imap.MailboxID) error {
+func (conn *Dummy) RemoveMessagesFromMailbox(_ context.Context, _ IMAPStateWrite, messageIDs []imap.MessageID, mboxID imap.MailboxID) error {
 	for _, messageID := range messageIDs {
 		conn.state.removeMessageFromMailbox(messageID, mboxID)
 
@@ -218,7 +222,7 @@ func (conn *Dummy) RemoveMessagesFromMailbox(ctx context.Context, messageIDs []i
 	return nil
 }
 
-func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) (bool, error) {
+func (conn *Dummy) MoveMessages(_ context.Context, _ IMAPStateWrite, messageIDs []imap.MessageID, mboxFromID, mboxToID imap.MailboxID) (bool, error) {
 	for _, messageID := range messageIDs {
 		conn.state.removeMessageFromMailbox(messageID, mboxFromID)
 		conn.state.addMessageToMailbox(messageID, mboxToID)
@@ -233,7 +237,7 @@ func (conn *Dummy) MoveMessages(ctx context.Context, messageIDs []imap.MessageID
 	return true, nil
 }
 
-func (conn *Dummy) MarkMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error {
+func (conn *Dummy) MarkMessagesSeen(_ context.Context, _ IMAPStateWrite, messageIDs []imap.MessageID, seen bool) error {
 	for _, messageID := range messageIDs {
 		conn.state.setSeen(messageID, seen)
 
@@ -246,7 +250,7 @@ func (conn *Dummy) MarkMessagesSeen(ctx context.Context, messageIDs []imap.Messa
 	return nil
 }
 
-func (conn *Dummy) MarkMessagesFlagged(ctx context.Context, messageIDs []imap.MessageID, flagged bool) error {
+func (conn *Dummy) MarkMessagesFlagged(_ context.Context, _ IMAPStateWrite, messageIDs []imap.MessageID, flagged bool) error {
 	for _, messageID := range messageIDs {
 		conn.state.setFlagged(messageID, flagged)
 
