@@ -194,12 +194,12 @@ type returnSameRemoteIDConnector struct {
 	messageLiteral []byte
 }
 
-func (r *returnSameRemoteIDConnector) CreateMessage(ctx context.Context, mboxID imap.MailboxID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error) {
+func (r *returnSameRemoteIDConnector) CreateMessage(ctx context.Context, cache connector.IMAPStateWrite, mboxID imap.MailboxID, literal []byte, flags imap.FlagSet, date time.Time) (imap.Message, []byte, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	if !r.messageCreated {
-		msg, l, err := r.Dummy.CreateMessage(ctx, mboxID, literal, flags, date)
+		msg, l, err := r.Dummy.CreateMessage(ctx, cache, mboxID, literal, flags, date)
 		if err != nil {
 			return imap.Message{}, nil, err
 		}

@@ -25,13 +25,16 @@ var (
 )
 
 type Sync struct {
-	connector utils.ConnectorImpl
-	server    *gluon.Server
-	mailboxes []imap.MailboxID
+	connector           utils.ConnectorImpl
+	server              *gluon.Server
+	mailboxes           []imap.MailboxID
+	nullIMAPStateWriter *nullIMAPStateWriter
 }
 
 func NewSync() benchmark.Benchmark {
-	return &Sync{}
+	return &Sync{
+		nullIMAPStateWriter: &nullIMAPStateWriter{},
+	}
 }
 
 func (s *Sync) Name() string {
@@ -74,7 +77,7 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 	mboxIDs := make([]imap.MailboxID, 0, *syncMBoxCountFlag)
 
 	for i := uint(0); i < *syncMBoxCountFlag; i++ {
-		mbox, err := c.Connector().CreateMailbox(ctx, []string{uuid.NewString()})
+		mbox, err := c.Connector().CreateMailbox(ctx, s.nullIMAPStateWriter, []string{uuid.NewString()})
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +99,7 @@ func (s *Sync) setupConnector(ctx context.Context) (utils.ConnectorImpl, error) 
 		for i := uint(0); i < *syncMessageCountFlag; i++ {
 			randIndex := rand.Intn(len(messages))
 
-			if _, _, err := c.Connector().CreateMessage(ctx, mboxID, messages[randIndex], flagSet, time.Now()); err != nil {
+			if _, _, err := c.Connector().CreateMessage(ctx, s.nullIMAPStateWriter, mboxID, messages[randIndex], flagSet, time.Now()); err != nil {
 				return nil, err
 			}
 		}
@@ -133,7 +136,7 @@ func (s *Sync) Run(ctx context.Context) (*reporter.BenchmarkRun, error) {
 
 func (s *Sync) TearDown(ctx context.Context) error {
 	for _, id := range s.mailboxes {
-		if err := s.connector.Connector().DeleteMailbox(ctx, id); err != nil {
+		if err := s.connector.Connector().DeleteMailbox(ctx, s.nullIMAPStateWriter, id); err != nil {
 			return err
 		}
 	}
@@ -149,4 +152,18 @@ func (s *Sync) TearDown(ctx context.Context) error {
 
 func init() {
 	benchmark.RegisterBenchmark(NewSync())
+}
+
+type nullIMAPStateWriter struct{}
+
+func (n nullIMAPStateWriter) GetMailboxCount(_ context.Context) (int, error) {
+	return 0, nil
+}
+
+func (n nullIMAPStateWriter) CreateMailbox(_ context.Context, _ imap.Mailbox) error {
+	return nil
+}
+
+func (n nullIMAPStateWriter) UpdateMessageFlags(_ context.Context, _ imap.MessageID, _ imap.FlagSet) error {
+	return nil
 }

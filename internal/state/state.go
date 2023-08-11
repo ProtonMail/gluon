@@ -289,13 +289,18 @@ func (state *State) Create(ctx context.Context, name string) error {
 
 		mboxesToCreate = append(mboxesToCreate, name)
 
+		var allUpdates []Update
+
 		for _, mboxName := range mboxesToCreate {
-			if err := state.actionCreateMailbox(ctx, tx, mboxName, uidValidity); err != nil {
+			updates, err := state.actionCreateMailbox(ctx, tx, mboxName, uidValidity)
+			if err != nil {
 				return nil, err
 			}
+
+			allUpdates = append(allUpdates, updates...)
 		}
 
-		return nil, nil
+		return allUpdates, nil
 	})
 }
 
@@ -340,6 +345,8 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 	}
 
 	return stateDBWrite(ctx, state, func(ctx context.Context, tx db.Transaction) ([]Update, error) {
+		var allUpdates []Update
+
 		mbox, err := tx.GetMailboxByName(ctx, oldName)
 		if err != nil {
 			if errors.Is(err, db.ErrNotFound) {
@@ -375,10 +382,12 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 				return nil, err
 			}
 
-			res, err := state.user.GetRemote().CreateMailbox(ctx, strings.Split(m, state.delimiter))
+			updates, res, err := state.user.GetRemote().CreateMailbox(ctx, tx, strings.Split(m, state.delimiter))
 			if err != nil {
 				return nil, err
 			}
+
+			allUpdates = append(allUpdates, updates...)
 
 			if err := tx.CreateMailboxIfNotExists(ctx, res, state.delimiter, uidValidity); err != nil {
 				return nil, err
@@ -389,9 +398,12 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			return state.renameInbox(ctx, tx, mbox, newName)
 		}
 
-		if err := state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, newName); err != nil {
+		updates, err := state.actionUpdateMailbox(ctx, tx, mbox.RemoteID, newName)
+		if err != nil {
 			return nil, err
 		}
+
+		allUpdates = append(allUpdates, updates...)
 
 		// Locally update all inferiors so we don't wait for update
 		mailboxes, err := tx.GetAllMailboxesWithAttr(ctx)
@@ -420,7 +432,7 @@ func (state *State) Rename(ctx context.Context, oldName, newName string) error {
 			}
 		}
 
-		return nil, nil
+		return allUpdates, nil
 	})
 }
 
@@ -639,10 +651,14 @@ func (state *State) renameInbox(ctx context.Context, tx db.Transaction, inbox *d
 		return nil, err
 	}
 
-	mbox, err := state.actionCreateAndGetMailbox(ctx, tx, newName, uidValidity)
+	var allUpdates []Update
+
+	updates, mbox, err := state.actionCreateAndGetMailbox(ctx, tx, newName, uidValidity)
 	if err != nil {
 		return nil, err
 	}
+
+	allUpdates = append(allUpdates, updates...)
 
 	messageIDs, err := tx.GetMailboxMessageIDPairs(ctx, inbox.ID)
 	if err != nil {
@@ -651,12 +667,14 @@ func (state *State) renameInbox(ctx context.Context, tx db.Transaction, inbox *d
 
 	mboxIDPair := db.NewMailboxIDPair(mbox)
 
-	updates, _, err := state.actionMoveMessages(ctx, tx, messageIDs, db.NewMailboxIDPair(inbox), mboxIDPair)
+	updatesMove, _, err := state.actionMoveMessages(ctx, tx, messageIDs, db.NewMailboxIDPair(inbox), mboxIDPair)
 	if err != nil {
 		return nil, err
 	}
 
-	return updates, nil
+	allUpdates = append(allUpdates, updatesMove...)
+
+	return allUpdates, nil
 }
 
 func (state *State) beginIdle(ctx context.Context) ([]response.Response, error) {

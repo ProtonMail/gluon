@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 )
 
@@ -24,22 +25,23 @@ type Connector interface {
 	ClearAllConnMetadata()
 
 	// CreateMailbox creates a new mailbox with the given name.
-	CreateMailbox(ctx context.Context, name []string) (imap.Mailbox, error)
+	CreateMailbox(ctx context.Context, tx db.Transaction, name []string) ([]Update, imap.Mailbox, error)
 
 	// UpdateMailbox sets the name of the mailbox with the given ID to the given new name.
-	UpdateMailbox(ctx context.Context, mboxID imap.MailboxID, newName []string) error
+	UpdateMailbox(ctx context.Context, tx db.Transaction, mboxID imap.MailboxID, newName []string) ([]Update, error)
 
 	// DeleteMailbox deletes the mailbox with the given ID and name.
-	DeleteMailbox(ctx context.Context, mboxID imap.MailboxID) error
+	DeleteMailbox(ctx context.Context, tx db.Transaction, mboxID imap.MailboxID) ([]Update, error)
 
 	// CreateMessage appends a message literal to the mailbox with the given ID.
 	CreateMessage(
 		ctx context.Context,
+		tx db.Transaction,
 		mboxID imap.MailboxID,
 		literal []byte,
 		flags imap.FlagSet,
 		date time.Time,
-	) (imap.InternalMessageID, imap.Message, []byte, error)
+	) ([]Update, imap.InternalMessageID, imap.Message, []byte, error)
 
 	// GetMessageLiteral retrieves the message literal from the connector.
 	// Note: this can get called from different go routines.
@@ -48,30 +50,33 @@ type Connector interface {
 	// AddMessagesToMailbox adds the message with the given ID to the mailbox with the given ID.
 	AddMessagesToMailbox(
 		ctx context.Context,
+		tx db.Transaction,
 		messageIDs []imap.MessageID,
 		mboxID imap.MailboxID,
-	) error
+	) ([]Update, error)
 
 	// RemoveMessagesFromMailbox removes the message with the given ID from the mailbox with the given ID.
 	RemoveMessagesFromMailbox(
 		ctx context.Context,
+		tx db.Transaction,
 		messageIDs []imap.MessageID,
 		mboxID imap.MailboxID,
-	) error
+	) ([]Update, error)
 
 	// MoveMessagesFromMailbox removes the message with the given ID from the mailbox with the given ID.
 	MoveMessagesFromMailbox(
 		ctx context.Context,
+		tx db.Transaction,
 		messageIDs []imap.MessageID,
 		mboxFromID imap.MailboxID,
 		mboxToID imap.MailboxID,
-	) (bool, error)
+	) ([]Update, bool, error)
 
 	// SetMessagesSeen marks the message with the given ID as seen or unseen.
-	SetMessagesSeen(ctx context.Context, messageIDs []imap.MessageID, seen bool) error
+	SetMessagesSeen(ctx context.Context, tx db.Transaction, messageIDs []imap.MessageID, seen bool) ([]Update, error)
 
 	// SetMessagesFlagged marks the message with the given ID as seen or unseen.
-	SetMessagesFlagged(ctx context.Context, messageIDs []imap.MessageID, flagged bool) error
+	SetMessagesFlagged(ctx context.Context, tx db.Transaction, messageIDs []imap.MessageID, flagged bool) ([]Update, error)
 
 	// GetMailboxVisibility retrieves the visibility status of a mailbox for a client.
 	GetMailboxVisibility(ctx context.Context, id imap.MailboxID) imap.MailboxVisibility
