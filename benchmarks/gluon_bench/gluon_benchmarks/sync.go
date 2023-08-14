@@ -156,6 +156,14 @@ func init() {
 
 type nullIMAPStateWriter struct{}
 
+func (n nullIMAPStateWriter) GetSettings(ctx context.Context) (string, bool, error) {
+	return "", false, nil
+}
+
+func (n nullIMAPStateWriter) StoreSettings(ctx context.Context, value string) error {
+	panic("implement me")
+}
+
 func (n nullIMAPStateWriter) GetMailboxCount(_ context.Context) (int, error) {
 	return 0, nil
 }

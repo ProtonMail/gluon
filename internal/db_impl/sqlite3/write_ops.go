@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	v2 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v2"
 	"strings"
 
 	"github.com/ProtonMail/gluon/db"
@@ -655,4 +656,16 @@ func (w writeOps) RemoveDeletedSubscriptionWithName(ctx context.Context, mboxNam
 	)
 
 	return utils.ExecQuery(ctx, w.qw, query, mboxName)
+}
+
+func (w writeOps) StoreConnectorSettings(ctx context.Context, settings string) error {
+	query := fmt.Sprintf("UPDATE `%v` SET `%v`=? WHERE `%v`=?",
+		v2.ConnectorSettingsTableName,
+		v2.ConnectorSettingsFieldValue,
+		v2.ConnectorSettingsFieldID,
+	)
+
+	_, err := utils.ExecQuery(ctx, w.qw, query, settings, v2.ConnectorSettingsDefaultID)
+
+	return err
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	v2 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v2"
 
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
@@ -20,6 +21,7 @@ type Migration interface {
 var migrationList = []Migration{
 	&v0.Migration{},
 	&v1.Migration{},
+	&v2.Migration{},
 }
 
 func RunMigrations(ctx context.Context, tx utils.QueryWrapper, generator imap.UIDValidityGenerator) error {

@@ -73,6 +73,52 @@ func TestRunMigrations(t *testing.T) {
 	runAndValidateDB(t, testDir, "foo", testData, uidGenerator)
 }
 
+func TestMigration_ConnectorSettingsEmtpyOnFirstUse(t *testing.T) {
+	testDir := t.TempDir()
+
+	client, _, err := NewClient(testDir, "foo", false, false)
+	require.NoError(t, err)
+
+	defer func() {
+		require.NoError(t, client.Close())
+	}()
+
+	err = client.Init(context.Background(), imap.DefaultEpochUIDValidityGenerator())
+	require.NoError(t, err)
+
+	err = client.Write(context.Background(), func(ctx context.Context, tx db.Transaction) error {
+		{
+			settings, hasValue, err := tx.GetConnectorSettings(ctx)
+			require.NoError(t, err)
+			require.Empty(t, settings)
+			require.False(t, hasValue)
+		}
+
+		// Store empty value
+		require.NoError(t, tx.StoreConnectorSettings(ctx, ""))
+		{
+			settings, hasValue, err := tx.GetConnectorSettings(ctx)
+			require.NoError(t, err)
+			require.Empty(t, settings)
+			require.True(t, hasValue)
+		}
+
+		newSettings := "Some random settings string"
+		require.NoError(t, tx.StoreConnectorSettings(ctx, newSettings))
+
+		{
+			settings, hasValue, err := tx.GetConnectorSettings(ctx)
+			require.NoError(t, err)
+			require.Equal(t, newSettings, settings)
+			require.True(t, hasValue)
+		}
+
+		return nil
+	})
+
+	require.NoError(t, err)
+}
+
 func runAndValidateDB(t *testing.T, testDir, user string, testData *testData, uidGenerator imap.UIDValidityGenerator) {
 	// create client and run all migrations.
 	client, _, err := NewClient(testDir, "foo", false, false)
