@@ -79,6 +79,10 @@ func (d *DBIMAPStateWrite) UpdateMessageFlags(ctx context.Context, id imap.Messa
 	})
 }
 
+func (d *DBIMAPStateWrite) StoreSettings(ctx context.Context, settings string) error {
+	return d.tx.StoreConnectorSettings(ctx, settings)
+}
+
 func (d *DBIMAPStateWrite) wrapStateUpdates(ctx context.Context, f func(ctx context.Context, tx db.Transaction) ([]state.Update, error)) error {
 	updates, err := f(ctx, d.tx)
 	if err == nil {

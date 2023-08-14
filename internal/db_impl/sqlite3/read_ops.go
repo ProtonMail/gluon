@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	v2 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v2"
 	"strings"
 	"time"
 
@@ -605,4 +606,31 @@ func (r readOps) GetDeletedSubscriptionSet(ctx context.Context) (map[imap.Mailbo
 	}
 
 	return result, nil
+}
+
+func (r readOps) GetConnectorSettings(ctx context.Context) (string, bool, error) {
+	query := fmt.Sprintf("SELECT `%v` FROM %v WHERE `%v` = ?",
+		v2.ConnectorSettingsFieldValue,
+		v2.ConnectorSettingsTableName,
+		v2.ConnectorSettingsFieldID,
+	)
+
+	var hasValue bool
+
+	value, err := utils.MapQueryRowFn(ctx, r.qw, query, func(scanner utils.RowScanner) (string, error) {
+		var value sql.NullString
+
+		if err := scanner.Scan(&value); err != nil {
+			return "", err
+		}
+
+		if !value.Valid {
+			return "", nil
+		}
+
+		hasValue = true
+		return value.String, nil
+	}, v2.ConnectorSettingsDefaultID)
+
+	return value, hasValue, err
 }

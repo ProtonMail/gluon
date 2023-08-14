@@ -243,6 +243,12 @@ func (r ReadTracer) GetDeletedSubscriptionSet(ctx context.Context) (map[imap.Mai
 	return r.RD.GetDeletedSubscriptionSet(ctx)
 }
 
+func (r ReadTracer) GetConnectorSettings(ctx context.Context) (string, bool, error) {
+	r.Entry.Tracef("GetConnectorSettings")
+
+	return r.RD.GetConnectorSettings(ctx)
+}
+
 // WriteTracer prints all method names to a trace log.
 type WriteTracer struct {
 	ReadTracer
@@ -441,4 +447,10 @@ func (w WriteTracer) RemoveDeletedSubscriptionWithName(ctx context.Context, mbox
 	w.Entry.Tracef("RemoveDeletedSubscriptionWithName")
 
 	return w.TX.RemoveDeletedSubscriptionWithName(ctx, mboxName)
+}
+
+func (w WriteTracer) StoreConnectorSettings(ctx context.Context, settings string) error {
+	w.Entry.Tracef("StoreConnectorSettings")
+
+	return w.TX.StoreConnectorSettings(ctx, settings)
 }

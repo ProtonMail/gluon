@@ -37,6 +37,7 @@ func IMAPStateWriteType[T any](ctx context.Context, state IMAPState, f func(cont
 }
 
 type IMAPStateRead interface {
+	GetSettings(ctx context.Context) (string, bool, error)
 	GetMailboxCount(ctx context.Context) (int, error)
 }
 
@@ -46,4 +47,6 @@ type IMAPStateWrite interface {
 	CreateMailbox(ctx context.Context, mailbox imap.Mailbox) error
 
 	UpdateMessageFlags(ctx context.Context, id imap.MessageID, flags imap.FlagSet) error
+
+	StoreSettings(ctx context.Context, value string) error
 }
