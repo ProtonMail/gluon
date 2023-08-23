@@ -241,10 +241,8 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 
 func (user *user) queueStateUpdate(updates ...state.Update) {
 	if err := user.forState(func(state *state.State) error {
-		for _, update := range updates {
-			if !state.QueueUpdates(update) {
-				logrus.Errorf("Failed to push update to state %v", state.StateID)
-			}
+		if !state.QueueUpdates(updates...) {
+			logrus.Errorf("Failed to push update to state %v", state.StateID)
 		}
 
 		return nil
