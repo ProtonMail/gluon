@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
+	"io"
+	"mime/quotedprintable"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -97,9 +99,7 @@ func GetMessageHash(b []byte) (string, error) {
 		}
 
 		body := section.Body()
-		body = bytes.ReplaceAll(body, []byte{'\r'}, nil)
-		body = bytes.TrimSpace(body)
-		if _, err := h.Write(body); err != nil {
+		if err := hashBody(h, body, mimeType, header.Get("Content-Transfer-Encoding")); err != nil {
 			return err
 		}
 
@@ -109,4 +109,46 @@ func GetMessageHash(b []byte) (string, error) {
 	}
 
 	return base64.StdEncoding.EncodeToString(h.Sum(nil)), nil
+}
+
+func hashBody(writer io.Writer, body []byte, mimeType MIMEType, encoding string) error {
+	if mimeType != TextHTML && mimeType != TextPlain {
+		body = bytes.ReplaceAll(body, []byte{'\r'}, nil)
+		body = bytes.TrimSpace(body)
+		_, err := writer.Write(body)
+
+		return err
+	}
+
+	// We need to remove the transfer encoding from the text part as it is possible the that encoding sent to SMTP
+	// is different than the one sent to the IMAP client.
+	var decoded []byte
+
+	switch strings.ToLower(encoding) {
+	case "quoted-printable":
+		d, err := io.ReadAll(quotedprintable.NewReader(bytes.NewReader(body)))
+		if err != nil {
+			return err
+		}
+
+		decoded = d
+
+	case "base64":
+		d, err := io.ReadAll(base64.NewDecoder(base64.StdEncoding, bytes.NewReader(body)))
+		if err != nil {
+			return err
+		}
+
+		decoded = d
+
+	default:
+		decoded = body
+	}
+
+	decoded = bytes.ReplaceAll(decoded, []byte{'\r'}, nil)
+	decoded = bytes.TrimSpace(decoded)
+
+	_, err := writer.Write(decoded)
+
+	return err
 }
