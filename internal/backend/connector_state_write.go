@@ -83,6 +83,12 @@ func (d *DBIMAPStateWrite) StoreSettings(ctx context.Context, settings string) e
 	return d.tx.StoreConnectorSettings(ctx, settings)
 }
 
+func (d *DBIMAPStateWrite) PatchMailboxHierarchyWithoutTransforms(ctx context.Context, id imap.MailboxID, newName []string) error {
+	combined := strings.Join(newName, d.delimiter)
+
+	return d.tx.RenameMailboxWithRemoteID(ctx, id, combined)
+}
+
 func (d *DBIMAPStateWrite) wrapStateUpdates(ctx context.Context, f func(ctx context.Context, tx db.Transaction) ([]state.Update, error)) error {
 	updates, err := f(ctx, d.tx)
 	if err == nil {

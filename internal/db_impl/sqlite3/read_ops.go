@@ -634,3 +634,22 @@ func (r readOps) GetConnectorSettings(ctx context.Context) (string, bool, error)
 
 	return value, hasValue, err
 }
+
+func (r readOps) GetAllMailboxesNameAndRemoteID(ctx context.Context) ([]db.MailboxNameAndRemoteID, error) {
+	query := fmt.Sprintf(
+		"SELECT `%v`,`%v` FROM `%v`",
+		v1.MailboxesFieldName,
+		v1.MailboxesFieldRemoteID,
+		v1.MailboxesTableName,
+	)
+
+	return utils.MapQueryRowsFn(ctx, r.qw, query, func(scanner utils.RowScanner) (db.MailboxNameAndRemoteID, error) {
+		var r db.MailboxNameAndRemoteID
+
+		if err := scanner.Scan(&r.Name, &r.RemoteID); err != nil {
+			return r, err
+		}
+
+		return r, nil
+	})
+}

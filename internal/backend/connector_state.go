@@ -12,13 +12,13 @@ type DBIMAPState struct {
 	client db.Client
 }
 
-func NewDBIMAPState(client db.Client) *DBIMAPState {
-	return &DBIMAPState{client: client}
+func NewDBIMAPState(client db.Client, user *user) *DBIMAPState {
+	return &DBIMAPState{client: client, user: user}
 }
 
 func (d *DBIMAPState) Read(ctx context.Context, f func(context.Context, connector.IMAPStateRead) error) error {
 	return d.client.Read(ctx, func(ctx context.Context, only db.ReadOnly) error {
-		rd := DBIMAPStateRead{rd: only}
+		rd := DBIMAPStateRead{rd: only, delimiter: d.user.delimiter}
 
 		return f(ctx, &rd)
 	})
@@ -28,7 +28,11 @@ func (d *DBIMAPState) Write(ctx context.Context, f func(context.Context, connect
 	var stateUpdates []state.Update
 
 	err := d.client.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
-		wr := DBIMAPStateWrite{DBIMAPStateRead: DBIMAPStateRead{rd: tx}, tx: tx, user: d.user}
+		wr := DBIMAPStateWrite{
+			DBIMAPStateRead: DBIMAPStateRead{rd: tx, delimiter: d.user.delimiter},
+			tx:              tx,
+			user:            d.user,
+		}
 
 		err := f(ctx, &wr)
 

@@ -8,6 +8,12 @@ type Mailbox struct {
 	Flags, PermanentFlags, Attributes FlagSet
 }
 
+type MailboxNoAttrib struct {
+	ID MailboxID
+
+	Name []string
+}
+
 const Inbox = "INBOX"
 
 type MailboxVisibility int

@@ -7,6 +7,11 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 )
 
+type MailboxNameAndRemoteID struct {
+	Name     string
+	RemoteID imap.MailboxID
+}
+
 type MailboxReadOps interface {
 	MailboxExistsWithID(ctx context.Context, mboxID imap.InternalMailboxID) (bool, error)
 
@@ -55,6 +60,8 @@ type MailboxReadOps interface {
 	MailboxFilterContains(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []MessageIDPair) ([]imap.InternalMessageID, error)
 
 	GetMailboxCount(ctx context.Context) (int, error)
+
+	GetAllMailboxesNameAndRemoteID(ctx context.Context) ([]MailboxNameAndRemoteID, error)
 }
 
 type MailboxWriteOps interface {

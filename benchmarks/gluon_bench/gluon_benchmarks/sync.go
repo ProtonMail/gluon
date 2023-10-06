@@ -175,3 +175,11 @@ func (n nullIMAPStateWriter) CreateMailbox(_ context.Context, _ imap.Mailbox) er
 func (n nullIMAPStateWriter) UpdateMessageFlags(_ context.Context, _ imap.MessageID, _ imap.FlagSet) error {
 	return nil
 }
+
+func (n nullIMAPStateWriter) GetMailboxesWithoutAttrib(_ context.Context) ([]imap.MailboxNoAttrib, error) {
+	return nil, nil
+}
+
+func (n nullIMAPStateWriter) PatchMailboxHierarchyWithoutTransforms(_ context.Context, _ imap.MailboxID, _ []string) error {
+	return nil
+}
