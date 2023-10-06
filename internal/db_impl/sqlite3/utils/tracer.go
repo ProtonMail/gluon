@@ -249,6 +249,12 @@ func (r ReadTracer) GetConnectorSettings(ctx context.Context) (string, bool, err
 	return r.RD.GetConnectorSettings(ctx)
 }
 
+func (r ReadTracer) GetAllMailboxesNameAndRemoteID(ctx context.Context) ([]db.MailboxNameAndRemoteID, error) {
+	r.Entry.Tracef("GetAllMailboxesNameAndRemoteID")
+
+	return r.RD.GetAllMailboxesNameAndRemoteID(ctx)
+}
+
 // WriteTracer prints all method names to a trace log.
 type WriteTracer struct {
 	ReadTracer

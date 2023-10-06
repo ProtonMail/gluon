@@ -38,7 +38,10 @@ func IMAPStateWriteType[T any](ctx context.Context, state IMAPState, f func(cont
 
 type IMAPStateRead interface {
 	GetSettings(ctx context.Context) (string, bool, error)
+
 	GetMailboxCount(ctx context.Context) (int, error)
+
+	GetMailboxesWithoutAttrib(ctx context.Context) ([]imap.MailboxNoAttrib, error)
 }
 
 type IMAPStateWrite interface {
@@ -49,4 +52,9 @@ type IMAPStateWrite interface {
 	UpdateMessageFlags(ctx context.Context, id imap.MessageID, flags imap.FlagSet) error
 
 	StoreSettings(ctx context.Context, value string) error
+
+	// PatchMailboxHierarchyWithoutTransforms will change the name of the mailbox, but will not perform any of the required
+	// transformation necessary to ensure that new parent or child mailboxes are created as expected by a regular
+	// IMAP rename operation.
+	PatchMailboxHierarchyWithoutTransforms(ctx context.Context, id imap.MailboxID, newName []string) error
 }

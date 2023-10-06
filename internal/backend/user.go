@@ -62,8 +62,6 @@ func newUser(
 ) (*user, error) {
 	recoveredMessageHashes := utils.NewMessageHashesMap()
 
-	cacheProvider := NewDBIMAPState(database)
-
 	// Create recovery mailbox if it does not exist
 	recoveryMBox, err := db.ClientWriteType(ctx, database, func(ctx context.Context, tx db.Transaction) (*db.Mailbox, error) {
 		uidValidity, err := uidValidityGenerator.Generate()
@@ -109,11 +107,6 @@ func newUser(
 		return nil, err
 	}
 
-	if err := conn.Init(ctx, cacheProvider); err != nil {
-		logrus.WithError(err).Errorf("Failed to init connector")
-		return nil, err
-	}
-
 	user := &user{
 		userID: userID,
 
@@ -136,6 +129,13 @@ func newUser(
 		panicHandler: panicHandler,
 
 		recoveredMessageHashes: recoveredMessageHashes,
+	}
+
+	cacheProvider := NewDBIMAPState(database, user)
+
+	if err := conn.Init(ctx, cacheProvider); err != nil {
+		logrus.WithError(err).Errorf("Failed to init connector")
+		return nil, err
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
