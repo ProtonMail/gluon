@@ -2,8 +2,9 @@ package async
 
 import (
 	"context"
-	"github.com/ProtonMail/gluon/logging"
 	"sync"
+
+	"github.com/ProtonMail/gluon/logging"
 )
 
 // QueuedChannel represents a channel on which queued items can be published without having to worry if the reader

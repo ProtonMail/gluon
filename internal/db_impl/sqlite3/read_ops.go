@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	v2 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v2"
 	"strings"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
 	v1 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v1"
+	v2 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v2"
 	"github.com/bradenaw/juniper/xmaps"
 	"github.com/bradenaw/juniper/xslices"
 )

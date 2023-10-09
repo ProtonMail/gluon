@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/internal/state"

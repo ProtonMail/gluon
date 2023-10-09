@@ -1,9 +1,10 @@
 package rfc822
 
 import (
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetMessageHashSameBodyDifferentTextEncodings(t *testing.T) {

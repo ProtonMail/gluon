@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 	"io"
 	"mime/quotedprintable"
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 // GetMessageHash returns the hash of the given message.
