@@ -2,6 +2,7 @@ package db_impl
 
 import (
 	"context"
+
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3"
 )

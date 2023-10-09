@@ -3,11 +3,11 @@ package imap_benchmarks
 import (
 	"context"
 	"flag"
-	"github.com/emersion/go-imap"
 	"net"
 
 	"github.com/ProtonMail/gluon/benchmarks/gluon_bench/benchmark"
 	"github.com/bradenaw/juniper/xslices"
+	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 )
 

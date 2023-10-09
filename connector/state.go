@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+
 	"github.com/ProtonMail/gluon/imap"
 )
 

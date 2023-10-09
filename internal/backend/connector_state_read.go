@@ -2,10 +2,11 @@ package backend
 
 import (
 	"context"
+	"strings"
+
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/bradenaw/juniper/xslices"
-	"strings"
 )
 
 type DBIMAPStateRead struct {

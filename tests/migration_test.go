@@ -2,9 +2,10 @@ package tests
 
 import (
 	"context"
+	"testing"
+
 	"github.com/ProtonMail/gluon/internal/db_impl"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestFailedMigrationRestsDatabase(t *testing.T) {
