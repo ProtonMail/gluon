@@ -185,7 +185,7 @@ func (c *Client) wrapTx(ctx context.Context, op func(context.Context, *sql.Tx, *
 		}
 
 		if rerr := tx.Rollback(); rerr != nil {
-			return fmt.Errorf("rolling back transaction: %w", rerr)
+			return fmt.Errorf("rolling back transaction: %v, original err=%w", rerr, err)
 		}
 
 		return err
