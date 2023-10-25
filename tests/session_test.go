@@ -31,6 +31,7 @@ type Connector interface {
 	MailboxCreated(imap.Mailbox) error
 	MailboxDeleted(imap.MailboxID) error
 	SetMailboxVisibility(imap.MailboxID, imap.MailboxVisibility)
+	RenameMailbox(id imap.MailboxID, newName []string) error
 
 	SetAllowMessageCreateWithUnknownMailboxID(value bool)
 
@@ -138,6 +139,12 @@ func (s *testSession) setLabelsPrefix(user, prefix string) {
 
 func (s *testSession) mailboxCreated(user string, name []string, withData ...string) imap.MailboxID {
 	return s.mailboxCreatedWithAttributes(user, name, defaultAttributes, withData...)
+}
+
+func (s *testSession) mailboxRenamed(user string, mboxID imap.MailboxID, newName []string) {
+	require.NoError(s.tb, s.conns[s.userIDs[user]].RenameMailbox(mboxID, newName))
+
+	s.conns[s.userIDs[user]].Flush()
 }
 
 func (s *testSession) setAllowMessageCreateWithUnknownMailboxID(user string, value bool) {

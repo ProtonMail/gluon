@@ -55,6 +55,14 @@ func (conn *Dummy) MailboxDeleted(mboxID imap.MailboxID) error {
 	return nil
 }
 
+func (conn *Dummy) RenameMailbox(id imap.MailboxID, newName []string) error {
+	conn.state.renameMailbox(id, newName)
+
+	conn.pushUpdate(imap.NewMailboxUpdated(id, newName))
+
+	return nil
+}
+
 func (conn *Dummy) MessageCreated(message imap.Message, literal []byte, mboxIDs []imap.MailboxID) error {
 	parsedMessage, err := imap.NewParsedMessage(literal)
 	if err != nil {
