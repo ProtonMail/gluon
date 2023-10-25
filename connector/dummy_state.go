@@ -109,6 +109,13 @@ func (state *dummyState) updateMailboxName(mboxID imap.MailboxID, name []string)
 	state.mailboxes[mboxID].mboxName = name
 }
 
+func (state *dummyState) renameMailbox(mboxID imap.MailboxID, name []string) {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	state.mailboxes[mboxID].mboxName = name
+}
+
 func (state *dummyState) deleteMailbox(mboxID imap.MailboxID) {
 	state.lock.Lock()
 	defer state.lock.Unlock()

@@ -161,3 +161,11 @@ func TestRenameInbox(t *testing.T) {
 		matchMailboxNamesClient(t, client, "", "*", []string{"INBOX", "bar", "INBOX.foo", "INBOX.foo.bar"})
 	})
 }
+
+func TestRenameInboxUpdatePreservesAllCapsName(t *testing.T) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(c *client.Client, session *testSession) {
+		session.mailboxRenamed("user", "0", []string{"inbox"})
+		_, err := c.Select("INBOX", true)
+		require.NoError(t, err)
+	})
+}

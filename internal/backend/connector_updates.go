@@ -164,7 +164,12 @@ func (user *user) applyMailboxUpdated(ctx context.Context, update *imap.MailboxU
 			return err
 		}
 
-		if currentName == strings.Join(update.MailboxName, user.delimiter) {
+		remoteName := strings.Join(update.MailboxName, user.delimiter)
+		if strings.EqualFold(remoteName, "inbox") {
+			remoteName = "INBOX"
+		}
+
+		if currentName == remoteName {
 			return nil
 		}
 
