@@ -40,7 +40,7 @@ func (s Store) String() string {
 		silentStr = ".SILENT"
 	}
 
-	return fmt.Sprintf("STORE %v%v %v", s.Action.String(), silentStr, s.Flags)
+	return fmt.Sprintf("STORE %v %v%v %v", s.SeqSet, s.Action.String(), silentStr, s.Flags)
 }
 
 func (s Store) SanitizedString() string {
