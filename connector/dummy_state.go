@@ -27,12 +27,13 @@ type dummyMailbox struct {
 }
 
 type dummyMessage struct {
-	literal []byte
-	parsed  *imap.ParsedMessage
-	seen    bool
-	flagged bool
-	date    time.Time
-	flags   imap.FlagSet
+	literal   []byte
+	parsed    *imap.ParsedMessage
+	seen      bool
+	flagged   bool
+	forwarded bool
+	date      time.Time
+	flags     imap.FlagSet
 
 	mboxIDs map[imap.MailboxID]struct{}
 }
@@ -256,6 +257,13 @@ func (state *dummyState) setFlagged(messageID imap.MessageID, flagged bool) {
 	state.messages[messageID].flagged = flagged
 }
 
+func (state *dummyState) setForwarded(messageID imap.MessageID, forwarded bool) {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	state.messages[messageID].forwarded = forwarded
+}
+
 func (state *dummyState) isSeen(messageID imap.MessageID) bool {
 	state.lock.Lock()
 	defer state.lock.Unlock()
@@ -292,6 +300,11 @@ func (state *dummyState) getMessageFlags(messageID imap.MessageID) imap.FlagSet 
 
 	if msg.flagged {
 		flags.AddToSelf(imap.FlagFlagged)
+	}
+
+	if msg.forwarded {
+		flags.AddToSelf(imap.XFlagForwarded)
+		flags.AddToSelf(imap.XFlagDollarForwarded)
 	}
 
 	return flags

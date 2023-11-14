@@ -460,3 +460,15 @@ func (w WriteTracer) StoreConnectorSettings(ctx context.Context, settings string
 
 	return w.TX.StoreConnectorSettings(ctx, settings)
 }
+
+func (w WriteTracer) AddFlagsToAllMailboxes(ctx context.Context, flags ...string) error {
+	w.Entry.Tracef("AddFlagsToAllMailboxes")
+
+	return w.TX.AddFlagsToAllMailboxes(ctx, flags...)
+}
+
+func (w WriteTracer) AddPermFlagsToAllMailboxes(ctx context.Context, flags ...string) error {
+	w.Entry.Tracef("AddPermFlagsToAllMailboxes")
+
+	return w.TX.AddPermFlagsToAllMailboxes(ctx, flags...)
+}

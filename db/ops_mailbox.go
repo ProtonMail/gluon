@@ -105,6 +105,10 @@ type MailboxWriteOps interface {
 	UpdateRemoteMailboxID(ctx context.Context, mobxID imap.InternalMailboxID, remoteID imap.MailboxID) error
 
 	SetMailboxUIDValidity(ctx context.Context, mboxID imap.InternalMailboxID, uidValidity imap.UID) error
+
+	AddFlagsToAllMailboxes(ctx context.Context, flags ...string) error
+
+	AddPermFlagsToAllMailboxes(ctx context.Context, flags ...string) error
 }
 
 type SnapshotMessageResult struct {

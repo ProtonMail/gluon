@@ -90,6 +90,14 @@ func (d *DBIMAPStateWrite) PatchMailboxHierarchyWithoutTransforms(ctx context.Co
 	return d.tx.RenameMailboxWithRemoteID(ctx, id, combined)
 }
 
+func (d *DBIMAPStateWrite) AddFlagsToAllMailboxes(ctx context.Context, flags ...string) error {
+	return d.tx.AddFlagsToAllMailboxes(ctx, flags...)
+}
+
+func (d *DBIMAPStateWrite) AddPermFlagsToAllMailboxes(ctx context.Context, flags ...string) error {
+	return d.tx.AddPermFlagsToAllMailboxes(ctx, flags...)
+}
+
 func (d *DBIMAPStateWrite) wrapStateUpdates(ctx context.Context, f func(ctx context.Context, tx db.Transaction) ([]state.Update, error)) error {
 	updates, err := f(ctx, d.tx)
 	if err == nil {

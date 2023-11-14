@@ -191,6 +191,23 @@ func (sc *stateConnectorImpl) GetMailboxVisibility(ctx context.Context,
 	return sc.connector.GetMailboxVisibility(ctx, id)
 }
 
+func (sc *stateConnectorImpl) SetMessagesForwarded(
+	ctx context.Context,
+	tx db.Transaction,
+	messageIDs []imap.MessageID,
+	forwarded bool,
+) ([]state.Update, error) {
+	ctx = sc.newContextWithMetadata(ctx)
+
+	cache := sc.newDBIMAPWrite(tx)
+
+	if err := sc.connector.MarkMessagesForwarded(ctx, &cache, messageIDs, forwarded); err != nil {
+		return nil, err
+	}
+
+	return cache.stateUpdates, nil
+}
+
 func (sc *stateConnectorImpl) getMetadataValue(key string) any {
 	v, ok := sc.metadata[key]
 	if !ok {

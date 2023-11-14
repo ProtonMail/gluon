@@ -156,6 +156,14 @@ func init() {
 
 type nullIMAPStateWriter struct{}
 
+func (n nullIMAPStateWriter) AddFlagsToAllMailboxes(ctx context.Context, flags ...string) error {
+	panic("implement me")
+}
+
+func (n nullIMAPStateWriter) AddPermFlagsToAllMailboxes(ctx context.Context, flags ...string) error {
+	panic("implement me")
+}
+
 func (n nullIMAPStateWriter) GetSettings(ctx context.Context) (string, bool, error) {
 	return "", false, nil
 }
