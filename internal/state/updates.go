@@ -112,44 +112,59 @@ func (state *State) applyMessageFlagsAdded(ctx context.Context,
 		return nil, err
 	}
 
+	doFlagAdd := func(check func(*imap.FlagSet) bool, remoteDo func([]imap.MessageID) ([]Update, error)) error {
+		if check(&addFlags) {
+			var messagesToApply []imap.MessageID
+
+			for _, msg := range curFlags {
+				if !check(&msg.FlagSet) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
+					messagesToApply = append(messagesToApply, msg.RemoteID)
+				}
+			}
+
+			if len(messagesToApply) != 0 {
+				updates, err := remoteDo(messagesToApply)
+				if err != nil {
+					return err
+				}
+
+				allUpdates = append(allUpdates, updates...)
+			}
+		}
+
+		return nil
+	}
+
 	// If setting messages as seen, only set those messages that aren't currently seen.
-	if addFlags.ContainsUnchecked(imap.FlagSeenLowerCase) {
-		var messagesToApply []imap.MessageID
-
-		for _, msg := range curFlags {
-			if !msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
-				messagesToApply = append(messagesToApply, msg.RemoteID)
-			}
-		}
-
-		if len(messagesToApply) != 0 {
-			updates, err := state.user.GetRemote().SetMessagesSeen(ctx, tx, messagesToApply, true)
-			if err != nil {
-				return nil, err
-			}
-
-			allUpdates = append(allUpdates, updates...)
-		}
+	if err := doFlagAdd(func(set *imap.FlagSet) bool {
+		return set.ContainsUnchecked(imap.FlagSeenLowerCase)
+	}, func(ids []imap.MessageID) ([]Update, error) {
+		return state.user.GetRemote().SetMessagesSeen(ctx, tx, ids, true)
+	}); err != nil {
+		return nil, err
 	}
 
 	// If setting messages as flagged, only set those messages that aren't currently flagged.
-	if addFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
-		var messagesToApply []imap.MessageID
+	if err := doFlagAdd(func(set *imap.FlagSet) bool {
+		return set.ContainsUnchecked(imap.FlagFlaggedLowerCase)
+	}, func(ids []imap.MessageID) ([]Update, error) {
+		return state.user.GetRemote().SetMessagesFlagged(ctx, tx, ids, true)
+	}); err != nil {
+		return nil, err
+	}
 
-		for _, msg := range curFlags {
-			if !msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
-				messagesToApply = append(messagesToApply, msg.RemoteID)
-			}
-		}
+	// If setting messages as forwarded, only set those messages that aren't currently forwarded.
+	if err := doFlagAdd(func(set *imap.FlagSet) bool {
+		return set.ContainsAnyUnchecked(imap.ForwardFlagListLowerCase...)
+	}, func(ids []imap.MessageID) ([]Update, error) {
+		return state.user.GetRemote().SetMessagesForwarded(ctx, tx, ids, true)
+	}); err != nil {
+		return nil, err
+	}
 
-		if len(messagesToApply) != 0 {
-			updates, err := state.user.GetRemote().SetMessagesFlagged(ctx, tx, messagesToApply, true)
-			if err != nil {
-				return nil, err
-			}
-
-			allUpdates = append(allUpdates, updates...)
-		}
+	// Add all known variations of forward flags to the list if one of them is present.
+	if addFlags.ContainsAnyUnchecked(imap.ForwardFlagListLowerCase...) {
+		addFlags.AddToSelf(imap.ForwardFlagList...)
 	}
 
 	flagStateUpdate := newMessageFlagsComboStateUpdate()
@@ -244,44 +259,60 @@ func (state *State) applyMessageFlagsRemoved(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	doRemoveFlags := func(check func(set *imap.FlagSet) bool, remoteDo func([]imap.MessageID) ([]Update, error)) error {
+		if check(&remFlags) {
+			var messagesToApply []imap.MessageID
+
+			for _, msg := range curFlags {
+				if check(&msg.FlagSet) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
+					messagesToApply = append(messagesToApply, msg.RemoteID)
+				}
+			}
+
+			if len(messagesToApply) != 0 {
+				updates, err := remoteDo(messagesToApply)
+				if err != nil {
+					return err
+				}
+
+				allUpdates = append(allUpdates, updates...)
+			}
+		}
+
+		return nil
+	}
+
 	// If setting messages as unseen, only set those messages that are currently seen.
-	if remFlags.ContainsUnchecked(imap.FlagSeenLowerCase) {
-		var messagesToApply []imap.MessageID
-
-		for _, msg := range curFlags {
-			if msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
-				messagesToApply = append(messagesToApply, msg.RemoteID)
-			}
-		}
-
-		if len(messagesToApply) != 0 {
-			updates, err := state.user.GetRemote().SetMessagesSeen(ctx, tx, messagesToApply, false)
-			if err != nil {
-				return nil, err
-			}
-
-			allUpdates = append(allUpdates, updates...)
-		}
+	if err := doRemoveFlags(func(set *imap.FlagSet) bool {
+		return set.ContainsUnchecked(imap.FlagSeenLowerCase)
+	}, func(messageIDS []imap.MessageID) ([]Update, error) {
+		return state.user.GetRemote().SetMessagesSeen(ctx, tx, messageIDS, false)
+	}); err != nil {
+		return nil, err
 	}
 
 	// If setting messages as unflagged, only set those messages that are currently flagged.
-	if remFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase) {
-		var messagesToApply []imap.MessageID
+	if err := doRemoveFlags(func(set *imap.FlagSet) bool {
+		return set.ContainsUnchecked(imap.FlagFlaggedLowerCase)
+	}, func(messageIDS []imap.MessageID) ([]Update, error) {
+		return state.user.GetRemote().SetMessagesFlagged(ctx, tx, messageIDS, false)
+	}); err != nil {
+		return nil, err
+	}
 
-		for _, msg := range curFlags {
-			if msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
-				messagesToApply = append(messagesToApply, msg.RemoteID)
-			}
-		}
+	// If setting messages as unforwarded, only set those messages that are  currently forwarded
+	if err := doRemoveFlags(func(set *imap.FlagSet) bool {
+		return set.ContainsAnyUnchecked(imap.ForwardFlagListLowerCase...)
+	}, func(messageIDS []imap.MessageID) ([]Update, error) {
+		return state.user.GetRemote().SetMessagesForwarded(ctx, tx, messageIDS, false)
+	}); err != nil {
+		return nil, err
+	}
 
-		if len(messagesToApply) != 0 {
-			updates, err := state.user.GetRemote().SetMessagesFlagged(ctx, tx, messagesToApply, false)
-			if err != nil {
-				return nil, err
-			}
-
-			allUpdates = append(allUpdates, updates...)
-		}
+	// Add all known variations of forward flags to the list if one of them is present.
+	if remFlags.ContainsAnyUnchecked(imap.ForwardFlagListLowerCase...) {
+		remFlags.AddToSelf(imap.ForwardFlagList...)
 	}
 
 	flagStateUpdate := newMessageFlagsComboStateUpdate()
@@ -379,42 +410,59 @@ func (state *State) applyMessageFlagsSet(ctx context.Context,
 		return nil, err
 	}
 
-	// If setting messages as seen, only set those messages that aren't currently seen, and vice versa.
-	setSeen := map[bool][]imap.MessageID{true: {}, false: {}}
-
-	for _, msg := range curFlags {
-		if seen := setFlags.ContainsUnchecked(imap.FlagSeenLowerCase); seen != msg.FlagSet.ContainsUnchecked(imap.FlagSeenLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
-			setSeen[seen] = append(setSeen[seen], msg.RemoteID)
-		}
-	}
-
 	var allUpdates []Update
 
-	for seen, messageIDs := range setSeen {
-		updates, err := state.user.GetRemote().SetMessagesSeen(ctx, tx, messageIDs, seen)
-		if err != nil {
-			return nil, err
+	doSetFlag := func(check func(set *imap.FlagSet) bool, remoteDo func([]imap.MessageID, bool) ([]Update, error)) error {
+		setList := map[bool][]imap.MessageID{true: {}, false: {}}
+
+		for _, msg := range curFlags {
+			if hasValue := check(&setFlags); hasValue != check(&msg.FlagSet) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
+				setList[hasValue] = append(setList[hasValue], msg.RemoteID)
+			}
 		}
 
-		allUpdates = append(allUpdates, updates...)
+		for seen, messageIDs := range setList {
+			updates, err := remoteDo(messageIDs, seen)
+			if err != nil {
+				return err
+			}
+
+			allUpdates = append(allUpdates, updates...)
+		}
+
+		return nil
+	}
+
+	// If setting messages as seen, only set those messages that aren't currently seen, and vice versa.
+	if err := doSetFlag(func(set *imap.FlagSet) bool {
+		return set.ContainsUnchecked(imap.FlagSeenLowerCase)
+	}, func(messageIDs []imap.MessageID, b bool) ([]Update, error) {
+		return state.user.GetRemote().SetMessagesSeen(ctx, tx, messageIDs, b)
+	}); err != nil {
+		return nil, err
 	}
 
 	// If setting messages as flagged, only set those messages that aren't currently flagged, and vice versa.
-	setFlagged := map[bool][]imap.MessageID{true: {}, false: {}}
-
-	for _, msg := range curFlags {
-		if flagged := setFlags.ContainsUnchecked(imap.FlagFlaggedLowerCase); flagged != msg.FlagSet.ContainsUnchecked(imap.FlagFlaggedLowerCase) && !ids.IsRecoveredRemoteMessageID(msg.RemoteID) {
-			setFlagged[flagged] = append(setFlagged[flagged], msg.RemoteID)
-		}
+	if err := doSetFlag(func(set *imap.FlagSet) bool {
+		return set.ContainsUnchecked(imap.FlagFlaggedLowerCase)
+	}, func(messageIDs []imap.MessageID, b bool) ([]Update, error) {
+		return state.user.GetRemote().SetMessagesFlagged(ctx, tx, messageIDs, b)
+	}); err != nil {
+		return nil, err
 	}
 
-	for flagged, messageIDs := range setFlagged {
-		updates, err := state.user.GetRemote().SetMessagesFlagged(ctx, tx, messageIDs, flagged)
-		if err != nil {
-			return nil, err
-		}
+	// If setting messages as forwarded, only set those messages that aren't currently forwarded, and vice versa.
+	if err := doSetFlag(func(set *imap.FlagSet) bool {
+		return set.ContainsAnyUnchecked(imap.ForwardFlagListLowerCase...)
+	}, func(messageIDs []imap.MessageID, b bool) ([]Update, error) {
+		return state.user.GetRemote().SetMessagesForwarded(ctx, tx, messageIDs, b)
+	}); err != nil {
+		return nil, err
+	}
 
-		allUpdates = append(allUpdates, updates...)
+	// Add all known variations of forward flags to the list if one of them is present.
+	if setFlags.ContainsAnyUnchecked(imap.ForwardFlagListLowerCase...) {
+		setFlags.AddToSelf(imap.ForwardFlagList...)
 	}
 
 	if err := tx.SetMailboxMessagesDeletedFlag(ctx, state.snap.mboxID.InternalID, messageIDs, setFlags.Contains(imap.FlagDeleted)); err != nil {

@@ -54,6 +54,9 @@ type Connector interface {
 	// MarkMessagesFlagged sets the flagged value of the given messages.
 	MarkMessagesFlagged(ctx context.Context, cache IMAPStateWrite, messageIDs []imap.MessageID, flagged bool) error
 
+	// MarkMessagesForwarded sets the forwarded value of the give messages.
+	MarkMessagesForwarded(ctx context.Context, cache IMAPStateWrite, messageIDs []imap.MessageID, forwarded bool) error
+
 	// GetUpdates returns a stream of updates that the gluon server should apply.
 	GetUpdates() <-chan imap.Update
 

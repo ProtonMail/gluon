@@ -2,8 +2,11 @@ package tests
 
 import (
 	"fmt"
+	"golang.org/x/exp/slices"
+	"strings"
 	"testing"
 
+	"github.com/ProtonMail/gluon/imap"
 	goimap "github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/stretchr/testify/require"
@@ -55,6 +58,78 @@ func TestStore(t *testing.T) {
 		c.C(`A003 STORE 3 FLAGS (\Recent Test)`).BAD(`A003`)
 		c.C(`A003 STORE 3 +FLAGS (\RECENT Test)`).BAD(`A003`)
 		c.C(`A003 STORE 3 -FLAGS (\RECent)`).BAD(`A003`)
+	})
+}
+
+func TestStoreForwarding(t *testing.T) {
+	// Ensure forwarding sets and removes all known forwarding flags.
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		c.C("b001 CREATE saved-messages")
+		c.S("b001 OK CREATE")
+
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 2@pm.me`)).expect("OK")
+
+		c.C(`A002 SELECT saved-messages`)
+		c.Se(`A002 OK [READ-WRITE] SELECT`)
+
+		fullForwardFlagList := make([]string, len(imap.ForwardFlagList))
+		copy(fullForwardFlagList, imap.ForwardFlagList)
+		slices.Sort(fullForwardFlagList)
+
+		fullForwardFlagStr := strings.Join(fullForwardFlagList, " ")
+
+		// Mar messages as forwarded.
+		c.C(`A003 STORE 1 +FLAGS ($Forwarded)`)
+		c.S(fmt.Sprintf(`* 1 FETCH (FLAGS (%v \Recent))`, fullForwardFlagStr))
+		c.OK(`A003`)
+		c.C(`A005 FETCH 1 (FLAGS)`)
+		c.S(fmt.Sprintf(`* 1 FETCH (FLAGS (%v \Recent))`, fullForwardFlagStr))
+		c.OK(`A005`)
+
+		c.C(`A003 STORE 2 +FLAGS (Forwarded)`)
+		c.S(fmt.Sprintf(`* 2 FETCH (FLAGS (%v \Recent))`, fullForwardFlagStr))
+		c.OK(`A003`)
+		c.C(`A005 FETCH 2 (FLAGS)`)
+		c.S(fmt.Sprintf(`* 2 FETCH (FLAGS (%v \Recent))`, fullForwardFlagStr))
+		c.OK(`A005`)
+
+		// Mark messages as not forwarded.
+		c.C(`A003 STORE 1 -FLAGS ($Forwarded)`)
+		c.S(`* 1 FETCH (FLAGS (\Recent))`)
+		c.OK(`A003`)
+		c.C(`A005 FETCH 1 (FLAGS)`)
+		c.S(`* 1 FETCH (FLAGS (\Recent))`)
+		c.OK(`A005`)
+
+		c.C(`A003 STORE 2 -FLAGS (Forwarded)`)
+		c.S(`* 2 FETCH (FLAGS (\Recent))`)
+		c.OK(`A003`)
+		c.C(`A005 FETCH 2 (FLAGS)`)
+		c.S(`* 2 FETCH (FLAGS (\Recent))`)
+		c.OK(`A005`)
+
+		// Set message as forwarded.
+		c.C(`A003 STORE 1 FLAGS ($Forwarded)`)
+		c.S(fmt.Sprintf(`* 1 FETCH (FLAGS (%v \Recent))`, fullForwardFlagStr))
+		c.OK(`A003`)
+		c.C(`A005 FETCH 1 (FLAGS)`)
+		c.S(fmt.Sprintf(`* 1 FETCH (FLAGS (%v \Recent))`, fullForwardFlagStr))
+		c.OK(`A005`)
+
+		c.C(`A003 STORE 2 FLAGS (Forwarded)`)
+		c.S(fmt.Sprintf(`* 2 FETCH (FLAGS (%v \Recent))`, fullForwardFlagStr))
+		c.OK(`A003`)
+		c.C(`A005 FETCH 2 (FLAGS)`)
+		c.S(fmt.Sprintf(`* 2 FETCH (FLAGS (%v \Recent))`, fullForwardFlagStr))
+		c.OK(`A005`)
+
+		c.C(`A003 STORE 2 FLAGS (\Answered)`)
+		c.S(`* 2 FETCH (FLAGS (\Answered \Recent))`)
+		c.OK(`A003`)
+		c.C(`A005 FETCH 2 (FLAGS)`)
+		c.S(`* 2 FETCH (FLAGS (\Answered \Recent))`)
+		c.OK(`A005`)
 	})
 }
 

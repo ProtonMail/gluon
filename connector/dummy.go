@@ -263,6 +263,19 @@ func (conn *Dummy) MarkMessagesFlagged(_ context.Context, _ IMAPStateWrite, mess
 	return nil
 }
 
+func (conn *Dummy) MarkMessagesForwarded(ctx context.Context, cache IMAPStateWrite, messageIDs []imap.MessageID, forwarded bool) error {
+	for _, messageID := range messageIDs {
+		conn.state.setForwarded(messageID, forwarded)
+
+		conn.pushUpdate(imap.NewMessageFlagsUpdated(
+			messageID,
+			conn.state.getMessageFlags(messageID),
+		))
+	}
+
+	return nil
+}
+
 func (conn *Dummy) Sync(ctx context.Context) error {
 	for _, mailbox := range conn.state.getMailboxes() {
 		update := imap.NewMailboxCreated(mailbox)

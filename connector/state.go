@@ -58,4 +58,8 @@ type IMAPStateWrite interface {
 	// transformation necessary to ensure that new parent or child mailboxes are created as expected by a regular
 	// IMAP rename operation.
 	PatchMailboxHierarchyWithoutTransforms(ctx context.Context, id imap.MailboxID, newName []string) error
+
+	AddFlagsToAllMailboxes(ctx context.Context, flags ...string) error
+
+	AddPermFlagsToAllMailboxes(ctx context.Context, flags ...string) error
 }

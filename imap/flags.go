@@ -9,22 +9,36 @@ import (
 )
 
 const (
-	FlagSeen     = `\Seen`
-	FlagAnswered = `\Answered`
-	FlagFlagged  = `\Flagged`
-	FlagDeleted  = `\Deleted`
-	FlagDraft    = `\Draft`
-	FlagRecent   = `\Recent` // Read-only!.
+	FlagSeen             = `\Seen`
+	FlagAnswered         = `\Answered`
+	FlagFlagged          = `\Flagged`
+	FlagDeleted          = `\Deleted`
+	FlagDraft            = `\Draft`
+	FlagRecent           = `\Recent`    // Read-only!.
+	XFlagDollarForwarded = "$Forwarded" // Non-Standard flag
+	XFlagForwarded       = "Forwarded"  // Non-Standard flag
 )
 
 const (
-	FlagSeenLowerCase     = `\seen`
-	FlagAnsweredLowerCase = `\answered`
-	FlagFlaggedLowerCase  = `\flagged`
-	FlagDeletedLowerCase  = `\deleted`
-	FlagDraftLowerCase    = `\draft`
-	FlagRecentLowerCase   = `\recent` // Read-only!.
+	FlagSeenLowerCase             = `\seen`
+	FlagAnsweredLowerCase         = `\answered`
+	FlagFlaggedLowerCase          = `\flagged`
+	FlagDeletedLowerCase          = `\deleted`
+	FlagDraftLowerCase            = `\draft`
+	FlagRecentLowerCase           = `\recent` // Read-only!.
+	XFlagDollarForwardedLowerCase = "$forwarded"
+	XFlagForwardedLowerCase       = "forwarded"
 )
+
+var ForwardFlagList = []string{
+	XFlagDollarForwarded,
+	XFlagForwarded,
+}
+
+var ForwardFlagListLowerCase = []string{
+	XFlagDollarForwardedLowerCase,
+	XFlagForwardedLowerCase,
+}
 
 // FlagSet represents a set of IMAP flags. Flags are case-insensitive and no duplicates are allowed.
 type FlagSet map[string]string
@@ -86,6 +100,14 @@ func (fs FlagSet) ContainsUnchecked(flag string) bool {
 func (fs FlagSet) ContainsAny(flags ...string) bool {
 	return xslices.IndexFunc(flags, func(f string) bool {
 		return fs.Contains(f)
+	}) >= 0
+}
+
+// ContainsAnyUnchecked returns true if and only if any of the flags are in the set. The flag list is not converted to
+// lower case.
+func (fs FlagSet) ContainsAnyUnchecked(flags ...string) bool {
+	return xslices.IndexFunc(flags, func(f string) bool {
+		return fs.ContainsUnchecked(f)
 	}) >= 0
 }
 

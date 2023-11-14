@@ -80,4 +80,7 @@ type Connector interface {
 
 	// GetMailboxVisibility retrieves the visibility status of a mailbox for a client.
 	GetMailboxVisibility(ctx context.Context, id imap.MailboxID) imap.MailboxVisibility
+
+	// SetMessagesForwarded marks the message with the given ID as forwarded.
+	SetMessagesForwarded(ctx context.Context, tx db.Transaction, messageIDs []imap.MessageID, forwarded bool) ([]Update, error)
 }

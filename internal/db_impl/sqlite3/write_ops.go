@@ -669,3 +669,43 @@ func (w writeOps) StoreConnectorSettings(ctx context.Context, settings string) e
 
 	return err
 }
+
+func (w writeOps) AddFlagsToAllMailboxes(ctx context.Context, flags ...string) error {
+	flagsJoined := strings.Join(xslices.Map(flags, func(s string) string {
+		return "('" + s + "')"
+	}), ",")
+
+	queryInsert := fmt.Sprintf(
+		"INSERT OR IGNORE INTO %v (`%v`, `%v`) SELECT `%v`,`value` FROM %v CROSS JOIN (WITH T(value) AS (VALUES %v) SELECT * FROM T)",
+		v1.MailboxFlagsTableName,
+		v1.MailboxFlagsFieldMailboxID,
+		v1.MailboxFlagsFieldValue,
+		v1.MailboxesFieldID,
+		v1.MailboxesTableName,
+		flagsJoined,
+	)
+
+	_, err := utils.ExecQuery(ctx, w.qw, queryInsert)
+
+	return err
+}
+
+func (w writeOps) AddPermFlagsToAllMailboxes(ctx context.Context, flags ...string) error {
+	flagsJoined := strings.Join(xslices.Map(flags, func(s string) string {
+		return "('" + s + "')"
+	}), ",")
+
+	queryInsert := fmt.Sprintf(
+		"INSERT OR IGNORE INTO %v (`%v`, `%v`) SELECT `%v`,`value` FROM %v CROSS JOIN (WITH T(value) AS (VALUES %v) SELECT * FROM T)",
+		v1.MailboxPermFlagsTableName,
+		v1.MailboxPermFlagsFieldMailboxID,
+		v1.MailboxPermFlagsFieldValue,
+		v1.MailboxesFieldID,
+		v1.MailboxesTableName,
+		flagsJoined,
+	)
+
+	_, err := utils.ExecQuery(ctx, w.qw, queryInsert)
+
+	return err
+}
