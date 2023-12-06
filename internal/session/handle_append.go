@@ -9,7 +9,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
-	"github.com/ProtonMail/gluon/rfc5322"
+	"github.com/ProtonMail/gluon/rfcvalidation"
 )
 
 func (s *Session) handleAppend(ctx context.Context, tag string, cmd *command.Append, ch chan response.Response) error {
@@ -33,7 +33,7 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *command.App
 		}
 
 		if !isDrafts {
-			if err := rfc5322.ValidateMessageHeaderFields(cmd.Literal); err != nil {
+			if err := rfcvalidation.ValidateMessageHeaderFields(cmd.Literal); err != nil {
 				return response.Bad(tag).WithError(err)
 			}
 		}
