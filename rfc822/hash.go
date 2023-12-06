@@ -8,6 +8,7 @@ import (
 	"mime/quotedprintable"
 	"strings"
 
+	"github.com/ProtonMail/gluon/rfc5322"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -34,23 +35,23 @@ func GetMessageHash(b []byte) (string, error) {
 		return "", err
 	}
 
-	if _, err := h.Write([]byte(header.Get("From"))); err != nil {
+	if _, err := h.Write([]byte(getAddresses(header.Get("From")))); err != nil {
 		return "", err
 	}
 
-	if _, err := h.Write([]byte(header.Get("To"))); err != nil {
+	if _, err := h.Write([]byte(getAddresses(header.Get("To")))); err != nil {
 		return "", err
 	}
 
-	if _, err := h.Write([]byte(header.Get("Cc"))); err != nil {
+	if _, err := h.Write([]byte(getAddresses(header.Get("Cc")))); err != nil {
 		return "", err
 	}
 
-	if _, err := h.Write([]byte(header.Get("Reply-To"))); err != nil {
+	if _, err := h.Write([]byte(getAddresses(header.Get("Reply-To")))); err != nil {
 		return "", err
 	}
 
-	if _, err := h.Write([]byte(header.Get("In-Reply-To"))); err != nil {
+	if _, err := h.Write([]byte(getAddresses(header.Get("In-Reply-To")))); err != nil {
 		return "", err
 	}
 
@@ -151,4 +152,19 @@ func hashBody(writer io.Writer, body []byte, mimeType MIMEType, encoding string)
 	_, err := writer.Write(decoded)
 
 	return err
+}
+
+func getAddresses(fieldAddr string) string {
+	var addresses string
+
+	addrList, err := rfc5322.ParseAddressList(fieldAddr)
+	if err != nil {
+		return fieldAddr
+	}
+
+	for _, addr := range addrList {
+		addresses += addr.Address
+	}
+
+	return addresses
 }

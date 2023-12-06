@@ -1,4 +1,4 @@
-package rfc5322
+package rfcvalidation
 
 import (
 	"testing"

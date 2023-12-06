@@ -1,9 +1,10 @@
-package rfc5322
+package rfcvalidation
 
 import (
 	"errors"
 	"fmt"
 
+	"github.com/ProtonMail/gluon/rfc5322"
 	"github.com/ProtonMail/gluon/rfc822"
 )
 
@@ -37,7 +38,7 @@ func ValidateMessageHeaderFields(literal []byte) error {
 		}
 
 		// Check if From is a multi address. If so, a sender filed must be present and non-empty.
-		addresses, err := ParseAddressList(value)
+		addresses, err := rfc5322.ParseAddressList(value)
 		if err != nil {
 			return fmt.Errorf("%w: failed to parse From header: %v", ErrInvalidMessage, err)
 		}
@@ -47,7 +48,7 @@ func ValidateMessageHeaderFields(literal []byte) error {
 			if len(senderValue) == 0 {
 				return fmt.Errorf("%w: Required header field 'Sender' not found or empty", ErrInvalidMessage)
 			}
-			_, err := ParseAddress(senderValue)
+			_, err := rfc5322.ParseAddress(senderValue)
 			if err != nil {
 				return fmt.Errorf("%w: failed to parse Sender header: %v", ErrInvalidMessage, err)
 			}
@@ -58,7 +59,7 @@ func ValidateMessageHeaderFields(literal []byte) error {
 					return fmt.Errorf("%w: Required header field 'Sender' should not be empty", ErrInvalidMessage)
 				}
 
-				_, err := ParseAddress(senderValue)
+				_, err := rfc5322.ParseAddress(senderValue)
 				if err != nil {
 					return fmt.Errorf("%w: failed to parse Sender header: %v", ErrInvalidMessage, err)
 				}
