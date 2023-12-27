@@ -11,6 +11,7 @@ import (
 	v0 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v0"
 	v1 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v1"
 	v2 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v2"
+	v3 "github.com/ProtonMail/gluon/internal/db_impl/sqlite3/v3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,6 +23,7 @@ var migrationList = []Migration{
 	&v0.Migration{},
 	&v1.Migration{},
 	&v2.Migration{},
+	&v3.Migration{},
 }
 
 func RunMigrations(ctx context.Context, tx utils.QueryWrapper, generator imap.UIDValidityGenerator) error {
