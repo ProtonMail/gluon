@@ -47,6 +47,8 @@ type user struct {
 	panicHandler async.PanicHandler
 
 	recoveredMessageHashes *utils.MessageHashesMap
+
+	log *logrus.Entry
 }
 
 func newUser(
@@ -61,6 +63,11 @@ func newUser(
 	panicHandler async.PanicHandler,
 ) (*user, error) {
 	recoveredMessageHashes := utils.NewMessageHashesMap()
+
+	log := logrus.WithFields(logrus.Fields{
+		"pkg":    "gluon/user",
+		"userID": userID,
+	})
 
 	// Create recovery mailbox if it does not exist
 	recoveryMBox, err := db.ClientWriteType(ctx, database, func(ctx context.Context, tx db.Transaction) (*db.Mailbox, error) {
@@ -92,12 +99,12 @@ func newUser(
 		for _, m := range messages {
 			literal, err := st.Get(m.InternalID)
 			if err != nil {
-				logrus.WithError(err).Errorf("Failed to load %v for store for recovered message hashes map", m.InternalID)
+				log.WithError(err).Errorf("Failed to load %v for store for recovered message hashes map", m.InternalID)
 				continue
 			}
 
 			if _, err := recoveredMessageHashes.Insert(m.InternalID, literal); err != nil {
-				logrus.WithError(err).Errorf("Failed insert literal for %v into recovered message hashes map", m.InternalID)
+				log.WithError(err).Errorf("Failed insert literal for %v into recovered message hashes map", m.InternalID)
 			}
 		}
 
@@ -129,17 +136,19 @@ func newUser(
 		panicHandler: panicHandler,
 
 		recoveredMessageHashes: recoveredMessageHashes,
+
+		log: log,
 	}
 
 	cacheProvider := NewDBIMAPState(database, user)
 
 	if err := conn.Init(ctx, cacheProvider); err != nil {
-		logrus.WithError(err).Errorf("Failed to init connector")
+		log.WithError(err).Errorf("Failed to init connector")
 		return nil, err
 	}
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
-		logrus.WithError(err).Error("Failed to remove deleted messages")
+		log.WithError(err).Error("Failed to remove deleted messages")
 		reporter.MessageWithContext(ctx,
 			"Failed to remove deleted messages",
 			reporter.Context{"error": err},
@@ -147,7 +156,7 @@ func newUser(
 	}
 
 	if err := user.cleanupStaleStoreData(ctx); err != nil {
-		logrus.WithError(err).Error("Failed to cleanup stale store data")
+		log.WithError(err).Error("Failed to cleanup stale store data")
 	}
 
 	user.updateWG.Add(1)
@@ -171,7 +180,7 @@ func newUser(
 						reporter.Context{"error": err, "update": update.String()},
 					)
 
-					logrus.WithError(err).Errorf("Failed to apply update: %v", err)
+					log.WithError(err).Errorf("Failed to apply update: %v", err)
 				}
 
 			case <-user.updateQuitCh:
@@ -242,7 +251,7 @@ func (user *user) deleteAllMessagesMarkedDeleted(ctx context.Context) error {
 func (user *user) queueStateUpdate(updates ...state.Update) {
 	if err := user.forState(func(state *state.State) error {
 		if !state.QueueUpdates(updates...) {
-			logrus.Errorf("Failed to push update to state %v", state.StateID)
+			user.log.Errorf("Failed to push update to state %v", state.StateID)
 		}
 
 		return nil
@@ -321,7 +330,7 @@ func (user *user) removeState(ctx context.Context, st *state.State) error {
 
 	// If we fail to delete messages on disk, it shouldn't count as an error at this point.
 	if err := user.store.Delete(messageIDs...); err != nil {
-		logrus.WithError(err).Error("Failed to delete messages during removeState")
+		user.log.WithError(err).Error("Failed to delete messages during removeState")
 	}
 
 	return state.Close(ctx)

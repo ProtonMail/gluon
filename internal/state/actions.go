@@ -13,7 +13,6 @@ import (
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
 
@@ -126,12 +125,12 @@ func (state *State) actionCreateMessage(
 					"mailbox":       mboxID.RemoteID,
 				})
 
-				logrus.Errorf("Append to drafts must not return an existing RemoteID (Remote=%v, Internal=%v)", res.ID, knownInternalID)
+				state.log.Errorf("Append to drafts must not return an existing RemoteID (Remote=%v, Internal=%v)", res.ID, knownInternalID)
 
 				return nil, 0, fmt.Errorf("append to drafts returned an existing remote ID")
 			}
 
-			logrus.Debugf("Deduped message detected, adding existing %v message to mailbox instead.", knownInternalID.ShortID())
+			state.log.Debugf("Deduped message detected, adding existing %v message to mailbox instead.", knownInternalID.ShortID())
 
 			addMsgToMBoxUpdates, result, err := state.actionAddMessagesToMailbox(ctx,
 				tx,

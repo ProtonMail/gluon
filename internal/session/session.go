@@ -90,6 +90,8 @@ type Session struct {
 	imapLimits limits.IMAP
 
 	panicHandler async.PanicHandler
+
+	log *logrus.Entry
 }
 
 func New(
@@ -118,6 +120,7 @@ func New(
 		cmdProfilerBuilder: profiler,
 		handleWG:           async.MakeWaitGroup(panicHandler),
 		panicHandler:       panicHandler,
+		log:                logrus.WithField("pkg", "gluon/session").WithField("session", sessionID),
 	}
 }
 
@@ -171,7 +174,7 @@ func (s *Session) serve(ctx context.Context) error {
 		select {
 		case update := <-s.state.GetStateUpdatesCh():
 			if err := s.state.ApplyUpdate(ctx, update); err != nil {
-				logrus.WithError(err).Error("Failed to apply state update")
+				s.log.WithError(err).Error("Failed to apply state update")
 			}
 
 			continue
@@ -275,7 +278,7 @@ func (s *Session) done(ctx context.Context) {
 
 	if s.state != nil {
 		if err := s.state.ReleaseState(ctx); err != nil {
-			logrus.WithError(err).Error("Failed to close state")
+			s.log.WithError(err).Error("Failed to close state")
 		}
 	}
 

@@ -51,6 +51,8 @@ type State struct {
 	imapLimits limits.IMAP
 
 	panicHandler async.PanicHandler
+
+	log *logrus.Entry
 }
 
 var stateIDGenerator int64
@@ -71,6 +73,7 @@ func NewState(user UserInterface, delimiter string, imapLimits limits.IMAP, pani
 		updatesQueue: async.NewQueuedChannel[Update](32, 128, panicHandler, fmt.Sprintf("gluon-state-%v", stateID)),
 		imapLimits:   imapLimits,
 		panicHandler: panicHandler,
+		log:          logrus.WithField("pkg", "gluon/state").WithField("state", stateID),
 	}
 }
 
@@ -88,7 +91,7 @@ func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn
 		recoveryMailboxID := state.user.GetRecoveryMailboxID().InternalID
 		recoveryMBoxMessageCount, err := client.GetMailboxMessageCount(ctx, recoveryMailboxID)
 		if err != nil {
-			logrus.WithError(err).Error("Failed to get recovery mailbox message count, assuming empty")
+			state.log.WithError(err).Error("Failed to get recovery mailbox message count, assuming empty")
 			recoveryMBoxMessageCount = 0
 		}
 
@@ -105,12 +108,12 @@ func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn
 			case imap.HiddenIfEmpty:
 				count, err := client.GetMailboxMessageCount(ctx, mailbox.ID)
 				if err != nil {
-					logrus.WithError(err).Error("Failed to get recovery mailbox message count, assuming not empty")
+					state.log.WithError(err).Error("Failed to get recovery mailbox message count, assuming not empty")
 					return true
 				}
 				return count > 0
 			default:
-				logrus.Errorf("Unknown IMAP Mailbox visibility %v", visibility)
+				state.log.Errorf("Unknown IMAP Mailbox visibility %v", visibility)
 				return true
 			}
 		})
@@ -612,7 +615,7 @@ func (state *State) QueueUpdates(updates ...Update) bool {
 }
 
 func (state *State) ApplyUpdate(ctx context.Context, update Update) error {
-	logrus.WithField("Update", update).Debugf("Applying state update on state %v", state.StateID)
+	state.log.WithField("Update", update).Debugf("Applying state update on state %v", state.StateID)
 
 	if !update.Filter(state) {
 		return nil
@@ -703,15 +706,15 @@ func (state *State) getLiteral(ctx context.Context, messageID db.MessageIDPair) 
 	if firstErr != nil {
 		// Do not attempt to recovered messages from the connector.
 		if ids.IsRecoveredRemoteMessageID(messageID.RemoteID) {
-			logrus.Debugf("Failed load %v from store, but it is a recovered message.", messageID.InternalID)
+			state.log.Debugf("Failed load %v from store, but it is a recovered message.", messageID.InternalID)
 			return nil, firstErr
 		}
 
-		logrus.Debugf("Failed load %v from store, attempting to download from connector", messageID.InternalID.ShortID())
+		state.log.Debugf("Failed load %v from store, attempting to download from connector", messageID.InternalID.ShortID())
 
 		connectorLiteral, err := state.user.GetRemote().GetMessageLiteral(ctx, messageID.RemoteID)
 		if err != nil {
-			logrus.Errorf("Failed to download message from connector: %v", err)
+			state.log.Errorf("Failed to download message from connector: %v", err)
 			return nil, fmt.Errorf("message failed to load from cache (%v), failed to download from connector: %w", firstErr, err)
 		}
 
@@ -721,11 +724,11 @@ func (state *State) getLiteral(ctx context.Context, messageID db.MessageIDPair) 
 		}
 
 		if err := state.user.GetStore().Set(messageID.InternalID, bytes.NewReader(literalWithHeader)); err != nil {
-			logrus.Errorf("Failed to store download message from connector: %v", err)
+			state.log.Errorf("Failed to store download message from connector: %v", err)
 			return nil, fmt.Errorf("message failed to load from cache (%v), failed to store new downloaded message: %w", firstErr, err)
 		}
 
-		logrus.Debugf("Message %v downloaded and stored ", messageID.InternalID.ShortID())
+		state.log.Debugf("Message %v downloaded and stored ", messageID.InternalID.ShortID())
 
 		literal = literalWithHeader
 	} else {
@@ -748,7 +751,7 @@ func (state *State) flushResponses(ctx context.Context, permitExpunge bool) ([]r
 	var dbUpdates []responderDBUpdate
 
 	for _, responder := range state.popResponders(permitExpunge) {
-		logrus.WithField("state", state.StateID).WithField("Origin", "Flush").Debugf("Applying responder: %v", responder.String())
+		state.log.WithField("state", state.StateID).WithField("Origin", "Flush").Debugf("Applying responder: %v", responder.String())
 
 		res, dbUpdate, err := responder.handle(ctx, state.snap, state.StateID)
 		if err != nil {
@@ -783,7 +786,7 @@ func (state *State) PushResponder(ctx context.Context, tx db.Transaction, respon
 	}
 
 	for _, responder := range responder {
-		logrus.WithField("state", state.StateID).WithField("Origin", "Push").Debugf("Applying responder: %v", responder.String())
+		state.log.WithField("state", state.StateID).WithField("Origin", "Push").Debugf("Applying responder: %v", responder.String())
 
 		res, dbUpdate, err := responder.handle(ctx, state.snap, state.StateID)
 		if err != nil {
