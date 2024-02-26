@@ -42,6 +42,7 @@ type AppendOnlyMailbox interface {
 
 func newMailbox(mbox *db.Mailbox, state *State, snap *snapshot) *Mailbox {
 	id := db.NewMailboxIDPair(mbox)
+
 	return &Mailbox{
 		id:          id,
 		name:        mbox.Name,
@@ -52,7 +53,9 @@ func newMailbox(mbox *db.Mailbox, state *State, snap *snapshot) *Mailbox {
 		selected: snap != nil,
 		readOnly: state.ro,
 		snap:     snap,
-		log:      logrus.WithField("pkg", "gluon/state/mailbox").WithField("id", id),
+		log: logrus.
+			WithField("pkg", "gluon/state/mailbox").
+			WithField("mboxID", id.String()),
 	}
 }
 

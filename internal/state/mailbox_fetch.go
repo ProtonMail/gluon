@@ -33,6 +33,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 		needsLiteral bool
 		wantUID      bool
 		setSeen      bool
+		isBodyFetch  bool
 	)
 
 	for _, attribute := range cmd.Attributes {
@@ -53,11 +54,13 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 		case *command.FetchAttributeRFC822:
 			setSeen = true
 			needsLiteral = true
+			isBodyFetch = true
 
 			operations = append(operations, fetchRFC822)
 		case *command.FetchAttributeRFC822Text:
 			setSeen = true
 			needsLiteral = true
+			isBodyFetch = true
 
 			operations = append(operations, fetchRFC822Text)
 		case *command.FetchAttributeRFC822Header:
@@ -78,6 +81,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 			operations = append(operations, fetchBodyStructure)
 		case *command.FetchAttributeBodySection:
 			needsLiteral = true
+			isBodyFetch = true
 
 			if !attribute.Peek {
 				setSeen = true
@@ -160,6 +164,10 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 		} else {
 			// remove message from the list to avoid being processed for seen flag changes later.
 			snapMessages[i].snapMsg = nil
+		}
+
+		if isBodyFetch {
+			m.log.WithField("UID", msg.UID).WithField("messageID", msg.ID.String()).Debug("Fetch Body")
 		}
 
 		ch <- response.Fetch(msg.Seq).WithItems(items...)
