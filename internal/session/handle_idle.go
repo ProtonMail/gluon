@@ -9,7 +9,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/sirupsen/logrus"
 )
 
 // GOMSRV-86: What does it mean to do IDLE when you're not selected?
@@ -29,7 +28,7 @@ func (s *Session) handleIdle(ctx context.Context, tag string, _ *command.Idle, c
 			} else {
 				for res := range resCh {
 					if err := res.Send(s); err != nil {
-						logrus.WithError(err).Error("Failed to send IDLE update")
+						s.log.WithError(err).Error("Failed to send IDLE update")
 					}
 				}
 			}
@@ -67,7 +66,7 @@ func (s *Session) handleIdle(ctx context.Context, tag string, _ *command.Idle, c
 
 			case stateUpdate := <-s.state.GetStateUpdatesCh():
 				if err := s.state.ApplyUpdate(ctx, stateUpdate); err != nil {
-					logrus.WithError(err).Error("Failed to apply state update during idle")
+					s.log.WithError(err).Error("Failed to apply state update during idle")
 				}
 				continue
 
@@ -89,7 +88,7 @@ func (s *Session) handleIdle(ctx context.Context, tag string, _ *command.Idle, c
 func sendMergedResponses(s *Session, buffer []response.Response) {
 	for _, res := range response.Merge(buffer) {
 		if err := res.Send(s); err != nil {
-			logrus.WithError(err).Error("Failed to send IDLE update")
+			s.log.WithError(err).Error("Failed to send IDLE update")
 		}
 	}
 }
@@ -110,7 +109,7 @@ func sendResponsesInBulks(s *Session, resCh chan response.Response, idleBulkTime
 
 			if res != nil {
 				buffer = append(buffer, res)
-				logrus.WithField("response", res).Trace("Buffered")
+				s.log.WithField("response", res).Trace("Buffered")
 			}
 		case <-ticker.C:
 			sendMergedResponses(s, buffer)

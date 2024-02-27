@@ -53,6 +53,8 @@ type Backend struct {
 	database db.ClientInterface
 
 	panicHandler async.PanicHandler
+
+	log *logrus.Entry
 }
 
 func New(dataDir, databaseDir string,
@@ -73,6 +75,7 @@ func New(dataDir, databaseDir string,
 		imapLimits:    imapLimits,
 		panicHandler:  panicHandler,
 		database:      database,
+		log:           logrus.WithField("pkg", "gluon/backend"),
 	}, nil
 }
 
@@ -97,7 +100,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 
 	onErrorExit := func() {
 		if err := storeBuilder.Close(); err != nil {
-			logrus.WithError(err).Error("Failed to close store builder")
+			b.log.WithError(err).Error("Failed to close store builder")
 		}
 	}
 
@@ -109,7 +112,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 
 	if err := database.Init(ctx, uidValidityGenerator); err != nil {
 		if err := database.Close(); err != nil {
-			logrus.WithError(err).Errorf("Failed to close db after migration failure")
+			b.log.WithError(err).Errorf("Failed to close db after migration failure")
 		}
 
 		if !errors.Is(err, db.ErrMigrationFailed) && !errors.Is(err, db.ErrInvalidDatabaseVersion) {
@@ -117,15 +120,15 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 			return false, err
 		}
 
-		logrus.WithError(err).Errorf("First database migration failed")
+		b.log.WithError(err).Errorf("First database migration failed")
 		reporter.ExceptionWithContext(ctx, "database migration failed", reporter.Context{
 			"error": err,
 		})
 
-		logrus.Debugf("First migration failed, recreating database")
+		b.log.Debugf("First migration failed, recreating database")
 
 		if err := b.database.Delete(b.getDBDir(), userID); err != nil {
-			logrus.WithError(err).Errorf("Failed to delete old database")
+			b.log.WithError(err).Errorf("Failed to delete old database")
 			onErrorExit()
 
 			return false, fmt.Errorf("failed to remove database after migration: %w", err)
@@ -133,24 +136,24 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 
 		database, isNew, err = b.database.New(b.getDBDir(), userID)
 		if err != nil {
-			logrus.WithError(err).Errorf("Failed to create new database")
+			b.log.WithError(err).Errorf("Failed to create new database")
 			onErrorExit()
 
 			return false, err
 		}
 
 		if !isNew {
-			logrus.Errorf("Expected new database to not exist")
+			b.log.Errorf("Expected new database to not exist")
 
 			if err := database.Close(); err != nil {
-				logrus.WithError(err).Errorf("failed to closed db")
+				b.log.WithError(err).Errorf("failed to closed db")
 			}
 
 			return false, fmt.Errorf("expected database to be new after failed migration cleanup")
 		}
 
 		if err := database.Init(ctx, uidValidityGenerator); err != nil {
-			logrus.WithError(err).Errorf("Second database migration failed")
+			b.log.WithError(err).Errorf("Second database migration failed")
 			onErrorExit()
 
 			return false, err
@@ -245,7 +248,7 @@ func (b *Backend) GetState(ctx context.Context, username string, password []byte
 		return nil, err
 	}
 
-	logrus.
+	b.log.
 		WithField("userID", userID).
 		WithField("username", username).
 		WithField("stateID", state.StateID).
@@ -285,7 +288,7 @@ func (b *Backend) Close(ctx context.Context) error {
 		delete(b.users, userID)
 	}
 
-	logrus.Debug("Backend was closed")
+	b.log.Debug("Backend was closed")
 
 	return nil
 }

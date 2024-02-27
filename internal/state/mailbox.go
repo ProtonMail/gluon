@@ -30,6 +30,7 @@ type Mailbox struct {
 
 	selected bool
 	readOnly bool
+	log      *logrus.Entry
 }
 
 type AppendOnlyMailbox interface {
@@ -40,8 +41,10 @@ type AppendOnlyMailbox interface {
 }
 
 func newMailbox(mbox *db.Mailbox, state *State, snap *snapshot) *Mailbox {
+	id := db.NewMailboxIDPair(mbox)
+
 	return &Mailbox{
-		id:          db.NewMailboxIDPair(mbox),
+		id:          id,
 		name:        mbox.Name,
 		uidValidity: mbox.UIDValidity,
 
@@ -50,6 +53,9 @@ func newMailbox(mbox *db.Mailbox, state *State, snap *snapshot) *Mailbox {
 		selected: snap != nil,
 		readOnly: state.ro,
 		snap:     snap,
+		log: logrus.
+			WithField("pkg", "gluon/state/mailbox").
+			WithField("mboxID", id.String()),
 	}
 }
 
@@ -192,9 +198,9 @@ func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.
 					return 0, err
 				}
 
-				logrus.WithError(err).Warn("The message has an unknown internal ID")
+				m.log.WithError(err).Warn("The message has an unknown internal ID")
 			} else if !messageDeleted {
-				logrus.Debugf("Appending duplicate message with Internal ID:%v", msgID.ShortID())
+				m.log.Debugf("Appending duplicate message with Internal ID:%v", msgID.ShortID())
 				// Only shuffle around messages that haven't been marked for deletion.
 				if res, err := stateDBWriteResult(ctx, m.state, func(ctx context.Context, tx db.Transaction) ([]Update, []db.UIDWithFlags, error) {
 					remoteID, err := tx.GetMessageRemoteID(ctx, msgID)
@@ -218,7 +224,7 @@ func (m *Mailbox) AppendRegular(ctx context.Context, literal []byte, flags imap.
 		appendIntoDrafts = true
 		newLiteral, err := rfc822.EraseHeaderValue(literal, ids.InternalIDKey)
 		if err != nil {
-			logrus.WithError(err).Error("Failed to erase Gluon internal id from draft")
+			m.log.WithError(err).Error("Failed to erase Gluon internal id from draft")
 		} else {
 			literal = newLiteral
 		}
@@ -244,7 +250,7 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 			return m.state.actionCreateRecoveredMessage(ctx, tx, literal, flags, date)
 		})
 		if recoverErr != nil && !knownMessage {
-			logrus.WithError(recoverErr).Error("Failed to insert message into recovery mailbox")
+			m.log.WithError(recoverErr).Error("Failed to insert message into recovery mailbox")
 			reporter.ExceptionWithContext(ctx, "Failed to insert message into recovery mailbox", reporter.Context{"error": recoverErr})
 		}
 

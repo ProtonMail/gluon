@@ -16,13 +16,12 @@ import (
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
 
 // apply an incoming update originating from the connector.
 func (user *user) apply(ctx context.Context, update imap.Update) error {
-	logrus.WithField("update", update).WithField("user-id", user.userID).Debug("Applying update")
+	user.log.WithField("update", update).Debug("Applying update")
 
 	err := func() error {
 		switch update := update.(type) {
@@ -208,7 +207,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 	err := userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		for _, message := range update.Messages {
 			if slices.Contains(message.MailboxIDs, ids.GluonInternalRecoveryMailboxRemoteID) {
-				logrus.Errorf("attempting to import messages into protected mailbox (recovery), skipping")
+				user.log.Errorf("attempting to import messages into protected mailbox (recovery), skipping")
 				continue
 			}
 
@@ -251,7 +250,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 					if err != nil {
 						// If a mailbox doesn't exist and we are allowed to skip move to next mailbox.
 						if update.IgnoreUnknownMailboxIDs {
-							logrus.WithField("MailboxID", mboxID.ShortID()).
+							user.log.WithField("MailboxID", mboxID.ShortID()).
 								WithField("MessageID", message.Message.ID.ShortID()).
 								Warn("Unknown Mailbox ID, skipping add to mailbox")
 							continue
@@ -336,7 +335,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 		for _, message := range messagesToCreate {
 			if err := user.store.DeleteUnchecked(message.InternalID); err != nil {
 				if !os.IsNotExist(err) {
-					logrus.WithError(err).Errorf("Failed to delete cache message %v after failed transaction", message.InternalID)
+					user.log.WithError(err).Errorf("Failed to delete cache message %v after failed transaction", message.InternalID)
 				}
 			}
 		}
@@ -571,7 +570,7 @@ func (user *user) applyMessageDeleted(ctx context.Context, update *imap.MessageD
 }
 
 func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageUpdated) error {
-	log := logrus.WithField("message updated", update.Message.ID.ShortID())
+	log := user.log.WithField("message updated", update.Message.ID.ShortID())
 
 	internalMessageID, err := db.ClientReadType(ctx, user.db, func(ctx context.Context, client db.ReadOnly) (imap.InternalMessageID, error) {
 		return client.GetMessageIDFromRemoteID(ctx, update.Message.ID)
@@ -598,7 +597,7 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		// compare and see if the literal has changed.
 		onDiskLiteral, err := user.store.Get(internalMessageID)
 		if err != nil {
-			logrus.Debugf("failed to retrieve literal from cache: %v", err)
+			user.log.Debugf("failed to retrieve literal from cache: %v", err)
 		}
 
 		updateLiteral := update.Literal

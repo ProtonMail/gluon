@@ -8,7 +8,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/logging"
-	"github.com/sirupsen/logrus"
 )
 
 func (s *Session) handleOther(
@@ -23,7 +22,7 @@ func (s *Session) handleOther(
 			defer close(resCh)
 
 			if err := s.handleCommand(ctx, tag, cmd, resCh); err != nil {
-				logrus.WithError(err).WithField("cmd", cmd.SanitizedString()).Error("Command failed")
+				s.log.WithError(err).WithField("cmd", cmd.SanitizedString()).Error("Command failed")
 				if res, ok := response.FromError(err); ok {
 					resCh <- res
 				} else {

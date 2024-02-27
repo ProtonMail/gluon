@@ -11,7 +11,6 @@ import (
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfcparser"
-	"github.com/sirupsen/logrus"
 )
 
 type commandResult struct {
@@ -58,26 +57,26 @@ func (s *Session) startCommandReader(ctx context.Context) <-chan commandResult {
 				// check if we are receiving raw TLS requests, if so skip.
 				for _, tlsHeader := range tlsHeaders {
 					if bytes.HasPrefix(bytesRead, tlsHeader) {
-						logrus.Errorf("TLS Handshake detected while not running with TLS/SSL")
+						s.log.Errorf("TLS Handshake detected while not running with TLS/SSL")
 						return
 					}
 				}
 
-				logrus.WithError(err).WithField("type", parser.LastParsedCommand()).Error("Failed to parse IMAP command")
+				s.log.WithError(err).WithField("type", parser.LastParsedCommand()).Error("Failed to parse IMAP command")
 
 				reporter.MessageWithContext(ctx,
 					"Failed to parse IMAP command",
 					reporter.Context{"error": err, "cmd": parser.LastParsedCommand()},
 				)
 			} else {
-				logrus.Debug(cmd.SanitizedString())
+				s.log.Debug(cmd.SanitizedString())
 			}
 
 			switch c := cmd.Payload.(type) {
 			case *command.StartTLS:
 				// TLS needs to be handled here to ensure that next command read is over the TLS connection.
 				if err = s.handleStartTLS(cmd.Tag, c); err != nil {
-					logrus.WithError(err).Error("Cannot upgrade connection")
+					s.log.WithError(err).Error("Cannot upgrade connection")
 					return
 				} else {
 					continue
