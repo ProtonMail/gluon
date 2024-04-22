@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -287,7 +288,9 @@ func pathExists(path string) (bool, error) {
 }
 
 func getDatabaseConn(dir, userID, path string) string {
-	return fmt.Sprintf("file:%v?cache=shared&_fk=1&_journal=WAL", path)
+	// We need to escape special characters in the db path, such as #
+	escapedPath := url.PathEscape(path)
+	return fmt.Sprintf("file:%v?cache=shared&_fk=1&_journal=WAL", escapedPath)
 }
 
 func TestUpdateDBVersion(ctx context.Context, dbPath, userID string, version int) error {
