@@ -1,4 +1,4 @@
-name: Test
+name: Lint and Test
 
 on:
   pull_request:
@@ -14,10 +14,10 @@ jobs:
       - name: Get sources
         uses: actions/checkout@v3
 
-      - name: Set up Go 1.20
+      - name: Set up Go 1.21
         uses: actions/setup-go@v3
         with:
-          go-version: '1.20'
+          go-version: '1.21'
 
       - name: Run go mod tidy
         run: go mod tidy
@@ -26,6 +26,12 @@ jobs:
         run: |
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@251ceaa228607dd3e0371694a1ab2c45d21cb744
           golangci-lint run --timeout=500s
+
+      - name: Run govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: 1.21
+          go-package: ./...
 
       - name: Run tests
         run: go test -timeout 15m -v ./...
