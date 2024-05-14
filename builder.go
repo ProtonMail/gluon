@@ -2,6 +2,7 @@ package gluon
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"os"
 	"time"
@@ -65,7 +66,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 	}
 
 	if err := os.MkdirAll(builder.dataDir, 0o700); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to access or create local cache: %w", err)
 	}
 
 	if builder.databaseDir == "" {
