@@ -354,7 +354,7 @@ func TestSearchOr(t *testing.T) {
 		c.OK("A004")
 
 		// 1:50 are deleted, seen or draft.
-		c.C("A004 search or or deleted seen draft")
+		c.C("A004 search or deleted seen draft")
 		c.S("* SEARCH " + seq(1, 50))
 		c.OK("A004")
 
