@@ -13,7 +13,6 @@ import (
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/response"
-	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
@@ -251,7 +250,6 @@ func (m *Mailbox) Append(ctx context.Context, literal []byte, flags imap.FlagSet
 		})
 		if recoverErr != nil && !knownMessage {
 			m.log.WithError(recoverErr).Error("Failed to insert message into recovery mailbox")
-			reporter.ExceptionWithContext(ctx, "Failed to insert message into recovery mailbox", reporter.Context{"error": recoverErr})
 		}
 
 		if knownMessage {

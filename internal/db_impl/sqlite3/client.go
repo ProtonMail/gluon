@@ -14,8 +14,6 @@ import (
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
-	gluon_utils "github.com/ProtonMail/gluon/internal/utils"
-	"github.com/ProtonMail/gluon/reporter"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -193,13 +191,6 @@ func (c *Client) wrapTx(ctx context.Context, op func(context.Context, *sql.Tx, *
 	}
 
 	if err := tx.Commit(); err != nil {
-		if !errors.Is(err, context.Canceled) {
-			reporter.MessageWithContext(ctx,
-				"Failed to commit database transaction",
-				reporter.Context{"error": err, "type": gluon_utils.ErrCause(err)},
-			)
-		}
-
 		if c.debug {
 			entry.Debugf("Failed to commit Transaction")
 		}

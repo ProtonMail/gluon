@@ -9,7 +9,6 @@ import (
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/reporter"
 )
 
 func (s *Session) handleMove(ctx context.Context, tag string, cmd *command.Move, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
@@ -36,13 +35,6 @@ func (s *Session) handleMove(ctx context.Context, tag string, cmd *command.Move,
 	} else if errors.Is(err, state.ErrNoSuchMailbox) {
 		return response.No(tag).WithError(err).WithItems(response.ItemTryCreate()), nil
 	} else if err != nil {
-		if shouldReportIMAPCommandError(err) {
-			reporter.MessageWithContext(ctx,
-				"Failed to move messages from mailbox",
-				reporter.Context{"error": err, "mailbox_to": nameUTF8, "mailbox_from": mailbox.Name()},
-			)
-		}
-
 		return nil, err
 	}
 

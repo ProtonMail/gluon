@@ -149,10 +149,6 @@ func newUser(
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
 		log.WithError(err).Error("Failed to remove deleted messages")
-		reporter.MessageWithContext(ctx,
-			"Failed to remove deleted messages",
-			reporter.Context{"error": err},
-		)
 	}
 
 	if err := user.cleanupStaleStoreData(ctx); err != nil {
