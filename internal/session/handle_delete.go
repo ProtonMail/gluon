@@ -8,7 +8,6 @@ import (
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/reporter"
 )
 
 func (s *Session) handleDelete(ctx context.Context, tag string, cmd *command.Delete, ch chan response.Response) error {
@@ -26,13 +25,6 @@ func (s *Session) handleDelete(ctx context.Context, tag string, cmd *command.Del
 
 	selectedDeleted, err := s.state.Delete(ctx, nameUTF8)
 	if err != nil {
-		if shouldReportIMAPCommandError(err) {
-			reporter.MessageWithContext(ctx,
-				"Failed to delete mailbox",
-				reporter.Context{"error": err, "mailbox": nameUTF8},
-			)
-		}
-
 		return err
 	}
 

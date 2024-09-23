@@ -8,7 +8,6 @@ import (
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/reporter"
 )
 
 func (s *Session) handleCreate(ctx context.Context, tag string, cmd *command.Create, ch chan response.Response) error {
@@ -25,13 +24,6 @@ func (s *Session) handleCreate(ctx context.Context, tag string, cmd *command.Cre
 	}
 
 	if err := s.state.Create(ctx, nameUTF8); err != nil {
-		if shouldReportIMAPCommandError(err) {
-			reporter.MessageWithContext(ctx,
-				"Failed to create mailbox",
-				reporter.Context{"error": err, "mailbox": nameUTF8},
-			)
-		}
-
 		return err
 	}
 
