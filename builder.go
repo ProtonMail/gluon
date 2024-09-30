@@ -14,6 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/limits"
+	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
@@ -39,6 +40,7 @@ type serverBuilder struct {
 	uidValidityGenerator imap.UIDValidityGenerator
 	panicHandler         async.PanicHandler
 	dbCI                 db.ClientInterface
+	observabilitySender  observability.Sender
 }
 
 func newBuilder() (*serverBuilder, error) {
@@ -52,6 +54,7 @@ func newBuilder() (*serverBuilder, error) {
 		uidValidityGenerator: imap.DefaultEpochUIDValidityGenerator(),
 		panicHandler:         async.NoopPanicHandler{},
 		dbCI:                 sqlite3.NewBuilder(),
+		observabilitySender:  nil,
 	}, nil
 }
 
@@ -121,6 +124,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 		disableParallelism:   builder.disableParallelism,
 		uidValidityGenerator: builder.uidValidityGenerator,
 		panicHandler:         builder.panicHandler,
+		observabilitySender:  builder.observabilitySender,
 	}
 
 	return s, nil

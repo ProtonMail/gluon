@@ -7,6 +7,8 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/observability"
+	"github.com/ProtonMail/gluon/observability/metrics"
 	"github.com/ProtonMail/gluon/profiling"
 )
 
@@ -25,6 +27,7 @@ func (s *Session) handleDelete(ctx context.Context, tag string, cmd *command.Del
 
 	selectedDeleted, err := s.state.Delete(ctx, nameUTF8)
 	if err != nil {
+		observability.AddOtherMetric(ctx, metrics.GenerateFailedToDeleteMailboxMetric())
 		return err
 	}
 

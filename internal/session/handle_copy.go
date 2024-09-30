@@ -8,6 +8,8 @@ import (
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/observability"
+	"github.com/ProtonMail/gluon/observability/metrics"
 	"github.com/ProtonMail/gluon/profiling"
 )
 
@@ -37,6 +39,7 @@ func (s *Session) handleCopy(ctx context.Context, tag string, cmd *command.Copy,
 	} else if errors.Is(err, state.ErrNoSuchMailbox) {
 		return response.No(tag).WithError(err).WithItems(response.ItemTryCreate()), nil
 	} else if err != nil {
+		observability.AddMessageRelatedMetric(ctx, metrics.GenerateFailedToCopyMessagesMetric())
 		return nil, err
 	}
 

@@ -10,7 +10,8 @@ import (
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
-	"github.com/ProtonMail/gluon/reporter"
+	"github.com/ProtonMail/gluon/observability"
+	"github.com/ProtonMail/gluon/observability/metrics"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
@@ -111,20 +112,8 @@ func (state *State) actionCreateMessage(
 			return nil, 0, knownErr
 		}
 		if knownErr == nil {
-			// Try to collect the original message date.
-			var existingMessageDate time.Time
-			if existingMessage, msgErr := tx.GetMessageNoEdges(ctx, internalID); msgErr == nil {
-				existingMessageDate = existingMessage.Date
-			}
-
 			if cameFromDrafts {
-				reporter.ExceptionWithContext(ctx, "Append to drafts must not return an existing RemoteID", reporter.Context{
-					"remote-id":     res.ID,
-					"new-date":      res.Date,
-					"original-date": existingMessageDate,
-					"mailbox":       mboxID.RemoteID,
-				})
-
+				observability.AddOtherMetric(ctx, metrics.GenerateAppendToDraftsMustNotReturnExistingRemoteID())
 				state.log.Errorf("Append to drafts must not return an existing RemoteID (Remote=%v, Internal=%v)", res.ID, knownInternalID)
 
 				return nil, 0, fmt.Errorf("append to drafts returned an existing remote ID")
