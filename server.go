@@ -19,6 +19,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/logging"
+	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
@@ -88,6 +89,8 @@ type Server struct {
 	uidValidityGenerator imap.UIDValidityGenerator
 
 	panicHandler async.PanicHandler
+
+	observabilitySender observability.Sender
 }
 
 // New creates a new server with the given options.
@@ -172,6 +175,7 @@ func (s *Server) AddWatcher(ofType ...events.Event) <-chan events.Event {
 // Serve serves connections accepted from the given listener.
 // It stops serving when the context is canceled, the listener is closed, or the server is closed.
 func (s *Server) Serve(ctx context.Context, l net.Listener) error {
+	ctx = observability.NewContextWithObservabilitySender(ctx, s.observabilitySender)
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 	ctx = contexts.NewDisableParallelismCtx(ctx, s.disableParallelism)
 

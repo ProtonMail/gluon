@@ -14,6 +14,8 @@ import (
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3/utils"
+	"github.com/ProtonMail/gluon/observability"
+	"github.com/ProtonMail/gluon/observability/metrics"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -193,6 +195,7 @@ func (c *Client) wrapTx(ctx context.Context, op func(context.Context, *sql.Tx, *
 	if err := tx.Commit(); err != nil {
 		if c.debug {
 			entry.Debugf("Failed to commit Transaction")
+			observability.AddOtherMetric(ctx, metrics.GenerateFailedToCommitDatabaseTransactionMetric())
 		}
 
 		return fmt.Errorf("%v: %w", err, db.ErrTransactionFailed)

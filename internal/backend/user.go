@@ -14,6 +14,8 @@ import (
 	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"
+	"github.com/ProtonMail/gluon/observability"
+	"github.com/ProtonMail/gluon/observability/metrics"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
@@ -149,6 +151,7 @@ func newUser(
 
 	if err := user.deleteAllMessagesMarkedDeleted(ctx); err != nil {
 		log.WithError(err).Error("Failed to remove deleted messages")
+		observability.AddMessageRelatedMetric(ctx, metrics.GenerateFailedToRemoveDeletedMessagesMetric())
 	}
 
 	if err := user.cleanupStaleStoreData(ctx); err != nil {

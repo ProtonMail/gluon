@@ -7,6 +7,8 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/observability"
+	"github.com/ProtonMail/gluon/observability/metrics"
 	"github.com/ProtonMail/gluon/profiling"
 )
 
@@ -24,6 +26,7 @@ func (s *Session) handleCreate(ctx context.Context, tag string, cmd *command.Cre
 	}
 
 	if err := s.state.Create(ctx, nameUTF8); err != nil {
+		observability.AddMessageRelatedMetric(ctx, metrics.GenerateFailedToCreateMailbox())
 		return err
 	}
 
