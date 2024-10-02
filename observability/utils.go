@@ -7,6 +7,7 @@ func AddImapMetric(ctx context.Context, metric ...map[string]interface{}) {
 	if !ok {
 		return
 	}
+
 	sender.AddDistinctMetrics(imapErrorMetricType, metric...)
 }
 
@@ -15,6 +16,7 @@ func AddMessageRelatedMetric(ctx context.Context, metric ...map[string]interface
 	if !ok {
 		return
 	}
+
 	sender.AddDistinctMetrics(messageErrorMetricType, metric...)
 }
 
@@ -23,5 +25,6 @@ func AddOtherMetric(ctx context.Context, metric ...map[string]interface{}) {
 	if !ok {
 		return
 	}
+
 	sender.AddDistinctMetrics(otherErrorMetricType, metric...)
 }

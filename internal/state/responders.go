@@ -106,6 +106,7 @@ func (u *targetedExists) handle(ctx context.Context, snap *snapshot, stateID Sta
 
 	if u.originStateSet && u.originStateID == stateID {
 		if err := snap.appendMessage(u.resp.messageID, u.resp.messageUID, flags); err != nil {
+			// No events reported so far.
 			reporter.ExceptionWithContext(ctx, "Failed to append message to snap via targetedExists", reporter.Context{"error": err})
 			return nil, nil, err
 		}

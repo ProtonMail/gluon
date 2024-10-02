@@ -624,6 +624,7 @@ func (state *State) ApplyUpdate(ctx context.Context, update Update) error {
 	if err := state.user.GetDB().Write(ctx, func(ctx context.Context, tx db.Transaction) error {
 		return update.Apply(ctx, tx, state)
 	}); err != nil {
+		// Only one has been reported in Sentry so far...
 		reporter.MessageWithContext(ctx,
 			"Failed to apply state update",
 			reporter.Context{"error": err, "update": update.String()},

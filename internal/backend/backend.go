@@ -14,6 +14,8 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/limits"
+	"github.com/ProtonMail/gluon/observability"
+	"github.com/ProtonMail/gluon/observability/metrics"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/google/uuid"
@@ -121,9 +123,7 @@ func (b *Backend) AddUser(ctx context.Context, userID string, conn connector.Con
 		}
 
 		b.log.WithError(err).Errorf("First database migration failed")
-		reporter.ExceptionWithContext(ctx, "database migration failed", reporter.Context{
-			"error": err,
-		})
+		observability.AddOtherMetric(ctx, metrics.GenerateDatabaseMigrationFailed())
 
 		b.log.Debugf("First migration failed, recreating database")
 
@@ -180,6 +180,7 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string, removeFiles boo
 	}
 
 	if err := user.close(ctx); err != nil {
+		// TODO (atanas) there's no events like this in sentry so far
 		reporter.MessageWithContext(ctx,
 			"Failed to close user from Backend.RemoveUser()",
 			reporter.Context{"error": err},
@@ -277,6 +278,7 @@ func (b *Backend) Close(ctx context.Context) error {
 
 	for userID, user := range b.users {
 		if err := user.close(ctx); err != nil {
+			// TODO (atanas) there's no events like this in sentry so far
 			reporter.MessageWithContext(ctx,
 				"Failed to close user from Backend.Close()",
 				reporter.Context{"error": err},

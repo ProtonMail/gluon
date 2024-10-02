@@ -47,6 +47,28 @@ func GenerateFailedToCommitDatabaseTransactionMetric() map[string]interface{} {
 	return generateGluonFailureMetric("failedCommitDatabaseTransaction")
 }
 
-func GenerateFailedToInsertMessageIntoRecoveryMailbox() map[string]interface{} {
-	return generateGluonFailureMetric("failedToInsertMessageIntoRecoveryMailbox")
+// TODO (atanas) maybe think about a different root table here
+func GenerateAppendToDraftsMustNotReturnExistingRemoteID() map[string]interface{} {
+	return generateGluonFailureMetric("appendToDraftsReturnedExistingRemoteID")
+}
+
+func GenerateDatabaseMigrationFailed() map[string]interface{} {
+	return generateGluonFailureMetric("databaseMigrationFailed")
+}
+
+func GenerateAllMetrics() []map[string]interface{} {
+	var metrics []map[string]interface{}
+	metrics = append(metrics,
+		GenerateFailedParseIMAPCommandMetric(),
+		GenerateFailedToCreateMailbox(),
+		GenerateFailedToDeleteMailboxMetric(),
+		GenerateFailedToCopyMessagesMetric(),
+		GenerateFailedToMoveMessagesFromMailboxMetric(),
+		GenerateFailedToRemoveDeletedMessagesMetric(),
+		GenerateFailedToCommitDatabaseTransactionMetric(),
+		GenerateAppendToDraftsMustNotReturnExistingRemoteID(),
+		GenerateDatabaseMigrationFailed(),
+	)
+
+	return metrics
 }

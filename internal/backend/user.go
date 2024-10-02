@@ -174,6 +174,7 @@ func newUser(
 				}
 
 				if err := user.apply(ctx, update); err != nil {
+					// TODO (atanas) there's no events like this in sentry so far
 					reporter.MessageWithContext(ctx,
 						"Failed to apply connector update",
 						reporter.Context{"error": err, "update": update.String()},

@@ -17,5 +17,6 @@ func getObservabilitySenderFromContext(ctx context.Context) (Sender, bool) {
 	}
 
 	sender, ok := v.(Sender)
+
 	return sender, ok
 }

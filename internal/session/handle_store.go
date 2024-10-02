@@ -38,6 +38,8 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *command.Stor
 		return response.Bad(tag).WithError(err), nil
 	} else if err != nil {
 		if shouldReportIMAPCommandError(err) {
+			// A result of either a failed request, or the message does not exist on the remote.
+			// We've agreed to keep this in sentry.
 			reporter.MessageWithContext(ctx,
 				"Failed to store flags on messages",
 				reporter.Context{"error": err, "mailbox": mailbox.Name(), "action": cmd.Action.String()},
