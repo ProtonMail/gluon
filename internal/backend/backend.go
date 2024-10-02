@@ -180,7 +180,7 @@ func (b *Backend) RemoveUser(ctx context.Context, userID string, removeFiles boo
 	}
 
 	if err := user.close(ctx); err != nil {
-		// TODO (atanas) there's no events like this in sentry so far
+		// no events in Sentry so far.
 		reporter.MessageWithContext(ctx,
 			"Failed to close user from Backend.RemoveUser()",
 			reporter.Context{"error": err},
@@ -278,7 +278,7 @@ func (b *Backend) Close(ctx context.Context) error {
 
 	for userID, user := range b.users {
 		if err := user.close(ctx); err != nil {
-			// TODO (atanas) there's no events like this in sentry so far
+			// there's no events like this in sentry so far.
 			reporter.MessageWithContext(ctx,
 				"Failed to close user from Backend.Close()",
 				reporter.Context{"error": err},

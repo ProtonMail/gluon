@@ -190,7 +190,7 @@ func (s *Session) serve(ctx context.Context) error {
 				}
 
 				if s.errorCount += 1; s.errorCount >= maxSessionError {
-					// TODO (atanas) there's no events like this in sentry so far
+					// there's no events like this in sentry so far.
 					reporter.MessageWithContext(ctx,
 						"Too many errors in session, closing connection",
 						reporter.Context{"ID": s.imapID.String()},

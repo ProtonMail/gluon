@@ -25,7 +25,7 @@ func (s *Session) handleFetch(ctx context.Context, tag string, cmd *command.Fetc
 		return response.Bad(tag).WithError(err), nil
 	} else if err != nil {
 		if shouldReportIMAPCommandError(err) {
-			// TODO (atanas) there's no events like this in sentry so far
+			// there's no events like this in sentry so far.
 			reporter.MessageWithContext(ctx,
 				"Failed to fetch messages",
 				reporter.Context{"error": err},

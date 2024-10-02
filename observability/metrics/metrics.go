@@ -5,7 +5,7 @@ import "time"
 const schemaName = "bridge_gluon_errors_total"
 const schemaVersion = 1
 
-func generateGluonFailureMetric(errorType string) map[string]interface{} {
+func generateGluonErrorMetric(errorType string) map[string]interface{} {
 	return map[string]interface{}{
 		"Name":      schemaName,
 		"Version":   schemaVersion,
@@ -20,40 +20,39 @@ func generateGluonFailureMetric(errorType string) map[string]interface{} {
 }
 
 func GenerateFailedParseIMAPCommandMetric() map[string]interface{} {
-	return generateGluonFailureMetric("failedParseIMAPCommand")
+	return generateGluonErrorMetric("failedParseIMAPCommand")
 }
 
 func GenerateFailedToCreateMailbox() map[string]interface{} {
-	return generateGluonFailureMetric("failedCreateMailbox")
+	return generateGluonErrorMetric("failedCreateMailbox")
 }
 
 func GenerateFailedToDeleteMailboxMetric() map[string]interface{} {
-	return generateGluonFailureMetric("failedDeleteMailbox")
+	return generateGluonErrorMetric("failedDeleteMailbox")
 }
 
 func GenerateFailedToCopyMessagesMetric() map[string]interface{} {
-	return generateGluonFailureMetric("failedCopyMessages")
+	return generateGluonErrorMetric("failedCopyMessages")
 }
 
 func GenerateFailedToMoveMessagesFromMailboxMetric() map[string]interface{} {
-	return generateGluonFailureMetric("failedMoveMessagesFromMailbox")
+	return generateGluonErrorMetric("failedMoveMessagesFromMailbox")
 }
 
 func GenerateFailedToRemoveDeletedMessagesMetric() map[string]interface{} {
-	return generateGluonFailureMetric("failedRemoveDeletedMessages")
+	return generateGluonErrorMetric("failedRemoveDeletedMessages")
 }
 
 func GenerateFailedToCommitDatabaseTransactionMetric() map[string]interface{} {
-	return generateGluonFailureMetric("failedCommitDatabaseTransaction")
+	return generateGluonErrorMetric("failedCommitDatabaseTransaction")
 }
 
-// TODO (atanas) maybe think about a different root table here
 func GenerateAppendToDraftsMustNotReturnExistingRemoteID() map[string]interface{} {
-	return generateGluonFailureMetric("appendToDraftsReturnedExistingRemoteID")
+	return generateGluonErrorMetric("appendToDraftsReturnedExistingRemoteID")
 }
 
 func GenerateDatabaseMigrationFailed() map[string]interface{} {
-	return generateGluonFailureMetric("databaseMigrationFailed")
+	return generateGluonErrorMetric("databaseMigrationFailed")
 }
 
 func GenerateAllMetrics() []map[string]interface{} {
