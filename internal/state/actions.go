@@ -113,7 +113,6 @@ func (state *State) actionCreateMessage(
 		}
 		if knownErr == nil {
 			if cameFromDrafts {
-				// TODO save the data from Sentry
 				observability.AddOtherMetric(ctx, metrics.GenerateAppendToDraftsMustNotReturnExistingRemoteID())
 				state.log.Errorf("Append to drafts must not return an existing RemoteID (Remote=%v, Internal=%v)", res.ID, knownInternalID)
 

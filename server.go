@@ -124,6 +124,7 @@ func (s *Server) AddUser(ctx context.Context, conn connector.Connector, passphra
 // LoadUser adds an existing user using a previously crated unique user ID.
 // It returns true if the user was newly created, false if it already existed.
 func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID string, passphrase []byte) (bool, error) {
+	ctx = observability.NewContextWithObservabilitySender(ctx, s.observabilitySender)
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
 
 	isNew, err := s.backend.AddUser(ctx, userID, conn, passphrase, s.uidValidityGenerator)

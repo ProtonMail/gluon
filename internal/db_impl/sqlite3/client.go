@@ -193,9 +193,12 @@ func (c *Client) wrapTx(ctx context.Context, op func(context.Context, *sql.Tx, *
 	}
 
 	if err := tx.Commit(); err != nil {
+		if !errors.Is(err, context.Canceled) {
+			observability.AddOtherMetric(ctx, metrics.GenerateFailedToCommitDatabaseTransactionMetric())
+		}
+
 		if c.debug {
 			entry.Debugf("Failed to commit Transaction")
-			observability.AddOtherMetric(ctx, metrics.GenerateFailedToCommitDatabaseTransactionMetric())
 		}
 
 		return fmt.Errorf("%v: %w", err, db.ErrTransactionFailed)
