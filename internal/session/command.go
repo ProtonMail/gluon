@@ -9,6 +9,8 @@ import (
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/logging"
+	"github.com/ProtonMail/gluon/observability"
+	"github.com/ProtonMail/gluon/observability/metrics"
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
@@ -62,6 +64,7 @@ func (s *Session) startCommandReader(ctx context.Context) <-chan commandResult {
 				}
 
 				s.log.WithError(err).WithField("type", parser.LastParsedCommand()).Error("Failed to parse IMAP command")
+				observability.AddImapMetric(ctx, metrics.GenerateFailedParseIMAPCommandMetric())
 			} else {
 				s.log.Debug(cmd.SanitizedString())
 			}

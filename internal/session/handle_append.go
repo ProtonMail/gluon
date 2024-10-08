@@ -40,6 +40,7 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *command.App
 
 		messageUID, err := mailbox.Append(ctx, cmd.Literal, flags, cmd.DateTime)
 		if err != nil {
+			// no events in sentry so far.
 			if shouldReportIMAPCommandError(err) {
 				reporter.MessageWithContext(ctx,
 					"Failed to append message to mailbox from state",

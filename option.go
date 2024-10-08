@@ -9,6 +9,7 @@ import (
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	limits2 "github.com/ProtonMail/gluon/limits"
+	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
@@ -242,4 +243,17 @@ func (w withDBClient) config(builder *serverBuilder) {
 
 func WithDBClient(ci db.ClientInterface) Option {
 	return &withDBClient{ci: ci}
+}
+
+type withObservabilitySender struct {
+	sender observability.Sender
+}
+
+func (w withObservabilitySender) config(builder *serverBuilder) {
+	builder.observabilitySender = w.sender
+}
+
+func WithObservabilitySender(sender observability.Sender, imapErrorType, messageErrorType, otherErrorType int) Option {
+	observability.SetupMetricTypes(imapErrorType, messageErrorType, otherErrorType)
+	return &withObservabilitySender{sender: sender}
 }
