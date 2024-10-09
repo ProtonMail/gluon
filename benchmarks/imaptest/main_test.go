@@ -127,7 +127,7 @@ func newScenario(c caseConfig, settingName string, s settingsConfig, port int) (
 		sc.timeout = time.Duration(secs) * 2 * time.Second
 	}
 
-	// coomon arguments
+	// common arguments
 	sc.imaptestParams = []string{
 		"host=127.0.0.1",
 		fmt.Sprintf("port=%d", port),
@@ -251,7 +251,7 @@ func TestHasIMAPTestAnError(t *testing.T) {
 		want, wantWithIgnore bool
 	}{
 		{
-			given: `Error: uknown error
+			given: `Error: unknown error
 This is not an error
 Error: user1@example.com[510]: Message UID=76 has \Recent flag in multiple sessions: 510 and 511: * 76 FETCH (FLAGS (\Answered \Deleted \Draft \Recent))
 Logi List Stat Sele Fetc Fet2 Stor Dele Expu Appe Logo 
