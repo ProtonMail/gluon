@@ -54,3 +54,7 @@ func GenerateAppendToDraftsMustNotReturnExistingRemoteID() map[string]interface{
 func GenerateDatabaseMigrationFailed() map[string]interface{} {
 	return generateGluonErrorMetric("databaseMigrationFailed")
 }
+
+func GenerateFailedToStoreFlagsOnMessages() map[string]interface{} {
+	return generateGluonErrorMetric("failedToStoreFlagsOnMessages")
+}
