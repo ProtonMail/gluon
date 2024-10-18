@@ -8,8 +8,9 @@ import (
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/observability"
+	"github.com/ProtonMail/gluon/observability/metrics"
 	"github.com/ProtonMail/gluon/profiling"
-	"github.com/ProtonMail/gluon/reporter"
 )
 
 func (s *Session) handleStore(ctx context.Context, tag string, cmd *command.Store, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
@@ -37,14 +38,8 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *command.Stor
 	if err := mailbox.Store(ctx, cmd.SeqSet, cmd.Action, flags); errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err), nil
 	} else if err != nil {
-		if shouldReportIMAPCommandError(err) {
-			// A result of either a failed request, or the message does not exist on the remote.
-			// We've agreed to keep this in sentry.
-			reporter.MessageWithContext(ctx,
-				"Failed to store flags on messages",
-				reporter.Context{"error": err, "mailbox": mailbox.Name(), "action": cmd.Action.String()},
-			)
-		}
+		// A result of either a failed request (API unreachable), or the message does not exist on remote.
+		observability.AddMessageRelatedMetric(ctx, metrics.GenerateFailedToStoreFlagsOnMessages())
 
 		return nil, err
 	}
