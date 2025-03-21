@@ -16,6 +16,7 @@ import (
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
 
@@ -94,6 +95,10 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 		return err
 	}
 
+	log := user.log.WithFields(logrus.Fields{
+		"remoteMailboxID": update.Mailbox.ID,
+	})
+
 	return user.db.Write(ctx, func(ctx context.Context, tx db.Transaction) error {
 		if mailboxCount, err := tx.GetMailboxCount(ctx); err != nil {
 			return err
@@ -110,9 +115,11 @@ func (user *user) applyMailboxCreated(ctx context.Context, update *imap.MailboxC
 			update.Mailbox.Attributes,
 			uidValidity,
 		); err != nil {
+			log.WithError(err).Error("Failed to create mailbox")
 			return err
 		}
 
+		log.Info("Mailbox created")
 		return nil
 	})
 }
@@ -122,6 +129,10 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 	if update.MailboxID == ids.GluonInternalRecoveryMailboxRemoteID {
 		return fmt.Errorf("attempting to delete protected mailbox (recovery)")
 	}
+
+	log := user.log.WithFields(logrus.Fields{
+		"remoteMailboxID": update.MailboxID,
+	})
 
 	return userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		mailbox, err := tx.GetMailboxByRemoteID(ctx, update.MailboxID)
@@ -134,8 +145,11 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 		}
 
 		if err := tx.DeleteMailboxWithRemoteID(ctx, update.MailboxID); err != nil {
+			log.WithError(err).Error("Failed to delete mailbox")
 			return nil, err
 		}
+
+		log.Info("Mailbox deleted")
 
 		if _, err := tx.RemoveDeletedSubscriptionWithName(ctx, mailbox.Name); err != nil {
 			return nil, err
@@ -378,6 +392,10 @@ func (user *user) applyMessageMailboxesUpdated(ctx context.Context, update *imap
 		return state.ErrNoSuchMessage
 	}
 
+	log := user.log.WithFields(logrus.Fields{
+		"remoteMailboxIDs": update.MailboxIDs,
+	})
+
 	return userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		internalMsgID, err := tx.GetMessageIDFromRemoteID(ctx, update.MessageID)
 		if err != nil {
@@ -389,6 +407,7 @@ func (user *user) applyMessageMailboxesUpdated(ctx context.Context, update *imap
 
 		internalMBoxIDs, err := tx.MailboxTranslateRemoteIDs(ctx, update.MailboxIDs)
 		if err != nil {
+			log.WithError(err).Error("Could not fetch gluon mailbox IDs from remote IDs")
 			return nil, err
 		}
 

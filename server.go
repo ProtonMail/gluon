@@ -148,6 +148,11 @@ func (s *Server) LoadUser(ctx context.Context, conn connector.Connector, userID 
 	return isNew, nil
 }
 
+// GetAllMailboxRemoteIDsForUser - used for debugging purposes. Returns a slice of all remote labelIDs registered under a given user.
+func (s *Server) GetAllMailboxRemoteIDsForUser(ctx context.Context, userID string) ([]imap.MailboxID, error) {
+	return s.backend.GetAllMailboxRemoteIDs(ctx, userID)
+}
+
 // RemoveUser removes a user from gluon.
 func (s *Server) RemoveUser(ctx context.Context, userID string, removeFiles bool) error {
 	ctx = reporter.NewContextWithReporter(ctx, s.reporter)
