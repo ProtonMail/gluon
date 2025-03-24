@@ -234,6 +234,21 @@ func (b *Backend) GetMailboxMessageCounts(ctx context.Context, userID string) (m
 	})
 }
 
+// GetAllMailboxRemoteIDs - Returns a slice of all remote labelIDs registered for a given user.
+func (b *Backend) GetAllMailboxRemoteIDs(ctx context.Context, userID string) ([]imap.MailboxID, error) {
+	b.usersLock.Lock()
+	defer b.usersLock.Unlock()
+
+	user, ok := b.users[userID]
+	if !ok {
+		return nil, ErrNoSuchUser
+	}
+
+	return db.ClientReadType(ctx, user.db, func(ctx context.Context, c db.ReadOnly) ([]imap.MailboxID, error) {
+		return c.GetAllMailboxesAsRemoteIDs(ctx)
+	})
+}
+
 func (b *Backend) GetState(ctx context.Context, username string, password []byte, sessionID int) (*state.State, error) {
 	b.usersLock.Lock()
 	defer b.usersLock.Unlock()
