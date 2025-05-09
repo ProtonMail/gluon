@@ -15,6 +15,7 @@ import (
 	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/imap/connectioncounter"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/session"
@@ -94,6 +95,8 @@ type Server struct {
 	panicHandler async.PanicHandler
 
 	observabilitySender observability.Sender
+
+	connectionRollingCounter *connectioncounter.RollingCounter
 }
 
 // New creates a new server with the given options.
@@ -192,10 +195,20 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 		Addr: l.Addr(),
 	})
 
+	if s.connectionRollingCounter != nil {
+		s.connectionRollingCounter.Start(ctx, s.observabilitySender, s)
+	}
+
 	s.serveWG.Go(func() {
 		defer s.publish(events.ListenerRemoved{
 			Addr: l.Addr(),
 		})
+
+		defer func() {
+			if s.connectionRollingCounter != nil {
+				s.connectionRollingCounter.Stop()
+			}
+		}()
 
 		s.serve(ctx, newConnCh(l, s.panicHandler))
 	})
@@ -228,6 +241,10 @@ func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
 			connWG.Go(func() {
 				session, sessionID := s.addSession(ctx, conn)
 				defer s.removeSession(sessionID)
+
+				if s.connectionRollingCounter != nil {
+					s.connectionRollingCounter.NewConnection()
+				}
 
 				logging.DoAnnotated(ctx, func(ctx context.Context) {
 					if err := session.Serve(ctx); err != nil {
@@ -392,4 +409,22 @@ func newConnCh(l net.Listener, panicHandler async.PanicHandler) <-chan net.Conn 
 	}()
 
 	return connCh
+}
+
+// GetOpenSessionCount - Returns the number of currently open IMAP sessions.
+func (s *Server) GetOpenSessionCount() int {
+	s.sessionsLock.Lock()
+	defer s.sessionsLock.Unlock()
+
+	return len(s.sessions)
+}
+
+// GetRollingIMAPConnectionCount - Returns the number of newly opened IMAP connections over some interval.
+// The interval is defined in the rolling counter builder option.
+func (s *Server) GetRollingIMAPConnectionCount() int {
+	if s.connectionRollingCounter != nil {
+		return s.connectionRollingCounter.GetRollingCount()
+	}
+
+	return 0
 }
