@@ -8,7 +8,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-15, windows-latest]
+        os: [ubuntu-22.04, macos-15, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Get sources
@@ -17,7 +17,7 @@ jobs:
       - name: Set up Go 1.23.3
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23.3'
+          go-version: "1.23.3"
 
       - name: Run go mod tidy
         run: go mod tidy
@@ -45,21 +45,21 @@ jobs:
   Fuzzing:
     runs-on: ubuntu-latest
     steps:
-    - name: Build Fuzzers
-      id: build
-      uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
-      with:
-        oss-fuzz-project-name: 'gluon'
-        language: go
-    - name: Run Fuzzers
-      uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
-      with:
-        oss-fuzz-project-name: 'gluon'
-        language: go
-        fuzz-seconds: 300
-    - name: Upload Crash
-      uses: actions/upload-artifact@v4
-      if: failure() && steps.build.outcome == 'success'
-      with:
-        name: artifacts
-        path: ./out/artifacts
+      - name: Build Fuzzers
+        id: build
+        uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+        with:
+          oss-fuzz-project-name: "gluon"
+          language: go
+      - name: Run Fuzzers
+        uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+        with:
+          oss-fuzz-project-name: "gluon"
+          language: go
+          fuzz-seconds: 300
+      - name: Upload Crash
+        uses: actions/upload-artifact@v4
+        if: failure() && steps.build.outcome == 'success'
+        with:
+          name: artifacts
+          path: ./out/artifacts
