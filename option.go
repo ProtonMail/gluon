@@ -8,6 +8,7 @@ import (
 	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/imap/connectioncounter"
 	limits2 "github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/profiling"
@@ -266,4 +267,21 @@ func (w withObservabilitySender) config(builder *serverBuilder) {
 func WithObservabilitySender(sender observability.Sender, imapErrorType, messageErrorType, otherErrorType int) Option {
 	observability.SetupMetricTypes(imapErrorType, messageErrorType, otherErrorType)
 	return &withObservabilitySender{sender: sender}
+}
+
+type withConnectionRollingCounter struct {
+	rollingConnectionCounter *connectioncounter.RollingCounter
+}
+
+func (w withConnectionRollingCounter) config(builder *serverBuilder) {
+	builder.connectionRollingCounter = w.rollingConnectionCounter
+}
+
+func WithConnectionRollingCounter(newConnectionTreshold, numberOfBuckets int, thresholdCheckInterval time.Duration) Option {
+	return &withConnectionRollingCounter{
+		rollingConnectionCounter: connectioncounter.NewRollingCounter(
+			newConnectionTreshold,
+			numberOfBuckets,
+			thresholdCheckInterval,
+		)}
 }
