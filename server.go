@@ -19,6 +19,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/session"
+	"github.com/ProtonMail/gluon/internal/unleash"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/profiling"
@@ -97,6 +98,8 @@ type Server struct {
 	observabilitySender observability.Sender
 
 	connectionRollingCounter *connectioncounter.RollingCounter
+
+	featureFlagProvider unleash.FeatureFlagValueProvider
 }
 
 // New creates a new server with the given options.
@@ -318,7 +321,7 @@ func (s *Server) addSession(ctx context.Context, conn net.Conn) (*session.Sessio
 
 	nextID := s.getNextID()
 
-	s.sessions[nextID] = session.New(conn, s.backend, nextID, s.versionInfo, s.cmdExecProfBuilder, s.newEventCh(ctx), s.idleBulkTime, s.disableIMAPAuthenticate, s.panicHandler)
+	s.sessions[nextID] = session.New(conn, s.backend, nextID, s.versionInfo, s.cmdExecProfBuilder, s.newEventCh(ctx), s.idleBulkTime, s.disableIMAPAuthenticate, s.panicHandler, s.featureFlagProvider)
 
 	if s.tlsConfig != nil {
 		s.sessions[nextID].SetTLSConfig(s.tlsConfig)

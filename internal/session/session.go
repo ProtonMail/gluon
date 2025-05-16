@@ -21,6 +21,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/internal/unleash"
 	"github.com/ProtonMail/gluon/profiling"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfcparser"
@@ -94,6 +95,8 @@ type Session struct {
 
 	// log The log for the session.
 	log *logrus.Entry
+
+	featureFlagProvider unleash.FeatureFlagValueProvider
 }
 
 func New(
@@ -106,11 +109,17 @@ func New(
 	idleBulkTime time.Duration,
 	disableIMAPAuthenticate bool,
 	panicHandler async.PanicHandler,
+	featureFlagProvider unleash.FeatureFlagValueProvider,
 ) *Session {
 	inputCollector := command.NewInputCollector(bufio.NewReader(conn))
 	scanner := rfcparser.NewScannerWithReader(inputCollector)
 
-	caps := []imap.Capability{imap.IMAP4rev1, imap.IDLE, imap.UNSELECT, imap.UIDPLUS, imap.MOVE, imap.ID}
+	caps := []imap.Capability{imap.IMAP4rev1, imap.UNSELECT, imap.UIDPLUS, imap.MOVE, imap.ID}
+
+	if !featureFlagProvider.GetFlagValue(unleash.CapabilityKillSwitchMap[string(imap.IDLE)]) {
+		caps = append(caps, imap.IDLE)
+	}
+
 	if !disableIMAPAuthenticate {
 		caps = append(caps, imap.AUTHPLAIN)
 	}
@@ -130,6 +139,7 @@ func New(
 		disableIMAPAuthenticate: disableIMAPAuthenticate,
 		panicHandler:            panicHandler,
 		log:                     logrus.WithField("pkg", "gluon/session").WithField("session", sessionID),
+		featureFlagProvider:     featureFlagProvider,
 	}
 }
 

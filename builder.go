@@ -14,6 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/db_impl/sqlite3"
 	"github.com/ProtonMail/gluon/internal/session"
+	"github.com/ProtonMail/gluon/internal/unleash"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/profiling"
@@ -43,6 +44,7 @@ type serverBuilder struct {
 	panicHandler             async.PanicHandler
 	dbCI                     db.ClientInterface
 	observabilitySender      observability.Sender
+	featureFlagProvider      unleash.FeatureFlagValueProvider
 	connectionRollingCounter *connectioncounter.RollingCounter
 }
 
@@ -109,6 +111,11 @@ func (builder *serverBuilder) build() (*Server, error) {
 		logrus.WithError(err).Error("Failed to remove old database files")
 	}
 
+	// If there's no feature flag provider just provide a mock.
+	if builder.featureFlagProvider == nil {
+		builder.featureFlagProvider = &unleash.NullFeatureFlagProvider{}
+	}
+
 	s := &Server{
 		dataDir:                  builder.dataDir,
 		databaseDir:              builder.databaseDir,
@@ -131,6 +138,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 		panicHandler:             builder.panicHandler,
 		observabilitySender:      builder.observabilitySender,
 		connectionRollingCounter: builder.connectionRollingCounter,
+		featureFlagProvider:      builder.featureFlagProvider,
 	}
 
 	return s, nil
