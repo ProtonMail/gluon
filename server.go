@@ -414,6 +414,10 @@ func newConnCh(l net.Listener, panicHandler async.PanicHandler) <-chan net.Conn 
 	return connCh
 }
 
+func (s *Server) GetUserMailboxByName(ctx context.Context, addrID string, mailboxName []string) (imap.MailboxData, error) {
+	return s.backend.GetUserMailboxByName(ctx, addrID, mailboxName)
+}
+
 // GetOpenSessionCount - Returns the number of currently open IMAP sessions.
 func (s *Server) GetOpenSessionCount() int {
 	s.sessionsLock.Lock()

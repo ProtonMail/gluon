@@ -38,6 +38,9 @@ func (user *user) apply(ctx context.Context, update imap.Update) error {
 		case *imap.MailboxIDChanged:
 			return user.applyMailboxIDChanged(ctx, update)
 
+		case *imap.MailboxUpdatedOrCreated:
+			return user.applyMailboxUpdatedOrCreated(ctx, update)
+
 		case *imap.MessagesCreated:
 			return user.applyMessagesCreated(ctx, update)
 
@@ -203,6 +206,16 @@ func (user *user) applyMailboxIDChanged(ctx context.Context, update *imap.Mailbo
 
 		return []state.Update{state.NewMailboxRemoteIDUpdateStateUpdate(update.InternalID, update.RemoteID)}, nil
 	})
+}
+
+func (user *user) applyMailboxUpdatedOrCreated(ctx context.Context, update *imap.MailboxUpdatedOrCreated) error {
+	if err := user.applyMailboxCreated(ctx, imap.NewMailboxCreated(update.Mailbox)); err != nil {
+		return err
+	}
+	if err := user.applyMailboxUpdated(ctx, imap.NewMailboxUpdated(update.Mailbox.ID, update.Mailbox.Name)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // applyMessagesCreated applies a MessagesCreated update.
