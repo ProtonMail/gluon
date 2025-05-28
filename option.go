@@ -9,6 +9,7 @@ import (
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/connectioncounter"
+	"github.com/ProtonMail/gluon/internal/unleash"
 	limits2 "github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/profiling"
@@ -284,4 +285,18 @@ func WithConnectionRollingCounter(newConnectionTreshold, numberOfBuckets int, th
 			numberOfBuckets,
 			thresholdCheckInterval,
 		)}
+}
+
+type withFeatureFlagProvider struct {
+	featureFlagProvider unleash.FeatureFlagValueProvider
+}
+
+func (w withFeatureFlagProvider) config(builder *serverBuilder) {
+	builder.featureFlagProvider = w.featureFlagProvider
+}
+
+func WithFeatureFlagProvider(featureFlagProvider unleash.FeatureFlagValueProvider) Option {
+	return &withFeatureFlagProvider{
+		featureFlagProvider: featureFlagProvider,
+	}
 }
