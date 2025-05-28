@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -343,4 +344,17 @@ func (b *Backend) getStoreDir() string {
 
 func (b *Backend) getDBDir() string {
 	return b.databaseDir
+}
+
+func (b *Backend) GetUserMailboxByName(ctx context.Context, addrID string, mailboxName []string) (imap.MailboxData, error) {
+	b.usersLock.Lock()
+	defer b.usersLock.Unlock()
+
+	user, ok := b.users[addrID]
+	if !ok {
+		return imap.MailboxData{}, ErrNoSuchUser
+	}
+
+	internalName := strings.Join(mailboxName, b.delim)
+	return user.getUserMailboxByName(ctx, mailboxName, internalName)
 }

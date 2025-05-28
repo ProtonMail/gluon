@@ -380,3 +380,24 @@ func (user *user) cleanupStaleStoreData(ctx context.Context) error {
 
 	return user.store.Delete(idsToDelete...)
 }
+
+func (user *user) getUserMailboxByName(ctx context.Context, bridgeName []string, mailboxName string) (imap.MailboxData, error) {
+	var mboxData imap.MailboxData
+	err := user.db.Read(ctx, func(ctx context.Context, internalDB db.ReadOnly) error {
+		mailbox, err := internalDB.GetMailboxByName(ctx, mailboxName)
+		if err != nil {
+			return err
+		}
+
+		mboxData = imap.MailboxData{
+			InternalID: mailbox.ID.String(),
+			RemoteID:   string(mailbox.RemoteID),
+			GluonName:  mailboxName,
+			BridgeName: bridgeName,
+		}
+
+		return nil
+	})
+
+	return mboxData, err
+}

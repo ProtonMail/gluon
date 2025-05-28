@@ -23,3 +23,10 @@ const (
 	Visible
 	HiddenIfEmpty
 )
+
+type MailboxData struct {
+	InternalID string
+	RemoteID   string
+	GluonName  string
+	BridgeName []string
+}
