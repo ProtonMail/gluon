@@ -16,6 +16,7 @@ type openConnectionProvider interface {
 type RollingCounter struct {
 	ctx    context.Context
 	cancel context.CancelFunc
+	wg     sync.WaitGroup
 
 	log *logrus.Entry
 
@@ -73,8 +74,9 @@ func (rc *RollingCounter) Start(ctx context.Context, obsSender observability.Sen
 }
 
 func (rc *RollingCounter) run() {
-
+	rc.wg.Add(1)
 	go func() {
+		defer rc.wg.Done()
 		for {
 			select {
 			case <-rc.ctx.Done():
@@ -91,6 +93,7 @@ func (rc *RollingCounter) run() {
 func (rc *RollingCounter) Stop() {
 	rc.bucketRotationTicker.Stop()
 	rc.cancel()
+	rc.wg.Wait()
 }
 
 func (rc *RollingCounter) withBucketLock(fn func()) {
