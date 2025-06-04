@@ -42,7 +42,8 @@ func (w writeOps) CreateMailbox(
 		true,
 	)
 	if err != nil {
-		return nil, err
+		return nil, utils.MapLabelsUniqueConstraintError(
+			ctx, w, v1.MailboxesTableName, v1.MailboxesFieldRemoteID, v1.MailboxesFieldName, mboxID, name, err)
 	}
 
 	{
@@ -135,7 +136,10 @@ func (w writeOps) RenameMailboxWithRemoteID(ctx context.Context, mboxID imap.Mai
 		v1.MailboxesFieldRemoteID,
 	)
 
-	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, name, mboxID)
+	err := utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, name, mboxID)
+	return utils.MapLabelsUniqueConstraintError(
+		ctx, w, v1.MailboxesTableName, v1.MailboxesFieldRemoteID, v1.MailboxesFieldName, mboxID, name, err)
+
 }
 
 func (w writeOps) DeleteMailboxWithRemoteID(ctx context.Context, mboxID imap.MailboxID) error {
@@ -322,7 +326,6 @@ func (w writeOps) SetMailboxSubscribed(ctx context.Context, mboxID imap.Internal
 	)
 
 	_, err := utils.ExecQuery(ctx, w.qw, query, subscribed, mboxID)
-
 	return err
 }
 
@@ -333,7 +336,9 @@ func (w writeOps) UpdateRemoteMailboxID(ctx context.Context, mboxID imap.Interna
 		v1.MailboxesFieldID,
 	)
 
-	return utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, remoteID, mboxID)
+	err := utils.ExecQueryAndCheckUpdatedNotZero(ctx, w.qw, query, remoteID, mboxID)
+	return utils.MapLabelsUniqueConstraintError(
+		ctx, w, v1.MailboxesTableName, v1.MailboxesFieldRemoteID, v1.MailboxesFieldName, remoteID, "", err)
 }
 
 func (w writeOps) SetMailboxUIDValidity(ctx context.Context, mboxID imap.InternalMailboxID, uidValidity imap.UID) error {
