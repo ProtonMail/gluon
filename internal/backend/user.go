@@ -390,7 +390,7 @@ func (user *user) getUserMailboxByName(ctx context.Context, bridgeName []string,
 		}
 
 		mboxData = imap.MailboxData{
-			InternalID: mailbox.ID.String(),
+			InternalID: mailbox.ID,
 			RemoteID:   string(mailbox.RemoteID),
 			GluonName:  mailboxName,
 			BridgeName: bridgeName,
@@ -400,4 +400,20 @@ func (user *user) getUserMailboxByName(ctx context.Context, bridgeName []string,
 	})
 
 	return mboxData, err
+}
+
+func (user *user) getUserMailboxCountByInternalID(ctx context.Context, internalID imap.InternalMailboxID) (int, error) {
+	var mailboxMessageCount int
+
+	err := user.db.Read(ctx, func(ctx context.Context, internalDB db.ReadOnly) error {
+		count, err := internalDB.GetMailboxMessageCount(ctx, internalID)
+		if err != nil {
+			return err
+		}
+
+		mailboxMessageCount = count
+		return nil
+	})
+
+	return mailboxMessageCount, err
 }

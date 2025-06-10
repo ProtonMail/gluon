@@ -418,6 +418,10 @@ func (s *Server) GetUserMailboxByName(ctx context.Context, addrID string, mailbo
 	return s.backend.GetUserMailboxByName(ctx, addrID, mailboxName)
 }
 
+func (s *Server) GetUserMailboxCountByInternalID(ctx context.Context, addrID string, internalID imap.InternalMailboxID) (int, error) {
+	return s.backend.GetUserMailboxCountByInternalID(ctx, addrID, internalID)
+}
+
 // GetOpenSessionCount - Returns the number of currently open IMAP sessions.
 func (s *Server) GetOpenSessionCount() int {
 	s.sessionsLock.Lock()

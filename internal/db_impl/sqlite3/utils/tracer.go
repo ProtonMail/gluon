@@ -308,6 +308,12 @@ func (w WriteTracer) DeleteMailboxWithRemoteID(ctx context.Context, mboxID imap.
 	return w.TX.DeleteMailboxWithRemoteID(ctx, mboxID)
 }
 
+func (w WriteTracer) DeleteMailboxWithRemoteIDSilent(ctx context.Context, mboxID imap.MailboxID) error {
+	w.Entry.Tracef("DeleteMailboxWithRemoteIDSilents")
+
+	return w.TX.DeleteMailboxWithRemoteIDSilent(ctx, mboxID)
+}
+
 func (w WriteTracer) AddMessagesToMailbox(
 	ctx context.Context,
 	mboxID imap.InternalMailboxID,

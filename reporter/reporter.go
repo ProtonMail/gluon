@@ -8,5 +8,6 @@ type Reporter interface {
 	ReportException(any) error
 	ReportMessage(string) error
 	ReportMessageWithContext(string, Context) error
+	ReportWarningWithContext(string, Context) error
 	ReportExceptionWithContext(any, Context) error
 }

@@ -88,6 +88,8 @@ type MailboxWriteOps interface {
 
 	DeleteMailboxWithRemoteID(ctx context.Context, mboxID imap.MailboxID) error
 
+	DeleteMailboxWithRemoteIDSilent(ctx context.Context, mboxID imap.MailboxID) error
+
 	AddMessagesToMailbox(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []MessageIDPair) ([]UIDWithFlags, error)
 
 	RemoveMessagesFromMailbox(ctx context.Context, mboxID imap.InternalMailboxID, messageIDs []imap.InternalMessageID) error
