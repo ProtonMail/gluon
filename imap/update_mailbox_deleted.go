@@ -22,3 +22,22 @@ func NewMailboxDeleted(mailboxID MailboxID) *MailboxDeleted {
 func (u *MailboxDeleted) String() string {
 	return fmt.Sprintf("MailboxDeleted: MailboxID = %v", u.MailboxID.ShortID())
 }
+
+type MailboxDeletedSilent struct {
+	updateBase
+
+	*updateWaiter
+
+	MailboxID MailboxID
+}
+
+func NewMailboxDeletedSilent(mailboxID MailboxID) *MailboxDeletedSilent {
+	return &MailboxDeletedSilent{
+		updateWaiter: newUpdateWaiter(),
+		MailboxID:    mailboxID,
+	}
+}
+
+func (u *MailboxDeletedSilent) String() string {
+	return fmt.Sprintf("MailboxDeletedPasstrhough: MailboxID = %v", u.MailboxID.ShortID())
+}

@@ -178,6 +178,42 @@ func (w writeOps) DeleteMailboxWithRemoteID(ctx context.Context, mboxID imap.Mai
 	return nil
 }
 
+func (w writeOps) DeleteMailboxWithRemoteIDSilent(ctx context.Context, mboxID imap.MailboxID) error {
+	mbox, err := w.GetMailboxByRemoteID(ctx, mboxID)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+
+	var errs []error
+
+	if mbox.Subscribed {
+		if err := w.AddDeletedSubscription(ctx, mbox.Name, mboxID); err != nil {
+			errs = append(errs, fmt.Errorf("failed to add deleted subscription: %w", err))
+		}
+	}
+
+	{
+		query := fmt.Sprintf("DROP TABLE `%v`", v1.MailboxMessageTableName(mbox.ID))
+		if _, err = utils.ExecQuery(ctx, w.qw, query); err != nil {
+			errs = append(errs, fmt.Errorf("failed to drop message table: %w", err))
+		}
+	}
+	{
+		query := fmt.Sprintf("DELETE FROM %v WHERE `%v` = ?",
+			v1.MailboxesTableName,
+			v1.MailboxesFieldRemoteID)
+
+		if _, err = utils.ExecQuery(ctx, w.qw, query, mboxID); err != nil {
+			errs = append(errs, fmt.Errorf("failed to delete mailbox record: %w", err))
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
 func (w writeOps) AddMessagesToMailbox(
 	ctx context.Context,
 	mboxID imap.InternalMailboxID,

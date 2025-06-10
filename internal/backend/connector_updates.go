@@ -32,6 +32,9 @@ func (user *user) apply(ctx context.Context, update imap.Update) error {
 		case *imap.MailboxDeleted:
 			return user.applyMailboxDeleted(ctx, update)
 
+		case *imap.MailboxDeletedSilent:
+			return user.applyMailboxDeletedSilent(ctx, update)
+
 		case *imap.MailboxUpdated:
 			return user.applyMailboxUpdated(ctx, update)
 
@@ -160,6 +163,46 @@ func (user *user) applyMailboxDeleted(ctx context.Context, update *imap.MailboxD
 
 		return []state.Update{state.NewMailboxDeletedStateUpdate(mailbox.ID)}, nil
 	})
+}
+
+func (user *user) applyMailboxDeletedSilent(ctx context.Context, update *imap.MailboxDeletedSilent) error {
+	if update.MailboxID == ids.GluonInternalRecoveryMailboxRemoteID {
+		return fmt.Errorf("attempting to delete protected mailbox (recovery)")
+	}
+
+	log := user.log.WithFields(logrus.Fields{
+		"remoteMailboxID": update.MailboxID,
+	})
+
+	var mailboxID imap.InternalMailboxID
+
+	if err := userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
+		mailbox, err := tx.GetMailboxByRemoteID(ctx, update.MailboxID)
+		if err != nil {
+			if db.IsErrNotFound(err) {
+				return nil, nil
+			}
+			return nil, err
+		}
+
+		mailboxID = mailbox.ID
+		if err := tx.DeleteMailboxWithRemoteIDSilent(ctx, update.MailboxID); err != nil {
+			log.WithError(err).Error("Failed to delete mailbox")
+		}
+
+		log.Info("Mailbox deleted")
+
+		if _, err := tx.RemoveDeletedSubscriptionWithName(ctx, mailbox.Name); err != nil {
+			log.WithError(err).Error("Could not remove subscription")
+		}
+
+		return []state.Update{state.NewMailboxDeletedStateUpdate(mailboxID)}, nil
+	}); err != nil {
+		// Just log this.
+		fmt.Println("Error occured", err)
+	}
+
+	return nil
 }
 
 // applyMailboxUpdated applies a MailboxUpdated update.
