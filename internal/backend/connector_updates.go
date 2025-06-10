@@ -187,19 +187,18 @@ func (user *user) applyMailboxDeletedSilent(ctx context.Context, update *imap.Ma
 
 		mailboxID = mailbox.ID
 		if err := tx.DeleteMailboxWithRemoteIDSilent(ctx, update.MailboxID); err != nil {
-			log.WithError(err).Error("Failed to delete mailbox")
+			log.WithError(err).Debug("Failed to delete mailbox")
 		}
 
 		log.Info("Mailbox deleted")
 
 		if _, err := tx.RemoveDeletedSubscriptionWithName(ctx, mailbox.Name); err != nil {
-			log.WithError(err).Error("Could not remove subscription")
+			log.WithError(err).Debug("Could not remove subscription")
 		}
 
 		return []state.Update{state.NewMailboxDeletedStateUpdate(mailboxID)}, nil
 	}); err != nil {
-		// Just log this.
-		fmt.Println("Error occured", err)
+		log.WithError(err).Debug("Error occured when writing to DB")
 	}
 
 	return nil
