@@ -358,3 +358,15 @@ func (b *Backend) GetUserMailboxByName(ctx context.Context, addrID string, mailb
 	internalName := strings.Join(mailboxName, b.delim)
 	return user.getUserMailboxByName(ctx, mailboxName, internalName)
 }
+
+func (b *Backend) GetUserMailboxCountByInternalID(ctx context.Context, addrID string, internalID imap.InternalMailboxID) (int, error) {
+	b.usersLock.Lock()
+	defer b.usersLock.Unlock()
+
+	user, ok := b.users[addrID]
+	if !ok {
+		return 0, ErrNoSuchUser
+	}
+
+	return user.getUserMailboxCountByInternalID(ctx, internalID)
+}

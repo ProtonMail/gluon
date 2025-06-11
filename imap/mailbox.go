@@ -25,7 +25,7 @@ const (
 )
 
 type MailboxData struct {
-	InternalID string
+	InternalID InternalMailboxID
 	RemoteID   string
 	GluonName  string
 	BridgeName []string
