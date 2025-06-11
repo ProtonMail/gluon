@@ -198,7 +198,7 @@ func (user *user) applyMailboxDeletedSilent(ctx context.Context, update *imap.Ma
 
 		return []state.Update{state.NewMailboxDeletedStateUpdate(mailboxID)}, nil
 	}); err != nil {
-		log.WithError(err).Debug("Error occured when writing to DB")
+		log.WithError(err).Debug("Error occurred when writing to DB")
 	}
 
 	return nil
