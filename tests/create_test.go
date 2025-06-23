@@ -69,7 +69,9 @@ func TestCreatePreviousLevelHierarchyIfNonExisting(t *testing.T) {
 }
 
 func TestEnsureNewMailboxWithDeletedNameHasGreaterId(t *testing.T) {
-	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, _ *testSession) {
+	runOneToOneTestClientWithAuth(t, defaultServerOptions(t), func(client *client.Client, c *testSession) {
+		c.setUpdatesAllowedToFail("user", true)
+
 		var oldValidity uint32
 		var newValidity uint32
 
@@ -111,6 +113,7 @@ func TestEnsureNewMailboxWithDeletedNameHasGreaterId(t *testing.T) {
 func TestCreate_UIDValidity_Bumped(t *testing.T) {
 	uidValidityGenerator := imap.NewIncrementalUIDValidityGenerator()
 	runServer(t, defaultServerOptions(t, withUIDValidityGenerator(uidValidityGenerator)), func(s *testSession) {
+		s.setUpdatesAllowedToFail("user", true)
 
 		currentUIDValidity := uidValidityGenerator.GetValue()
 
