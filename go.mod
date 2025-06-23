@@ -1,6 +1,6 @@
 module github.com/ProtonMail/gluon
 
-go 1.21
+go 1.24
 
 require (
 	github.com/ProtonMail/go-mbox v1.1.0

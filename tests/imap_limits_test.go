@@ -36,6 +36,8 @@ func TestMaxMessageLimitRespected_Append(t *testing.T) {
 
 func TestMaxUIDLimitRespected_Append(t *testing.T) {
 	runOneToOneTestClientWithAuth(t, defaultServerOptions(t, withIMAPLimits(testIMAPLimits()), withUIDValidityGenerator(imap.NewIncrementalUIDValidityGenerator())), func(client *client.Client, session *testSession) {
+		session.setUpdatesAllowedToFail("user", true)
+
 		require.NoError(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Foo@bar.com"), time.Now()))
 		_, err := client.Select("INBOX", false)
 		require.NoError(t, err)
