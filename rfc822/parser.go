@@ -24,7 +24,9 @@ type Section struct {
 }
 
 func Parse(literal []byte) *Section {
-	return parse(literal, []int{}, 0, len(literal))
+	literalCopy := make([]byte, len(literal))
+	copy(literalCopy, literal)
+	return parse(literalCopy, []int{}, 0, len(literal))
 }
 
 func (section *Section) Identifier() []int {
