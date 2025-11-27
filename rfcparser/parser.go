@@ -190,8 +190,8 @@ func (p *Parser) ParseLiteral() ([]byte, error) {
 		return nil, fmt.Errorf("invalid literal size")
 	}
 
-	if literalSize >= 55*1024*1024 {
-		return nil, fmt.Errorf("literal size exceeds maximum size of 55MB")
+	if literalSize >= 70*1024*1024 {
+		return nil, fmt.Errorf("literal size exceeds maximum size of 70MB")
 
 	}
 
