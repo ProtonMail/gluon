@@ -6,6 +6,7 @@ import (
 
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/session/cmdwatcher"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/logging"
 )
@@ -14,12 +15,15 @@ func (s *Session) handleOther(
 	ctx context.Context,
 	tag string,
 	cmd command.Payload,
+	trackCommand cmdwatcher.TrackCommandFn,
 ) <-chan response.Response {
 	resCh := make(chan response.Response, 8)
 
 	s.handleWG.Go(func() {
 		logging.DoAnnotated(state.NewStateContext(ctx, s.state), func(ctx context.Context) {
+			cleanupTracked := trackCommand(cmd.SanitizedString())
 			defer close(resCh)
+			defer cleanupTracked()
 
 			if err := s.handleCommand(ctx, tag, cmd, resCh); err != nil {
 				s.log.WithError(err).WithField("cmd", cmd.SanitizedString()).Error("Command failed")
