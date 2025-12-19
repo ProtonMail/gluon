@@ -20,6 +20,7 @@ import (
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/session/cmdwatcher"
 	"github.com/ProtonMail/gluon/internal/state"
 	"github.com/ProtonMail/gluon/internal/unleash"
 	"github.com/ProtonMail/gluon/profiling"
@@ -189,6 +190,15 @@ func (s *Session) serve(ctx context.Context) error {
 
 	cmdCh := s.startCommandReader(ctx)
 
+	cmdWatcher := cmdwatcher.NewAndRun(
+		ctx,
+		s.sessionID,
+		s.panicHandler,
+		func(msg string) error {
+			return response.Ok().WithMessage(msg).Send(s)
+		},
+	)
+
 	for {
 		select {
 		case update := <-s.state.GetStateUpdatesCh():
@@ -241,7 +251,7 @@ func (s *Session) serve(ctx context.Context) error {
 				}
 
 			default:
-				respCh := s.handleOther(withStartTime(ctx, time.Now()), res.command.Tag, cmd)
+				respCh := s.handleOther(withStartTime(ctx, time.Now()), res.command.Tag, cmd, cmdWatcher.TrackCommand)
 				for res := range respCh {
 					if err := res.Send(s); err != nil {
 						go func() {
