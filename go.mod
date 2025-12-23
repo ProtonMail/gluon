@@ -2,6 +2,8 @@ module github.com/ProtonMail/gluon
 
 go 1.24
 
+toolchain go1.24.11
+
 require (
 	github.com/ProtonMail/go-mbox v1.1.0
 	github.com/bradenaw/juniper v0.12.0
@@ -12,7 +14,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/pierrec/lz4/v4 v4.1.17
 	github.com/pkg/profile v1.7.0
-	github.com/sirupsen/logrus v1.9.2
+	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.3
 	go.uber.org/goleak v1.2.1
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
