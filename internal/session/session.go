@@ -194,6 +194,7 @@ func (s *Session) serve(ctx context.Context) error {
 		ctx,
 		s.sessionID,
 		s.panicHandler,
+		s.featureFlagProvider,
 		func(msg string) error {
 			return response.Ok().WithMessage(msg).Send(s)
 		},
@@ -251,7 +252,7 @@ func (s *Session) serve(ctx context.Context) error {
 				}
 
 			default:
-				respCh := s.handleOther(withStartTime(ctx, time.Now()), res.command.Tag, cmd, cmdWatcher.TrackCommand)
+				respCh := s.handleOther(withStartTime(ctx, time.Now()), res.command.Tag, cmd, cmdWatcher.TrackedWithImapID(s.imapID))
 				for res := range respCh {
 					if err := res.Send(s); err != nil {
 						go func() {
