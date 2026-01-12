@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const defaultTestInterval = 40 * time.Millisecond
+const defaultTestInterval = 80 * time.Millisecond
 
 type mockProgressSender struct {
 	lock        sync.Mutex
@@ -138,7 +138,7 @@ func TestCheckAndReportProgress_NonThunderbirdDisabled_WithThunderbird(t *testin
 			imapID := createImapID(tt.imapName)
 			service.TrackedWithImapID(imapID)("TEST_CMD")
 
-			time.Sleep(45 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
 			assert.True(t, sender.WasCalled())
 		})
@@ -166,7 +166,7 @@ func TestCheckAndReportProgress_NonThunderbirdDisabled_WithoutThunderbird(t *tes
 			imapID := createImapID(tt.imapName)
 			service.TrackedWithImapID(imapID)("TEST_CMD")
 
-			time.Sleep(45 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
 			assert.False(t, sender.WasCalled())
 		})
@@ -194,7 +194,7 @@ func TestCheckAndReportProgress_BothFlagsDisabled(t *testing.T) {
 			imapID := createImapID(tt.imapName)
 			service.TrackedWithImapID(imapID)("TEST_CMD")
 
-			time.Sleep(45 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
 			assert.True(t, sender.WasCalled())
 		})
@@ -208,19 +208,19 @@ func TestTrackCommand_BasicTracking(t *testing.T) {
 	cleanup := service.TrackedWithImapID(imapID)("TEST_CMD")
 
 	// Track command, should be sent.
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, sender.WasCalled())
 
 	sender.ResetCalled()
 	assert.False(t, sender.WasCalled())
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, sender.WasCalled())
 
 	// Cleanup and wait, a new message should not be sent.
 	cleanup()
 	sender.ResetCalled()
 
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	assert.False(t, sender.WasCalled())
 }
 
@@ -230,25 +230,25 @@ func TestTrackCommand_CleanupFunction(t *testing.T) {
 	imapID := createImapID("Test")
 	cleanup := service.TrackedWithImapID(imapID)("TEST_CMD")
 
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	callCount := sender.GetCallCount()
 	assert.Equal(t, 1, callCount)
 
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	callCount = sender.GetCallCount()
 	assert.Equal(t, 2, callCount)
 
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	callCount = sender.GetCallCount()
 	assert.Equal(t, 3, callCount)
 
 	cleanup()
 
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	callCount = sender.GetCallCount()
 	assert.Equal(t, 3, callCount)
 
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	callCount = sender.GetCallCount()
 	assert.Equal(t, 3, callCount)
 }
@@ -256,7 +256,7 @@ func TestTrackCommand_CleanupFunction(t *testing.T) {
 func TestCheckAndReportProgress_NoCommand(t *testing.T) {
 	_, sender := createTestService(defaultTestInterval, map[string]bool{})
 
-	time.Sleep(90 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	assert.False(t, sender.WasCalled())
 }
 
@@ -282,7 +282,7 @@ func TestCheckAndReportProgress_CtxCancelled(t *testing.T) {
 	cleanup := service.TrackedWithImapID(imapID)("FETCH 1:*")
 	defer cleanup()
 
-	time.Sleep(90 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	assert.False(t, sender.WasCalled())
 }
@@ -294,7 +294,7 @@ func TestCheckAndReportProgress_CommandNotOldEnough(t *testing.T) {
 	cleanup := service.TrackedWithImapID(imapID)("FETCH 1:*")
 	defer cleanup()
 
-	time.Sleep(30 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	assert.False(t, sender.WasCalled())
 }
 
@@ -305,16 +305,16 @@ func TestCheckAndReportProgress_SendProgressError(t *testing.T) {
 	imapID := createImapID("TestClient")
 
 	cleanup := service.TrackedWithImapID(imapID)("FETCH 1:*")
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, sender.WasCalled())
 
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, 2, sender.GetCallCount())
 
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, 3, sender.GetCallCount())
 
 	cleanup()
-	time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, 3, sender.GetCallCount())
 }
