@@ -643,3 +643,47 @@ func (state *State) actionSetMessageFlags(ctx context.Context,
 
 	return state.applyMessageFlagsSet(ctx, tx, internalMessageIDs, setFlags)
 }
+
+// actionAddGmailLabels adds Gmail-style labels to messages via the connector.
+func (state *State) actionAddGmailLabels(
+	ctx context.Context,
+	tx db.Transaction,
+	messages []snapMsgWithSeq,
+	labels []string,
+) ([]Update, error) {
+	messageIDs := make([]imap.MessageID, 0, len(messages))
+
+	for _, sm := range messages {
+		if !ids.IsRecoveredRemoteMessageID(sm.ID.RemoteID) {
+			messageIDs = append(messageIDs, sm.ID.RemoteID)
+		}
+	}
+
+	if len(messageIDs) == 0 {
+		return nil, nil
+	}
+
+	return state.user.GetRemote().SetGmailLabels(ctx, tx, messageIDs, labels, true)
+}
+
+// actionRemoveGmailLabels removes Gmail-style labels from messages via the connector.
+func (state *State) actionRemoveGmailLabels(
+	ctx context.Context,
+	tx db.Transaction,
+	messages []snapMsgWithSeq,
+	labels []string,
+) ([]Update, error) {
+	messageIDs := make([]imap.MessageID, 0, len(messages))
+
+	for _, sm := range messages {
+		if !ids.IsRecoveredRemoteMessageID(sm.ID.RemoteID) {
+			messageIDs = append(messageIDs, sm.ID.RemoteID)
+		}
+	}
+
+	if len(messageIDs) == 0 {
+		return nil, nil
+	}
+
+	return state.user.GetRemote().SetGmailLabels(ctx, tx, messageIDs, labels, false)
+}

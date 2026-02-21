@@ -276,6 +276,11 @@ func (conn *Dummy) MarkMessagesForwarded(ctx context.Context, cache IMAPStateWri
 	return nil
 }
 
+func (conn *Dummy) MarkMessagesWithGmailLabels(_ context.Context, _ IMAPStateWrite, _ []imap.MessageID, _ []string, _ bool) error {
+	// Dummy connector: no-op for Gmail label operations.
+	return nil
+}
+
 func (conn *Dummy) Sync(ctx context.Context) error {
 	for _, mailbox := range conn.state.getMailboxes() {
 		update := imap.NewMailboxCreated(mailbox)

@@ -118,7 +118,7 @@ func New(
 	inputCollector := command.NewInputCollector(bufio.NewReader(conn))
 	scanner := rfcparser.NewScannerWithReader(inputCollector)
 
-	caps := []imap.Capability{imap.IMAP4rev1, imap.UNSELECT, imap.UIDPLUS, imap.MOVE, imap.ID}
+	caps := []imap.Capability{imap.IMAP4rev1, imap.UNSELECT, imap.UIDPLUS, imap.MOVE, imap.ID, imap.XGMEXT1}
 
 	if !featureFlagProvider.GetFlagValue(unleash.CapabilityKillSwitchMap[string(imap.IDLE)]) {
 		caps = append(caps, imap.IDLE)

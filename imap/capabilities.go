@@ -11,13 +11,14 @@ const (
 	MOVE      Capability = `MOVE`
 	ID        Capability = `ID`
 	AUTHPLAIN Capability = `AUTH=PLAIN`
+	XGMEXT1   Capability = `X-GM-EXT-1`
 )
 
 func IsCapabilityAvailableBeforeAuth(c Capability) bool {
 	switch c {
 	case IMAP4rev1, StartTLS, IDLE, ID, AUTHPLAIN:
 		return true
-	case UNSELECT, UIDPLUS, MOVE:
+	case UNSELECT, UIDPLUS, MOVE, XGMEXT1:
 		return false
 	}
 

@@ -83,4 +83,8 @@ type Connector interface {
 
 	// SetMessagesForwarded marks the message with the given ID as forwarded.
 	SetMessagesForwarded(ctx context.Context, tx db.Transaction, messageIDs []imap.MessageID, forwarded bool) ([]Update, error)
+
+	// SetGmailLabels adds or removes Gmail-style labels on the given messages.
+	// This is part of the X-GM-EXT-1 extension for compatibility with Gmail IMAP clients.
+	SetGmailLabels(ctx context.Context, tx db.Transaction, messageIDs []imap.MessageID, labels []string, add bool) ([]Update, error)
 }

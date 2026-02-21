@@ -30,6 +30,11 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *command.Stor
 		return nil, ErrReadOnly
 	}
 
+	// Route based on data item type: standard FLAGS vs Gmail X-GM-LABELS.
+	if cmd.DataItem == command.StoreDataItemGmailLabels {
+		return s.handleStoreGmailLabels(ctx, tag, cmd, mailbox, ch)
+	}
+
 	flags, err := validateStoreFlags(cmd.Flags)
 	if err != nil {
 		return response.Bad(tag).WithError(err), nil
@@ -57,4 +62,22 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *command.Stor
 	return response.Ok(tag).
 		WithItems(items...).
 		WithMessage(okMessage(ctx)), nil
+}
+
+// handleStoreGmailLabels handles STORE commands with the X-GM-LABELS data item.
+// This translates Gmail label operations into connector label operations.
+func (s *Session) handleStoreGmailLabels(ctx context.Context, tag string, cmd *command.Store, mailbox *state.Mailbox, ch chan response.Response) (response.Response, error) {
+	add := cmd.Action == command.StoreActionAddFlags
+
+	if err := mailbox.StoreGmailLabels(ctx, cmd.SeqSet, cmd.Flags, add); errors.Is(err, state.ErrNoSuchMessage) {
+		return response.Bad(tag).WithError(err), nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	if err := flush(ctx, mailbox, false, ch); err != nil {
+		return nil, err
+	}
+
+	return response.Ok(tag).WithMessage(okMessage(ctx)), nil
 }

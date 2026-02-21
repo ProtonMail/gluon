@@ -401,6 +401,23 @@ func (m *Mailbox) Store(ctx context.Context, seqSet []command.SeqRange, action c
 	})
 }
 
+// StoreGmailLabels handles STORE X-GM-LABELS commands by routing to the connector's
+// Gmail label handler. Labels are applied/removed without affecting folder membership.
+func (m *Mailbox) StoreGmailLabels(ctx context.Context, seqSet []command.SeqRange, labels []string, add bool) error {
+	messages, err := m.snap.getMessagesInRange(ctx, seqSet)
+	if err != nil {
+		return err
+	}
+
+	return stateDBWrite(ctx, m.state, func(ctx context.Context, tx db.Transaction) ([]Update, error) {
+		if add {
+			return m.state.actionAddGmailLabels(ctx, tx, messages, labels)
+		}
+
+		return m.state.actionRemoveGmailLabels(ctx, tx, messages, labels)
+	})
+}
+
 func (m *Mailbox) Expunge(ctx context.Context, seq []command.SeqRange) error {
 	var msgIDs []db.MessageIDPair
 
