@@ -208,6 +208,24 @@ func (sc *stateConnectorImpl) SetMessagesForwarded(
 	return cache.stateUpdates, nil
 }
 
+func (sc *stateConnectorImpl) SetGmailLabels(
+	ctx context.Context,
+	tx db.Transaction,
+	messageIDs []imap.MessageID,
+	labels []string,
+	add bool,
+) ([]state.Update, error) {
+	ctx = sc.newContextWithMetadata(ctx)
+
+	cache := sc.newDBIMAPWrite(tx)
+
+	if err := sc.connector.MarkMessagesWithGmailLabels(ctx, &cache, messageIDs, labels, add); err != nil {
+		return nil, err
+	}
+
+	return cache.stateUpdates, nil
+}
+
 func (sc *stateConnectorImpl) getMetadataValue(key string) any {
 	v, ok := sc.metadata[key]
 	if !ok {

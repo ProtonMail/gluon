@@ -27,11 +27,20 @@ func (s StoreAction) String() string {
 	}
 }
 
+// StoreDataItem distinguishes between standard IMAP FLAGS and Gmail X-GM-LABELS.
+type StoreDataItem int
+
+const (
+	StoreDataItemFlags       StoreDataItem = iota // Standard IMAP FLAGS
+	StoreDataItemGmailLabels                      // Gmail X-GM-LABELS extension
+)
+
 type Store struct {
-	SeqSet []SeqRange
-	Action StoreAction
-	Flags  []string
-	Silent bool
+	SeqSet   []SeqRange
+	Action   StoreAction
+	Flags    []string
+	Silent   bool
+	DataItem StoreDataItem
 }
 
 func (s Store) String() string {
@@ -40,7 +49,19 @@ func (s Store) String() string {
 		silentStr = ".SILENT"
 	}
 
-	return fmt.Sprintf("STORE %v %v%v %v", s.SeqSet, s.Action.String(), silentStr, s.Flags)
+	dataItemStr := s.Action.String()
+	if s.DataItem == StoreDataItemGmailLabels {
+		switch s.Action {
+		case StoreActionAddFlags:
+			dataItemStr = "+X-GM-LABELS"
+		case StoreActionRemFlags:
+			dataItemStr = "-X-GM-LABELS"
+		default:
+			dataItemStr = "X-GM-LABELS"
+		}
+	}
+
+	return fmt.Sprintf("STORE %v %v%v %v", s.SeqSet, dataItemStr, silentStr, s.Flags)
 }
 
 func (s Store) SanitizedString() string {
@@ -54,6 +75,9 @@ func (StoreCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 	// store           = "STORE" SP sequence-set SP store-att-flags
 	// store-att-flags = (["+" / "-"] "FLAGS" [".SILENT"]) SP
 	//                  (flag-list / (flag *(SP flag)))
+	// Gmail extension:
+	// store-att-flags =/ (["+" / "-"] "X-GM-LABELS" [".SILENT"]) SP
+	//                   (label-list)
 	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after command"); err != nil {
 		return nil, err
 	}
@@ -83,8 +107,46 @@ func (StoreCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		action = StoreActionAddFlags
 	}
 
-	if err := p.ConsumeBytesFold('F', 'L', 'A', 'G', 'S'); err != nil {
-		return nil, err
+	// Determine data item: FLAGS or X-GM-LABELS.
+	// Peek at current byte to decide which path to take.
+	currentByte := rfcparser.ByteToLower(p.CurrentToken().Value)
+
+	var dataItem StoreDataItem
+
+	switch currentByte {
+	case 'f':
+		// Standard FLAGS data item.
+		if err := p.ConsumeBytesFold('F', 'L', 'A', 'G', 'S'); err != nil {
+			return nil, err
+		}
+
+		dataItem = StoreDataItemFlags
+	case 'x':
+		// Gmail X-GM-LABELS data item.
+		// Consume "X-GM-LABELS" character-by-character.
+		if err := p.ConsumeBytesFold('X'); err != nil {
+			return nil, err
+		}
+
+		if err := p.ConsumeBytesFold('-'); err != nil {
+			return nil, err
+		}
+
+		if err := p.ConsumeBytesFold('G', 'M'); err != nil {
+			return nil, err
+		}
+
+		if err := p.ConsumeBytesFold('-'); err != nil {
+			return nil, err
+		}
+
+		if err := p.ConsumeBytesFold('L', 'A', 'B', 'E', 'L', 'S'); err != nil {
+			return nil, err
+		}
+
+		dataItem = StoreDataItemGmailLabels
+	default:
+		return nil, p.MakeError("expected FLAGS or X-GM-LABELS")
 	}
 
 	var silent bool
@@ -99,20 +161,28 @@ func (StoreCommandParser) FromParser(p *rfcparser.Parser) (Payload, error) {
 		silent = true
 	}
 
-	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after FLAGS"); err != nil {
+	if err := p.Consume(rfcparser.TokenTypeSP, "expected space after data item"); err != nil {
 		return nil, err
 	}
 
-	flags, err := parseStoreFlags(p)
+	var values []string
+
+	if dataItem == StoreDataItemGmailLabels {
+		values, err = parseGmailLabelList(p)
+	} else {
+		values, err = parseStoreFlags(p)
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
 	return &Store{
-		SeqSet: seqSet,
-		Action: action,
-		Flags:  flags,
-		Silent: silent,
+		SeqSet:   seqSet,
+		Action:   action,
+		Flags:    values,
+		Silent:   silent,
+		DataItem: dataItem,
 	}, nil
 }
 
@@ -154,4 +224,72 @@ func parseStoreFlags(p *rfcparser.Parser) ([]string, error) {
 	}
 
 	return flags, nil
+}
+
+// parseGmailLabelList parses a Gmail label list: ("Label1" "Label With Spaces" Label3)
+// Labels can be quoted strings or atoms.
+func parseGmailLabelList(p *rfcparser.Parser) ([]string, error) {
+	if err := p.Consume(rfcparser.TokenTypeLParen, "expected '(' at start of Gmail label list"); err != nil {
+		return nil, err
+	}
+
+	var labels []string
+
+	if !p.Check(rfcparser.TokenTypeRParen) {
+		label, err := parseGmailLabel(p)
+		if err != nil {
+			return nil, err
+		}
+
+		labels = append(labels, label)
+
+		for {
+			if ok, err := p.Matches(rfcparser.TokenTypeSP); err != nil {
+				return nil, err
+			} else if !ok {
+				break
+			}
+
+			label, err := parseGmailLabel(p)
+			if err != nil {
+				return nil, err
+			}
+
+			labels = append(labels, label)
+		}
+	}
+
+	if err := p.Consume(rfcparser.TokenTypeRParen, "expected ')' at end of Gmail label list"); err != nil {
+		return nil, err
+	}
+
+	return labels, nil
+}
+
+// parseGmailLabel parses a single Gmail label, which can be a quoted string or an atom.
+func parseGmailLabel(p *rfcparser.Parser) (string, error) {
+	// Try quoted string first (handles labels with spaces).
+	if p.Check(rfcparser.TokenTypeDQuote) {
+		quoted, err := p.ParseQuoted()
+		if err != nil {
+			return "", err
+		}
+
+		return quoted.Value, nil
+	}
+
+	// Try backslash-prefixed system label (e.g., \Inbox).
+	if hasBackslash, err := p.Matches(rfcparser.TokenTypeBackslash); err != nil {
+		return "", err
+	} else if hasBackslash {
+		atom, err := p.ParseAtom()
+		if err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("\\%v", atom), nil
+	}
+
+	// Fall back to atom (plain label name without spaces).
+	return p.ParseAtom()
 }
