@@ -232,6 +232,12 @@ func (sc *stateConnectorImpl) GetGmailLabels(ctx context.Context, messageID imap
 	return sc.connector.GetGmailLabels(ctx, messageID)
 }
 
+func (sc *stateConnectorImpl) GetGmailLabelMailboxID(ctx context.Context, label string) (imap.MailboxID, bool) {
+	ctx = sc.newContextWithMetadata(ctx)
+
+	return sc.connector.GetGmailLabelMailboxID(ctx, label)
+}
+
 func (sc *stateConnectorImpl) getMetadataValue(key string) any {
 	v, ok := sc.metadata[key]
 	if !ok {
