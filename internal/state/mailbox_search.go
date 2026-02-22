@@ -84,7 +84,7 @@ func (m *Mailbox) Search(ctx context.Context, keys []command.SearchKey, decoder 
 }
 
 func buildSearchData(ctx context.Context, m *Mailbox, op *buildSearchOpResult, message snapMsgWithSeq) (searchData, error) {
-	data := searchData{message: message}
+	data := searchData{ctx: ctx, message: message}
 
 	if op.needsMessage {
 		if err := stateDBRead(ctx, m.state, func(ctx context.Context, client db.ReadOnly) error {
@@ -137,6 +137,7 @@ func applySearch(ctx context.Context, m *Mailbox, msg snapMsgWithSeq, searchOp *
 }
 
 type searchData struct {
+	ctx       context.Context
 	message   snapMsgWithSeq
 	literal   []byte
 	dbMessage struct {
@@ -315,6 +316,9 @@ func buildSearchOp(m *Mailbox, key command.SearchKey, decoder *encoding.Decoder)
 
 	case *command.SearchKeySeqSet:
 		return buildSearchOpSeqSet(m, key)
+
+	case *command.SearchKeyGmailLabels:
+		return buildSearchOpGmailLabels(m, key)
 
 	case *command.SearchKeyList:
 		return buildSearchOpList(m, key.Keys, decoder)
@@ -828,6 +832,25 @@ func buildSearchOpListWithKeys(m *Mailbox, opKeys []command.SearchKey, decoder *
 	}
 
 	return opResult, nil
+}
+
+func buildSearchOpGmailLabels(m *Mailbox, key *command.SearchKeyGmailLabels) (*buildSearchOpResult, error) {
+	op := func(s *searchData) (bool, error) {
+		labels, err := m.state.user.GetRemote().GetGmailLabels(s.ctx, s.message.ID.RemoteID)
+		if err != nil {
+			return false, nil
+		}
+
+		for _, msgLabel := range labels {
+			if strings.EqualFold(msgLabel, key.Value) {
+				return true, nil
+			}
+		}
+
+		return false, nil
+	}
+
+	return newBuildSearchOpResult(op), nil
 }
 
 func convertToDateWithoutTZ(t time.Time) time.Time {
