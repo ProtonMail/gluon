@@ -36,7 +36,7 @@ func (m *Mailbox) Search(ctx context.Context, keys []command.SearchKey, decoder 
 		}
 	}
 
-	op, err := buildSearchOpListWithKeys(m, keys, decoder)
+	op, err := buildSearchOpListWithKeys(ctx, m, keys, decoder)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func newBuildSearchOpResult(op searchOp, needs ...searchOpResultOption) *buildSe
 	return r
 }
 
-func buildSearchOp(m *Mailbox, key command.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+func buildSearchOp(ctx context.Context, m *Mailbox, key command.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
 	switch key := key.(type) {
 	case *command.SearchKeyAll:
 		return buildSearchOpAll()
@@ -252,7 +252,7 @@ func buildSearchOp(m *Mailbox, key command.SearchKey, decoder *encoding.Decoder)
 		return buildSearchOpNew()
 
 	case *command.SearchKeyNot:
-		return buildSearchOpNot(m, key, decoder)
+		return buildSearchOpNot(ctx, m, key, decoder)
 
 	case *command.SearchKeyOld:
 		return buildSearchOpOld()
@@ -261,7 +261,7 @@ func buildSearchOp(m *Mailbox, key command.SearchKey, decoder *encoding.Decoder)
 		return buildSearchOpOn(key)
 
 	case *command.SearchKeyOr:
-		return buildSearchOpOr(m, key, decoder)
+		return buildSearchOpOr(ctx, m, key, decoder)
 
 	case *command.SearchKeyRecent:
 		return buildSearchOpRecent()
@@ -318,10 +318,10 @@ func buildSearchOp(m *Mailbox, key command.SearchKey, decoder *encoding.Decoder)
 		return buildSearchOpSeqSet(m, key)
 
 	case *command.SearchKeyGmailLabels:
-		return buildSearchOpGmailLabels(m, key)
+		return buildSearchOpGmailLabels(ctx, m, key)
 
 	case *command.SearchKeyList:
-		return buildSearchOpList(m, key.Keys, decoder)
+		return buildSearchOpList(ctx, m, key.Keys, decoder)
 
 	default:
 		return nil, fmt.Errorf("bad search keyword")
@@ -489,8 +489,8 @@ func buildSearchOpNew() (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpNot(m *Mailbox, key *command.SearchKeyNot, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	toNegateOpResult, err := buildSearchOp(m, key.Key, decoder)
+func buildSearchOpNot(ctx context.Context, m *Mailbox, key *command.SearchKeyNot, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	toNegateOpResult, err := buildSearchOp(ctx, m, key.Key, decoder)
 	if err != nil {
 		return nil, err
 	}
@@ -528,13 +528,13 @@ func buildSearchOpOn(key *command.SearchKeyOn) (*buildSearchOpResult, error) {
 	return newBuildSearchOpResult(op, needsDBMessage()), nil
 }
 
-func buildSearchOpOr(m *Mailbox, key *command.SearchKeyOr, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	leftOp, err := buildSearchOp(m, key.Key1, decoder)
+func buildSearchOpOr(ctx context.Context, m *Mailbox, key *command.SearchKeyOr, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	leftOp, err := buildSearchOp(ctx, m, key.Key1, decoder)
 	if err != nil {
 		return nil, err
 	}
 
-	rightOp, err := buildSearchOp(m, key.Key2, decoder)
+	rightOp, err := buildSearchOp(ctx, m, key.Key2, decoder)
 	if err != nil {
 		return nil, err
 	}
@@ -793,17 +793,17 @@ func buildSearchOpSeqSet(m *Mailbox, key *command.SearchKeySeqSet) (*buildSearch
 	return newBuildSearchOpResult(op), nil
 }
 
-func buildSearchOpList(m *Mailbox, keys []command.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
-	return buildSearchOpListWithKeys(m, keys, decoder)
+func buildSearchOpList(ctx context.Context, m *Mailbox, keys []command.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+	return buildSearchOpListWithKeys(ctx, m, keys, decoder)
 }
 
-func buildSearchOpListWithKeys(m *Mailbox, opKeys []command.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
+func buildSearchOpListWithKeys(ctx context.Context, m *Mailbox, opKeys []command.SearchKey, decoder *encoding.Decoder) (*buildSearchOpResult, error) {
 	ops := make([]searchOp, 0, len(opKeys))
 
 	opResult := newBuildSearchOpResult(nil)
 
 	for _, opKey := range opKeys {
-		result, err := buildSearchOp(m, opKey, decoder)
+		result, err := buildSearchOp(ctx, m, opKey, decoder)
 		if err != nil {
 			return nil, err
 		}
@@ -834,20 +834,43 @@ func buildSearchOpListWithKeys(m *Mailbox, opKeys []command.SearchKey, decoder *
 	return opResult, nil
 }
 
-func buildSearchOpGmailLabels(m *Mailbox, key *command.SearchKeyGmailLabels) (*buildSearchOpResult, error) {
-	op := func(s *searchData) (bool, error) {
-		labels, err := m.state.user.GetRemote().GetGmailLabels(s.ctx, s.message.ID.RemoteID)
+func buildSearchOpGmailLabels(ctx context.Context, m *Mailbox, key *command.SearchKeyGmailLabels) (*buildSearchOpResult, error) {
+	noMatch := func(s *searchData) (bool, error) { return false, nil }
+
+	// Get the mailbox ID for this label from the connector (reads in-memory label cache).
+	remoteMailboxID, ok := m.state.user.GetRemote().GetGmailLabelMailboxID(ctx, key.Value)
+	if !ok {
+		return newBuildSearchOpResult(noMatch), nil
+	}
+
+	// Query local DB for all messages in the label mailbox (one query).
+	var memberSet map[imap.InternalMessageID]struct{}
+
+	if err := stateDBRead(ctx, m.state, func(ctx context.Context, client db.ReadOnly) error {
+		internalMboxID, err := client.GetMailboxIDFromRemoteID(ctx, remoteMailboxID)
 		if err != nil {
-			return false, nil
+			return err
 		}
 
-		for _, msgLabel := range labels {
-			if strings.EqualFold(msgLabel, key.Value) {
-				return true, nil
-			}
+		pairs, err := client.GetMailboxMessageIDPairs(ctx, internalMboxID)
+		if err != nil {
+			return err
 		}
 
-		return false, nil
+		memberSet = make(map[imap.InternalMessageID]struct{}, len(pairs))
+		for _, p := range pairs {
+			memberSet[p.InternalID] = struct{}{}
+		}
+
+		return nil
+	}); err != nil {
+		return newBuildSearchOpResult(noMatch), nil
+	}
+
+	// O(1) set lookup per message — no API calls.
+	op := func(s *searchData) (bool, error) {
+		_, exists := memberSet[s.message.ID.InternalID]
+		return exists, nil
 	}
 
 	return newBuildSearchOpResult(op), nil
