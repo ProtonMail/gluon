@@ -87,4 +87,8 @@ type Connector interface {
 	// SetGmailLabels adds or removes Gmail-style labels on the given messages.
 	// This is part of the X-GM-EXT-1 extension for compatibility with Gmail IMAP clients.
 	SetGmailLabels(ctx context.Context, tx db.Transaction, messageIDs []imap.MessageID, labels []string, add bool) ([]Update, error)
+
+	// GetGmailLabels retrieves the Gmail-style label names for the given message.
+	// Note: this can get called from different go routines.
+	GetGmailLabels(ctx context.Context, messageID imap.MessageID) ([]string, error)
 }

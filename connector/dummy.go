@@ -281,6 +281,10 @@ func (conn *Dummy) MarkMessagesWithGmailLabels(_ context.Context, _ IMAPStateWri
 	return nil
 }
 
+func (conn *Dummy) GetGmailLabels(_ context.Context, _ imap.MessageID) ([]string, error) {
+	return nil, nil
+}
+
 func (conn *Dummy) Sync(ctx context.Context) error {
 	for _, mailbox := range conn.state.getMailboxes() {
 		update := imap.NewMailboxCreated(mailbox)
