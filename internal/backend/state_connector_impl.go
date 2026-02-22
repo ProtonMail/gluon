@@ -226,6 +226,12 @@ func (sc *stateConnectorImpl) SetGmailLabels(
 	return cache.stateUpdates, nil
 }
 
+func (sc *stateConnectorImpl) GetGmailLabels(ctx context.Context, messageID imap.MessageID) ([]string, error) {
+	ctx = sc.newContextWithMetadata(ctx)
+
+	return sc.connector.GetGmailLabels(ctx, messageID)
+}
+
 func (sc *stateConnectorImpl) getMetadataValue(key string) any {
 	v, ok := sc.metadata[key]
 	if !ok {
