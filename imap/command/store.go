@@ -226,44 +226,53 @@ func parseStoreFlags(p *rfcparser.Parser) ([]string, error) {
 	return flags, nil
 }
 
-// parseGmailLabelList parses a Gmail label list: ("Label1" "Label With Spaces" Label3)
-// Labels can be quoted strings or atoms.
+// parseGmailLabelList parses a Gmail label list. It accepts either a parenthesized list
+// ("Label1" "Label With Spaces" Label3) or a single bare label without parentheses.
 func parseGmailLabelList(p *rfcparser.Parser) ([]string, error) {
-	if err := p.Consume(rfcparser.TokenTypeLParen, "expected '(' at start of Gmail label list"); err != nil {
+	// If it starts with '(', parse as a parenthesized list.
+	if ok, err := p.Matches(rfcparser.TokenTypeLParen); err != nil {
 		return nil, err
-	}
+	} else if ok {
+		var labels []string
 
-	var labels []string
-
-	if !p.Check(rfcparser.TokenTypeRParen) {
-		label, err := parseGmailLabel(p)
-		if err != nil {
-			return nil, err
-		}
-
-		labels = append(labels, label)
-
-		for {
-			if ok, err := p.Matches(rfcparser.TokenTypeSP); err != nil {
-				return nil, err
-			} else if !ok {
-				break
-			}
-
+		if !p.Check(rfcparser.TokenTypeRParen) {
 			label, err := parseGmailLabel(p)
 			if err != nil {
 				return nil, err
 			}
 
 			labels = append(labels, label)
+
+			for {
+				if ok, err := p.Matches(rfcparser.TokenTypeSP); err != nil {
+					return nil, err
+				} else if !ok {
+					break
+				}
+
+				label, err := parseGmailLabel(p)
+				if err != nil {
+					return nil, err
+				}
+
+				labels = append(labels, label)
+			}
 		}
+
+		if err := p.Consume(rfcparser.TokenTypeRParen, "expected ')' at end of Gmail label list"); err != nil {
+			return nil, err
+		}
+
+		return labels, nil
 	}
 
-	if err := p.Consume(rfcparser.TokenTypeRParen, "expected ')' at end of Gmail label list"); err != nil {
+	// No parenthesis — parse a single bare label.
+	label, err := parseGmailLabel(p)
+	if err != nil {
 		return nil, err
 	}
 
-	return labels, nil
+	return []string{label}, nil
 }
 
 // parseGmailLabel parses a single Gmail label, which can be a quoted string or an atom.
