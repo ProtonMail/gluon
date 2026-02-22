@@ -16,9 +16,9 @@ const (
 
 func IsCapabilityAvailableBeforeAuth(c Capability) bool {
 	switch c {
-	case IMAP4rev1, StartTLS, IDLE, ID, AUTHPLAIN:
+	case IMAP4rev1, StartTLS, IDLE, ID, AUTHPLAIN, XGMEXT1:
 		return true
-	case UNSELECT, UIDPLUS, MOVE, XGMEXT1:
+	case UNSELECT, UIDPLUS, MOVE:
 		return false
 	}
 
