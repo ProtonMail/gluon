@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/response"
@@ -38,6 +39,8 @@ func (s *Session) handleCopy(ctx context.Context, tag string, cmd *command.Copy,
 		return response.Bad(tag).WithError(err), nil
 	} else if errors.Is(err, state.ErrNoSuchMailbox) {
 		return response.No(tag).WithError(err).WithItems(response.ItemTryCreate()), nil
+	} else if errors.Is(err, connector.ErrOverQuota) {
+		return response.No(tag).WithError(err).WithItems(response.ItemOverQuota()), nil
 	} else if err != nil {
 		observability.AddMessageRelatedMetric(ctx, metrics.GenerateFailedToCopyMessagesMetric())
 		return nil, err

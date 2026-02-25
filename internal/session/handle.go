@@ -73,7 +73,9 @@ func (s *Session) handleCommand(
 		*command.List,
 		*command.LSub,
 		*command.Status,
-		*command.Append:
+		*command.Append,
+		*command.GetQuota,
+		*command.GetQuotaRoot:
 		return s.handleAuthenticatedCommand(ctx, tag, cmd, ch)
 	case
 		*command.Check,
@@ -198,6 +200,14 @@ func (s *Session) handleAuthenticatedCommand(
 	case *command.Append:
 		// 6.3.11. APPEND Command
 		return s.handleAppend(ctx, tag, cmd, ch)
+
+	case *command.GetQuota:
+		// RFC 2087 GETQUOTA Command
+		return s.handleGetQuota(ctx, tag, cmd, ch)
+
+	case *command.GetQuotaRoot:
+		// RFC 2087 GETQUOTAROOT Command
+		return s.handleGetQuotaRoot(ctx, tag, cmd, ch)
 
 	default:
 		return fmt.Errorf("bad command")
