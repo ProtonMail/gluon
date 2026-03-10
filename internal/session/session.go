@@ -98,6 +98,8 @@ type Session struct {
 	log *logrus.Entry
 
 	featureFlagProvider unleash.FeatureFlagValueProvider
+
+	closeOnce sync.Once
 }
 
 func New(
@@ -354,4 +356,19 @@ func (s *Session) decodeMailboxName(name string) (string, error) {
 	}
 
 	return utf7.Encoding.NewDecoder().String(fmt.Sprintf("INBOX%v%v", delimiter, split[1]))
+}
+
+func (s *Session) CloseWithBye(reason string) error {
+	var retErr error
+	s.closeOnce.Do(func() {
+		if reason == "" {
+			reason = "Connection closed by server"
+		}
+
+		_ = response.Bye().WithMessage(reason).Send(s)
+		if err := s.conn.Close(); err != nil {
+			retErr = err
+		}
+	})
+	return retErr
 }
