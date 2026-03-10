@@ -9,6 +9,7 @@ import (
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/connectioncounter"
+	"github.com/ProtonMail/gluon/imap/connectionlimiter"
 	"github.com/ProtonMail/gluon/internal/unleash"
 	limits2 "github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/observability"
@@ -278,10 +279,11 @@ func (w withConnectionRollingCounter) config(builder *serverBuilder) {
 	builder.connectionRollingCounter = w.rollingConnectionCounter
 }
 
-func WithConnectionRollingCounter(newConnectionTreshold, numberOfBuckets int, thresholdCheckInterval time.Duration) Option {
+func WithConnectionRollingCounter(connectionLimitThreshold, observabilityThreshold, numberOfBuckets int, thresholdCheckInterval time.Duration) Option {
 	return &withConnectionRollingCounter{
 		rollingConnectionCounter: connectioncounter.NewRollingCounter(
-			newConnectionTreshold,
+			connectionLimitThreshold,
+			observabilityThreshold,
 			numberOfBuckets,
 			thresholdCheckInterval,
 		)}
@@ -298,5 +300,19 @@ func (w withFeatureFlagProvider) config(builder *serverBuilder) {
 func WithFeatureFlagProvider(featureFlagProvider unleash.FeatureFlagValueProvider) Option {
 	return &withFeatureFlagProvider{
 		featureFlagProvider: featureFlagProvider,
+	}
+}
+
+type withConnectionLimiter struct {
+	limiter connectionlimiter.ConnectionLimiter
+}
+
+func (w withConnectionLimiter) config(builder *serverBuilder) {
+	builder.connectionLimiter = w.limiter
+}
+
+func WithConnectionLimiter(limits, fallbackLimits connectionlimiter.Limits) Option {
+	return &withConnectionLimiter{
+		limiter: connectionlimiter.NewConnectionLimiter(limits, fallbackLimits),
 	}
 }

@@ -16,10 +16,12 @@ import (
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/connectioncounter"
+	"github.com/ProtonMail/gluon/imap/connectionlimiter"
 	"github.com/ProtonMail/gluon/internal/backend"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/session"
 	"github.com/ProtonMail/gluon/internal/unleash"
+	"github.com/ProtonMail/gluon/internal/unleash/featureflags"
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/profiling"
@@ -100,6 +102,8 @@ type Server struct {
 	connectionRollingCounter *connectioncounter.RollingCounter
 
 	featureFlagProvider unleash.FeatureFlagValueProvider
+
+	connectionLimiter connectionlimiter.ConnectionLimiter
 }
 
 // New creates a new server with the given options.
@@ -224,6 +228,10 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
 	connWG := async.MakeWaitGroup(s.panicHandler)
 
+	if s.connectionLimiter != nil {
+		s.useConnectionLimiter(ctx, &connWG)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -239,8 +247,16 @@ func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
 				logrus.Debug("Stopping serve, listener closed")
 				return
 			}
-
 			defer conn.Close()
+
+			disableConnectionCounterConnectionLimit := s.featureFlagProvider.GetFlagValue(featureflags.ConnectionCounterConnectionsLimitDisabled)
+			if !disableConnectionCounterConnectionLimit {
+				if s.connectionRollingCounter != nil && s.connectionRollingCounter.OverConnectionLimitThreshold() {
+					logrus.Debug("Rejecting IMAP session due to rolling connection count threshold")
+					conn.Close()
+					continue
+				}
+			}
 
 			connWG.Go(func() {
 				session, sessionID := s.addSession(ctx, conn)
@@ -263,6 +279,45 @@ func (s *Server) serve(ctx context.Context, connCh <-chan net.Conn) {
 			})
 		}
 	}
+}
+
+func (s *Server) useConnectionLimiter(ctx context.Context, connWG *async.WaitGroup) {
+	eventCh := s.AddWatcher(events.IMAPID{}, events.SessionRemoved{})
+	connWG.Go(func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-s.serveDoneCh:
+				return
+			case ev, ok := <-eventCh:
+				if !ok {
+					return
+				}
+				switch e := ev.(type) {
+				case events.IMAPID:
+					connectionLimiterDisabled := s.featureFlagProvider.GetFlagValue(featureflags.ConnectionLimiterDisabled)
+
+					if !connectionLimiterDisabled {
+						useFallback := s.featureFlagProvider.GetFlagValue(featureflags.ConnectionLimiterDefaultLimitsDisabled)
+						allowed, key, cur, max := s.connectionLimiter.TryBind(e.SessionID, e.IMAPID, useFallback)
+						if !allowed {
+							logrus.WithFields(logrus.Fields{
+								"sessionID": e.SessionID,
+								"client":    key,
+								"current":   cur,
+								"max":       max,
+							}).Warn("Rejecting IMAP session due to client connection limit")
+
+							_ = s.CloseSessionByID(e.SessionID, "Too many connections for this IMAP client")
+						}
+					}
+				case events.SessionRemoved:
+					s.connectionLimiter.Unbind(e.SessionID)
+				}
+			}
+		}
+	})
 }
 
 // GetErrorCh returns the error channel.
@@ -439,4 +494,16 @@ func (s *Server) GetRollingIMAPConnectionCount() int {
 	}
 
 	return 0
+}
+
+func (s *Server) CloseSessionByID(sessionID int, reason string) error {
+	s.sessionsLock.RLock()
+	sess, ok := s.sessions[sessionID]
+	s.sessionsLock.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("no such session: %d", sessionID)
+	}
+
+	return sess.CloseWithBye(reason)
 }
