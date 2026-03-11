@@ -91,6 +91,9 @@ func (rc *RollingCounter) run() {
 }
 
 func (rc *RollingCounter) Stop() {
+	if rc.cancel == nil {
+		return
+	}
 	rc.bucketRotationTicker.Stop()
 	rc.cancel()
 	rc.wg.Wait()
