@@ -1,0 +1,26 @@
+name: 'golang-govulncheck-action'
+description: 'Run govulncheck'
+inputs:
+  go-version-input:  # version of Go to use for govulncheck
+    description: 'Version of Go to use for govulncheck'
+    required: false
+  go-package:
+    description: 'Go Package to scan with govulncheck'
+    required: false
+    default: './...'
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version-input }}
+        check-latest: false
+        cache: false
+    - name: Install govulncheck
+      run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      shell: bash
+    - name: Run govulncheck
+      run: |
+        chmod +x .github/actions/govulncheck.sh
+        .github/actions/govulncheck.sh ${{ inputs.go-package }}
+      shell: bash
