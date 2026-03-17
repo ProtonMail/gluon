@@ -41,6 +41,7 @@ func (d *dualParListWriter) writeByte(v byte) {
 	d.b2.WriteByte(v)
 }
 
+// nolint: unused
 func (d *dualParListWriter) toSingleWriterFrom1st() parListWriter {
 	return &singleParListWriter{b: d.b1}
 }

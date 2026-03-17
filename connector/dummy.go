@@ -109,7 +109,7 @@ func (conn *Dummy) Init(_ context.Context, _ IMAPState) error {
 }
 
 func (conn *Dummy) Authorize(_ context.Context, username string, password []byte) bool {
-	if bytes.Compare(password, conn.password) != 0 {
+	if !bytes.Equal(password, conn.password) {
 		return false
 	}
 
@@ -422,11 +422,12 @@ func (conn *Dummy) validateName(name []string) (bool, error) {
 		exclusive = false
 
 	case len(conn.pfxFolder) > 0 && len(conn.pfxLabel) > 0:
-		if name[0] == conn.pfxFolder {
+		switch name[0] {
+		case conn.pfxFolder:
 			exclusive = true
-		} else if name[0] == conn.pfxLabel {
+		case conn.pfxLabel:
 			exclusive = false
-		} else {
+		default:
 			return false, ErrInvalidPrefix
 		}
 

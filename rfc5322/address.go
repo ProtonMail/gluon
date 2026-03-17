@@ -173,9 +173,7 @@ func parseGroup(p *Parser) ([]*mail.Address, bool, error) {
 
 		// This section can optionally be one of the following: mailbox-list / CFWS / obs-group-list. So if
 		// we run out of input, we see semicolon or a double quote we should skip trying to parse this bit.
-		if !(p.parser.Check(rfcparser.TokenTypeEOF) ||
-			p.parser.Check(rfcparser.TokenTypeSemicolon) ||
-			p.parser.Check(rfcparser.TokenTypeDQuote)) {
+		if !p.parser.Check(rfcparser.TokenTypeEOF) && !p.parser.Check(rfcparser.TokenTypeSemicolon) && !p.parser.Check(rfcparser.TokenTypeDQuote) {
 			// Mailbox
 			var parsedFirstMailbox bool
 

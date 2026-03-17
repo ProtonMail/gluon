@@ -157,11 +157,8 @@ func TestReceptionOnIdle(t *testing.T) {
 				existsUpdate = boxUpdate.Mailbox.Messages
 			}
 		}
-
-		select {
-		case err := <-done:
-			require.NoError(t, err)
-		}
+		err = <-done
+		require.NoError(t, err)
 
 		require.Equal(t, uint32(3), existsUpdate, "Not received the good amount of exists update")
 		require.Equal(t, uint32(3), recentUpdate, "Not received the good amount of recent update")

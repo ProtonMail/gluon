@@ -1,27 +1,71 @@
+version: "2"
 run:
   go: "1.24"
-
 linters:
-  presets:
-    - bugs
-    - comment
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - dupword
+    - durationcheck
+    - errchkjson
+    - exhaustive
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    - godot
+    - gosec
+    - loggercheck
+    - makezero
+    - misspell
+    - nilerr
+    - nilnesserr
+    - protogetter
+    - reassign
+    - recvcheck
+    - rowserrcheck
+    - spancheck
+    - sqlclosecheck
+    - testifylint
+    - zerologlint
   disable:
-    - godox # Annoying, we have too many TODOs at the moment :p
-    - musttag # We do not want to force annotating every field name.
-    - errorlint # Too many false positives
-issues:
-  exclude-rules:
-    - path: benchmarks
-      linters:
-        - gosec
-        - dupword
-    - path: tests
-      linters:
-        - dupword
-    - path: _test\.go
-      linters:
-        - dupword
-linters-settings:
-  gosec:
-    excludes:
-      - G115 # Potential integer overflow when converting between integer types
+    - errorlint
+    - godox
+    - musttag
+  settings:
+    gosec:
+      excludes:
+        - G115
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupword
+          - gosec
+        path: benchmarks
+      - linters:
+          - dupword
+        path: tests
+      - linters:
+          - dupword
+        path: _test\.go
+      - linters:
+          - unused
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

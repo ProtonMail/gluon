@@ -273,7 +273,7 @@ func parseDTZone(p *rfcparser.Parser) (*time.Location, error) {
 		return nil, err
 	}
 
-	if !(p.Check(rfcparser.TokenTypeDigit) || p.Check(rfcparser.TokenTypeMinus) || p.Check(rfcparser.TokenTypePlus) || p.Check(rfcparser.TokenTypeChar)) {
+	if !p.Check(rfcparser.TokenTypeDigit) && !p.Check(rfcparser.TokenTypeMinus) && !p.Check(rfcparser.TokenTypePlus) && !p.Check(rfcparser.TokenTypeChar) {
 		return time.UTC, nil
 	}
 
@@ -286,7 +286,7 @@ func parseDTZone(p *rfcparser.Parser) (*time.Location, error) {
 			return nil, err
 		} else if ok {
 			multiplier = -1
-		} else if !(p.Check(rfcparser.TokenTypeDigit) || p.Check(rfcparser.TokenTypeChar)) {
+		} else if !p.Check(rfcparser.TokenTypeDigit) && !p.Check(rfcparser.TokenTypeChar) {
 			return nil, p.MakeError("expected either '+' or '-' on time zone start")
 		}
 	}

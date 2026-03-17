@@ -103,10 +103,7 @@ func parseFWS(p *rfcparser.Parser) error {
 	}
 
 	// Handle obs-FWS case where there can be multiple repeating loops
-	for {
-		if !p.Check(rfcparser.TokenTypeCR) {
-			break
-		}
+	for p.Check(rfcparser.TokenTypeCR) {
 
 		if err := p.ConsumeNewLine(); err != nil {
 			return err

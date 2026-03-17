@@ -879,6 +879,7 @@ func userDBWrite(ctx context.Context, user *user, fn func(context.Context, db.Tr
 	return nil
 }
 
+// nolint: unused
 func userDBWriteResult[T any](ctx context.Context, user *user, fn func(context.Context, db.Transaction) ([]state.Update, T, error)) (T, error) {
 	var updates []state.Update
 

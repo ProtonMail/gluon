@@ -23,7 +23,7 @@ func parseQuotedString(p *rfcparser.Parser) (parserString, error) {
 			result.Value = append(result.Value, ' ')
 		}
 
-		if !(p.CheckWith(isQText) || p.Check(rfcparser.TokenTypeBackslash)) {
+		if !p.CheckWith(isQText) && !p.Check(rfcparser.TokenTypeBackslash) {
 			break
 		}
 

@@ -17,7 +17,7 @@ type JSONBenchmarkStatistics struct {
 	Median       time.Duration
 	Percentile90 time.Duration
 	Percentile10 time.Duration
-	RMS          time.Duration
+	RMS          time.Duration //nolint:staticcheck //disable ST1011
 	SampleCount  int
 }
 

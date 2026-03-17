@@ -1,15 +1,13 @@
 package command
 
 import (
-	"fmt"
-
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type StartTLS struct{}
 
 func (l StartTLS) String() string {
-	return fmt.Sprintf("STARTTLS")
+	return "STARTTLS"
 }
 
 func (l StartTLS) SanitizedString() string {

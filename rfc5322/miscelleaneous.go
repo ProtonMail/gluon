@@ -64,7 +64,7 @@ func parsePhrase(p *rfcparser.Parser) ([]parserString, error) {
 			return nil, err
 		}
 
-		if !(p.CheckWith(isAText) || p.Check(rfcparser.TokenTypeDQuote)) {
+		if !p.CheckWith(isAText) && !p.Check(rfcparser.TokenTypeDQuote) {
 			break
 		}
 

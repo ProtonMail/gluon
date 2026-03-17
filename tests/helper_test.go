@@ -853,7 +853,7 @@ func (bsv *bodyStructureValidator) check(tb testing.TB, structure *goimap.BodySt
 		require.Nil(tb, structure.Envelope)
 	}
 
-	require.Equal(tb, len(structure.Parts), len(bsv.validateParts))
+	require.Len(tb, bsv.validateParts, len(structure.Parts))
 
 	for i := 0; i < len(bsv.validateParts); i++ {
 		bsv.validateParts[i].check(tb, structure.Parts[i])

@@ -154,6 +154,7 @@ func (state *dummyState) getMessageCreatedUpdate(id imap.MessageID) (*imap.Messa
 	}, nil
 }
 
+// nolint: unused
 func (state *dummyState) getMessage(messageID imap.MessageID) (imap.Message, error) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
@@ -172,6 +173,7 @@ func (state *dummyState) getMailboxIDs(messageID imap.MessageID) []imap.MailboxI
 	return maps.Keys(state.messages[messageID].mboxIDs)
 }
 
+// nolint: unused
 func (state *dummyState) getLiteral(messageID imap.MessageID) []byte {
 	state.lock.Lock()
 	defer state.lock.Unlock()
@@ -264,6 +266,7 @@ func (state *dummyState) setForwarded(messageID imap.MessageID, forwarded bool) 
 	state.messages[messageID].forwarded = forwarded
 }
 
+// nolint: unused
 func (state *dummyState) isSeen(messageID imap.MessageID) bool {
 	state.lock.Lock()
 	defer state.lock.Unlock()
@@ -271,6 +274,7 @@ func (state *dummyState) isSeen(messageID imap.MessageID) bool {
 	return state.messages[messageID].seen
 }
 
+// nolint: unused
 func (state *dummyState) isFlagged(messageID imap.MessageID) bool {
 	state.lock.Lock()
 	defer state.lock.Unlock()
@@ -278,6 +282,7 @@ func (state *dummyState) isFlagged(messageID imap.MessageID) bool {
 	return state.messages[messageID].flagged
 }
 
+// nolint: unused
 func (state *dummyState) isDraft(messageID imap.MessageID) bool {
 	state.lock.Lock()
 	defer state.lock.Unlock()

@@ -1,15 +1,13 @@
 package command
 
 import (
-	"fmt"
-
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type Logout struct{}
 
 func (l Logout) String() string {
-	return fmt.Sprintf("LOGOUT")
+	return "LOGOUT"
 }
 
 func (l Logout) SanitizedString() string {

@@ -508,6 +508,7 @@ func (r readOps) GetMessagesFlags(ctx context.Context, ids []imap.InternalMessag
 
 		args := utils.MapSliceToAny(chunk)
 
+		//nolint: unused
 		type DBFlag struct {
 			MessageID imap.InternalMessageID
 			RemoteID  imap.MessageID

@@ -49,7 +49,7 @@ func (s SearchKeyBefore) String() string {
 }
 
 func (s SearchKeyBefore) SanitizedString() string {
-	return fmt.Sprintf("BEFORE <DATE>")
+	return "BEFORE <DATE>"
 }
 
 type SearchKeyBody struct {
@@ -149,7 +149,7 @@ func (s SearchKeyOn) String() string {
 }
 
 func (s SearchKeyOn) SanitizedString() string {
-	return fmt.Sprintf("ON <DATE>")
+	return "ON <DATE>"
 }
 
 type SearchKeyRecent struct{}
@@ -181,7 +181,7 @@ func (s SearchKeySince) String() string {
 }
 
 func (s SearchKeySince) SanitizedString() string {
-	return fmt.Sprintf("SINCE <DATE>")
+	return "SINCE <DATE>"
 }
 
 type SearchKeySubject struct {
@@ -341,7 +341,7 @@ func (s SearchKeySentBefore) String() string {
 }
 
 func (s SearchKeySentBefore) SanitizedString() string {
-	return fmt.Sprintf("SENTBEFORE <DATE>")
+	return "SENTBEFORE <DATE>"
 }
 
 type SearchKeySentOn struct {
@@ -353,7 +353,7 @@ func (s SearchKeySentOn) String() string {
 }
 
 func (s SearchKeySentOn) SanitizedString() string {
-	return fmt.Sprintf("SENTON <DATE>")
+	return "SENTON <DATE>"
 }
 
 type SearchKeySentSince struct {
@@ -365,7 +365,7 @@ func (s SearchKeySentSince) String() string {
 }
 
 func (s SearchKeySentSince) SanitizedString() string {
-	return fmt.Sprintf("SENTSINCE <DATE>")
+	return "SENTSINCE <DATE>"
 }
 
 type SearchKeySmaller struct {
