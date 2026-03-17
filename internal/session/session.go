@@ -325,6 +325,7 @@ func (s *Session) addCapability(capability imap.Capability) {
 	}
 }
 
+// nolint: unused
 func (s *Session) remCapability(capability imap.Capability) {
 	s.capsLock.Lock()
 	defer s.capsLock.Unlock()

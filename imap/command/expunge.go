@@ -1,15 +1,13 @@
 package command
 
 import (
-	"fmt"
-
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type Expunge struct{}
 
 func (l Expunge) String() string {
-	return fmt.Sprintf("EXPUNGE")
+	return "EXPUNGE"
 }
 
 func (l Expunge) SanitizedString() string {

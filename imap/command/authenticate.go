@@ -16,7 +16,7 @@ func (l Authenticate) String() string {
 }
 
 func (l Authenticate) SanitizedString() string {
-	return fmt.Sprint("AUTHENTICATE <AUTH_DATA>")
+	return "AUTHENTICATE <AUTH_DATA>"
 }
 
 type AuthenticateCommandParser struct{}

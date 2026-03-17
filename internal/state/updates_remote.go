@@ -51,5 +51,5 @@ func (u *RemoteRemoveMessageFlagsStateUpdate) String() string {
 
 type RemoteMessageDeletedStateUpdate struct {
 	MessageIDStateFilter
-	remoteID imap.MessageID
+	remoteID imap.MessageID //nolint: unused
 }

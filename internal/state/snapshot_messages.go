@@ -271,11 +271,7 @@ func (list *snapMsgList) existsWithSeqID(id imap.SeqID) bool {
 	index := int(id) - 1
 	listLen := len(list.msg)
 
-	if index >= listLen {
-		return false
-	}
-
-	return true
+	return index < listLen
 }
 
 func (list *snapMsgList) resolveSeqInterval(seqSet []command.SeqRange) ([]SeqInterval, error) {

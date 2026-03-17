@@ -7,6 +7,8 @@ import (
 )
 
 // pathExists returns whether the given file exists.
+//
+// nolint: unused
 func pathExists(path string) (bool, error) {
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		return false, nil

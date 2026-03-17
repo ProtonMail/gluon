@@ -15,7 +15,7 @@ func TestHeader_New(t *testing.T) {
 	// Empty headers are empty.
 	header, err := NewHeader(nil)
 	require.NoError(t, err)
-	assert.Equal(t, "", string(header.Raw()))
+	assert.Empty(t, string(header.Raw()))
 
 	// But empty headers can be added to.
 	header.Set("To", "someone@pm.me")

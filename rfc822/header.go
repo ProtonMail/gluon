@@ -492,6 +492,7 @@ func mergeMultiline(line []byte) string {
 	return builder.String()
 }
 
+// nolint: unused
 func splitLine(line []byte) [][]byte {
 	result := bytes.SplitN(line, []byte(`:`), 2)
 

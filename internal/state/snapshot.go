@@ -103,6 +103,7 @@ func (snap *snapshot) setMessageFlags(messageID imap.InternalMessageID, flags im
 	return nil
 }
 
+// nolint: unused
 func (snap *snapshot) getAllMessages() []snapMsgWithSeq {
 	allMessages := snap.messages.all()
 	result := make([]snapMsgWithSeq, len(allMessages))
@@ -117,6 +118,7 @@ func (snap *snapshot) getAllMessages() []snapMsgWithSeq {
 	return result
 }
 
+// nolint: unused
 func (snap *snapshot) getAllMessageIDs() []db.MessageIDPair {
 	return xslices.Map(snap.messages.all(), func(msg *snapMsg) db.MessageIDPair {
 		return msg.ID

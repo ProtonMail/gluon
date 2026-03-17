@@ -9,7 +9,7 @@ import (
 type IDGet struct{}
 
 func (l IDGet) String() string {
-	return fmt.Sprintf("ID")
+	return "ID"
 }
 
 func (l IDGet) SanitizedString() string {

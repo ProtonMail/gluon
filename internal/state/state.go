@@ -338,6 +338,7 @@ func (state *State) Delete(ctx context.Context, name string) (bool, error) {
 }
 
 func (state *State) Rename(ctx context.Context, oldName, newName string) error {
+	//nolint: unused
 	type Result struct {
 		MBox           *db.Mailbox
 		MBoxesToCreate []string

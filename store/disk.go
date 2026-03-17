@@ -216,7 +216,7 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 			// Read up to encryptedBlockSize bytes from disk.
 			bytesRead, err := file.Read(readBuffer)
 			if err != nil {
-				if !(errors.Is(err, io.EOF) || bytesRead == 0) {
+				if !errors.Is(err, io.EOF) && bytesRead != 0 {
 					writer.CloseWithError(err)
 				}
 
