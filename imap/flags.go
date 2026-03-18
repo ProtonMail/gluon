@@ -3,7 +3,6 @@ package imap
 import (
 	"strings"
 
-	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 )
@@ -98,7 +97,7 @@ func (fs FlagSet) ContainsUnchecked(flag string) bool {
 
 // ContainsAny returns true if and only if any of the flags are in the set.
 func (fs FlagSet) ContainsAny(flags ...string) bool {
-	return xslices.IndexFunc(flags, func(f string) bool {
+	return slices.IndexFunc(flags, func(f string) bool {
 		return fs.Contains(f)
 	}) >= 0
 }
@@ -106,14 +105,14 @@ func (fs FlagSet) ContainsAny(flags ...string) bool {
 // ContainsAnyUnchecked returns true if and only if any of the flags are in the set. The flag list is not converted to
 // lower case.
 func (fs FlagSet) ContainsAnyUnchecked(flags ...string) bool {
-	return xslices.IndexFunc(flags, func(f string) bool {
+	return slices.IndexFunc(flags, func(f string) bool {
 		return fs.ContainsUnchecked(f)
 	}) >= 0
 }
 
 // ContainsAll returns true if and only if all of the flags are in the set.
 func (fs FlagSet) ContainsAll(flags ...string) bool {
-	return xslices.IndexFunc(flags, func(f string) bool {
+	return slices.IndexFunc(flags, func(f string) bool {
 		return !fs.Contains(f)
 	}) < 0
 }

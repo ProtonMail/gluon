@@ -3,6 +3,7 @@ package state
 import (
 	"strings"
 
+	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
@@ -32,7 +33,7 @@ func listSuperiors(name, delimiter string) []string {
 }
 
 func listInferiors(parent, delimiter string, names []string) []string {
-	inferiors := xslices.Filter(names, func(name string) bool {
+	inferiors := utils.Filter(names, func(name string) bool {
 		return slices.Contains(listSuperiors(name, delimiter), parent)
 	})
 

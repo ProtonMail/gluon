@@ -21,7 +21,6 @@ import (
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/ProtonMail/gluon/version"
-	"github.com/bradenaw/juniper/xslices"
 	"github.com/emersion/go-imap/client"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -92,7 +91,7 @@ func (s *serverOptions) defaultPassword() string {
 }
 
 func (s *serverOptions) password(username string) string {
-	return s.credentials[xslices.IndexFunc(s.credentials, func(cred credentials) bool {
+	return s.credentials[slices.IndexFunc(s.credentials, func(cred credentials) bool {
 		return slices.Contains(cred.usernames, username)
 	})].password
 }

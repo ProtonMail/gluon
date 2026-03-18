@@ -14,6 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
@@ -177,7 +178,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 		return err
 	}
 
-	msgsToBeMarkedSeen := xslices.Filter(snapMessages, func(s snapMsgWithSeq) bool {
+	msgsToBeMarkedSeen := utils.Filter(snapMessages, func(s snapMsgWithSeq) bool {
 		return s.snapMsg != nil
 	})
 

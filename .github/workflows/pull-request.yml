@@ -14,10 +14,10 @@ jobs:
       - name: Get sources
         uses: actions/checkout@v4
 
-      - name: Set up Go 1.24.4
+      - name: Set up Go 1.26.1
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24.4"
+          go-version: "1.26.1"
 
       - name: Run go mod tidy
         run: go mod tidy
@@ -32,7 +32,7 @@ jobs:
       - name: Run govulncheck
         uses: ./.github/actions/govulncheck
         with:
-          go-version-input: 1.24
+          go-version-input: 1.26.1
           go-package: ./...
 
       - name: Run tests

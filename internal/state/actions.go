@@ -10,6 +10,7 @@ import (
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/observability/metrics"
 	"github.com/ProtonMail/gluon/rfc822"
@@ -249,7 +250,7 @@ func (state *State) actionAddMessagesToMailbox(
 			return nil, nil, err
 		}
 
-		if remMessageIDs := xslices.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
+		if remMessageIDs := utils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 			return slices.Contains(haveMessageIDs, messageID.InternalID)
 		}); len(remMessageIDs) > 0 {
 			updates, err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxID)
@@ -299,7 +300,7 @@ func (state *State) actionAddRecoveredMessagesToMailbox(
 		return nil, nil, err
 	}
 
-	toAdd := xslices.Filter(messageIDs, func(t db.MessageIDPair) bool {
+	toAdd := utils.Filter(messageIDs, func(t db.MessageIDPair) bool {
 		return !slices.Contains(filter, t.InternalID)
 	})
 
@@ -509,7 +510,7 @@ func (state *State) actionRemoveMessagesFromMailbox(
 		return nil, err
 	}
 
-	messageIDs = xslices.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
+	messageIDs = utils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 		return slices.Contains(haveMessageIDs, messageID.InternalID)
 	})
 
@@ -552,7 +553,7 @@ func (state *State) actionMoveMessages(
 			return nil, nil, err
 		}
 
-		if remMessageIDs := xslices.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
+		if remMessageIDs := utils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 			return slices.Contains(messageIDsToAdd, messageID.InternalID)
 		}); len(remMessageIDs) > 0 {
 			updates, err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxToID)
@@ -569,7 +570,7 @@ func (state *State) actionMoveMessages(
 		return nil, nil, err
 	}
 
-	messagesIDsToMove := xslices.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
+	messagesIDsToMove := utils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 		return slices.Contains(messageInFromMBox, messageID.InternalID)
 	})
 
