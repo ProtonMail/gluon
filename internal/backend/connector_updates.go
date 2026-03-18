@@ -13,6 +13,7 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
@@ -388,7 +389,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 				return nil, err
 			}
 
-			toAdd := xslices.Filter(msgList, func(id db.MessageIDPair) bool {
+			toAdd := utils.Filter(msgList, func(id db.MessageIDPair) bool {
 				return !slices.Contains(inMailbox, id.InternalID)
 			})
 
@@ -536,7 +537,7 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx db.Transaction, me
 
 	var updates []state.Update
 
-	for _, mboxID := range xslices.Filter(mboxIDs, func(mboxID imap.InternalMailboxID) bool { return !slices.Contains(curMailboxIDs, mboxID) }) {
+	for _, mboxID := range utils.Filter(mboxIDs, func(mboxID imap.InternalMailboxID) bool { return !slices.Contains(curMailboxIDs, mboxID) }) {
 		_, update, err := user.applyMessagesAddedToMailbox(ctx, tx, mboxID, []db.MessageIDPair{messageID})
 		if err != nil {
 			return nil, err
@@ -545,7 +546,7 @@ func (user *user) setMessageMailboxes(ctx context.Context, tx db.Transaction, me
 		updates = append(updates, update)
 	}
 
-	for _, mboxID := range xslices.Filter(curMailboxIDs, func(mboxID imap.InternalMailboxID) bool { return !slices.Contains(mboxIDs, mboxID) }) {
+	for _, mboxID := range utils.Filter(curMailboxIDs, func(mboxID imap.InternalMailboxID) bool { return !slices.Contains(mboxIDs, mboxID) }) {
 		update, err := user.applyMessagesRemovedFromMailbox(ctx, tx, mboxID, []imap.InternalMessageID{messageID.InternalID})
 		if err != nil {
 			return nil, err

@@ -6,7 +6,6 @@ import (
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
-	"github.com/bradenaw/juniper/xslices"
 	"golang.org/x/exp/slices"
 )
 
@@ -80,7 +79,7 @@ func (list *snapMsgList) insertOutOfOrder(msgID db.MessageIDPair, msgUID imap.UI
 		toExpunge: flags.ContainsUnchecked(imap.FlagDeletedLowerCase),
 	}
 
-	list.msg = xslices.Insert(list.msg, index, snapMsg)
+	list.msg = slices.Insert(list.msg, index, snapMsg)
 
 	list.idx[msgID.InternalID] = snapMsg
 }

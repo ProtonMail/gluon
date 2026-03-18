@@ -12,7 +12,7 @@ import (
 	"github.com/ProtonMail/gluon/constants"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ticker"
-	"github.com/bradenaw/juniper/xslices"
+	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
@@ -391,7 +391,7 @@ func (conn *Dummy) validateUpdate(oldName, newName []string) error {
 }
 
 func removeMessageMailboxesUpdatedFromSlice(updates []imap.Update, messageID imap.MessageID) []imap.Update {
-	return xslices.Filter(updates, func(update imap.Update) bool {
+	return utils.Filter(updates, func(update imap.Update) bool {
 		u, ok := update.(*imap.MessageMailboxesUpdated)
 
 		return (!ok) || (u.MessageID != messageID)
@@ -399,7 +399,7 @@ func removeMessageMailboxesUpdatedFromSlice(updates []imap.Update, messageID ima
 }
 
 func removeMessageFlagsUpdatedFromSlice(updates []imap.Update, messageID imap.MessageID) []imap.Update {
-	return xslices.Filter(updates, func(update imap.Update) bool {
+	return utils.Filter(updates, func(update imap.Update) bool {
 		u, ok := update.(*imap.MessageFlagsUpdated)
 
 		return (!ok) || (u.MessageID != messageID)
@@ -407,7 +407,7 @@ func removeMessageFlagsUpdatedFromSlice(updates []imap.Update, messageID imap.Me
 }
 
 func removeMailboxUpdatedFromSlice(updates []imap.Update, mailboxID imap.MailboxID) []imap.Update {
-	return xslices.Filter(updates, func(update imap.Update) bool {
+	return utils.Filter(updates, func(update imap.Update) bool {
 		u, ok := update.(*imap.MailboxUpdated)
 
 		return (!ok) || (u.MailboxID != mailboxID)

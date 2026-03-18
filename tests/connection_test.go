@@ -89,7 +89,7 @@ func (s *testConnection) Sx(want ...string) *testConnection {
 	var bad []string
 
 	for _, have := range s.readN(len(want)) {
-		if idx := xslices.IndexFunc(want, func(want string) bool {
+		if idx := slices.IndexFunc(want, func(want string) bool {
 			return regexp.MustCompile(want).Match(have)
 		}); idx >= 0 {
 			want = slices.Delete(want, idx, idx+1)
@@ -119,7 +119,7 @@ func (s *testConnection) Sxe(want ...string) *testConnection {
 	for len(want) > 0 {
 		have := s.read()
 
-		if idx := xslices.IndexFunc(want, func(want string) bool {
+		if idx := slices.IndexFunc(want, func(want string) bool {
 			return regexp.MustCompile(want).Match(have)
 		}); idx >= 0 {
 			want = slices.Delete(want, idx, idx+1)

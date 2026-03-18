@@ -1,8 +1,6 @@
 module github.com/ProtonMail/gluon
 
-go 1.24
-
-toolchain go1.24.13
+go 1.26.1
 
 require (
 	github.com/ProtonMail/go-mbox v1.1.0
@@ -18,7 +16,7 @@ require (
 	github.com/stretchr/testify v1.8.3
 	go.uber.org/goleak v1.2.1
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
-	golang.org/x/sys v0.8.0
+	golang.org/x/sys v0.32.0
 	golang.org/x/text v0.9.0
 	gopkg.in/yaml.v3 v3.0.1
 )

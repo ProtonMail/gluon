@@ -298,7 +298,7 @@ func (user *user) removeState(ctx context.Context, st *state.State) error {
 			return nil, fmt.Errorf("no such state")
 		}
 
-		messageIDs = xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
+		messageIDs = utils.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
 			return xslices.CountFunc(maps.Values(user.states), func(other *state.State) bool {
 				return st != other && other.HasMessage(messageID)
 			}) == 0
@@ -372,7 +372,7 @@ func (user *user) cleanupStaleStoreData(ctx context.Context) error {
 		return err
 	}
 
-	idsToDelete := xslices.Filter(storeIds, func(id imap.InternalMessageID) bool {
+	idsToDelete := utils.Filter(storeIds, func(id imap.InternalMessageID) bool {
 		_, ok := dbIdMap[id]
 
 		return !ok
