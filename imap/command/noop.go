@@ -1,15 +1,13 @@
 package command
 
 import (
-	"fmt"
-
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type Noop struct{}
 
 func (l Noop) String() string {
-	return fmt.Sprintf("NOOP")
+	return "NOOP"
 }
 
 func (l Noop) SanitizedString() string {

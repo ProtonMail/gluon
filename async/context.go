@@ -28,6 +28,7 @@ func (a *Abortable) newCancelCtx(ctx context.Context) context.Context {
 	a.abortLock.Lock()
 	defer a.abortLock.Unlock()
 
+	//nolint: gosec //disable G118
 	ctx, cancel := context.WithCancel(ctx)
 
 	a.abortFunc = append(a.abortFunc, cancel)

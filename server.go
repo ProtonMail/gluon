@@ -199,6 +199,7 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 	})
 
 	if s.connectionRollingCounter != nil {
+		s.connectionRollingCounter.Stop() //stop previous instance if its running
 		s.connectionRollingCounter.Start(ctx, s.observabilitySender, s)
 	}
 

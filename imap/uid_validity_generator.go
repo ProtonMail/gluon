@@ -26,7 +26,7 @@ func DefaultEpochUIDValidityGenerator() *EpochUIDValidityGenerator {
 }
 
 func (e *EpochUIDValidityGenerator) Generate() (UID, error) {
-	timeStamp := uint64(time.Now().Sub(e.epochStart).Seconds())
+	timeStamp := uint64(time.Since(e.epochStart).Seconds())
 	if timeStamp > uint64(0xFFFFFFFF) {
 		return 0, fmt.Errorf("failed to generate uid validity, interval exceeded maximum capacity")
 	}

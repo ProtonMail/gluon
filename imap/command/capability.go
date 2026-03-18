@@ -1,15 +1,13 @@
 package command
 
 import (
-	"fmt"
-
 	"github.com/ProtonMail/gluon/rfcparser"
 )
 
 type Capability struct{}
 
 func (l Capability) String() string {
-	return fmt.Sprintf("CAPABILITY")
+	return "CAPABILITY"
 }
 
 func (l Capability) SanitizedString() string {

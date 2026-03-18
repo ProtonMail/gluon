@@ -132,7 +132,7 @@ func measureBenchmark(dirConfig BenchDirConfig, iteration uint, bench Benchmark)
 
 	benchRun, benchErr := bench.Run(ctx)
 	if benchErr != nil {
-		panic(fmt.Sprintf("Failed to run benchmark %v: %v", bench.Name(), err))
+		panic(fmt.Sprintf("Failed to run benchmark %v: %v", bench.Name(), benchErr))
 	}
 
 	if err := bench.TearDown(ctx); err != nil {

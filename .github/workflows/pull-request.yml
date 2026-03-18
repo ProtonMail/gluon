@@ -23,14 +23,14 @@ jobs:
         run: go mod tidy
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v1.64.8
+          version: v2.11.3
           args: --timeout=500s
           skip-cache: true
 
       - name: Run govulncheck
-        uses: golang/govulncheck-action@v1
+        uses: ./.github/actions/govulncheck
         with:
           go-version-input: 1.24
           go-package: ./...

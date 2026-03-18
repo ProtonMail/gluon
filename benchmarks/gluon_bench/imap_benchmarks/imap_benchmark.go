@@ -38,7 +38,7 @@ func (i *IMAPBenchmarkExtra) String() string {
 			continue
 		}
 
-		builder.WriteString(fmt.Sprintf("[%v] %v\n", profiling.CmdTypeToString(n), v.String()))
+		fmt.Fprintf(&builder, "[%v] %v\n", profiling.CmdTypeToString(n), v.String())
 	}
 
 	return builder.String()
