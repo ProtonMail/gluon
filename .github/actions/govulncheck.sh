@@ -8,6 +8,11 @@ main(){
 
     jq -r '.finding | select( (.osv != null) and (.trace[0].function != null) ) | .osv ' < vulns.json > vulns_osv_ids.txt
 
+    ignore GO-2026-4866 "BRIDGE-525 crypto/x509 verifying a certificate chain excluded DNS constraints which were not applied to wildcard DNS SANs."
+    ignore GO-2026-4870 "BRIDGE-525 crypto/tls if one side of TLS connection sends multiple key messages post handshake can lead to deadlock."
+    ignore GO-2026-4946 "BRIDGE-525 crypto/x509 validating certificate chains is unexpectedly inefficient when chains contain very large number of policy mappings."
+    ignore GO-2026-4947 "BRIDGE-525 crypto/x509 during chain building the amount of work is not limited passed in VerifyOptions.Intermediates which can lead to denial of service." 
+
     has_vulns
 
     echo
