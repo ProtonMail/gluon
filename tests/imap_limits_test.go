@@ -41,7 +41,7 @@ func TestMaxUIDLimitRespected_Append(t *testing.T) {
 		require.NoError(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Foo@bar.com"), time.Now()))
 		_, err := client.Select("INBOX", false)
 		require.NoError(t, err)
-		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 		require.NoError(t, client.Expunge(nil))
 		// Append should fail now as we triggered max UID validity error.
 		require.Error(t, doAppendWithClient(client, "INBOX", buildRFC5322TestLiteral("To: Bar@bar.com"), time.Now()))
@@ -70,7 +70,7 @@ func TestMaxUIDLimitRespected_Copy(t *testing.T) {
 		// Delete existing message in mbox1 to trigget UID validity check
 		_, err := client.Select("mbox1", false)
 		require.NoError(t, err)
-		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 		require.NoError(t, client.Expunge(nil))
 
 		// Try to copy message to mbox
@@ -102,7 +102,7 @@ func TestMaxUIDLimitRespected_Move(t *testing.T) {
 		// Delete existing message in mbox1 to trigget UID validity check
 		_, err := client.Select("mbox1", false)
 		require.NoError(t, err)
-		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 		require.NoError(t, client.Expunge(nil))
 
 		// Try to copy message to mbox

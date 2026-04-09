@@ -155,7 +155,7 @@ func hashBody(writer io.Writer, body []byte, mimeType MIMEType, encoding string)
 }
 
 func getAddresses(fieldAddr string) string {
-	var addresses string
+	var addresses strings.Builder
 
 	addrList, err := rfc5322.ParseAddressList(fieldAddr)
 	if err != nil {
@@ -163,8 +163,8 @@ func getAddresses(fieldAddr string) string {
 	}
 
 	for _, addr := range addrList {
-		addresses += addr.Address
+		addresses.WriteString(addr.Address)
 	}
 
-	return addresses
+	return addresses.String()
 }

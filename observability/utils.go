@@ -2,7 +2,7 @@ package observability
 
 import "context"
 
-func AddImapMetric(ctx context.Context, metric ...map[string]interface{}) {
+func AddImapMetric(ctx context.Context, metric ...map[string]any) {
 	sender, ok := getObservabilitySenderFromContext(ctx)
 	if !ok {
 		return
@@ -11,7 +11,7 @@ func AddImapMetric(ctx context.Context, metric ...map[string]interface{}) {
 	sender.AddDistinctMetrics(imapErrorMetricType, metric...)
 }
 
-func AddMessageRelatedMetric(ctx context.Context, metric ...map[string]interface{}) {
+func AddMessageRelatedMetric(ctx context.Context, metric ...map[string]any) {
 	sender, ok := getObservabilitySenderFromContext(ctx)
 	if !ok {
 		return
@@ -20,7 +20,7 @@ func AddMessageRelatedMetric(ctx context.Context, metric ...map[string]interface
 	sender.AddDistinctMetrics(messageErrorMetricType, metric...)
 }
 
-func AddOtherMetric(ctx context.Context, metric ...map[string]interface{}) {
+func AddOtherMetric(ctx context.Context, metric ...map[string]any) {
 	sender, ok := getObservabilitySenderFromContext(ctx)
 	if !ok {
 		return

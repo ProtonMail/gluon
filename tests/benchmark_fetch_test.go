@@ -6,14 +6,14 @@ import (
 )
 
 func BenchmarkFetchDatabase(b *testing.B) {
-	for n := 0; n < 15; n++ {
+	for n := range 15 {
 		mboxSize := 1 << n
 
 		b.Run(strconv.Itoa(mboxSize), func(b *testing.B) {
 			runOneToOneTestWithAuth(b, defaultServerOptions(b), func(c *testConnection, s *testSession) {
 				benchID := s.mailboxCreated("user", []string{"BENCH"})
 
-				for i := 0; i < mboxSize; i++ {
+				for range mboxSize {
 					s.messageCreatedFromFile("user", benchID, `testdata/multipart-mixed.eml`)
 				}
 
@@ -46,14 +46,14 @@ func BenchmarkFetchDatabase(b *testing.B) {
 }
 
 func BenchmarkFetchSingleCache(b *testing.B) {
-	for n := 0; n < 15; n++ {
+	for n := range 15 {
 		mboxSize := 1 << n
 
 		b.Run(strconv.Itoa(mboxSize), func(b *testing.B) {
 			runOneToOneTestWithAuth(b, defaultServerOptions(b), func(c *testConnection, s *testSession) {
 				benchID := s.mailboxCreated("user", []string{"BENCH"})
 
-				for i := 0; i < mboxSize; i++ {
+				for range mboxSize {
 					s.messageCreatedFromFile("user", benchID, `testdata/multipart-mixed.eml`)
 				}
 

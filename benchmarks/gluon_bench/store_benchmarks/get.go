@@ -39,7 +39,7 @@ func (g *Get) Run(ctx context.Context, st store.Store) (*reporter.BenchmarkRun, 
 	uuidLen := len(g.uuids)
 
 	return RunStoreWorkers(ctx, st, func(ctx context.Context, s store.Store, dc *timing.Collector, u uint) error {
-		for i := 0; i < uuidLen; i++ {
+		for range uuidLen {
 			index := rand.Intn(uuidLen)
 
 			dc.Start()

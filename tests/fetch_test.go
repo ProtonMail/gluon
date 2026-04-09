@@ -248,7 +248,7 @@ func TestFetchSequence(t *testing.T) {
 		fillAndSelectMailboxWithMultipleEntries(t, client)
 
 		// delete message number 4
-		require.NoError(t, client.Store(createSeqSet("4"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+		require.NoError(t, client.Store(createSeqSet("4"), goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 		require.NoError(t, client.Expunge(nil))
 
 		fetchResult := newFetchCommand(t, client).withItems(goimap.FetchEnvelope, goimap.FetchUid).fetch("4,1:2")
@@ -289,7 +289,7 @@ func TestFetchUID(t *testing.T) {
 		fillAndSelectMailboxWithMultipleEntries(t, client)
 
 		// delete message number 4
-		require.NoError(t, client.Store(createSeqSet("4"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+		require.NoError(t, client.Store(createSeqSet("4"), goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 		require.NoError(t, client.Expunge(nil))
 
 		messages := uidFetchMessagesClient(t, client, createSeqSet("2:5"), []goimap.FetchItem{goimap.FetchEnvelope, goimap.FetchUid})
@@ -403,7 +403,7 @@ func TestFetchFromDataSequences(t *testing.T) {
 func TestFetchFromDataUIDs(t *testing.T) {
 	runOneToOneTestClientWithData(t, defaultServerOptions(t), func(client *client.Client, _ *testSession, _ string, _ imap.MailboxID) {
 		// Remove a couple of messages
-		require.NoError(t, client.Store(createSeqSet("20:29,50:60,90"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+		require.NoError(t, client.Store(createSeqSet("20:29,50:60,90"), goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 		require.NoError(t, client.Expunge(nil))
 		const sectionStr = "BODY[HEADER.FIELDS (To Subject)]"
 		fetchResult := newFetchCommand(t, client).withItems(sectionStr).fetchUid("1:4,30:31,81")

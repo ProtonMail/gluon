@@ -285,7 +285,7 @@ func TestAppendConnectorReturnsSameRemoteIDShouldRemoveDeletedFlag(t *testing.T)
 			require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
 
 			// Mark it as deleted.
-			require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+			require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 
 			// Check flag got set
 			newFetchCommand(t, client).withItems("FLAGS").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -326,7 +326,7 @@ func TestAppendConnectorReturnsSameInternalIDRemoveDeletedFlag(t *testing.T) {
 			require.Equal(t, uint32(1), status.Messages, "Expected message count does not match")
 
 			// Mark it as deleted.
-			require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+			require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 
 			// Check flag got set
 			newFetchCommand(t, client).withItems("FLAGS").fetch("1").forSeqNum(1, func(builder *validatorBuilder) {
@@ -376,7 +376,7 @@ func TestAppendCanHandleOutOfOrderUIDUpdates(t *testing.T) {
 		c[2].C("A002 SELECT INBOX").OK("A002")
 
 		appendFN := func(clientIndex int) {
-			for i := 0; i < MessageCount; i++ {
+			for range MessageCount {
 				c[clientIndex+1].doAppend("INBOX", buildRFC5322TestLiteral("To: f3@pm.me\r\n"), "\\Seen").expect("OK")
 			}
 		}
@@ -384,7 +384,7 @@ func TestAppendCanHandleOutOfOrderUIDUpdates(t *testing.T) {
 		wg := sync.WaitGroup{}
 		wg.Add(2)
 
-		for i := 0; i < 2; i++ {
+		for i := range 2 {
 			go func(index int) {
 				defer wg.Done()
 				appendFN(index)

@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/ProtonMail/gluon/imap"
 )
@@ -83,11 +84,5 @@ func (f *AnyMessageIDStateFilter) Filter(s *State) bool {
 		return false
 	}
 
-	for _, msgID := range f.MessageIDs {
-		if s.snap.hasMessage(msgID) {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(f.MessageIDs, s.snap.hasMessage)
 }

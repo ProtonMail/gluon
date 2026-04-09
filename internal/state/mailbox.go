@@ -296,7 +296,7 @@ func (m *Mailbox) Copy(ctx context.Context, seq []command.SeqRange, name string)
 	msgIDs := make([]db.MessageIDPair, len(messages))
 	msgUIDs := make([]imap.UID, len(messages))
 
-	for i := 0; i < len(messages); i++ {
+	for i := range messages {
 		snapMsg := messages[i]
 		msgUIDs[i] = snapMsg.UID
 		msgIDs[i] = snapMsg.ID
@@ -351,7 +351,7 @@ func (m *Mailbox) Move(ctx context.Context, seq []command.SeqRange, name string)
 	msgIDs := make([]db.MessageIDPair, len(messages))
 	msgUIDs := make([]imap.UID, len(messages))
 
-	for i := 0; i < len(messages); i++ {
+	for i := range messages {
 		snapMsg := messages[i]
 		msgUIDs[i] = snapMsg.UID
 		msgIDs[i] = snapMsg.ID

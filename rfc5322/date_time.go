@@ -124,7 +124,7 @@ func parseDTMonth(p *rfcparser.Parser) (time.Month, error) {
 	//
 	month := make([]byte, 3)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if err := p.Consume(rfcparser.TokenTypeChar, "unexpected character for date month"); err != nil {
 			return 0, err
 		}

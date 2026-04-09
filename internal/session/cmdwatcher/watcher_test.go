@@ -73,7 +73,7 @@ func (m *mockFeatureFlagProvider) SetFlag(key string, value bool) {
 
 type mockPanicHandler struct{}
 
-func (m *mockPanicHandler) HandlePanic(r interface{}) {}
+func (m *mockPanicHandler) HandlePanic(r any) {}
 
 func createTestService(testInterval time.Duration, featureFlags map[string]bool) (*cmdwatcher.Service, *mockProgressSender) {
 	ctx := context.Background()

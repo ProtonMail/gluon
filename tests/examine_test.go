@@ -91,7 +91,7 @@ func TestExamineClient(t *testing.T) {
 			require.Equal(t, uint32(2), mailboxStatus.UnseenSeqNum)
 
 			// Can't perform store on read only mailbox.
-			require.Error(t, client.Store(createSeqSet("2"), goimap.AddFlags, []interface{}{goimap.SeenFlag}, nil))
+			require.Error(t, client.Store(createSeqSet("2"), goimap.AddFlags, []any{goimap.SeenFlag}, nil))
 
 			// Can't move out of read only mailbox
 			require.Error(t, client.Move(createSeqSet("2"), "Archive"))
