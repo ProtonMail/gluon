@@ -214,7 +214,7 @@ func TestConcurrency(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		c.C(`tag create archive`).OK(`tag`)
 
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			c.Cf(`tag status %v (messages)`, mbox).Sx(fmt.Sprintf(`MESSAGES %v`, 100-i)).OK(`tag`)
 			c.Cf(`tag uid move %v archive`, 1+i).Sxe(`1 EXPUNGE`).OK(`tag`)
 		}

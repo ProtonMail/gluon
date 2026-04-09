@@ -133,7 +133,7 @@ func TestReceptionOnIdle(t *testing.T) {
 
 			require.NoError(t, cli.Login("user", "pass"))
 
-			for i := 0; i < 3; i++ {
+			for range 3 {
 				require.NoError(t, doAppendWithClientFromFile(t, cli, mailboxName, messagePath, time.Now()))
 			}
 		}, logging.Labels{
@@ -221,13 +221,13 @@ func TestMorningFiltering(t *testing.T) {
 			switch i % 3 {
 			case 0:
 				// either Delete
-				uidStoreWithRetrievalClient(t, client, createSeqSet(strId), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
+				uidStoreWithRetrievalClient(t, client, createSeqSet(strId), goimap.AddFlags, []any{goimap.DeletedFlag})
 				expungedIds := expungeClient(t, client)
 				require.Len(t, expungedIds, 1)
 
 			case 1:
 				// or unseen
-				uidStoreWithRetrievalClient(t, client, createSeqSet(strId), goimap.RemoveFlags, []interface{}{goimap.SeenFlag})
+				uidStoreWithRetrievalClient(t, client, createSeqSet(strId), goimap.RemoveFlags, []any{goimap.SeenFlag})
 				require.NoError(t, client.UidMove(createSeqSet(strId), "ReadLater"))
 				nbUnseen++
 

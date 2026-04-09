@@ -78,7 +78,7 @@ func RunMain() {
 
 		benchmarkStats := make([]*reporter.BenchmarkStatistics, 0, numRuns)
 
-		for r := uint(0); r < numRuns; r++ {
+		for r := range numRuns {
 			if *flags.Verbose {
 				fmt.Printf("Benchmark Run: %v\n", r)
 			}

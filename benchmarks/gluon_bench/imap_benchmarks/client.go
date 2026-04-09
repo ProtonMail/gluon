@@ -34,9 +34,9 @@ func FetchMessage(cl *client.Client, sequenceSet *imap.SeqSet, items ...imap.Fet
 	return cl.Fetch(sequenceSet, items, ch)
 }
 
-func flagsToInterface(flags ...string) []interface{} {
-	return xslices.Map(flags, func(f string) interface{} {
-		return interface{}(f)
+func flagsToInterface(flags ...string) []any {
+	return xslices.Map(flags, func(f string) any {
+		return any(f)
 	})
 }
 

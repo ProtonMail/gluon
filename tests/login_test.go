@@ -129,7 +129,6 @@ func TestLoginTooManyAttemptsMany(t *testing.T) {
 
 		// All clients should be jailed for 1 sec.
 		for _, i := range []int{1, 2, 3} {
-			i := i
 
 			wg.Go(func() {
 				require.Greater(t, timeFunc(func() {

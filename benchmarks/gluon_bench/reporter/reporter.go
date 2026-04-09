@@ -3,7 +3,7 @@ package reporter
 import (
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -39,9 +39,7 @@ func (b *BenchmarkStatistics) String() string {
 
 func NewBenchmarkStatistics(extra BenchmarkExtra, durations ...time.Duration) *BenchmarkStatistics {
 	sortedDurations := durations
-	sort.Slice(sortedDurations, func(i1, i2 int) bool {
-		return sortedDurations[i1] < sortedDurations[i2]
-	})
+	slices.Sort(sortedDurations)
 
 	statistics := &BenchmarkStatistics{
 		Extra: extra,

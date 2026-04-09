@@ -30,7 +30,7 @@ func lines(lines ...string) string {
 func repeat(line string, n int) []string {
 	var res []string
 
-	for i := 0; i < n; i++ {
+	for range n {
 		res = append(res, line)
 	}
 
@@ -38,13 +38,16 @@ func repeat(line string, n int) []string {
 }
 
 func seq(begin, end int) string {
-	var res string
+	var res strings.Builder
 
 	for i := begin; i < end; i++ {
-		res += strconv.Itoa(i) + " "
+		res.WriteString(strconv.Itoa(i))
+		res.WriteString(" ")
 	}
 
-	return res + strconv.Itoa(end)
+	res.WriteString(strconv.Itoa(end))
+
+	return res.String()
 }
 
 type testConnection struct {
@@ -217,7 +220,7 @@ func (s *testConnection) read() []byte {
 func (s *testConnection) readN(n int) [][]byte {
 	var res [][]byte
 
-	for i := 0; i < n; i++ {
+	for range n {
 		res = append(res, s.read())
 	}
 

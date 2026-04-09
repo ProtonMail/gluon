@@ -24,7 +24,7 @@ func TestWriteControlledStore(t *testing.T) {
 
 	wg := sync.WaitGroup{}
 
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		wg.Add(1)
 
 		go func(i int) {

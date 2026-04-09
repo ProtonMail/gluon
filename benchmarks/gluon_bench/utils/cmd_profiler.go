@@ -25,7 +25,7 @@ func (c *DurationCmdProfiler) Stop(cmdType int) {
 
 func NewDurationCmdProfiler() *DurationCmdProfiler {
 	profiler := &DurationCmdProfiler{}
-	for i := 0; i < len(profiler.durations); i++ {
+	for i := range len(profiler.durations) {
 		profiler.durations[i] = make([]time.Duration, 0, 128)
 	}
 
@@ -59,7 +59,7 @@ func (c *DurationCmdProfilerBuilder) Merge() [profiling.CmdTypeTotal][]time.Dura
 	var result [profiling.CmdTypeTotal][]time.Duration
 
 	for _, v := range c.profilers {
-		for i := 0; i < len(result); i++ {
+		for i := range len(result) {
 			result[i] = append(result[i], v.durations[i]...)
 		}
 	}

@@ -357,10 +357,7 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 		for _, chunk := range xslices.Chunk(messagesToCreate, db.ChunkLimit) {
 			// Create messages in the store in parallel
-			numStoreRoutines := runtime.NumCPU() / 4
-			if numStoreRoutines < len(chunk) {
-				numStoreRoutines = len(chunk)
-			}
+			numStoreRoutines := max(runtime.NumCPU()/4, len(chunk))
 			if err := parallel.DoContext(ctx, numStoreRoutines, len(chunk), func(ctx context.Context, i int) error {
 				msg := chunk[i]
 				if err := user.store.SetUnchecked(msg.InternalID, msg.reader); err != nil {

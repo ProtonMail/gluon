@@ -1,12 +1,12 @@
 package async
 
 type PanicHandler interface {
-	HandlePanic(interface{})
+	HandlePanic(any)
 }
 
 type NoopPanicHandler struct{}
 
-func (n NoopPanicHandler) HandlePanic(r interface{}) {}
+func (n NoopPanicHandler) HandlePanic(r any) {}
 
 func HandlePanic(panicHandler PanicHandler) {
 	if panicHandler == nil {

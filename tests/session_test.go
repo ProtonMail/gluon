@@ -178,7 +178,7 @@ func (s *testSession) mailboxCreatedWithAttributes(user string, name []string, a
 func (s *testSession) batchMailboxCreated(user string, count int, mailboxNameGen func(number int) string) []imap.MailboxID {
 	var mboxIDs []imap.MailboxID
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		mboxID := imap.MailboxID(utils.NewRandomMailboxID())
 
 		require.NoError(s.tb, s.conns[s.userIDs[user]].MailboxCreated(imap.Mailbox{
@@ -283,7 +283,7 @@ func (s *testSession) batchMessageCreatedWithID(user string, mailboxID imap.Mail
 	literals := make([][]byte, 0, count)
 	mailboxes := make([][]imap.MailboxID, 0, count)
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		messageID, literal, flags := createMessage(i)
 
 		messages = append(messages, imap.Message{

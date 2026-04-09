@@ -120,8 +120,8 @@ func (s *SearchTextQuery) Run(ctx context.Context, cl *client.Client, workerInde
 
 		fieldsStr := []string{"TEXT", s.queries[keywordIndex]}
 
-		fields := xslices.Map(fieldsStr, func(v string) interface{} {
-			return interface{}(v)
+		fields := xslices.Map(fieldsStr, func(v string) any {
+			return any(v)
 		})
 
 		if err := criteria.ParseWithCharset(fields, nil); err != nil {
@@ -162,7 +162,7 @@ func (s *SearchSinceQuery) Setup(ctx context.Context, cl *client.Client, searchC
 	} else {
 		s.dates = make([]string, 0, searchCount)
 
-		for i := uint32(0); i < searchCount; i++ {
+		for range searchCount {
 			t := time.Date(1980+rand.Intn(40), time.Month(rand.Intn(12)), rand.Intn(28), 0, 0, 0, 0, time.UTC)
 			s.dates = append(s.dates, t.Format("02-Jan-2006"))
 		}
@@ -181,8 +181,8 @@ func (s *SearchSinceQuery) Run(ctx context.Context, cl *client.Client, workerInd
 
 		fieldsStr := []string{"SINCE", d}
 
-		fields := xslices.Map(fieldsStr, func(v string) interface{} {
-			return interface{}(v)
+		fields := xslices.Map(fieldsStr, func(v string) any {
+			return any(v)
 		})
 
 		if err := criteria.ParseWithCharset(fields, nil); err != nil {
@@ -215,8 +215,8 @@ func (s *SearchCmdQuery) Setup(ctx context.Context, cl *client.Client, searchCou
 
 	queries := strings.Split(*searchCmdQueryFlag, " ")
 
-	fields := xslices.Map(queries, func(v string) interface{} {
-		return interface{}(v)
+	fields := xslices.Map(queries, func(v string) any {
+		return any(v)
 	})
 
 	if err := s.criteria.ParseWithCharset(fields, nil); err != nil {

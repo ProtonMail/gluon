@@ -14,7 +14,7 @@ func BenchmarkBigMailboxStatus(b *testing.B) {
 		mboxID := s.mailboxCreated("user", []string{"mbox"})
 
 		ids := s.batchMessageCreated("user", mboxID, 32515, func(n int) ([]byte, []string) {
-			return []byte(fmt.Sprintf(`To: %v@pm.me`, n)), []string{}
+			return fmt.Appendf(nil, `To: %v@pm.me`, n), []string{}
 		})
 
 		b.Run("status", func(b *testing.B) {
@@ -28,7 +28,7 @@ func BenchmarkBigMailboxFetchSequence(b *testing.B) {
 		mboxID := s.mailboxCreated("user", []string{"mbox"})
 
 		ids := s.batchMessageCreated("user", mboxID, 128515, func(n int) ([]byte, []string) {
-			return []byte(fmt.Sprintf(`To: %v@pm.me`, n)), []string{}
+			return fmt.Appendf(nil, `To: %v@pm.me`, n), []string{}
 		})
 
 		_, err := client.Select("mbox", false)
@@ -47,7 +47,7 @@ func BenchmarkBigMailboxFetchUID(b *testing.B) {
 		mboxID := s.mailboxCreated("user", []string{"mbox"})
 
 		ids := s.batchMessageCreated("user", mboxID, 128515, func(n int) ([]byte, []string) {
-			return []byte(fmt.Sprintf(`To: %v@pm.me`, n)), []string{}
+			return fmt.Appendf(nil, `To: %v@pm.me`, n), []string{}
 		})
 
 		_, err := client.Select("mbox", false)

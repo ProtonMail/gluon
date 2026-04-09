@@ -30,12 +30,12 @@ func TestSequenceRange(t *testing.T) {
 		c.OK(`A007`)
 		c.C(`A008 FETCH 6 (FLAGS)`).BAD(`A008`)
 		c.C(`A009 FETCH 1,3:4 (FLAGS)`)
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			c.Sx(`\* \d FETCH`)
 		}
 		c.OK(`A009`)
 		c.C(`A010 STORE 1,2,3,4 +FLAGS (flag)`)
-		for i := 0; i < 4; i++ {
+		for range 4 {
 			c.Sx(`\* \d FETCH \(FLAGS \(\\Recent flag\)\)`)
 		}
 		c.OK(`A010`)
@@ -45,7 +45,7 @@ func TestSequenceRange(t *testing.T) {
 		c.C(`A012 COPY 6:* mbox2`).BAD(`A012`)
 		c.C(`A013 MOVE 1,5,3 mbox2`)
 		c.Sx(`\* OK \[COPYUID`)
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			c.Sx(`\* \d EXPUNGE`)
 		}
 		c.OK(`A013`)
@@ -97,12 +97,12 @@ func TestUIDSequenceRange(t *testing.T) {
 		c.C(`A008 UID FETCH 6 (FLAGS)`)
 		c.OK(`A008`)
 		c.C(`A009 UID FETCH 1,3:4 (FLAGS)`)
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			c.Sx(`\* \d FETCH .*`)
 		}
 		c.OK(`A009`)
 		c.C(`A010 UID STORE 1,2,3,4 +FLAGS (flag)`)
-		for i := 0; i < 4; i++ {
+		for range 4 {
 			c.Sx(`\* \d FETCH \(FLAGS \(\\Recent flag\) UID \d\)`)
 		}
 		c.OK(`A010`)
@@ -114,7 +114,7 @@ func TestUIDSequenceRange(t *testing.T) {
 		c.Sx(`A012 OK \[COPYUID`)
 		c.C(`A013 UID MOVE 1,5,3 mbox2`)
 		c.Sx(`\* OK \[COPYUID`)
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			c.Sx(`\* \d EXPUNGE`)
 		}
 		c.OK(`A013`)
@@ -123,7 +123,7 @@ func TestUIDSequenceRange(t *testing.T) {
 		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 6@pm.me`)).expect("OK")
 		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 7@pm.me`)).expect("OK")
 		c.C(`A014 UID STORE 4:2 -FLAGS (flag)`)
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			c.Sx(`\* \d FETCH`)
 		}
 		c.OK(`A014`)

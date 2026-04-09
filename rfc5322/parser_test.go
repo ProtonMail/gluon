@@ -258,7 +258,6 @@ func TestParseAddress(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 
 		t.Run(test.input, func(t *testing.T) {
 			addrs, err := ParseAddress(test.input)
@@ -418,7 +417,6 @@ func TestParseAddressList(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 
 		t.Run(test.input, func(t *testing.T) {
 			addrs, err := ParseAddressList(test.input)
@@ -595,7 +593,6 @@ func TestParseGroup(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 
 		t.Run(test.input, func(t *testing.T) {
 			addrs, err := ParseAddressList(test.input)
@@ -724,7 +721,6 @@ func TestParseSingleAddressEncodedWord(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 
 		t.Run(test.input, func(t *testing.T) {
 			addrs, err := ParseAddressList(test.input)
@@ -747,7 +743,6 @@ func TestParseAddressInvalid(t *testing.T) {
 	}
 
 	for _, test := range inputs {
-		test := test
 
 		t.Run(test, func(t *testing.T) {
 			_, err := ParseAddressList(test)
@@ -844,7 +839,6 @@ func TestParserAddressEmailValidation(t *testing.T) {
 	}
 
 	for _, test := range inputs {
-		test := test
 
 		t.Run(test, func(t *testing.T) {
 			_, err := ParseAddressList(test)

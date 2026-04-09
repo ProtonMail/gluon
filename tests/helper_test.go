@@ -127,7 +127,7 @@ func matchMailboxNamesClient(t testing.TB, client *client.Client, reference stri
 	require.ElementsMatch(t, expectedNames, mailboxes)
 }
 
-func storeWithRetrievalClient(t testing.TB, client *client.Client, seqset *goimap.SeqSet, item goimap.StoreItem, value interface{}) []*goimap.Message {
+func storeWithRetrievalClient(t testing.TB, client *client.Client, seqset *goimap.SeqSet, item goimap.StoreItem, value any) []*goimap.Message {
 	ch := make(chan *goimap.Message)
 
 	go func() {
@@ -137,7 +137,7 @@ func storeWithRetrievalClient(t testing.TB, client *client.Client, seqset *goima
 	return iterator.Collect(iterator.Chan(ch))
 }
 
-func uidStoreWithRetrievalClient(t testing.TB, client *client.Client, seqset *goimap.SeqSet, item goimap.StoreItem, value interface{}) []*goimap.Message {
+func uidStoreWithRetrievalClient(t testing.TB, client *client.Client, seqset *goimap.SeqSet, item goimap.StoreItem, value any) []*goimap.Message {
 	ch := make(chan *goimap.Message)
 
 	go func() {
@@ -155,7 +155,7 @@ type macroFetchCommand struct {
 func (cmd *macroFetchCommand) Command() *goimap.Command {
 	return &goimap.Command{
 		Name:      "FETCH",
-		Arguments: []interface{}{cmd.SeqSet, goimap.RawString(cmd.Item)},
+		Arguments: []any{cmd.SeqSet, goimap.RawString(cmd.Item)},
 	}
 }
 

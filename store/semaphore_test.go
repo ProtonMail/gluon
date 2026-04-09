@@ -44,9 +44,7 @@ func TestSemaphore(t *testing.T) {
 func wait(fn func()) func() {
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-
-	go func() { defer wg.Done(); fn() }()
+	wg.Go(func() { fn() })
 
 	return wg.Wait
 }

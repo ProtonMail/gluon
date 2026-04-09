@@ -106,15 +106,15 @@ func TestCloseWithClient(t *testing.T) {
 
 		{
 			sequenceSet, _ := goimap.ParseSeqSet("1")
-			require.NoError(t, client.Store(sequenceSet, goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+			require.NoError(t, client.Store(sequenceSet, goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 		}
 		{
 			sequenceSet, _ := goimap.ParseSeqSet("2")
-			require.NoError(t, client.Store(sequenceSet, goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+			require.NoError(t, client.Store(sequenceSet, goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 		}
 		{
 			sequenceSet, _ := goimap.ParseSeqSet("3")
-			require.NoError(t, client.Store(sequenceSet, goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+			require.NoError(t, client.Store(sequenceSet, goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 		}
 		require.NoError(t, client.Close())
 
