@@ -2,6 +2,8 @@ module github.com/ProtonMail/gluon
 
 go 1.26.1
 
+toolchain go1.26.2
+
 require (
 	github.com/ProtonMail/go-mbox v1.1.0
 	github.com/bradenaw/juniper v0.15.3
