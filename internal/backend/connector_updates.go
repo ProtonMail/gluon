@@ -7,18 +7,18 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
-	"github.com/ProtonMail/gluon/internal/utils"
+	"github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/exp/slices"
 )
 
 // apply an incoming update originating from the connector.
@@ -344,7 +344,9 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 					messageForMBox[v] = messageList
 				}
 
-				if !slices.ContainsFunc(messageList, func(id db.MessageIDPair) bool { return id.InternalID == internalID }) {
+				if !slices.ContainsFunc(messageList, func(id db.MessageIDPair) bool {
+					return id.InternalID == internalID
+				}) {
 					messageList = append(messageList, db.MessageIDPair{InternalID: internalID, RemoteID: message.Message.ID})
 					messageForMBox[v] = messageList
 				}

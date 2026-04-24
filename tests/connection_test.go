@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -16,7 +17,6 @@ import (
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 )
 
 func withTag(fn func(string)) {

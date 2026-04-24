@@ -2,11 +2,11 @@ package imap
 
 import (
 	"net/mail"
+	"slices"
 	"strconv"
 	"strings"
 
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
+	"github.com/ProtonMail/gluon/pkg/utils"
 )
 
 type parListWriter interface {
@@ -114,7 +114,7 @@ func (c *paramList) addNumber(writer parListWriter, v int) *paramList {
 func (c *paramList) addMap(writer parListWriter, v map[string]string) *paramList {
 	c.onWrite(writer)
 
-	keys := maps.Keys(v)
+	keys := utils.Keys(v)
 
 	slices.Sort(keys)
 

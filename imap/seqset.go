@@ -2,11 +2,11 @@ package imap
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/bradenaw/juniper/xslices"
-	"golang.org/x/exp/slices"
 )
 
 type SeqVal struct {
