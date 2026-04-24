@@ -1,10 +1,10 @@
 package imap
 
 import (
+	"slices"
 	"strings"
 
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
+	"github.com/ProtonMail/gluon/pkg/utils"
 )
 
 const (
@@ -70,7 +70,7 @@ func (fs FlagSet) Len() int {
 // ToSlice Returns the list of flags in the set as a sorted string slice. The returned list is a hard copy of the internal
 // slice to avoid direct modifications of the FlagSet value that would break the uniqueness and case insensitivity rules.
 func (fs FlagSet) ToSlice() []string {
-	flags := maps.Values(fs)
+	flags := utils.Values(fs)
 
 	slices.Sort(flags)
 
@@ -79,7 +79,7 @@ func (fs FlagSet) ToSlice() []string {
 
 // ToSliceUnsorted is the same as ToSlice, but does not sort the returned value.
 func (fs FlagSet) ToSliceUnsorted() []string {
-	return maps.Values(fs)
+	return utils.Values(fs)
 }
 
 // Contains returns true if and only if the flag is in the set.
@@ -146,11 +146,11 @@ func (fs FlagSet) AddToSelf(flags ...string) {
 }
 
 func (fs FlagSet) AddFlagSet(set FlagSet) FlagSet {
-	return fs.Add(maps.Values(set)...)
+	return fs.Add(utils.Values(set)...)
 }
 
 func (fs FlagSet) AddFlagSetToSelf(set FlagSet) {
-	fs.add(maps.Values(set)...)
+	fs.add(utils.Values(set)...)
 }
 
 func (fs FlagSet) add(flags ...string) {
@@ -191,7 +191,7 @@ func (fs FlagSet) Remove(flags ...string) FlagSet {
 }
 
 func (fs FlagSet) RemoveFlagSet(set FlagSet) FlagSet {
-	return fs.Remove(maps.Values(set)...)
+	return fs.Remove(utils.Values(set)...)
 }
 
 func (fs FlagSet) RemoveFromSelf(flags ...string) {
@@ -199,7 +199,7 @@ func (fs FlagSet) RemoveFromSelf(flags ...string) {
 }
 
 func (fs FlagSet) RemoveFlagSetFromSelf(set FlagSet) {
-	fs.Remove(maps.Values(set)...)
+	fs.Remove(utils.Values(set)...)
 }
 
 func (fs FlagSet) remove(flags ...string) {

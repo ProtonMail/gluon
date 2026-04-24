@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,9 +13,8 @@ import (
 	"github.com/ProtonMail/gluon/constants"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ticker"
-	"github.com/ProtonMail/gluon/internal/utils"
+	"github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/exp/slices"
 )
 
 var (

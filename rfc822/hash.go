@@ -6,12 +6,12 @@ import (
 	"encoding/base64"
 	"io"
 	"mime/quotedprintable"
+	"slices"
 	"strings"
 
+	pkgutils "github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/ProtonMail/gluon/rfc5322"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 // GetMessageHash returns the hash of the given message.
@@ -77,7 +77,7 @@ func GetMessageHash(b []byte) (string, error) {
 				return err
 			}
 
-			keys := maps.Keys(values)
+			keys := pkgutils.Keys(values)
 			slices.Sort(keys)
 
 			for _, k := range keys {

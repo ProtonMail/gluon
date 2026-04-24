@@ -2,9 +2,9 @@ package response
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/ProtonMail/gluon/imap"
-	"golang.org/x/exp/slices"
 )
 
 type itemCapability struct {

@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"slices"
+
 	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/events"
 	"github.com/ProtonMail/gluon/imap"
@@ -29,7 +31,6 @@ import (
 	"github.com/ProtonMail/gluon/version"
 	"github.com/emersion/go-imap/utf7"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/exp/slices"
 )
 
 const maxSessionError = 20

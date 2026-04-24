@@ -3,7 +3,7 @@ package response
 import (
 	"strconv"
 
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 type search struct {

@@ -1,11 +1,11 @@
 package state
 
 import (
+	"slices"
 	"strings"
 
-	"github.com/ProtonMail/gluon/internal/utils"
+	"github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/bradenaw/juniper/xslices"
-	"golang.org/x/exp/slices"
 )
 
 // listSuperiors returns all names superior to the given name, if hierarchies are indicated with the given delimiter.

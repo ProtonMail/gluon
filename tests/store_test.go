@@ -2,7 +2,7 @@ package tests
 
 import (
 	"fmt"
-	"golang.org/x/exp/slices"
+	"slices"
 	"strings"
 	"testing"
 

@@ -14,7 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/response"
-	"github.com/ProtonMail/gluon/internal/utils"
+	"github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"

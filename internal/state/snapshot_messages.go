@@ -3,10 +3,11 @@ package state
 import (
 	"fmt"
 
+	"slices"
+
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/imap/command"
-	"golang.org/x/exp/slices"
 )
 
 var ErrOutOfOrderUIDInsertion = fmt.Errorf("UIDs must be strictly ascending")

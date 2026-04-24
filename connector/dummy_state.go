@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gluon/imap"
+	"github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/google/uuid"
-	"golang.org/x/exp/maps"
 )
 
 type dummyState struct {
@@ -61,7 +61,7 @@ func (state *dummyState) getMailboxes() []imap.Mailbox {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	return xslices.Map(maps.Keys(state.mailboxes), func(mboxID imap.MailboxID) imap.Mailbox {
+	return xslices.Map(utils.Keys(state.mailboxes), func(mboxID imap.MailboxID) imap.Mailbox {
 		return state.toMailbox(mboxID)
 	})
 }
@@ -132,7 +132,7 @@ func (state *dummyState) getMessages() []imap.Message {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	return xslices.Map(maps.Keys(state.messages), func(messageID imap.MessageID) imap.Message {
+	return xslices.Map(utils.Keys(state.messages), func(messageID imap.MessageID) imap.Message {
 		return state.toMessage(messageID)
 	})
 }
@@ -149,7 +149,7 @@ func (state *dummyState) getMessageCreatedUpdate(id imap.MessageID) (*imap.Messa
 	return &imap.MessageCreated{
 		Message:       state.toMessage(id),
 		Literal:       msg.literal,
-		MailboxIDs:    maps.Keys(msg.mboxIDs),
+		MailboxIDs:    utils.Keys(msg.mboxIDs),
 		ParsedMessage: msg.parsed,
 	}, nil
 }
@@ -170,7 +170,7 @@ func (state *dummyState) getMailboxIDs(messageID imap.MessageID) []imap.MailboxI
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	return maps.Keys(state.messages[messageID].mboxIDs)
+	return utils.Keys(state.messages[messageID].mboxIDs)
 }
 
 // nolint: unused

@@ -4,18 +4,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
-	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/observability/metrics"
+	pkgutils "github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xslices"
-	"golang.org/x/exp/slices"
 )
 
 func (state *State) actionCreateAndGetMailbox(ctx context.Context, tx db.Transaction, name string, uidValidity imap.UID) ([]Update, *db.Mailbox, error) {
@@ -250,7 +250,7 @@ func (state *State) actionAddMessagesToMailbox(
 			return nil, nil, err
 		}
 
-		if remMessageIDs := utils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
+		if remMessageIDs := pkgutils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 			return slices.Contains(haveMessageIDs, messageID.InternalID)
 		}); len(remMessageIDs) > 0 {
 			updates, err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxID)
@@ -300,7 +300,7 @@ func (state *State) actionAddRecoveredMessagesToMailbox(
 		return nil, nil, err
 	}
 
-	toAdd := utils.Filter(messageIDs, func(t db.MessageIDPair) bool {
+	toAdd := pkgutils.Filter(messageIDs, func(t db.MessageIDPair) bool {
 		return !slices.Contains(filter, t.InternalID)
 	})
 
@@ -510,7 +510,7 @@ func (state *State) actionRemoveMessagesFromMailbox(
 		return nil, err
 	}
 
-	messageIDs = utils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
+	messageIDs = pkgutils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 		return slices.Contains(haveMessageIDs, messageID.InternalID)
 	})
 
@@ -553,7 +553,7 @@ func (state *State) actionMoveMessages(
 			return nil, nil, err
 		}
 
-		if remMessageIDs := utils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
+		if remMessageIDs := pkgutils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 			return slices.Contains(messageIDsToAdd, messageID.InternalID)
 		}); len(remMessageIDs) > 0 {
 			updates, err := state.actionRemoveMessagesFromMailboxUnchecked(ctx, tx, remMessageIDs, mboxToID)
@@ -570,7 +570,7 @@ func (state *State) actionMoveMessages(
 		return nil, nil, err
 	}
 
-	messagesIDsToMove := utils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
+	messagesIDsToMove := pkgutils.Filter(messageIDs, func(messageID db.MessageIDPair) bool {
 		return slices.Contains(messageInFromMBox, messageID.InternalID)
 	})
 
