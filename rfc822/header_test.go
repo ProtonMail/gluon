@@ -1,10 +1,10 @@
 package rfc822
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
-	"github.com/bradenaw/juniper/xslices"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -293,7 +293,7 @@ func TestSetHeaderValue(t *testing.T) {
 	const literal = "To: user@pm.me"
 
 	// Create a clone so we can test this with mutable memory.
-	literalBytes := xslices.Clone([]byte(literal))
+	literalBytes := slices.Clone([]byte(literal))
 
 	newHeader, err := SetHeaderValue(literalBytes, "foo", "bar")
 	require.NoError(t, err)

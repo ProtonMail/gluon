@@ -156,7 +156,7 @@ func TestRecoveryMBoxCanBeExpunged(t *testing.T) {
 		status, err := client.Select(ids.GluonRecoveryMailboxName, false)
 		require.NoError(t, err)
 		require.Equal(t, uint32(1), status.Messages)
-		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 		require.NoError(t, client.Expunge(nil))
 		status, err = client.Status(ids.GluonRecoveryMailboxName, []goimap.StatusItem{goimap.StatusMessages})
 		require.NoError(t, err)

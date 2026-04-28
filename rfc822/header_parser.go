@@ -109,11 +109,7 @@ func (hp *headerParser) next() (parsedHeaderEntry, error) {
 		searchOffset++
 	}
 
-	if searchOffset < headerLen {
-		result.valueStart = searchOffset
-	} else {
-		result.valueStart = headerLen
-	}
+	result.valueStart = min(searchOffset, headerLen)
 
 	for searchOffset < headerLen {
 		b := hp.header[searchOffset]

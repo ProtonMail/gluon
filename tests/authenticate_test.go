@@ -12,7 +12,7 @@ import (
 )
 
 func base64AuthString(username, password string) string {
-	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("\x00%v\x00%v", username, password)))
+	return base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "\x00%v\x00%v", username, password))
 }
 
 func TestAuthenticateSuccess(t *testing.T) {
@@ -93,7 +93,6 @@ func TestAuthenticateTooManyAttemptsMany(t *testing.T) {
 
 		// All clients should be jailed for 1 sec.
 		for _, i := range []int{1, 2, 3} {
-			i := i
 			tag := fmt.Sprintf("A%03d", i)
 
 			wg.Go(func() {

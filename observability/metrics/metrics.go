@@ -5,12 +5,12 @@ import "time"
 const schemaName = "bridge_gluon_errors_total"
 const schemaVersion = 1
 
-func generateGluonErrorMetric(errorType string) map[string]interface{} {
-	return map[string]interface{}{
+func generateGluonErrorMetric(errorType string) map[string]any {
+	return map[string]any{
 		"Name":      schemaName,
 		"Version":   schemaVersion,
 		"Timestamp": time.Now().Unix(),
-		"Data": map[string]interface{}{
+		"Data": map[string]any{
 			"Value": 1,
 			"Labels": map[string]string{
 				"errorType": errorType,
@@ -19,42 +19,42 @@ func generateGluonErrorMetric(errorType string) map[string]interface{} {
 	}
 }
 
-func GenerateFailedParseIMAPCommandMetric() map[string]interface{} {
+func GenerateFailedParseIMAPCommandMetric() map[string]any {
 	return generateGluonErrorMetric("failedParseIMAPCommand")
 }
 
-func GenerateFailedToCreateMailbox() map[string]interface{} {
+func GenerateFailedToCreateMailbox() map[string]any {
 	return generateGluonErrorMetric("failedCreateMailbox")
 }
 
-func GenerateFailedToDeleteMailboxMetric() map[string]interface{} {
+func GenerateFailedToDeleteMailboxMetric() map[string]any {
 	return generateGluonErrorMetric("failedDeleteMailbox")
 }
 
-func GenerateFailedToCopyMessagesMetric() map[string]interface{} {
+func GenerateFailedToCopyMessagesMetric() map[string]any {
 	return generateGluonErrorMetric("failedCopyMessages")
 }
 
-func GenerateFailedToMoveMessagesFromMailboxMetric() map[string]interface{} {
+func GenerateFailedToMoveMessagesFromMailboxMetric() map[string]any {
 	return generateGluonErrorMetric("failedMoveMessagesFromMailbox")
 }
 
-func GenerateFailedToRemoveDeletedMessagesMetric() map[string]interface{} {
+func GenerateFailedToRemoveDeletedMessagesMetric() map[string]any {
 	return generateGluonErrorMetric("failedRemoveDeletedMessages")
 }
 
-func GenerateFailedToCommitDatabaseTransactionMetric() map[string]interface{} {
+func GenerateFailedToCommitDatabaseTransactionMetric() map[string]any {
 	return generateGluonErrorMetric("failedCommitDatabaseTransaction")
 }
 
-func GenerateAppendToDraftsMustNotReturnExistingRemoteID() map[string]interface{} {
+func GenerateAppendToDraftsMustNotReturnExistingRemoteID() map[string]any {
 	return generateGluonErrorMetric("appendToDraftsReturnedExistingRemoteID")
 }
 
-func GenerateDatabaseMigrationFailed() map[string]interface{} {
+func GenerateDatabaseMigrationFailed() map[string]any {
 	return generateGluonErrorMetric("databaseMigrationFailed")
 }
 
-func GenerateFailedToStoreFlagsOnMessages() map[string]interface{} {
+func GenerateFailedToStoreFlagsOnMessages() map[string]any {
 	return generateGluonErrorMetric("failedToStoreFlagsOnMessages")
 }

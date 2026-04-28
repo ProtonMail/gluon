@@ -19,7 +19,7 @@ func TestCounts(t *testing.T) {
 			require.Equal(t, 0, count)
 		}
 
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			require.NoError(t, doAppendWithClientFromFile(t, client, "INBOX", "testdata/afternoon-meeting.eml", time.Now(), goimap.SeenFlag))
 		}
 	})

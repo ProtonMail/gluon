@@ -20,7 +20,8 @@ type RollingCounter struct {
 
 	log *logrus.Entry
 
-	newConnectionThreshold int
+	observabilityConnectionThreshold int
+	connectionLimitThreshold         int
 
 	numberOfBuckets int
 	buckets         []int
@@ -35,17 +36,19 @@ type RollingCounter struct {
 	connProvider        openConnectionProvider
 }
 
-func NewRollingCounter(newConnectionTreshold, numberOfBuckets int, bucketRotationInterval time.Duration) *RollingCounter {
+func NewRollingCounter(connectionLimitThreshold, observabilityConnectionThreshold, numberOfBuckets int, bucketRotationInterval time.Duration) *RollingCounter {
 	log := logrus.WithFields(logrus.Fields{
-		"pkg":       "gluon/rollingcounter",
-		"threshold": newConnectionTreshold,
+		"pkg":                              "gluon/rollingcounter",
+		"connectionLimitThreshold":         connectionLimitThreshold,
+		"observabilityConnectionThreshold": observabilityConnectionThreshold,
 	})
 
 	rc := &RollingCounter{
-		newConnectionThreshold: newConnectionTreshold,
-		numberOfBuckets:        numberOfBuckets,
-		bucketRotationInterval: bucketRotationInterval,
-		log:                    log,
+		observabilityConnectionThreshold: observabilityConnectionThreshold,
+		connectionLimitThreshold:         connectionLimitThreshold,
+		numberOfBuckets:                  numberOfBuckets,
+		bucketRotationInterval:           bucketRotationInterval,
+		log:                              log,
 	}
 
 	return rc
@@ -74,20 +77,18 @@ func (rc *RollingCounter) Start(ctx context.Context, obsSender observability.Sen
 }
 
 func (rc *RollingCounter) run() {
-	rc.wg.Add(1)
-	go func() {
-		defer rc.wg.Done()
+	rc.wg.Go(func() {
 		for {
 			select {
 			case <-rc.ctx.Done():
 				return
 
 			case <-rc.bucketRotationTicker.C:
-				rc.thresholdCheck()
+				rc.observabilityThresholdCheck()
 				rc.onBucketRotationTick()
 			}
 		}
-	}()
+	})
 }
 
 func (rc *RollingCounter) Stop() {
@@ -105,9 +106,10 @@ func (rc *RollingCounter) withBucketLock(fn func()) {
 	fn()
 }
 
-func (rc *RollingCounter) thresholdCheck() {
+func (rc *RollingCounter) observabilityThresholdCheck() {
 	rollingCount := rc.GetRollingCount()
-	if rollingCount < rc.newConnectionThreshold {
+
+	if rollingCount < rc.observabilityConnectionThreshold {
 		return
 	}
 
@@ -135,9 +137,24 @@ func (rc *RollingCounter) NewConnection() {
 }
 
 func (rc *RollingCounter) GetRollingCount() int {
+	return rc.getRollingCounterSafe()
+}
+
+func (rc *RollingCounter) OverConnectionLimitThreshold() bool {
 	rc.bucketLock.Lock()
 	defer rc.bucketLock.Unlock()
 
+	return rc.getRollingCountUnsafe() >= rc.connectionLimitThreshold
+}
+
+func (rc *RollingCounter) getRollingCounterSafe() int {
+	rc.bucketLock.Lock()
+	defer rc.bucketLock.Unlock()
+
+	return rc.getRollingCountUnsafe()
+}
+
+func (rc *RollingCounter) getRollingCountUnsafe() int {
 	var rollingCount int
 	for _, count := range rc.buckets {
 		rollingCount += count

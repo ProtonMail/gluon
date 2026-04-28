@@ -17,7 +17,7 @@ func CreateRandomState(st store.Store, count uint) ([]imap.InternalMessageID, er
 	uuids := make([]imap.InternalMessageID, 0, count)
 	data := make([]byte, *flags.StoreItemSize)
 
-	for i := uint(0); i < count; i++ {
+	for range count {
 		uuid := imap.NewInternalMessageID()
 
 		if err := st.Set(uuid, bytes.NewReader(data)); err != nil {
@@ -65,10 +65,7 @@ func RunStoreWorkersSplitRange(ctx context.Context, st store.Store, length uint,
 	workDivision := length / *flags.StoreWorkers
 
 	return RunStoreWorkers(ctx, st, func(ctx context.Context, s store.Store, collector *timing.Collector, u uint) error {
-		end := workDivision * (u + 1)
-		if end > length {
-			end = length
-		}
+		end := min(workDivision*(u+1), length)
 
 		return fn(ctx, st, collector, u*workDivision, end)
 	})

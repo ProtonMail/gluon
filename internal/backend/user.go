@@ -16,11 +16,11 @@ import (
 	"github.com/ProtonMail/gluon/logging"
 	"github.com/ProtonMail/gluon/observability"
 	"github.com/ProtonMail/gluon/observability/metrics"
+	pkgutils "github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/store"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/exp/maps"
 )
 
 type user struct {
@@ -298,8 +298,8 @@ func (user *user) removeState(ctx context.Context, st *state.State) error {
 			return nil, fmt.Errorf("no such state")
 		}
 
-		messageIDs = xslices.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
-			return xslices.CountFunc(maps.Values(user.states), func(other *state.State) bool {
+		messageIDs = pkgutils.Filter(messageIDs, func(messageID imap.InternalMessageID) bool {
+			return xslices.CountFunc(pkgutils.Values(user.states), func(other *state.State) bool {
 				return st != other && other.HasMessage(messageID)
 			}) == 0
 		})
@@ -372,7 +372,7 @@ func (user *user) cleanupStaleStoreData(ctx context.Context) error {
 		return err
 	}
 
-	idsToDelete := xslices.Filter(storeIds, func(id imap.InternalMessageID) bool {
+	idsToDelete := pkgutils.Filter(storeIds, func(id imap.InternalMessageID) bool {
 		_, ok := dbIdMap[id]
 
 		return !ok

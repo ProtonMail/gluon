@@ -26,7 +26,7 @@ func NewParallelSeqSetFromFile(path string, numWorkers uint) (*ParallelSeqSet, e
 	}
 
 	seqSets := make([][]*imap.SeqSet, numWorkers)
-	for i := uint(0); i < numWorkers; i++ {
+	for i := range numWorkers {
 		seqSets[i] = list
 	}
 
@@ -43,11 +43,11 @@ func NewParallelSeqSetExpunge(count uint32, numWorkers uint, generateIntervals, 
 	workerSplit := count / uint32(numWorkers)
 	available := make([]uint32, count)
 
-	for r := uint32(0); r < count; r++ {
+	for r := range count {
 		available[r] = r + 1
 	}
 
-	for i := uint(0); i < numWorkers; i++ {
+	for i := range numWorkers {
 		available := available[(uint32(i) * workerSplit):(uint32(i+1) * workerSplit)]
 		list := make([]*imap.SeqSet, 0, workerSplit)
 
@@ -80,7 +80,7 @@ func NewParallelSeqSetExpunge(count uint32, numWorkers uint, generateIntervals, 
 			}
 		} else {
 			count := uint32(len(available))
-			for r := uint32(0); r < count; r++ {
+			for r := range count {
 				index := rand.Uint32() % (count - r)
 				seqSet := &imap.SeqSet{}
 				if uid {
@@ -106,12 +106,12 @@ func NewParallelSeqSetExpunge(count uint32, numWorkers uint, generateIntervals, 
 func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, randomDrain, uid bool) *ParallelSeqSet {
 	lists := make([][]*imap.SeqSet, numWorkers)
 
-	for i := uint(0); i < numWorkers; i++ {
+	for i := range numWorkers {
 		list := make([]*imap.SeqSet, 0, count)
 
 		if randomDrain {
 			available := make([]uint32, count)
-			for r := uint32(0); r < count; r++ {
+			for r := range count {
 				available[r] = r + 1
 			}
 
@@ -134,11 +134,7 @@ func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, r
 					if uid {
 						seqSet.AddRange(available[index], available[index+intervalRange-1])
 					} else {
-						endSeq := index + intervalRange + 1
-
-						if endSeq > itemsLeft {
-							endSeq = itemsLeft
-						}
+						endSeq := min(index+intervalRange+1, itemsLeft)
 
 						seqSet.AddRange(index+1, endSeq)
 					}
@@ -153,7 +149,7 @@ func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, r
 					available = append(available[:cutIndex], available[index+intervalRange:]...)
 				}
 			} else {
-				for r := uint32(0); r < count; r++ {
+				for r := range count {
 					index := rand.Uint32() % (count - r)
 					seqSet := &imap.SeqSet{}
 					if uid {
@@ -167,7 +163,7 @@ func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, r
 				}
 			}
 		} else {
-			for r := uint32(0); r < count; r++ {
+			for range count {
 				var seqSet *imap.SeqSet
 				if !generateIntervals {
 					seqSet = RandomSequenceSetNum(count)
@@ -188,7 +184,7 @@ func NewParallelSeqSetRandom(count uint32, numWorkers uint, generateIntervals, r
 // NewParallelSeqSetAll generates once sequence set for each worker which covers everything (1:*).
 func NewParallelSeqSetAll(numWorkers uint) *ParallelSeqSet {
 	lists := make([][]*imap.SeqSet, numWorkers)
-	for i := uint(0); i < numWorkers; i++ {
+	for i := range numWorkers {
 		lists[i] = []*imap.SeqSet{NewSequenceSetAll()}
 	}
 

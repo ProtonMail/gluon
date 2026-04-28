@@ -22,7 +22,6 @@ func TestSeqSet(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 
 		t.Run(tc.want, func(t *testing.T) {
 			assert.Equal(t, tc.want, NewSeqSet(tc.have).String())

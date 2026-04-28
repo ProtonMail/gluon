@@ -1,13 +1,13 @@
 package imap
 
 import (
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 )
 
 func TestEpochUIDValidityGenerator_Generate(t *testing.T) {
@@ -17,7 +17,7 @@ func TestEpochUIDValidityGenerator_Generate(t *testing.T) {
 
 	var uids = make([]UID, UIDCount)
 
-	for i := 0; i < UIDCount; i++ {
+	for i := range UIDCount {
 		uid, err := generator.Generate()
 		require.NoError(t, err)
 
@@ -29,7 +29,7 @@ func TestEpochUIDValidityGenerator_Generate(t *testing.T) {
 	uid, err := generator.Generate()
 	require.NoError(t, err)
 
-	for i := 0; i < UIDCount-1; i++ {
+	for i := range UIDCount - 1 {
 		assert.Less(t, uids[i], uids[i+1])
 	}
 
@@ -51,7 +51,7 @@ func TestEpochUIDValidityGenerator_GenerateParallel(t *testing.T) {
 
 	slices.Sort(uids)
 
-	for i := 0; i < UIDCount-1; i++ {
+	for i := range UIDCount - 1 {
 		assert.Less(t, uids[i], uids[i+1])
 	}
 }

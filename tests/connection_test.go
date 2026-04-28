@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -16,7 +17,6 @@ import (
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 )
 
 func withTag(fn func(string)) {
@@ -30,7 +30,7 @@ func lines(lines ...string) string {
 func repeat(line string, n int) []string {
 	var res []string
 
-	for i := 0; i < n; i++ {
+	for range n {
 		res = append(res, line)
 	}
 
@@ -38,13 +38,16 @@ func repeat(line string, n int) []string {
 }
 
 func seq(begin, end int) string {
-	var res string
+	var res strings.Builder
 
 	for i := begin; i < end; i++ {
-		res += strconv.Itoa(i) + " "
+		res.WriteString(strconv.Itoa(i))
+		res.WriteString(" ")
 	}
 
-	return res + strconv.Itoa(end)
+	res.WriteString(strconv.Itoa(end))
+
+	return res.String()
 }
 
 type testConnection struct {
@@ -89,7 +92,7 @@ func (s *testConnection) Sx(want ...string) *testConnection {
 	var bad []string
 
 	for _, have := range s.readN(len(want)) {
-		if idx := xslices.IndexFunc(want, func(want string) bool {
+		if idx := slices.IndexFunc(want, func(want string) bool {
 			return regexp.MustCompile(want).Match(have)
 		}); idx >= 0 {
 			want = slices.Delete(want, idx, idx+1)
@@ -119,7 +122,7 @@ func (s *testConnection) Sxe(want ...string) *testConnection {
 	for len(want) > 0 {
 		have := s.read()
 
-		if idx := xslices.IndexFunc(want, func(want string) bool {
+		if idx := slices.IndexFunc(want, func(want string) bool {
 			return regexp.MustCompile(want).Match(have)
 		}); idx >= 0 {
 			want = slices.Delete(want, idx, idx+1)
@@ -217,7 +220,7 @@ func (s *testConnection) read() []byte {
 func (s *testConnection) readN(n int) [][]byte {
 	var res [][]byte
 
-	for i := 0; i < n; i++ {
+	for range n {
 		res = append(res, s.read())
 	}
 

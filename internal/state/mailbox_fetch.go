@@ -14,6 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/contexts"
 	"github.com/ProtonMail/gluon/internal/response"
+	"github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/parallel"
 	"github.com/bradenaw/juniper/xslices"
@@ -107,12 +108,9 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 	if !contexts.IsParallelismDisabledCtx(ctx) && (len(snapMessages) > minCountForParallelism || (len(snapMessages) > 1 && needsLiteral)) {
 		// If multiple fetch request are happening in parallel, reduce the number of goroutines in proportion to that
 		// to avoid overloading the user's machine.
-		parallelism = runtime.NumCPU() / int(activeFetchRequests)
-
-		// make sure that if division hits 0, we run single threaded rather than use MAXGOPROCS
-		if parallelism < 1 {
-			parallelism = 1
-		}
+		parallelism = max(
+			// make sure that if division hits 0, we run single threaded rather than use MAXGOPROCS
+			runtime.NumCPU()/int(activeFetchRequests), 1)
 	} else {
 		parallelism = 1
 	}
@@ -177,7 +175,7 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 		return err
 	}
 
-	msgsToBeMarkedSeen := xslices.Filter(snapMessages, func(s snapMsgWithSeq) bool {
+	msgsToBeMarkedSeen := utils.Filter(snapMessages, func(s snapMsgWithSeq) bool {
 		return s.snapMsg != nil
 	})
 

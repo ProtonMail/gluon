@@ -9,7 +9,7 @@ import (
 
 type recoverHandler struct{}
 
-func (h recoverHandler) HandlePanic(r interface{}) {
+func (h recoverHandler) HandlePanic(r any) {
 	fmt.Println("recoverHandler", r)
 }
 

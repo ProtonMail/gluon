@@ -105,7 +105,7 @@ func (conn *Dummy) MessagesCreated(messages []imap.Message, literals [][]byte, m
 
 	var updates []*imap.MessageCreated
 
-	for i := 0; i < len(messages); i++ {
+	for i := range messages {
 		parsedMessage, err := imap.NewParsedMessage(literals[i])
 		if err != nil {
 			return err

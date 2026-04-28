@@ -5,8 +5,8 @@ var messageErrorMetricType int
 var otherErrorMetricType int
 
 type Sender interface {
-	AddMetrics(metrics ...map[string]interface{})
-	AddDistinctMetrics(errType interface{}, metrics ...map[string]interface{})
+	AddMetrics(metrics ...map[string]any)
+	AddDistinctMetrics(errType any, metrics ...map[string]any)
 	AddIMAPConnectionsExceededThresholdMetric(totalOpenIMAPConnections, newIMAPConnections int)
 }
 

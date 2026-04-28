@@ -39,7 +39,7 @@ func TestSelectWhileSyncing(t *testing.T) {
 		}()
 
 		// Select a bunch of mailboxes.
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			mboxName := mailboxNames[rand.Int()%len(mailboxNames)] //nolint:gosec
 			_, err := client.Select(mboxName, false)
 			require.NoError(t, err)
@@ -60,7 +60,7 @@ func TestTwoFetchesAtOnce(t *testing.T) {
 	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
 		mboxID := s.mailboxCreated("user", []string{"mbox"})
 
-		for i := 0; i < 1000; i++ {
+		for range 1000 {
 			s.messageCreatedFromFile("user", mboxID, `testdata/multipart-mixed.eml`, `\Seen`)
 		}
 

@@ -29,7 +29,7 @@ func TestExpungeSingle(t *testing.T) {
 
 		require.NoError(t, client.Append("mbox", []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral("To: 1@pm.me"))))
 
-		messages := storeWithRetrievalClient(t, client, createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
+		messages := storeWithRetrievalClient(t, client, createSeqSet("1"), goimap.AddFlags, []any{goimap.DeletedFlag})
 		require.Len(t, messages, 1)
 		require.ElementsMatch(t, messages[0].Flags, []string{goimap.SeenFlag, goimap.DeletedFlag, goimap.RecentFlag})
 		expungedIds := expungeClient(t, client)
@@ -76,7 +76,7 @@ func TestExpungeInterval(t *testing.T) {
 		for i := 1; i <= 4; i++ {
 			require.NoError(t, client.Append("mbox", []string{goimap.SeenFlag}, time.Now(), strings.NewReader(buildRFC5322TestLiteral(fmt.Sprintf(`To: %d@pm.me`, i)))))
 		}
-		messages := storeWithRetrievalClient(t, client, createSeqSet("1,3"), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
+		messages := storeWithRetrievalClient(t, client, createSeqSet("1,3"), goimap.AddFlags, []any{goimap.DeletedFlag})
 		require.Len(t, messages, 2)
 		for _, message := range messages {
 			require.ElementsMatch(t, message.Flags, []string{goimap.SeenFlag, goimap.DeletedFlag, goimap.RecentFlag})
@@ -91,17 +91,17 @@ func beforeOrAfterExpungeCheck(t *testing.T, client *client.Client, mailboxName 
 	// Shared code used to for checking the mailbox state after expunge for the
 	// TestExpungeWithAppendBeforeMailboxSelect and TestExpungeWithAppendAfterMailboxSelect
 	{
-		messages := storeWithRetrievalClient(t, client, createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
+		messages := storeWithRetrievalClient(t, client, createSeqSet("1"), goimap.AddFlags, []any{goimap.DeletedFlag})
 		require.Len(t, messages, 1)
 		require.ElementsMatch(t, messages[0].Flags, []string{goimap.SeenFlag, goimap.RecentFlag, goimap.DeletedFlag})
 	}
 	{
-		messages := storeWithRetrievalClient(t, client, createSeqSet("2"), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
+		messages := storeWithRetrievalClient(t, client, createSeqSet("2"), goimap.AddFlags, []any{goimap.DeletedFlag})
 		require.Len(t, messages, 1)
 		require.ElementsMatch(t, messages[0].Flags, []string{goimap.RecentFlag, goimap.DeletedFlag})
 	}
 	{
-		messages := storeWithRetrievalClient(t, client, createSeqSet("3"), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
+		messages := storeWithRetrievalClient(t, client, createSeqSet("3"), goimap.AddFlags, []any{goimap.DeletedFlag})
 		require.Len(t, messages, 1)
 		require.ElementsMatch(t, messages[0].Flags, []string{goimap.SeenFlag, goimap.RecentFlag, goimap.DeletedFlag})
 	}
@@ -169,7 +169,7 @@ func TestExpungeUID(t *testing.T) {
 		uidClient := uidplus.NewClient(client)
 
 		{
-			messages := storeWithRetrievalClient(t, client, createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
+			messages := storeWithRetrievalClient(t, client, createSeqSet("1"), goimap.AddFlags, []any{goimap.DeletedFlag})
 			require.Len(t, messages, 1)
 			require.ElementsMatch(t, messages[0].Flags, []string{goimap.SeenFlag, goimap.RecentFlag, goimap.DeletedFlag})
 		}
@@ -197,7 +197,7 @@ func TestExpungeUID(t *testing.T) {
 		}
 
 		{
-			messages := uidStoreWithRetrievalClient(t, client, createSeqSet("2,4"), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
+			messages := uidStoreWithRetrievalClient(t, client, createSeqSet("2,4"), goimap.AddFlags, []any{goimap.DeletedFlag})
 			require.Len(t, messages, 2)
 			for _, message := range messages {
 				require.ElementsMatch(t, message.Flags, []string{goimap.SeenFlag, goimap.RecentFlag, goimap.DeletedFlag})
@@ -232,7 +232,7 @@ func TestExpungeResponseSequence(t *testing.T) {
 		}
 
 		{
-			messages := storeWithRetrievalClient(t, client, createSeqSet("3,4,7,11"), goimap.AddFlags, []interface{}{goimap.DeletedFlag})
+			messages := storeWithRetrievalClient(t, client, createSeqSet("3,4,7,11"), goimap.AddFlags, []any{goimap.DeletedFlag})
 			require.Len(t, messages, 4)
 			for _, message := range messages {
 				require.ElementsMatch(t, message.Flags, []string{goimap.SeenFlag, goimap.RecentFlag, goimap.DeletedFlag})

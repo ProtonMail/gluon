@@ -163,7 +163,6 @@ func TestParseDateTime(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 
 		t.Run(test.input, func(t *testing.T) {
 			got, err := ParseDateTime(test.input)
@@ -196,7 +195,6 @@ func TestParseDateTimeObsolete(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 
 		t.Run(test.input, func(t *testing.T) {
 			got, err := ParseDateTime(test.input)
@@ -221,7 +219,6 @@ func TestParseDateTimeRelaxed(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 
 		t.Run(test.input, func(t *testing.T) {
 			got, err := ParseDateTime(test.input)
@@ -236,7 +233,6 @@ func TestParseDateTimeRejected(t *testing.T) {
 		`Mon, 25 Sep 2017 5:25:40 +02`,
 	}
 	for _, test := range tests {
-		test := test
 
 		t.Run(test, func(t *testing.T) {
 			_, err := ParseDateTime(test)

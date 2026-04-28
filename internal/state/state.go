@@ -14,6 +14,7 @@ import (
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/limits"
+	"github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/ProtonMail/gluon/reporter"
 	"github.com/ProtonMail/gluon/rfc822"
 	"github.com/bradenaw/juniper/xmaps"
@@ -95,7 +96,7 @@ func (state *State) List(ctx context.Context, ref, pattern string, lsub bool, fn
 			recoveryMBoxMessageCount = 0
 		}
 
-		mailboxes = xslices.Filter(mailboxes, func(mailbox *db.MailboxWithAttr) bool {
+		mailboxes = utils.Filter(mailboxes, func(mailbox *db.MailboxWithAttr) bool {
 			if mailbox.ID == recoveryMailboxID && recoveryMBoxMessageCount == 0 {
 				return false
 			}

@@ -1,7 +1,6 @@
 package connectioncounter_test
 
 import (
-	"context"
 	"sync"
 	"testing"
 	"time"
@@ -24,9 +23,9 @@ type mockObsSender struct {
 	lastOpenConns, lastNewlyOpenedConns int
 }
 
-func (m *mockObsSender) AddMetrics(_ ...map[string]interface{}) {}
+func (m *mockObsSender) AddMetrics(_ ...map[string]any) {}
 
-func (m *mockObsSender) AddDistinctMetrics(_ interface{}, _ ...map[string]interface{}) {}
+func (m *mockObsSender) AddDistinctMetrics(_ any, _ ...map[string]any) {}
 
 func (m *mockObsSender) AddIMAPConnectionsExceededThresholdMetric(openConns, newlyOpenedConns int) {
 	m.mu.Lock()
@@ -48,9 +47,12 @@ func (m *mockObsSender) LastValues() (int, int) {
 	return m.lastOpenConns, m.lastNewlyOpenedConns
 }
 
-func TestRollingCounter_ThresholdNotExceeded(t *testing.T) {
+func TestRollingCounter_ObservabilityThresholdNotExceeded(t *testing.T) {
+	observabilityThreshold := 5
+	connectionLimitThreshold := 5
 	rc := connectioncounter.NewRollingCounter(
-		5,
+		connectionLimitThreshold,
+		observabilityThreshold,
 		3,
 		100*time.Millisecond,
 	)
@@ -58,8 +60,7 @@ func TestRollingCounter_ThresholdNotExceeded(t *testing.T) {
 	mockSender := &mockObsSender{}
 	mockProvider := &mockConnProvider{openSessions: 10}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	rc.Start(ctx, mockSender, mockProvider)
 
@@ -76,10 +77,12 @@ func TestRollingCounter_ThresholdNotExceeded(t *testing.T) {
 	rc.Stop()
 }
 
-func TestRollingCounter_ThresholdExceeded(t *testing.T) {
-	newConnThreshold := 3
+func TestRollingCounter_ObservabilityThresholdExceeded(t *testing.T) {
+	observabilityThreshold := 3
+	connectionLimitThreshold := 5
 	rc := connectioncounter.NewRollingCounter(
-		newConnThreshold,
+		connectionLimitThreshold,
+		observabilityThreshold,
 		3,
 		100*time.Millisecond,
 	)
@@ -87,13 +90,12 @@ func TestRollingCounter_ThresholdExceeded(t *testing.T) {
 	mockSender := &mockObsSender{}
 	mockProvider := &mockConnProvider{openSessions: 7}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	rc.Start(ctx, mockSender, mockProvider)
 
-	newConnsOpened := newConnThreshold * 5
-	for i := 0; i < newConnsOpened; i++ {
+	newConnsOpened := observabilityThreshold * 5
+	for range newConnsOpened {
 		rc.NewConnection()
 	}
 
@@ -108,23 +110,50 @@ func TestRollingCounter_ThresholdExceeded(t *testing.T) {
 	rc.Stop()
 }
 
+func TestRollingCounter_ConnectionLimitThresholdExceeded(t *testing.T) {
+	observabilityThreshold := 3
+	connectionLimitThreshold := 3
+	rc := connectioncounter.NewRollingCounter(
+		connectionLimitThreshold,
+		observabilityThreshold,
+		3,
+		100*time.Millisecond,
+	)
+
+	mockSender := &mockObsSender{}
+	mockProvider := &mockConnProvider{openSessions: 7}
+
+	ctx := t.Context()
+
+	rc.Start(ctx, mockSender, mockProvider)
+
+	newConnsOpened := observabilityThreshold * 5
+	for range newConnsOpened {
+		rc.NewConnection()
+	}
+	assert.Equal(t, rc.GetRollingCount(), newConnsOpened)
+	assert.True(t, rc.OverConnectionLimitThreshold())
+
+	rc.Stop()
+}
+
 func TestRollingCounter_BucketRotation(t *testing.T) {
 	jitterPeriod := 50 * time.Millisecond
 	bucketRotationInterval := 500 * time.Millisecond
 	rc := connectioncounter.NewRollingCounter(
+		100,
 		100,
 		3,
 		bucketRotationInterval,
 	)
 
 	post10Connections := func() {
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			rc.NewConnection()
 		}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	mockSender := &mockObsSender{}
 	mockProvider := &mockConnProvider{}

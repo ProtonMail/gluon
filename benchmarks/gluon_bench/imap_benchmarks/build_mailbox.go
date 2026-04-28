@@ -35,7 +35,7 @@ func BuildMailbox(cl *client.Client, mailbox string, messageCount int) error {
 func BuildMailboxWithMessages(cl *client.Client, mailbox string, messageCount int, messages []string) error {
 	messagesLen := len(messages)
 
-	for i := 0; i < messageCount; i++ {
+	for i := range messageCount {
 		literal := fmt.Sprintf("To: %v@a.com\r\nFrom: %v@a.com\r\n", uuid.NewString(), uuid.NewString()) + messages[i%messagesLen]
 		if err := AppendToMailbox(cl, mailbox, literal, time.Now()); err != nil {
 			return err

@@ -6,12 +6,12 @@ import (
 	"encoding/base64"
 	"io"
 	"mime/quotedprintable"
+	"slices"
 	"strings"
 
+	pkgutils "github.com/ProtonMail/gluon/pkg/utils"
 	"github.com/ProtonMail/gluon/rfc5322"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 // GetMessageHash returns the hash of the given message.
@@ -77,7 +77,7 @@ func GetMessageHash(b []byte) (string, error) {
 				return err
 			}
 
-			keys := maps.Keys(values)
+			keys := pkgutils.Keys(values)
 			slices.Sort(keys)
 
 			for _, k := range keys {
@@ -155,7 +155,7 @@ func hashBody(writer io.Writer, body []byte, mimeType MIMEType, encoding string)
 }
 
 func getAddresses(fieldAddr string) string {
-	var addresses string
+	var addresses strings.Builder
 
 	addrList, err := rfc5322.ParseAddressList(fieldAddr)
 	if err != nil {
@@ -163,8 +163,8 @@ func getAddresses(fieldAddr string) string {
 	}
 
 	for _, addr := range addrList {
-		addresses += addr.Address
+		addresses.WriteString(addr.Address)
 	}
 
-	return addresses
+	return addresses.String()
 }

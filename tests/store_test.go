@@ -2,7 +2,7 @@ package tests
 
 import (
 	"fmt"
-	"golang.org/x/exp/slices"
+	"slices"
 	"strings"
 	"testing"
 
@@ -361,7 +361,7 @@ func TestStoreFlagsPersistBetweenRuns(t *testing.T) {
 			builder.wantFlags(goimap.RecentFlag)
 		}).check()
 
-		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []interface{}{goimap.DeletedFlag}, nil))
+		require.NoError(t, client.Store(createSeqSet("1"), goimap.AddFlags, []any{goimap.DeletedFlag}, nil))
 	})
 
 	// Check if delete flag was persisted.
