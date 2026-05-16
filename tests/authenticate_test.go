@@ -73,7 +73,7 @@ func TestAuthenticateCapabilities(t *testing.T) {
 		c.C("A001 AUTHENTICATE PLAIN")
 		c.S("+")
 		c.C(base64AuthString("user", "pass"))
-		c.S(`A001 OK [CAPABILITY AUTH=PLAIN ID IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT] Logged in`)
+		c.S(`A001 OK [CAPABILITY AUTH=PLAIN ID IDLE IMAP4rev1 MOVE STARTTLS UIDPLUS UNSELECT X-GM-EXT-1] Logged in`)
 	})
 }
 
