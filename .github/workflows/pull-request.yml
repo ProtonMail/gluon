@@ -32,7 +32,7 @@ jobs:
       - name: Run govulncheck
         uses: ./.github/actions/govulncheck
         with:
-          go-version-input: 1.26.2
+          go-version-input: 1.26.3
           go-package: ./...
 
       - name: Run tests
