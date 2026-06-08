@@ -65,7 +65,23 @@ func TestParser_ParseQuotedInvalid(t *testing.T) {
 	for _, i := range inputs {
 		p := newTestParser(i)
 
-		_, err := p.ParseNumber()
+		_, err := p.ParseQuoted()
+		require.Error(t, err)
+	}
+}
+
+func TestParser_ParseQuotedEOF(t *testing.T) {
+	inputs := [][]byte{
+		[]byte(`"`),
+		[]byte(`"foo`),
+		[]byte(`"hello world`),
+		[]byte(`"\"`),
+	}
+
+	for _, i := range inputs {
+		p := newTestParser(i)
+
+		_, err := p.ParseQuoted()
 		require.Error(t, err)
 	}
 }
