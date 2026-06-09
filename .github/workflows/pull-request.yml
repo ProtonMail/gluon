@@ -8,7 +8,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-15, windows-latest]
+        os: [ubuntu-latest, macos-15, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Get sources
