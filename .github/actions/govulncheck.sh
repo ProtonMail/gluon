@@ -8,8 +8,6 @@ main(){
 
     jq -r '.finding | select( (.osv != null) and (.trace[0].function != null) ) | .osv ' < vulns.json > vulns_osv_ids.txt
 
-    ignore GO-2026-5037 "BRIDGE-565 crypto/x509 fixes quadratic cost of verifying large DNS SAN lists."
-
     has_vulns
 
     echo
