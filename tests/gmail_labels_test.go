@@ -10,7 +10,7 @@ import (
 // uses to tag mail over Proton Bridge IMAP.
 
 func TestGmailLabelsStoreFetchRoundTrip(t *testing.T) {
-	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withGmailExtension()), func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK CREATE")
 
@@ -53,7 +53,7 @@ func TestGmailLabelsStoreFetchRoundTrip(t *testing.T) {
 // Python's imaplib (used by Paperless-NGX) sends the label without parentheses.
 // This is the exact wire form Paperless emits, so it must round-trip.
 func TestGmailLabelsBareLabelForm(t *testing.T) {
-	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withGmailExtension()), func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK CREATE")
 
@@ -72,7 +72,7 @@ func TestGmailLabelsBareLabelForm(t *testing.T) {
 }
 
 func TestGmailLabelsWithSpaces(t *testing.T) {
-	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withGmailExtension()), func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK CREATE")
 
@@ -91,7 +91,7 @@ func TestGmailLabelsWithSpaces(t *testing.T) {
 }
 
 func TestGmailLabelsMultipleMessages(t *testing.T) {
-	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withGmailExtension()), func(c *testConnection, _ *testSession) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK CREATE")
 
@@ -120,7 +120,7 @@ func TestGmailLabelsMultipleMessages(t *testing.T) {
 // (NOT X-GM-LABELS "<tag>") and verifies tagging. The connector pushes the label
 // mailbox + membership asynchronously, so we flush before searching.
 func TestGmailLabelsSearchRoundTrip(t *testing.T) {
-	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t, withGmailExtension()), func(c *testConnection, s *testSession) {
 		c.C("b001 CREATE saved-messages")
 		c.S("b001 OK CREATE")
 
@@ -150,5 +150,32 @@ func TestGmailLabelsSearchRoundTrip(t *testing.T) {
 		c.C(`A005 SEARCH NOT X-GM-LABELS "Paperless"`)
 		c.S(`* SEARCH 2`)
 		c.OK(`A005`)
+	})
+}
+
+// With the Gmail extension disabled (the default), the X-GM-EXT-1 capability is
+// not advertised and the X-GM-LABELS STORE/FETCH/SEARCH commands are rejected
+// with BAD even if a non-compliant client sends them anyway.
+func TestGmailLabelsRejectedWhenDisabled(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		c.C("b001 CREATE saved-messages")
+		c.S("b001 OK CREATE")
+
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+
+		c.C(`A001 SELECT saved-messages`)
+		c.Se(`A001 OK [READ-WRITE] SELECT`)
+
+		c.C(`A002 STORE 1 +X-GM-LABELS ("Paperless")`)
+		c.Sx(`A002 BAD`)
+
+		c.C(`A003 FETCH 1 (X-GM-LABELS)`)
+		c.Sx(`A003 BAD`)
+
+		c.C(`A004 SEARCH X-GM-LABELS "Paperless"`)
+		c.Sx(`A004 BAD`)
+
+		c.C(`A005 SEARCH NOT X-GM-LABELS "Paperless"`)
+		c.Sx(`A005 BAD`)
 	})
 }
