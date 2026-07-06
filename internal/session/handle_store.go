@@ -32,6 +32,10 @@ func (s *Session) handleStore(ctx context.Context, tag string, cmd *command.Stor
 
 	// Route based on data item type: standard FLAGS vs Gmail X-GM-LABELS.
 	if cmd.DataItem == command.StoreDataItemGmailLabels {
+		if !s.enableGmailExtension {
+			return response.Bad(tag).WithError(errGmailExtensionDisabled), nil
+		}
+
 		return s.handleStoreGmailLabels(ctx, tag, cmd, mailbox, ch)
 	}
 

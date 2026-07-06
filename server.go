@@ -93,6 +93,9 @@ type Server struct {
 	// disableIMAPAuthenticate disables the IMAP AUTHENTICATE command (client can then only authenticate using LOGIN).
 	disableIMAPAuthenticate bool
 
+	// enableGmailExtension enables the non-standard Gmail X-GM-EXT-1 extension (capability advertisement + X-GM-LABELS handling).
+	enableGmailExtension bool
+
 	uidValidityGenerator imap.UIDValidityGenerator
 
 	panicHandler async.PanicHandler
@@ -377,7 +380,7 @@ func (s *Server) addSession(ctx context.Context, conn net.Conn) (*session.Sessio
 
 	nextID := s.getNextID()
 
-	s.sessions[nextID] = session.New(conn, s.backend, nextID, s.versionInfo, s.cmdExecProfBuilder, s.newEventCh(ctx), s.idleBulkTime, s.disableIMAPAuthenticate, s.panicHandler, s.featureFlagProvider)
+	s.sessions[nextID] = session.New(conn, s.backend, nextID, s.versionInfo, s.cmdExecProfBuilder, s.newEventCh(ctx), s.idleBulkTime, s.disableIMAPAuthenticate, s.enableGmailExtension, s.panicHandler, s.featureFlagProvider)
 
 	if s.tlsConfig != nil {
 		s.sessions[nextID].SetTLSConfig(s.tlsConfig)

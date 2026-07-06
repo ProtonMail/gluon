@@ -41,6 +41,7 @@ type serverBuilder struct {
 	disableParallelism       bool
 	imapLimits               limits.IMAP
 	disableIMAPAuthenticate  bool
+	enableGmailExtension     bool
 	uidValidityGenerator     imap.UIDValidityGenerator
 	panicHandler             async.PanicHandler
 	dbCI                     db.ClientInterface
@@ -136,6 +137,7 @@ func (builder *serverBuilder) build() (*Server, error) {
 		reporter:                 builder.reporter,
 		disableParallelism:       builder.disableParallelism,
 		disableIMAPAuthenticate:  builder.disableIMAPAuthenticate,
+		enableGmailExtension:     builder.enableGmailExtension,
 		uidValidityGenerator:     builder.uidValidityGenerator,
 		panicHandler:             builder.panicHandler,
 		observabilitySender:      builder.observabilitySender,
