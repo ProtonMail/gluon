@@ -69,7 +69,8 @@ func NewParser(s *Scanner) *Parser {
 }
 
 func NewParserWithLiteralContinuationCb(s *Scanner, f func(string) error) *Parser {
-	return &Parser{scanner: s, literalContinuationCb: f,
+	return &Parser{
+		scanner: s, literalContinuationCb: f,
 		previousToken: Token{
 			TType:  TokenTypeEOF,
 			Value:  0,
@@ -79,7 +80,8 @@ func NewParserWithLiteralContinuationCb(s *Scanner, f func(string) error) *Parse
 			TType:  TokenTypeEOF,
 			Value:  0,
 			Offset: 0,
-		}}
+		},
+	}
 }
 
 // ParseAString parses an astring according to RFC3501.
@@ -192,7 +194,6 @@ func (p *Parser) ParseLiteral() ([]byte, error) {
 
 	if literalSize >= 70*1024*1024 {
 		return nil, fmt.Errorf("literal size exceeds maximum size of 70MB")
-
 	}
 
 	if err := p.Consume(TokenTypeRCurly, "expected '}' for literal end"); err != nil {
@@ -557,7 +558,7 @@ func IsRespSpecial(tokenType TokenType) bool {
 }
 
 func IsQuotedChar(tokenType TokenType) bool {
-	return !IsQuotedSpecial(tokenType)
+	return !IsEOF(tokenType) && !IsQuotedSpecial(tokenType)
 }
 
 func IsCTL(tokenType TokenType) bool {
@@ -566,4 +567,8 @@ func IsCTL(tokenType TokenType) bool {
 
 func ByteToInt(b byte) int {
 	return int(b) - int(byte('0'))
+}
+
+func IsEOF(tokenType TokenType) bool {
+	return tokenType == TokenTypeEOF
 }
