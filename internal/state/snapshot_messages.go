@@ -322,6 +322,14 @@ func (list *snapMsgList) resolveSeqInterval(seqSet []command.SeqRange) ([]SeqInt
 }
 
 func (list *snapMsgList) resolveUIDInterval(seqSet []command.SeqRange) ([]UIDInterval, error) {
+	// An empty mailbox contains no UIDs, so any UID set matches nothing.
+	// Resolving against the empty snapshot would report ErrNoSuchMessage
+	// instead, turning e.g. a UID SEARCH on an empty mailbox into a NO reply;
+	// RFC 3501 requires non-existent UIDs to be ignored without error.
+	if list.len() == 0 {
+		return nil, nil
+	}
+
 	res := make([]UIDInterval, 0, len(seqSet))
 
 	for _, uidRange := range seqSet {
