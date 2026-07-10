@@ -130,6 +130,10 @@ func (c *paramList) addMap(writer parListWriter, v map[string]string) *paramList
 }
 
 func (c *paramList) addAddresses(writer parListWriter, v []*mail.Address) *paramList {
+	if len(v) == 0 {
+		return c.addString(writer, "")
+	}
+
 	c.onWrite(writer)
 
 	child := c.newChildList(writer)

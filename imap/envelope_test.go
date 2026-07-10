@@ -24,3 +24,32 @@ func TestEnvelope(t *testing.T) {
 
 	assert.Equal(t, "(\"Sat, 03 Apr 2021 15:13:53 +0000\" \"this is currently a draft\" ((NIL NIL \"somebody\" \"pm.me\")) ((NIL NIL \"somebody\" \"pm.me\")) ((NIL NIL \"somebody\" \"pm.me\")) ((\"Somebody\" NIL \"somebody\" \"pm.me\")) NIL NIL NIL \"<X9xiWTZnfxfC0wGLBI9t-WEJCOSO_pT67TjlDDKZxzs7TFRCvzCF8lCtqrflZ9n2Z8Ve3rhwYE-vzUGkgOJWaZK4VWMk_WbertE5uklqS8A=@pm.me>\")", envelope)
 }
+
+func TestEnvelopeEmptyAddressList(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		msg      string
+		envelope string
+	}{
+		"empty To": {
+			msg:      "From: a@b.com\r\nTo:\r\nSubject: test\r\n\r\nbody",
+			envelope: `(NIL "test" ((NIL NIL "a" "b.com")) ((NIL NIL "a" "b.com")) ((NIL NIL "a" "b.com")) NIL NIL NIL NIL NIL)`,
+		},
+		"empty Cc": {
+			msg:      "From: a@b.com\r\nTo: x@y.com\r\nCc:\r\nSubject: test\r\n\r\nbody",
+			envelope: `(NIL "test" ((NIL NIL "a" "b.com")) ((NIL NIL "a" "b.com")) ((NIL NIL "a" "b.com")) ((NIL NIL "x" "y.com")) NIL NIL NIL NIL)`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			header, err := rfc822.Parse([]byte(tc.msg)).ParseHeader()
+			require.NoError(t, err)
+
+			envelope, err := imap.Envelope(header)
+			require.NoError(t, err)
+			assert.Equal(t, tc.envelope, envelope)
+		})
+	}
+}
