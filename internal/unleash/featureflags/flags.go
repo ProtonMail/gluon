@@ -6,4 +6,5 @@ const (
 	ConnectionLimiterDisabled                 = "InboxBridgeGluonConnectionLimiterDisabled"
 	ConnectionLimiterDefaultLimitsDisabled    = "InboxBridgeGluonConnectionLimiterDefaultLimitsDisabled"
 	ConnectionCounterConnectionsLimitDisabled = "InboxBridgeGluonRollingCounterConnectionLimitDisabled"
+	MaximumMIMEStructureDepthDisabled         = "InboxBridgeGluonMaximumMimeStructureDepthLimitDisabled"
 )
