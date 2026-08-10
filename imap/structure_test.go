@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ProtonMail/gluon/internal/unleash"
+	"github.com/ProtonMail/gluon/internal/unleash/featureflags"
 	"github.com/stretchr/testify/require"
 )
 
@@ -75,15 +77,15 @@ hey there bro
 }
 
 func TestParseInvalidCharsInContenType(t *testing.T) {
-	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com> 
-To:  Ned Freed <ned@innosoft.com> 
-Subject: Sample message 
-MIME-Version: 1.0 
-Content-type: multipart/mixed; boundary="simple boundary" 
+	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com>
+To:  Ned Freed <ned@innosoft.com>
+Subject: Sample message
+MIME-Version: 1.0
+Content-type: multipart/mixed; boundary="simple boundary"
 
-This is the preamble.  It is to be ignored, though it 
-is a handy place for mail composers to include an 
-explanatory note to non-MIME compliant readers. 
+This is the preamble.  It is to be ignored, though it
+is a handy place for mail composers to include an
+explanatory note to non-MIME compliant readers.
 --simple boundary
 Content-type: text/plain; charset=us-ascii
 
@@ -95,7 +97,7 @@ X-Pm-Content-Encryption: on-import
 
 To: someone
 Subject: Fwd: embedded
-Content-type: multipart/mixed; boundary="embedded-boundary" 
+Content-type: multipart/mixed; boundary="embedded-boundary"
 
 --embedded-boundary
 Content-Type: GIF �ɮ�;
@@ -119,15 +121,15 @@ This is the epilogue.  It is also to be ignored.
 }
 
 func TestParseInvalidMimeType(t *testing.T) {
-	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com> 
-To:  Ned Freed <ned@innosoft.com> 
-Subject: Sample message 
-MIME-Version: 1.0 
-Content-type: multipart/mixed; boundary="simple boundary" 
+	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com>
+To:  Ned Freed <ned@innosoft.com>
+Subject: Sample message
+MIME-Version: 1.0
+Content-type: multipart/mixed; boundary="simple boundary"
 
-This is the preamble.  It is to be ignored, though it 
-is a handy place for mail composers to include an 
-explanatory note to non-MIME compliant readers. 
+This is the preamble.  It is to be ignored, though it
+is a handy place for mail composers to include an
+explanatory note to non-MIME compliant readers.
 --simple boundary
 Content-type: text/plain; charset=us-ascii
 
@@ -139,7 +141,7 @@ X-Pm-Content-Encryption: on-import
 
 To: someone
 Subject: Fwd: embedded
-Content-type: multipart/mixed; boundary="embedded-boundary" 
+Content-type: multipart/mixed; boundary="embedded-boundary"
 
 --embedded-boundary
 Content-Type: application/;
@@ -182,5 +184,51 @@ func FuzzNewParsedMessage(f *testing.F) {
 	f.Fuzz(func(t *testing.T, inputData []byte) {
 
 		_, _ = NewParsedMessage(inputData)
+	})
+}
+
+func TestMaxMIMEStructureDepthExceeded_KillSwitch_Disabled(t *testing.T) {
+	flags := map[string]bool{
+		featureflags.MaximumMIMEStructureDepthDisabled: false,
+	}
+	mockProvider := unleash.NewMockFeatureFlagValueProvider(flags)
+	unleash.Init(mockProvider)
+
+	eml, err := os.ReadFile(filepath.Join("testdata", "mime-structure-depth.eml"))
+	require.NoError(t, err)
+	_, err = NewParsedMessage(eml)
+	require.Error(t, err)
+	require.ErrorIs(t, err, errorMaximumMIMEStructureDepthExceeded)
+
+	t.Cleanup(func() {
+		unleash.Init(nil)
+	})
+}
+
+func TestMaxMIMEStructureDepthExceeded_KillSwitch_Enabled(t *testing.T) {
+	flags := map[string]bool{
+		featureflags.MaximumMIMEStructureDepthDisabled: true,
+	}
+	mockProvider := unleash.NewMockFeatureFlagValueProvider(flags)
+	unleash.Init(mockProvider)
+
+	eml, err := os.ReadFile(filepath.Join("testdata", "mime-structure-depth.eml"))
+	require.NoError(t, err)
+	_, err = NewParsedMessage(eml)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		unleash.Init(nil)
+	})
+}
+
+func TestMaxMIMEStructureDepthExceeded_NoFFProvider(t *testing.T) {
+	eml, err := os.ReadFile(filepath.Join("testdata", "mime-structure-depth.eml"))
+	require.NoError(t, err)
+	_, err = NewParsedMessage(eml)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		unleash.Init(nil)
 	})
 }
