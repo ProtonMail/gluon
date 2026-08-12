@@ -597,7 +597,7 @@ func (w writeOps) DeleteMessages(ctx context.Context, ids []imap.InternalMessage
 func (w writeOps) UpdateRemoteMessageID(ctx context.Context, internalID imap.InternalMessageID, remoteID imap.MessageID) error {
 	query := fmt.Sprintf(
 		"UPDATE %v SET `%v` = ? WHERE `%v` = ?",
-		v1.MessagesFieldID,
+		v1.MessagesTableName,
 		v1.MessagesFieldRemoteID,
 		v1.MessagesFieldID,
 	)
