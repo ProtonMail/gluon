@@ -407,7 +407,6 @@ func (user *user) applyMessagesCreated(ctx context.Context, update *imap.Message
 
 		return stateUpdates, nil
 	})
-
 	// Clean up cache messages that were created if the transaction failed.
 	if err != nil {
 		for _, message := range messagesToCreate {
@@ -502,7 +501,6 @@ func (user *user) applyMessageFlagsUpdated(ctx context.Context, update *imap.Mes
 
 	return userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
 		internalMsgID, err := tx.GetMessageIDFromRemoteID(ctx, update.MessageID)
-
 		if err != nil {
 			if db.IsErrNotFound(err) {
 				return nil, state.ErrNoSuchMessage
@@ -690,43 +688,42 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 		return err
 	}
 
+	// The store's per-message lock must never be acquired while the per-user DB write lock is held.
+	// This would potentially stall every DB access for the user leading to a deadlock
+	onDiskLiteral, err := user.store.Get(internalMessageID)
+	if err != nil {
+		user.log.Debugf("failed to retrieve literal from cache: %v", err)
+	}
+	updateLiteral := update.Literal
+	if id, err := rfc822.GetHeaderValue(updateLiteral, ids.InternalIDKey); err == nil {
+		if len(id) == 0 {
+			l, err := rfc822.SetHeaderValue(updateLiteral, ids.InternalIDKey, internalMessageID.String())
+			if err != nil {
+				log.WithError(err).Debug("failed to set header key, using update literal")
+			} else {
+				updateLiteral = l
+			}
+		}
+	} else {
+		log.Debug("Failed to get header value from literal, using update literal")
+	}
+
+	// We first check for a byte for byte match to avoid expensive structural comparison.
+	// If the literals are different, we then check for a structural match.
+	// If the literals are structurally equivalent - including headers, we treat it as literalUnchanged and avoid churning the internal ID/UID.
+	// If the literals are not structurally equivalent, we treat it as a new literal and apply the update.
+	literalUnchanged := bytes.Equal(onDiskLiteral, updateLiteral)
+	if !literalUnchanged && len(onDiskLiteral) > 0 {
+		if eq, err := rfc822.CompareLiterals(onDiskLiteral, updateLiteral); err != nil {
+			log.WithError(err).Debug("Failed to compare literals, treating as new literal")
+		} else if eq {
+			literalUnchanged = true
+		}
+	}
+
 	return userDBWrite(ctx, user, func(ctx context.Context, tx db.Transaction) ([]state.Update, error) {
-		// compare and see if the literal has changed.
-		onDiskLiteral, err := user.store.Get(internalMessageID)
-		if err != nil {
-			user.log.Debugf("failed to retrieve literal from cache: %v", err)
-		}
-
-		updateLiteral := update.Literal
-		if id, err := rfc822.GetHeaderValue(updateLiteral, ids.InternalIDKey); err == nil {
-			if len(id) == 0 {
-				l, err := rfc822.SetHeaderValue(updateLiteral, ids.InternalIDKey, internalMessageID.String())
-				if err != nil {
-					log.WithError(err).Debug("failed to set header key, using update literal")
-				} else {
-					updateLiteral = l
-				}
-			}
-		} else {
-			log.Debug("Failed to get header value from literal, using update literal")
-		}
-
-		// We first check for a byte for byte match to avoid expensive structural comparison.
-		// If the literals are different, we then check for a structural match.
-		// If the literals are structurally equivalent - including headers, we treat it as unchanged and avoid churning the internal ID/UID.
-		// If the literals are not structurally equivalent, we treat it as a new literal and apply the update.
-		unchanged := bytes.Equal(onDiskLiteral, updateLiteral)
-		if !unchanged && len(onDiskLiteral) > 0 {
-			if eq, err := rfc822.CompareLiterals(onDiskLiteral, updateLiteral); err != nil {
-				log.WithError(err).Debug("Failed to compare literals, treating as new literal")
-			} else if eq {
-				unchanged = true
-			}
-		}
-
-		if unchanged {
+		if literalUnchanged {
 			log.Debug("Message literal has no meaningful changes, assigning mailboxes only")
-
 			return user.applyMessageMailboxesOnlyUpdate(ctx, tx, internalMessageID, update)
 		}
 
@@ -781,7 +778,8 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 				return nil, err
 			}
 
-			if err := user.store.Set(newInternalID, literalReader); err != nil {
+			// newInternalID is just generated, there is need to fight for Set's lock on this operation.
+			if err := user.store.SetUnchecked(newInternalID, literalReader); err != nil {
 				return nil, err
 			}
 
