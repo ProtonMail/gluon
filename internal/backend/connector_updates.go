@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"slices"
 	"strings"
 
@@ -22,61 +23,68 @@ import (
 )
 
 // apply an incoming update originating from the connector.
-func (user *user) apply(ctx context.Context, update imap.Update) error {
+func (user *user) apply(ctx context.Context, update imap.Update) (err error) {
 	user.log.WithField("update", update).Debug("Applying update")
 
-	err := func() error {
-		switch update := update.(type) {
-		case *imap.MailboxCreated:
-			return user.applyMailboxCreated(ctx, update)
-
-		case *imap.MailboxDeleted:
-			return user.applyMailboxDeleted(ctx, update)
-
-		case *imap.MailboxDeletedSilent:
-			return user.applyMailboxDeletedSilent(ctx, update)
-
-		case *imap.MailboxUpdated:
-			return user.applyMailboxUpdated(ctx, update)
-
-		case *imap.MailboxIDChanged:
-			return user.applyMailboxIDChanged(ctx, update)
-
-		case *imap.MailboxUpdatedOrCreated:
-			return user.applyMailboxUpdatedOrCreated(ctx, update)
-
-		case *imap.MessagesCreated:
-			return user.applyMessagesCreated(ctx, update)
-
-		case *imap.MessageMailboxesUpdated:
-			return user.applyMessageMailboxesUpdated(ctx, update)
-
-		case *imap.MessageFlagsUpdated:
-			return user.applyMessageFlagsUpdated(ctx, update)
-
-		case *imap.MessageIDChanged:
-			return user.applyMessageIDChanged(ctx, update)
-
-		case *imap.MessageDeleted:
-			return user.applyMessageDeleted(ctx, update)
-
-		case *imap.MessageUpdated:
-			return user.applyMessageUpdated(ctx, update)
-
-		case *imap.UIDValidityBumped:
-			return user.applyUIDValidityBumped(ctx, update)
-
-		case *imap.Noop:
-			return nil
-
-		default:
-			return fmt.Errorf("bad update")
+	// A panic on a write doesn't block any Wait/WaitContext callers.
+	// This is so it doesnt kill per-user gouroutines.
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic while applying update: %v", r)
+			user.log.WithField("update", update).
+				WithField("stack", string(debug.Stack())).
+				Errorf("Recovered from panic while applying update: %v", r)
 		}
+
+		update.Done(err)
 	}()
 
-	update.Done(err)
+	switch update := update.(type) {
+	case *imap.MailboxCreated:
+		return user.applyMailboxCreated(ctx, update)
 
-	return err
+	case *imap.MailboxDeleted:
+		return user.applyMailboxDeleted(ctx, update)
+
+	case *imap.MailboxDeletedSilent:
+		return user.applyMailboxDeletedSilent(ctx, update)
+
+	case *imap.MailboxUpdated:
+		return user.applyMailboxUpdated(ctx, update)
+
+	case *imap.MailboxIDChanged:
+		return user.applyMailboxIDChanged(ctx, update)
+
+	case *imap.MailboxUpdatedOrCreated:
+		return user.applyMailboxUpdatedOrCreated(ctx, update)
+
+	case *imap.MessagesCreated:
+		return user.applyMessagesCreated(ctx, update)
+
+	case *imap.MessageMailboxesUpdated:
+		return user.applyMessageMailboxesUpdated(ctx, update)
+
+	case *imap.MessageFlagsUpdated:
+		return user.applyMessageFlagsUpdated(ctx, update)
+
+	case *imap.MessageIDChanged:
+		return user.applyMessageIDChanged(ctx, update)
+
+	case *imap.MessageDeleted:
+		return user.applyMessageDeleted(ctx, update)
+
+	case *imap.MessageUpdated:
+		return user.applyMessageUpdated(ctx, update)
+
+	case *imap.UIDValidityBumped:
+		return user.applyUIDValidityBumped(ctx, update)
+
+	case *imap.Noop:
+		return nil
+
+	default:
+		return fmt.Errorf("bad update")
+	}
 }
 
 // applyMailboxCreated applies a MailboxCreated update.
