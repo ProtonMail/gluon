@@ -119,6 +119,8 @@ func (builder *serverBuilder) build() (*Server, error) {
 		builder.featureFlagProvider = &unleash.NullFeatureFlagProvider{}
 	}
 
+	unleash.Init(builder.featureFlagProvider)
+
 	s := &Server{
 		dataDir:                  builder.dataDir,
 		databaseDir:              builder.databaseDir,

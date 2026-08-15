@@ -160,8 +160,7 @@ func newUser(
 
 	user.updateWG.Add(1)
 
-	// nolint:contextcheck
-	async.GoAnnotated(context.Background(), panicHandler, func(ctx context.Context) {
+	async.GoAnnotated(context.WithoutCancel(ctx), panicHandler, func(ctx context.Context) {
 		defer user.updateWG.Done()
 
 		updateCh := user.updateInjector.GetUpdates()
@@ -175,7 +174,8 @@ func newUser(
 
 				if err := user.apply(ctx, update); err != nil {
 					// there's no events like this in sentry so far.
-					reporter.MessageWithContext(ctx,
+					reporter.MessageWithContext(
+						ctx,
 						"Failed to apply connector update",
 						reporter.Context{"error": err, "update": update.String()},
 					)

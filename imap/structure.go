@@ -2,10 +2,17 @@ package imap
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 
+	"github.com/ProtonMail/gluon/internal/unleash"
+	"github.com/ProtonMail/gluon/internal/unleash/featureflags"
 	"github.com/ProtonMail/gluon/rfc822"
 )
+
+var errorMaximumMIMEStructureDepthExceeded = errors.New("maximum mime structure depth exceeded")
+
+const maxMIMEStructureDepth = 64
 
 func Structure(section *rfc822.Section) (string, string, error) {
 	bodyBuilder := strings.Builder{}
@@ -14,7 +21,7 @@ func Structure(section *rfc822.Section) (string, string, error) {
 	writer := dualParListWriter{b1: &bodyBuilder, b2: &structureBuilder}
 
 	c := newParamListWithGroup(&writer)
-	if err := structure(section, &c, &writer); err != nil {
+	if err := structure(section, &c, &writer, 0); err != nil {
 		return "", "", err
 	}
 
@@ -26,17 +33,30 @@ func Structure(section *rfc822.Section) (string, string, error) {
 	return body, structure, nil
 }
 
-func structure(section *rfc822.Section, fields *paramList, writer *dualParListWriter) error {
+func structure(section *rfc822.Section, fields *paramList, writer *dualParListWriter, depth int) error {
+	maxMimeStructureDepthDisabled := true
+
+	featureFlagValueProvider := unleash.Get()
+	if featureFlagValueProvider != nil {
+		maxMimeStructureDepthDisabled = featureFlagValueProvider.GetFlagValue(featureflags.MaximumMIMEStructureDepthDisabled)
+	}
+
+	if !maxMimeStructureDepthDisabled {
+		if depth > maxMIMEStructureDepth {
+			return errorMaximumMIMEStructureDepthExceeded
+		}
+	}
+
 	children, err := section.Children()
 	if err != nil {
 		return err
 	}
 
 	if len(children) == 0 {
-		return singlePartStructure(section, fields, writer)
+		return singlePartStructure(section, fields, writer, depth)
 	}
 
-	if err := childStructures(section, fields, writer); err != nil {
+	if err := childStructures(section, fields, writer, depth); err != nil {
 		return err
 	}
 
@@ -61,7 +81,7 @@ func structure(section *rfc822.Section, fields *paramList, writer *dualParListWr
 	return nil
 }
 
-func singlePartStructure(section *rfc822.Section, fields *paramList, writer *dualParListWriter) error {
+func singlePartStructure(section *rfc822.Section, fields *paramList, writer *dualParListWriter, depth int) error {
 	header, err := section.ParseHeader()
 	if err != nil {
 		return err
@@ -97,7 +117,7 @@ func singlePartStructure(section *rfc822.Section, fields *paramList, writer *dua
 
 		cstruct := fields.newChildList(writer)
 
-		if err := structure(child, &cstruct, writer); err != nil {
+		if err := structure(child, &cstruct, writer, depth+1); err != nil {
 			return err
 		}
 
@@ -117,7 +137,7 @@ func singlePartStructure(section *rfc822.Section, fields *paramList, writer *dua
 	return nil
 }
 
-func childStructures(section *rfc822.Section, c *paramList, writer *dualParListWriter) error {
+func childStructures(section *rfc822.Section, c *paramList, writer *dualParListWriter, depth int) error {
 	children, err := section.Children()
 	if err != nil {
 		return err
@@ -126,7 +146,7 @@ func childStructures(section *rfc822.Section, c *paramList, writer *dualParListW
 	for _, child := range children {
 		cl := c.newChildList(writer)
 
-		if err := structure(child, &cl, writer); err != nil {
+		if err := structure(child, &cl, writer, depth+1); err != nil {
 			return err
 		}
 

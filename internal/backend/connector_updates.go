@@ -711,12 +711,79 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 			log.Debug("Failed to get header value from literal, using update literal")
 		}
 
+		// We first check for a byte for byte match to avoid expensive structural comparison.
+		// If the literals are different, we then check for a structural match.
+		// If the literals are structurally equivalent - including headers, we treat it as unchanged and avoid churning the internal ID/UID.
+		// If the literals are not structurally equivalent, we treat it as a new literal and apply the update.
+		unchanged := bytes.Equal(onDiskLiteral, updateLiteral)
+		if !unchanged && len(onDiskLiteral) > 0 {
+			if eq, err := rfc822.CompareLiterals(onDiskLiteral, updateLiteral); err != nil {
+				log.WithError(err).Debug("Failed to compare literals, treating as new literal")
+			} else if eq {
+				unchanged = true
+			}
+		}
+
+		if unchanged {
+			log.Debug("Message literal has no meaningful changes, assigning mailboxes only")
+
+			return user.applyMessageMailboxesOnlyUpdate(ctx, tx, internalMessageID, update)
+		}
+
 		var stateUpdates []state.Update
 
-		if bytes.Equal(onDiskLiteral, updateLiteral) {
-			log.Debug("Message not updated as there are no changes to literals, assigning mailboxes only")
+		log.Debug("Message has new literal, applying update")
 
-			targetMailboxes := make([]imap.InternalMailboxID, 0, len(update.MailboxIDs))
+		{
+			// delete the message and remove from the mailboxes.
+			mailboxes, err := tx.GetMessageMailboxIDs(ctx, internalMessageID)
+			if err != nil {
+				return nil, err
+			}
+
+			messageIDs := []imap.InternalMessageID{internalMessageID}
+
+			for _, mailbox := range mailboxes {
+				updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mailbox, messageIDs)
+				if err != nil {
+					return nil, err
+				}
+
+				stateUpdates = append(stateUpdates, updates...)
+			}
+
+			// We need change the old remote id as it will break our table constraint otherwise and everything
+			// will silently fail.
+			if err := tx.MarkMessageAsDeletedAndAssignRandomRemoteID(ctx, internalMessageID); err != nil {
+				return nil, err
+			}
+		}
+
+		// create new entry
+		{
+			newInternalID := imap.NewInternalMessageID()
+
+			literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(update.Literal, ids.InternalIDKey, newInternalID.String())
+			if err != nil {
+				return nil, fmt.Errorf("failed to set internal ID: %w", err)
+			}
+
+			request := &db.CreateMessageReq{
+				Message:     update.Message,
+				LiteralSize: literalSize,
+				Body:        update.ParsedMessage.Body,
+				Structure:   update.ParsedMessage.Structure,
+				Envelope:    update.ParsedMessage.Envelope,
+				InternalID:  newInternalID,
+			}
+
+			if err := tx.CreateMessages(ctx, request); err != nil {
+				return nil, err
+			}
+
+			if err := user.store.Set(newInternalID, literalReader); err != nil {
+				return nil, err
+			}
 
 			for _, mbox := range update.MailboxIDs {
 				internalMBoxID, err := tx.GetMailboxIDFromRemoteID(ctx, mbox)
@@ -730,109 +797,60 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 					return nil, err
 				}
 
-				targetMailboxes = append(targetMailboxes, internalMBoxID)
-			}
-
-			flagUpdates, err := user.setMessageFlags(ctx, tx, internalMessageID, update.Message.Flags)
-			if err != nil {
-				return nil, err
-			}
-
-			stateUpdates = append(stateUpdates, flagUpdates...)
-
-			mboxUpdates, err := user.setMessageMailboxes(ctx, tx, db.MessageIDPair{
-				InternalID: internalMessageID,
-				RemoteID:   update.Message.ID,
-			}, targetMailboxes)
-			if err != nil {
-				return nil, err
-			}
-
-			return append(stateUpdates, mboxUpdates...), nil
-		} else {
-			log.Debug("Message has new literal, applying update")
-
-			{
-				// delete the message and remove from the mailboxes.
-				mailboxes, err := tx.GetMessageMailboxIDs(ctx, internalMessageID)
+				_, update, err := state.AddMessagesToMailbox(
+					ctx,
+					tx,
+					internalMBoxID,
+					[]db.MessageIDPair{{InternalID: newInternalID, RemoteID: update.Message.ID}},
+					nil,
+					user.imapLimits,
+				)
 				if err != nil {
 					return nil, err
 				}
 
-				messageIDs := []imap.InternalMessageID{internalMessageID}
-
-				for _, mailbox := range mailboxes {
-					updates, err := state.RemoveMessagesFromMailbox(ctx, tx, mailbox, messageIDs)
-					if err != nil {
-						return nil, err
-					}
-
-					stateUpdates = append(stateUpdates, updates...)
-				}
-
-				// We need change the old remote id as it will break our table constraint otherwise and everything
-				// will silently fail.
-				if err := tx.MarkMessageAsDeletedAndAssignRandomRemoteID(ctx, internalMessageID); err != nil {
-					return nil, err
-				}
-			}
-			// create new entry
-			{
-				newInternalID := imap.NewInternalMessageID()
-
-				literalReader, literalSize, err := rfc822.SetHeaderValueNoMemCopy(update.Literal, ids.InternalIDKey, newInternalID.String())
-				if err != nil {
-					return nil, fmt.Errorf("failed to set internal ID: %w", err)
-				}
-
-				request := &db.CreateMessageReq{
-					Message:     update.Message,
-					LiteralSize: literalSize,
-					Body:        update.ParsedMessage.Body,
-					Structure:   update.ParsedMessage.Structure,
-					Envelope:    update.ParsedMessage.Envelope,
-					InternalID:  newInternalID,
-				}
-
-				if err := tx.CreateMessages(ctx, request); err != nil {
-					return nil, err
-				}
-
-				if err := user.store.Set(newInternalID, literalReader); err != nil {
-					return nil, err
-				}
-
-				for _, mbox := range update.MailboxIDs {
-					internalMBoxID, err := tx.GetMailboxIDFromRemoteID(ctx, mbox)
-					if err != nil {
-						if update.IgnoreUnknownMailboxIDs {
-							user.log.WithField("MailboxID", mbox.ShortID()).
-								WithField("MessageID", update.Message.ID.ShortID()).
-								Warn("Unknown Mailbox ID during message update, skipping add to mailbox")
-							continue
-						}
-						return nil, err
-					}
-
-					_, update, err := state.AddMessagesToMailbox(
-						ctx,
-						tx,
-						internalMBoxID,
-						[]db.MessageIDPair{{InternalID: newInternalID, RemoteID: update.Message.ID}},
-						nil,
-						user.imapLimits,
-					)
-					if err != nil {
-						return nil, err
-					}
-
-					stateUpdates = append(stateUpdates, update)
-				}
+				stateUpdates = append(stateUpdates, update)
 			}
 		}
 
 		return stateUpdates, nil
 	})
+}
+
+// applyMessageMailboxesOnlyUpdate applies flag and mailbox membership changes for an updated message
+// The literal passed in is assumed to be structurally equivalent to the on-disk literal.
+func (user *user) applyMessageMailboxesOnlyUpdate(ctx context.Context, tx db.Transaction, internalMessageID imap.InternalMessageID, update *imap.MessageUpdated) ([]state.Update, error) {
+	targetMailboxes := make([]imap.InternalMailboxID, 0, len(update.MailboxIDs))
+
+	for _, mbox := range update.MailboxIDs {
+		internalMBoxID, err := tx.GetMailboxIDFromRemoteID(ctx, mbox)
+		if err != nil {
+			if update.IgnoreUnknownMailboxIDs {
+				user.log.WithField("MailboxID", mbox.ShortID()).
+					WithField("MessageID", update.Message.ID.ShortID()).
+					Warn("Unknown Mailbox ID during message update, skipping add to mailbox")
+				continue
+			}
+			return nil, err
+		}
+
+		targetMailboxes = append(targetMailboxes, internalMBoxID)
+	}
+
+	flagUpdates, err := user.setMessageFlags(ctx, tx, internalMessageID, update.Message.Flags)
+	if err != nil {
+		return nil, err
+	}
+
+	mboxUpdates, err := user.setMessageMailboxes(ctx, tx, db.MessageIDPair{
+		InternalID: internalMessageID,
+		RemoteID:   update.Message.ID,
+	}, targetMailboxes)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(flagUpdates, mboxUpdates...), nil
 }
 
 // applyUIDValidityBumped applies a UIDValidityBumped event to the user.
