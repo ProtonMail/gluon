@@ -22,5 +22,9 @@ func Init(provider FeatureFlagValueProvider) {
 }
 
 func Get() FeatureFlagValueProvider {
+	if testing.Testing() && instance == nil {
+		instance = &NullFeatureFlagProvider{}
+		return instance
+	}
 	return instance
 }

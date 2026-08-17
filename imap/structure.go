@@ -73,7 +73,11 @@ func structure(section *rfc822.Section, fields *paramList, writer *dualParListWr
 	fields.addString(writer, mimeSubType)
 
 	extWriter := writer.toSingleWriterFrom2nd()
-	fields.addMap(extWriter, mimeParams)
+	if len(mimeParams) == 0 {
+		fields.addString(extWriter, "")
+	} else {
+		fields.addMap(extWriter, mimeParams)
+	}
 	addDispInfo(fields, extWriter, header)
 	fields.addString(extWriter, header.Get("Content-Language")).
 		addString(extWriter, header.Get("Content-Location"))
@@ -92,13 +96,38 @@ func singlePartStructure(section *rfc822.Section, fields *paramList, writer *dua
 		return err
 	}
 
+	featureFlagProvider := unleash.Get()
 	fields.
 		addString(writer, mimeType).
-		addString(writer, mimeSubType).
-		addMap(writer, mimeParams).
+		addString(writer, mimeSubType)
+
+	// Per RFC3501 if `body-field-params` should be NIL if empty
+	if len(mimeParams) == 0 {
+		fields.addString(writer, "")
+	} else {
+		fields.addMap(writer, mimeParams)
+	}
+
+	// Per RFC2045, if Content-Transfer-Encoding is missing, then we should assuume
+	// that the content is `7BIT`.
+	contentTransferEncoding := func() string {
+		value := header.Get("Content-Transfer-Encoding")
+		// if default 7bit behavior is disabled, just return whatever is  in the header.
+		if featureFlagProvider.GetFlagValue(featureflags.ContentTransferEncodingDefault7BitDisabled) {
+			return value
+		}
+
+		if value == "" {
+			value = "7BIT"
+		}
+
+		return value
+	}
+
+	fields.
 		addString(writer, header.Get("Content-Id")).
 		addString(writer, header.Get("Content-Description")).
-		addString(writer, header.Get("Content-Transfer-Encoding")).
+		addString(writer, contentTransferEncoding()).
 		addNumber(writer, len(section.Body()))
 
 	if mimeType == "message" && mimeSubType == "rfc822" {
