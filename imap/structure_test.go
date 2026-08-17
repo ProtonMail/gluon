@@ -72,7 +72,18 @@ hey there bro
 	require.NoError(t, err)
 	require.NotNil(t, parsed)
 
-	expected := "((\"text\" \"plain\" (\"charset\" \"utf-8\") NIL NIL \"quoted-printable\" 6 2)(\"message\" \"rfc822\" (\"name\" \"ISO-8859-1.eml\") NIL NIL NIL 127 (NIL \"ISO-8859-1\" ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail2\" \"pm.me\")) NIL NIL NIL NIL)(\"text\" \"plain\" (\"charset\" \"iso-8859-1\") NIL NIL NIL 14 1) 6) \"mixed\")"
+	expected := "((\"text\" \"plain\" (\"charset\" \"utf-8\") NIL NIL \"quoted-printable\" 6 2)(\"message\" \"rfc822\" (\"name\" \"ISO-8859-1.eml\") NIL NIL \"7BIT\" 127 (NIL \"ISO-8859-1\" ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail2\" \"pm.me\")) NIL NIL NIL NIL)(\"text\" \"plain\" (\"charset\" \"iso-8859-1\") NIL NIL \"7BIT\" 14 1) 6) \"mixed\")"
+	require.Equal(t, expected, parsed.Body)
+}
+
+func TestStructureNoContentTypeParams(t *testing.T) {
+	const message = "Content-Type: text/plain\r\nContent-Transfer-Encoding: 7bit\r\n\r\nbody\r\n"
+
+	parsed, err := NewParsedMessage([]byte(message))
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+
+	expected := "(\"text\" \"plain\" NIL NIL NIL \"7bit\" 6 1)"
 	require.Equal(t, expected, parsed.Body)
 }
 
@@ -182,7 +193,6 @@ func FuzzNewParsedMessage(f *testing.F) {
 	f.Add(inSeed2)
 
 	f.Fuzz(func(t *testing.T, inputData []byte) {
-
 		_, _ = NewParsedMessage(inputData)
 	})
 }
@@ -201,7 +211,7 @@ func TestMaxMIMEStructureDepthExceeded_KillSwitch_Disabled(t *testing.T) {
 	require.ErrorIs(t, err, errorMaximumMIMEStructureDepthExceeded)
 
 	t.Cleanup(func() {
-		unleash.Init(nil)
+		unleash.Init(&unleash.NullFeatureFlagProvider{})
 	})
 }
 
@@ -218,17 +228,6 @@ func TestMaxMIMEStructureDepthExceeded_KillSwitch_Enabled(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		unleash.Init(nil)
-	})
-}
-
-func TestMaxMIMEStructureDepthExceeded_NoFFProvider(t *testing.T) {
-	eml, err := os.ReadFile(filepath.Join("testdata", "mime-structure-depth.eml"))
-	require.NoError(t, err)
-	_, err = NewParsedMessage(eml)
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		unleash.Init(nil)
+		unleash.Init(&unleash.NullFeatureFlagProvider{})
 	})
 }
