@@ -2,6 +2,7 @@ package backend
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"fmt"
 	"io"
@@ -722,10 +723,37 @@ func (user *user) applyMessageUpdated(ctx context.Context, update *imap.MessageU
 	// If the literals are not structurally equivalent, we treat it as a new literal and apply the update.
 	literalUnchanged := bytes.Equal(onDiskLiteral, updateLiteral)
 	if !literalUnchanged && len(onDiskLiteral) > 0 {
-		if eq, err := rfc822.CompareLiterals(onDiskLiteral, updateLiteral); err != nil {
-			log.WithError(err).Debug("Failed to compare literals, treating as new literal")
-		} else if eq {
-			literalUnchanged = true
+		oldContentHash, oldContentErr := rfc822.GetMessageHash(onDiskLiteral)
+		newContentHash, newContentErr := rfc822.GetMessageHash(updateLiteral)
+		if oldContentErr != nil || newContentErr != nil {
+			log.WithError(cmp.Or(oldContentErr, newContentErr)).Debug("Failed to compare literal structure, treating as new literal")
+		} else if oldContentHash != newContentHash {
+			log.WithFields(logrus.Fields{
+				"oldContentHash": oldContentHash,
+				"newContentHash": newContentHash,
+				"oldLiteral":     string(onDiskLiteral),
+				"newLiteral":     string(updateLiteral),
+			}).Debug("Literal content differs (structural hash mismatch)")
+		} else {
+			oldHeaderFP, oldHdrErr := rfc822.GetMessageHeaderFingerprint(onDiskLiteral)
+			newHeaderFP, newHdrErr := rfc822.GetMessageHeaderFingerprint(updateLiteral)
+			if oldHdrErr != nil || newHdrErr != nil {
+				log.WithError(cmp.Or(oldHdrErr, newHdrErr)).Debug("Failed to compare literal headers, treating as new literal")
+			} else if oldHeaderFP == newHeaderFP {
+				literalUnchanged = true
+			} else {
+				oldDate, _ := rfc822.GetHeaderValue(onDiskLiteral, "X-Pm-Date")
+				newDate, _ := rfc822.GetHeaderValue(updateLiteral, "X-Pm-Date")
+				oldRFCDate, _ := rfc822.GetHeaderValue(onDiskLiteral, "Date")
+				newRFCDate, _ := rfc822.GetHeaderValue(updateLiteral, "Date")
+				log.WithFields(logrus.Fields{
+					"oldHeaderFP": oldHeaderFP, "newHeaderFP": newHeaderFP,
+					"oldXPmDate": oldDate, "newXPmDate": newDate,
+					"oldDate": oldRFCDate, "newDate": newRFCDate,
+					"oldLiteral": string(onDiskLiteral),
+					"newLiteral": string(updateLiteral),
+				}).Debug("Header fingerprint mismatch")
+			}
 		}
 	}
 
