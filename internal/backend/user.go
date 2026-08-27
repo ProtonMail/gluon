@@ -11,6 +11,8 @@ import (
 	"github.com/ProtonMail/gluon/imap"
 	"github.com/ProtonMail/gluon/internal/ids"
 	"github.com/ProtonMail/gluon/internal/state"
+	"github.com/ProtonMail/gluon/internal/unleash"
+	"github.com/ProtonMail/gluon/internal/unleash/featureflags"
 	"github.com/ProtonMail/gluon/internal/utils"
 	"github.com/ProtonMail/gluon/limits"
 	"github.com/ProtonMail/gluon/logging"
@@ -160,6 +162,8 @@ func newUser(
 
 	user.updateWG.Add(1)
 
+	featureFlagProvider := unleash.Get()
+
 	async.GoAnnotated(context.WithoutCancel(ctx), panicHandler, func(ctx context.Context) {
 		defer user.updateWG.Done()
 
@@ -173,13 +177,14 @@ func newUser(
 				}
 
 				if err := user.apply(ctx, update); err != nil {
-					// there's no events like this in sentry so far.
-					reporter.MessageWithContext(
-						ctx,
-						"Failed to apply connector update",
-						reporter.Context{"error": err, "update": update.String()},
-					)
-
+					if !featureFlagProvider.GetFlagValue(featureflags.ApplySentryEventsDisabled) {
+						reporter.MessageWithContextAndTags(
+							ctx,
+							"Failed to apply connector update",
+							reporter.Context{"error": err, "update": update.String()},
+							map[string]string{"source": "gluon"},
+						)
+					}
 					log.WithError(err).Errorf("Failed to apply update: %v", err)
 				}
 
