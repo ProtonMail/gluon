@@ -7,4 +7,5 @@ const (
 	ConnectionLimiterDefaultLimitsDisabled    = "InboxBridgeGluonConnectionLimiterDefaultLimitsDisabled"
 	ConnectionCounterConnectionsLimitDisabled = "InboxBridgeGluonRollingCounterConnectionLimitDisabled"
 	MaximumMIMEStructureDepthDisabled         = "InboxBridgeGluonMaximumMimeStructureDepthLimitDisabled"
+	ApplySentryEventsDisabled                 = "InboxDesktopGluonApplySentryEventsDisabled"
 )

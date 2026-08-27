@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	instance FeatureFlagValueProvider
+	instance FeatureFlagValueProvider = &NullFeatureFlagProvider{}
 	syncOnce sync.Once
 )
 
