@@ -227,3 +227,15 @@ func (sc *stateConnectorImpl) newContextWithMetadata(ctx context.Context) contex
 
 	return ctx
 }
+
+func (sc *stateConnectorImpl) GetQuota(ctx context.Context, rootName string) (*imap.QuotaRoot, error) {
+	ctx = sc.newContextWithMetadata(ctx)
+
+	return sc.connector.GetQuota(ctx, rootName)
+}
+
+func (sc *stateConnectorImpl) GetQuotaRoot(ctx context.Context, mailboxName string) ([]string, []*imap.QuotaRoot, error) {
+	ctx = sc.newContextWithMetadata(ctx)
+
+	return sc.connector.GetQuotaRoot(ctx, mailboxName)
+}

@@ -53,6 +53,9 @@ type Connector interface {
 	Flush()
 
 	SetUpdatesAllowedToFail(bool)
+
+	SetQuota(rootName string, resources ...imap.QuotaResource)
+	SetMailboxQuotaRoot(mailboxName string, rootNames ...string)
 }
 
 type testSession struct {
@@ -371,6 +374,14 @@ func (s *testSession) flush(user string) {
 
 func (s *testSession) setUpdatesAllowedToFail(user string, value bool) {
 	s.conns[s.userIDs[user]].SetUpdatesAllowedToFail(value)
+}
+
+func (s *testSession) setQuota(user string, rootName string, resources ...imap.QuotaResource) {
+	s.conns[s.userIDs[user]].SetQuota(rootName, resources...)
+}
+
+func (s *testSession) setMailboxQuotaRoot(user string, mailboxName string, rootNames ...string) {
+	s.conns[s.userIDs[user]].SetMailboxQuotaRoot(mailboxName, rootNames...)
 }
 
 func (s *testSession) removeAccount(t testing.TB, user string) string {

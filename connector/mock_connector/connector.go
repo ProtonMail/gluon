@@ -130,6 +130,37 @@ func (mr *MockConnectorMockRecorder) DeleteMailbox(ctx, cache, mboxID any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMailbox", reflect.TypeOf((*MockConnector)(nil).DeleteMailbox), ctx, cache, mboxID)
 }
 
+// GetQuota mocks base method.
+func (m *MockConnector) GetQuota(arg0 context.Context, arg1 string) (*imap.QuotaRoot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetQuota", arg0, arg1)
+	ret0, _ := ret[0].(*imap.QuotaRoot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetQuota indicates an expected call of GetQuota.
+func (mr *MockConnectorMockRecorder) GetQuota(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQuota", reflect.TypeOf((*MockConnector)(nil).GetQuota), arg0, arg1)
+}
+
+// GetQuotaRoot mocks base method.
+func (m *MockConnector) GetQuotaRoot(arg0 context.Context, arg1 string) ([]string, []*imap.QuotaRoot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetQuotaRoot", arg0, arg1)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].([]*imap.QuotaRoot)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetQuotaRoot indicates an expected call of GetQuotaRoot.
+func (mr *MockConnectorMockRecorder) GetQuotaRoot(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQuotaRoot", reflect.TypeOf((*MockConnector)(nil).GetQuotaRoot), arg0, arg1)
+}
+
 // GetMailboxVisibility mocks base method.
 func (m *MockConnector) GetMailboxVisibility(ctx context.Context, mboxID imap.MailboxID) imap.MailboxVisibility {
 	m.ctrl.T.Helper()
