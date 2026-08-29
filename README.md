@@ -36,9 +36,11 @@ Escape character is '^]'.
 * OK [CAPABILITY IDLE IMAP4rev1 MOVE UIDPLUS UNSELECT]  00.00.00 - gluon session ID 2
 tag login user1@example.com pass
 tag OK [CAPABILITY IDLE IMAP4rev1 MOVE UIDPLUS UNSELECT] Logged in
-tag append inbox (\Seen) {14}
+tag append inbox (\Seen) {78}
 + Ready
+From: user1@example.com
 To: user@pm.me
+Date: Wed, 06 Aug 2025 21:24:37 +0200
 tag OK [APPENDUID 1 1] APPEND
 tag select inbox
 * FLAGS (\Answered \Deleted \Flagged \Seen)
@@ -49,9 +51,11 @@ tag select inbox
 * OK [UIDVALIDITY 1] UIDs valid
 tag OK [READ-WRITE] SELECT
 tag fetch 1:* (UID BODY.PEEK[])
-* 1 FETCH (UID 1 BODY[] {32}
+* 1 FETCH (UID 1 BODY[] {131}
 X-Pm-Gluon-Id: 1
-To: user@pm.me)
+From: user1@example.com
+To: user@pm.me
+Date: Wed, 06 Aug 2025 21:24:37 +0200)
 tag OK command completed in 1.030958ms
 ```
 
