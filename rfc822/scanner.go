@@ -112,7 +112,7 @@ func (s *ByteScanner) readToBoundary() ([]byte, bool) {
 				// It can happen that this boundary is at the end of the file/message with no new line.
 				if len(afterBoundary) != 0 {
 					newLineStartIndex = indexOfNewLineAfterBoundary(afterBoundary)
-					// If there is no new line this can't be a boundary pattern. RFC 1341 states that tey are
+					// If there is no new line this can't be a boundary pattern. RFC 1341 states that they are
 					// immediately followed by either \r\n or \n.
 					if newLineStartIndex < 0 {
 						s.progress += index + boundaryLen + boundarySuffixLen
@@ -133,7 +133,7 @@ func (s *ByteScanner) readToBoundary() ([]byte, bool) {
 				afterBoundary := remaining[lineEndIndex:]
 				newLineStart := indexOfNewLineAfterBoundary(afterBoundary)
 
-				// If there is no new line this can't be a boundary pattern. RFC 1341 states that tey are
+				// If there is no new line this can't be a boundary pattern. RFC 1341 states that they are
 				// immediately followed by either \r\n or \n.
 				if newLineStart < 0 {
 					s.progress += index + boundaryLen
