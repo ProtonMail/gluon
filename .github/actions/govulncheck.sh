@@ -7,9 +7,6 @@ main(){
     govulncheck -json "$go_package" > vulns.json
 
     jq -r '.finding | select( (.osv != null) and (.trace[0].function != null) ) | .osv ' < vulns.json > vulns_osv_ids.txt
- 
-    ignore GO-2026-5972 "BRIDGE-622 Enforce a recursion limit in Unmarshal to prevent stack exhaustion when parsing deeply-nested, recursive structures."
-    ignore GO-2026-6090 "BRIDGE-622 Handshake messages are always considered state-advancing, a malicious client can keep sending these messages to force the server to do key derivation operations."
 
     has_vulns
 
