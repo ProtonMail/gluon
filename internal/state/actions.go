@@ -122,7 +122,8 @@ func (state *State) actionCreateMessage(
 
 			state.log.Debugf("Deduped message detected, adding existing %v message to mailbox instead.", knownInternalID.ShortID())
 
-			addMsgToMBoxUpdates, result, err := state.actionAddMessagesToMailbox(ctx,
+			addMsgToMBoxUpdates, result, err := state.actionAddMessagesToMailbox(
+				ctx,
 				tx,
 				[]db.MessageIDPair{{InternalID: knownInternalID, RemoteID: res.ID}},
 				mboxID,
@@ -225,11 +226,12 @@ func (state *State) actionCreateRecoveredMessage(
 		return nil, false, err
 	}
 
-	var updates = []Update{newExistsStateUpdateWithExists(
-		recoveryMBoxID.InternalID,
-		[]*exists{newExists(db.MessageIDPair{InternalID: internalID, RemoteID: remoteID}, messageUID, flagSet)},
-		nil,
-	),
+	updates := []Update{
+		newExistsStateUpdateWithExists(
+			recoveryMBoxID.InternalID,
+			[]*exists{newExists(db.MessageIDPair{InternalID: internalID, RemoteID: remoteID}, messageUID, flagSet)},
+			nil,
+		),
 	}
 
 	return updates, false, nil
@@ -318,18 +320,32 @@ func (state *State) actionAddRecoveredMessagesToMailbox(
 	return append(updates, up), uid, err
 }
 
+// loadRecoveredMessageLiterals reads all on-disk literals for the given messages.
+// The goal is to fetch these before any DB write transaction is opened.
+// Primarily used in `actionImportRecoveredMessage` which always runs inside an already open transaction.
+func (state *State) loadRecoveredMessageLiterals(ids []db.MessageIDPair) (map[imap.InternalMessageID][]byte, error) {
+	literals := make(map[imap.InternalMessageID][]byte, len(ids))
+
+	for _, id := range ids {
+		literal, err := state.user.GetStore().Get(id.InternalID)
+		if err != nil {
+			return nil, err
+		}
+
+		literals[id.InternalID] = literal
+	}
+
+	return literals, nil
+}
+
 func (state *State) actionImportRecoveredMessage(
 	ctx context.Context,
 	tx db.Transaction,
 	id imap.InternalMessageID,
 	mboxID imap.MailboxID,
+	literal []byte,
 ) ([]Update, db.MessageIDPair, bool, error) {
 	message, err := tx.GetImportedMessageData(ctx, id)
-	if err != nil {
-		return nil, db.MessageIDPair{}, false, err
-	}
-
-	literal, err := state.user.GetStore().Get(id)
 	if err != nil {
 		return nil, db.MessageIDPair{}, false, err
 	}
@@ -392,6 +408,7 @@ func (state *State) actionCopyMessagesOutOfRecoveryMailbox(
 	tx db.Transaction,
 	messageIDs []db.MessageIDPair,
 	mboxID db.MailboxIDPair,
+	literals map[imap.InternalMessageID][]byte,
 ) ([]Update, []db.UIDWithFlags, error) {
 	var allUpdates []Update
 
@@ -399,7 +416,7 @@ func (state *State) actionCopyMessagesOutOfRecoveryMailbox(
 
 	// Import messages to remote.
 	for _, id := range messageIDs {
-		updates, id, _, err := state.actionImportRecoveredMessage(ctx, tx, id.InternalID, mboxID.RemoteID)
+		updates, id, _, err := state.actionImportRecoveredMessage(ctx, tx, id.InternalID, mboxID.RemoteID, literals[id.InternalID])
 		if err != nil {
 			return nil, nil, err
 		}
@@ -423,6 +440,7 @@ func (state *State) actionMoveMessagesOutOfRecoveryMailbox(
 	tx db.Transaction,
 	messageIDs []db.MessageIDPair,
 	mboxID db.MailboxIDPair,
+	literals map[imap.InternalMessageID][]byte,
 ) ([]Update, []db.UIDWithFlags, error) {
 	var updates []Update
 
@@ -431,7 +449,7 @@ func (state *State) actionMoveMessagesOutOfRecoveryMailbox(
 
 	// Import messages to remote.
 	for _, id := range messageIDs {
-		recoverUpdates, newID, deduped, err := state.actionImportRecoveredMessage(ctx, tx, id.InternalID, mboxID.RemoteID)
+		recoverUpdates, newID, deduped, err := state.actionImportRecoveredMessage(ctx, tx, id.InternalID, mboxID.RemoteID, literals[id.InternalID])
 		if err != nil {
 			return nil, nil, err
 		}
@@ -629,10 +647,12 @@ func (state *State) actionRemoveMessageFlags(
 	return state.applyMessageFlagsRemoved(ctx, tx, internalMessageIDs, remFlags)
 }
 
-func (state *State) actionSetMessageFlags(ctx context.Context,
+func (state *State) actionSetMessageFlags(
+	ctx context.Context,
 	tx db.Transaction,
 	messages []snapMsgWithSeq,
-	setFlags imap.FlagSet) ([]Update, error) {
+	setFlags imap.FlagSet,
+) ([]Update, error) {
 	if setFlags.ContainsUnchecked(imap.FlagRecentLowerCase) {
 		return nil, fmt.Errorf("recent flag is read-only")
 	}
