@@ -276,6 +276,59 @@ func (conn *Dummy) MarkMessagesForwarded(ctx context.Context, cache IMAPStateWri
 	return nil
 }
 
+// MarkMessagesWithGmailLabels applies or removes Gmail-style labels. Each label
+// is backed by a non-exclusive mailbox; (un)labelling only (un)links the message
+// from that mailbox and never touches folder membership (e.g. INBOX), matching
+// the real Bridge connector contract.
+func (conn *Dummy) MarkMessagesWithGmailLabels(_ context.Context, _ IMAPStateWrite, messageIDs []imap.MessageID, labels []string, add bool) error {
+	for _, label := range labels {
+		var mboxID imap.MailboxID
+
+		if add {
+			id, mbox, created := conn.state.getOrCreateLabelMailbox(label)
+			mboxID = id
+
+			if created {
+				conn.pushUpdate(imap.NewMailboxCreated(mbox))
+			}
+		} else {
+			id, ok := conn.state.getLabelMailboxID(label)
+			if !ok {
+				// Removing a label that was never applied is a no-op.
+				continue
+			}
+
+			mboxID = id
+		}
+
+		for _, messageID := range messageIDs {
+			if add {
+				conn.state.addGmailLabel(messageID, label)
+				conn.state.addMessageToMailbox(messageID, mboxID)
+			} else {
+				conn.state.removeGmailLabel(messageID, label)
+				conn.state.removeMessageFromMailbox(messageID, mboxID)
+			}
+
+			conn.pushUpdate(imap.NewMessageMailboxesUpdated(
+				messageID,
+				conn.state.getMailboxIDs(messageID),
+				conn.state.getMessageFlags(messageID),
+			))
+		}
+	}
+
+	return nil
+}
+
+func (conn *Dummy) GetGmailLabels(_ context.Context, messageID imap.MessageID) ([]string, error) {
+	return conn.state.getGmailLabels(messageID), nil
+}
+
+func (conn *Dummy) GetGmailLabelMailboxID(_ context.Context, label string) (imap.MailboxID, bool) {
+	return conn.state.getLabelMailboxID(label)
+}
+
 func (conn *Dummy) Sync(ctx context.Context) error {
 	for _, mailbox := range conn.state.getMailboxes() {
 		update := imap.NewMailboxCreated(mailbox)

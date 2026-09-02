@@ -93,6 +93,17 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 			}
 
 			operations = append(operations, op)
+		case *command.FetchAttributeGmailLabels:
+			op := func(msg snapMsgWithSeq, _ *db.Message, _ []byte) (response.Item, error) {
+				labels, err := m.state.user.GetRemote().GetGmailLabels(ctx, msg.ID.RemoteID)
+				if err != nil {
+					return response.ItemGmailLabels(nil), nil
+				}
+
+				return response.ItemGmailLabels(labels), nil
+			}
+
+			operations = append(operations, op)
 		}
 	}
 

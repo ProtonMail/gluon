@@ -57,6 +57,19 @@ type Connector interface {
 	// MarkMessagesForwarded sets the forwarded value of the give messages.
 	MarkMessagesForwarded(ctx context.Context, cache IMAPStateWrite, messageIDs []imap.MessageID, forwarded bool) error
 
+	// MarkMessagesWithGmailLabels applies or removes Gmail-style labels (X-GM-EXT-1 extension).
+	// Labels are identified by name. If add is true, labels are applied; if false, they are removed.
+	// This must NOT modify folder membership — messages stay in their current mailbox (e.g., INBOX).
+	MarkMessagesWithGmailLabels(ctx context.Context, cache IMAPStateWrite, messageIDs []imap.MessageID, labels []string, add bool) error
+
+	// GetGmailLabels retrieves the Gmail-style label names for the given message.
+	// Note: this can get called from different go routines.
+	GetGmailLabels(ctx context.Context, messageID imap.MessageID) ([]string, error)
+
+	// GetGmailLabelMailboxID returns the IMAP mailbox ID for a given Gmail label name.
+	// Used for efficient SEARCH X-GM-LABELS operations via local DB lookups.
+	GetGmailLabelMailboxID(ctx context.Context, label string) (imap.MailboxID, bool)
+
 	// GetUpdates returns a stream of updates that the gluon server should apply.
 	GetUpdates() <-chan imap.Update
 

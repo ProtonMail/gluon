@@ -21,6 +21,10 @@ func (s *Session) handleFetch(ctx context.Context, tag string, cmd *command.Fetc
 		defer profiling.Stop(ctx, profiling.CmdTypeFetch)
 	}
 
+	if !s.enableGmailExtension && fetchHasGmailLabels(cmd) {
+		return response.Bad(tag).WithError(errGmailExtensionDisabled), nil
+	}
+
 	if err := mailbox.Fetch(ctx, cmd, ch); errors.Is(err, state.ErrNoSuchMessage) {
 		return response.Bad(tag).WithError(err), nil
 	} else if err != nil {
