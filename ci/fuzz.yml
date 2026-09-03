@@ -1,0 +1,33 @@
+---
+.fuzz-base:
+  stage: test
+  extends:
+    - .image-linux-test
+  script:
+    - go test -fuzz=FuzzParseDec -fuzztime=$FUZZ_TIME ./rfc822/...
+    - go test -fuzz=FuzzParseAddress -fuzztime=$FUZZ_TIME ./rfc5322/...
+    - go test -fuzz=FuzzRFC5322 -fuzztime=$FUZZ_TIME ./rfc5322/...
+    - go test -fuzz=FuzzNewParsedMessage -fuzztime=$FUZZ_TIME ./imap/...
+  tags:
+    - shared-large
+
+fuzz-scheduled:
+  extends: .fuzz-base
+  timeout: 50m
+  variables:
+    FUZZ_TIME: "10m"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
+fuzz:
+  extends: .fuzz-base
+  timeout: 25m
+  variables:
+    FUZZ_TIME: "5m"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      allow_failure: true
+    - if: $CI_COMMIT_BRANCH
+      when: manual
+      allow_failure: true

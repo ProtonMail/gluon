@@ -1,0 +1,5 @@
+---
+include:
+  - project: "go/bridge-internal"
+    ref: "master"
+    file: "ci/runners-setup.yml"

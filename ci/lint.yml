@@ -1,0 +1,24 @@
+---
+mod-tidy:
+  stage: check
+  extends:
+    - .image-linux-test
+    - .rules-MR-and-dev-always
+  script:
+    - go mod tidy
+    - git diff --exit-code go.mod go.sum
+  tags:
+    - shared-medium
+
+lint:
+  stage: check
+  extends:
+    - .image-linux-test
+    - .rules-MR-and-dev-always
+  variables:
+    GOLANGCI_LINT_VERSION: "v2.11.3"
+  script:
+    - curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $GOLANGCI_LINT_VERSION
+    - golangci-lint run --timeout=500s ./...
+  tags:
+    - shared-medium

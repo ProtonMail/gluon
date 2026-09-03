@@ -1,0 +1,68 @@
+---
+govulncheck:
+  stage: check
+  extends:
+    - .image-linux-test
+    - .rules-MR-and-dev-always
+  timeout: 10m
+  script:
+    - ./ci/govulncheck.sh
+  artifacts:
+    when: always
+    paths:
+      - vulns*
+  tags:
+    - shared-medium
+
+test-linux:
+  stage: test
+  extends:
+    - .image-linux-test
+    - .rules-MR-and-dev-always
+  timeout: 20m
+  script:
+    - go test -timeout 15m -v ./...
+    - go test -race -v ./tests
+  tags:
+    - shared-large
+
+test-darwin:
+  stage: test
+  extends:
+    - .image-darwin-build
+    - .rules-MR-and-dev-always
+  timeout: 20m
+  before_script:
+    - source ~/.zprofile
+    - export GOROOT=/opt/go/1.26.1
+    - export PATH="${GOROOT}/bin:$PATH"
+    - export GOPATH="$CI_PROJECT_DIR/.cache"
+    - export PATH="${GOPATH}/bin:$PATH"
+    - mkdir -p .cache/bin
+  script:
+    - go test -timeout 15m -v ./...
+    - go test -race -v ./tests
+  cache:
+    key: darwin-go-modules
+    paths:
+      - .cache
+    when: always
+
+test-windows:
+  stage: test
+  extends:
+    - .image-windows-virt-build
+    - .rules-MR-and-dev-always
+  timeout: 20m
+  before_script:
+    - !reference [.before-script-windows-virt-build, before_script]
+    - mkdir -p .cache/bin
+    - export PATH=$(pwd)/.cache/bin:$PATH
+    - export GOPATH="$CI_PROJECT_DIR/.cache"
+  script:
+    - go test -timeout 15m -v ./...
+  cache:
+    key: windows-go-modules
+    paths:
+      - .cache
+    when: always

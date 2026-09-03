@@ -28,6 +28,7 @@ The first has addresses `user1@example.com` and `alias1@example.com`.
 The second has addresses `user2@example.com` and `alias2@example.com`.
 
 Once started, connect to the demo server with an email client (e.g. thunderbird) or via telnet:
+
 ```
 $ telnet 127.0.0.1 1143
 Trying 127.0.0.1...
@@ -62,3 +63,4 @@ Do not forget to re-generate ent code after changing the DB schema in `./interna
 ```
 pushd ./internal/db/ent && go generate . && popd
 
+```
