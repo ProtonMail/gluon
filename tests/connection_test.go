@@ -12,12 +12,15 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ProtonMail/gluon/liner"
 	"github.com/bradenaw/juniper/xslices"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
+
+const readTimeout = 15 * time.Second
 
 func withTag(fn func(string)) {
 	fn(uuid.NewString())
@@ -102,7 +105,8 @@ func (s *testConnection) Sx(want ...string) *testConnection {
 	}
 
 	if len(bad) > 0 {
-		require.Failf(s.tb,
+		require.Failf(
+			s.tb,
 			"Received unexpected responses",
 			"want: %q\nbut have:%q",
 			want, bad,
@@ -207,6 +211,8 @@ func (s *testConnection) doBench(b *testing.B, cmd string) {
 
 // TODO: This is shitty because the uuid of one literal may appear within the data of another literal.
 func (s *testConnection) read() []byte {
+	require.NoError(s.tb, s.conn.SetReadDeadline(time.Now().Add(readTimeout)))
+
 	line, literals, err := s.liner.Read(func() error { return nil })
 	require.NoError(s.tb, err)
 
