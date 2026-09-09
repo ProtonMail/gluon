@@ -19,10 +19,18 @@ test-linux:
   extends:
     - .image-linux-test
     - .rules-MR-and-dev-always
-  timeout: 20m
+  timeout: 30m
   script:
-    - go test -timeout 15m -v ./...
-    - go test -race -v ./tests
+    - export PATH="$(go env GOPATH)/bin:$PATH"
+    - bash utils/install_gotestsum.sh
+    - bash ci/test.sh linux
+    - bash ci/test_race.sh linux
+  artifacts:
+    when: always
+    paths:
+      - test-linux*.xml
+    reports:
+      junit: test-linux*.xml
   tags:
     - shared-large
 
@@ -31,7 +39,7 @@ test-darwin:
   extends:
     - .image-darwin-build
     - .rules-MR-and-dev-always
-  timeout: 20m
+  timeout: 30m
   before_script:
     - source ~/.zprofile
     - export GOROOT=/opt/go/1.26.1
@@ -39,9 +47,16 @@ test-darwin:
     - export GOPATH="$CI_PROJECT_DIR/.cache"
     - export PATH="${GOPATH}/bin:$PATH"
     - mkdir -p .cache/bin
+    - bash utils/install_gotestsum.sh
   script:
-    - go test -timeout 15m -v ./...
-    - go test -race -v ./tests
+    - bash ci/test.sh darwin
+    - bash ci/test_race.sh darwin
+  artifacts:
+    when: always
+    paths:
+      - test-darwin*.xml
+    reports:
+      junit: test-darwin*.xml
   cache:
     key: darwin-go-modules
     paths:
@@ -59,8 +74,15 @@ test-windows:
     - mkdir -p .cache/bin
     - export PATH=$(pwd)/.cache/bin:$PATH
     - export GOPATH="$CI_PROJECT_DIR/.cache"
+    - bash utils/install_gotestsum.sh
   script:
-    - go test -timeout 15m -v ./...
+    - bash ci/test.sh windows
+  artifacts:
+    when: always
+    paths:
+      - test-windows*.xml
+    reports:
+      junit: test-windows*.xml
   cache:
     key: windows-go-modules
     paths:
