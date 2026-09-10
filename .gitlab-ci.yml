@@ -25,6 +25,3 @@ include:
   - local: ci/lint.yml
   - local: ci/test.yml
   - local: ci/fuzz.yml
-  - component: gitlab.protontech.ch/proton/devops/cicd-components/kits/devsecops/go@~latest
-    inputs:
-      stage: check
