@@ -59,6 +59,12 @@ type Dummy struct {
 	allowMessageCreateWithUnknownMailboxID bool
 
 	updatesAllowedToFail int32
+
+	// quotaRoots holds configured quota roots for testing.
+	quotaRoots map[string]*imap.QuotaRoot
+
+	// mailboxQuotaRoots maps mailbox names to their applicable quota root names.
+	mailboxQuotaRoots map[string][]string
 }
 
 func NewDummy(usernames []string, password []byte, period time.Duration, flags, permFlags, attrs imap.FlagSet) *Dummy {
@@ -73,6 +79,8 @@ func NewDummy(usernames []string, password []byte, period time.Duration, flags, 
 		updateQuitCh:        make(chan struct{}),
 		ticker:              ticker.New(period),
 		mailboxVisibilities: make(map[imap.MailboxID]imap.MailboxVisibility),
+		quotaRoots:          make(map[string]*imap.QuotaRoot),
+		mailboxQuotaRoots:   make(map[string][]string),
 	}
 
 	go func() {
@@ -339,6 +347,48 @@ func (conn *Dummy) GetMailboxVisibility(_ context.Context, id imap.MailboxID) im
 
 func (conn *Dummy) SetMailboxVisibility(id imap.MailboxID, visibility imap.MailboxVisibility) {
 	conn.mailboxVisibilities[id] = visibility
+}
+
+func (conn *Dummy) GetQuota(_ context.Context, rootName string) (*imap.QuotaRoot, error) {
+	root, ok := conn.quotaRoots[rootName]
+	if !ok {
+		return nil, fmt.Errorf("no such quota root")
+	}
+
+	return root, nil
+}
+
+func (conn *Dummy) GetQuotaRoot(_ context.Context, mailboxName string) ([]string, []*imap.QuotaRoot, error) {
+	rootNames, ok := conn.mailboxQuotaRoots[mailboxName]
+	if !ok {
+		// Default: return the empty-string root if it exists.
+		if root, exists := conn.quotaRoots[""]; exists {
+			return []string{""}, []*imap.QuotaRoot{root}, nil
+		}
+
+		return nil, nil, nil
+	}
+
+	var roots []*imap.QuotaRoot
+
+	for _, name := range rootNames {
+		if root, exists := conn.quotaRoots[name]; exists {
+			roots = append(roots, root)
+		}
+	}
+
+	return rootNames, roots, nil
+}
+
+func (conn *Dummy) SetQuota(rootName string, resources ...imap.QuotaResource) {
+	conn.quotaRoots[rootName] = &imap.QuotaRoot{
+		RootName:  rootName,
+		Resources: resources,
+	}
+}
+
+func (conn *Dummy) SetMailboxQuotaRoot(mailboxName string, rootNames ...string) {
+	conn.mailboxQuotaRoots[mailboxName] = rootNames
 }
 
 func (conn *Dummy) pushUpdate(update imap.Update) {
