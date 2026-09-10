@@ -1,4 +1,19 @@
 ---
+govulncheck:
+  stage: check
+  extends:
+    - .image-linux-test
+    - .rules-MR-and-dev-always
+  timeout: 10m
+  script:
+    - ./ci/govulncheck.sh
+  artifacts:
+    when: always
+    paths:
+      - vulns*
+  tags:
+    - shared-medium
+
 test-linux:
   stage: test
   extends:
