@@ -184,25 +184,17 @@ func (snap *snapshot) getMessagesInUIDRange(seq []command.SeqRange) ([]snapMsgWi
 func (snap *snapshot) firstMessageWithFlag(flag string) (snapMsgWithSeq, bool) {
 	flagLower := strings.ToLower(flag)
 
-	for i, msg := range snap.messages.msg {
-		if msg.flags.ContainsUnchecked(flagLower) {
-			return snapMsgWithSeq{Seq: imap.SeqID(uint32(i + 1)), snapMsg: msg}, true
-		}
-	}
-
-	return snapMsgWithSeq{}, false
+	return snap.messages.firstWhere(func(msg snapMsgWithSeq) bool {
+		return msg.flags.ContainsUnchecked(flagLower)
+	})
 }
 
 func (snap *snapshot) firstMessageWithoutFlag(flag string) (snapMsgWithSeq, bool) {
 	flagLower := strings.ToLower(flag)
 
-	for i, msg := range snap.messages.msg {
-		if !msg.flags.ContainsUnchecked(flagLower) {
-			return snapMsgWithSeq{Seq: imap.SeqID(uint32(i + 1)), snapMsg: msg}, true
-		}
-	}
-
-	return snapMsgWithSeq{}, false
+	return snap.messages.firstWhere(func(msg snapMsgWithSeq) bool {
+		return !msg.flags.ContainsUnchecked(flagLower)
+	})
 }
 
 func (snap *snapshot) getMessagesWithFlag(flag string) []snapMsgWithSeq {
