@@ -1,6 +1,8 @@
 ---
 .rules-MR-and-dev-always:
   rules:
+    - if: $SCHEDULE_REASON
+      when: never
     - if: $CI_COMMIT_BRANCH == "dev" || $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
       allow_failure: false
