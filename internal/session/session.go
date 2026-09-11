@@ -91,6 +91,9 @@ type Session struct {
 	// disableIMAPAuthenticate disables the IMAP AUTHENTICATE command (client can then only authenticate using LOGIN).
 	disableIMAPAuthenticate bool
 
+	// enableGmailExtension enables the non-standard Gmail X-GM-EXT-1 extension (capability advertisement + X-GM-LABELS handling).
+	enableGmailExtension bool
+
 	// panicHandler The panic handler.
 	panicHandler async.PanicHandler
 
@@ -111,6 +114,7 @@ func New(
 	eventCh chan<- events.Event,
 	idleBulkTime time.Duration,
 	disableIMAPAuthenticate bool,
+	enableGmailExtension bool,
 	panicHandler async.PanicHandler,
 	featureFlagProvider unleash.FeatureFlagValueProvider,
 ) *Session {
@@ -127,6 +131,10 @@ func New(
 		caps = append(caps, imap.AUTHPLAIN)
 	}
 
+	if enableGmailExtension {
+		caps = append(caps, imap.XGMEXT1)
+	}
+
 	return &Session{
 		conn:                    conn,
 		inputCollector:          inputCollector,
@@ -140,6 +148,7 @@ func New(
 		cmdProfilerBuilder:      profiler,
 		handleWG:                async.MakeWaitGroup(panicHandler),
 		disableIMAPAuthenticate: disableIMAPAuthenticate,
+		enableGmailExtension:    enableGmailExtension,
 		panicHandler:            panicHandler,
 		log:                     logrus.WithField("pkg", "gluon/session").WithField("session", sessionID),
 		featureFlagProvider:     featureFlagProvider,

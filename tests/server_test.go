@@ -77,6 +77,7 @@ type serverOptions struct {
 	disableParallelism      bool
 	imapLimits              limits.IMAP
 	disableIMAPAuthenticate bool
+	enableGmailExtension    bool
 	reporter                reporter.Reporter
 	uidValidityGenerator    imap.UIDValidityGenerator
 	database                db.ClientInterface
@@ -252,6 +253,16 @@ func withDisableIMAPAuthenticate() serverOption {
 	return &disableIMAPAuthenticateOption{}
 }
 
+type gmailExtensionOption struct{}
+
+func (gmailExtensionOption) apply(options *serverOptions) {
+	options.enableGmailExtension = true
+}
+
+func withGmailExtension() serverOption {
+	return &gmailExtensionOption{}
+}
+
 func defaultServerOptions(tb testing.TB, modifiers ...serverOption) *serverOptions {
 	options := &serverOptions{
 		credentials: []credentials{{
@@ -332,6 +343,10 @@ func runServer(tb testing.TB, options *serverOptions, tests func(session *testSe
 
 	if options.disableIMAPAuthenticate {
 		gluonOptions = append(gluonOptions, gluon.WithDisableIMAPAuthenticate())
+	}
+
+	if options.enableGmailExtension {
+		gluonOptions = append(gluonOptions, gluon.WithGmailExtension())
 	}
 
 	// Create a new gluon server.

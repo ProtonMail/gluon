@@ -165,6 +165,8 @@ func handleFetchAttribute(name rfcparser.String, p *rfcparser.Parser) (FetchAttr
 		return handleRFC822FetchAttribute(p)
 	case "body":
 		return handleBodyFetchAttribute(p)
+	case "x":
+		return handleXExtensionFetchAttribute(p, name)
 	default:
 		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown fetch attribute '%v'", name.Value), name.Offset)
 	}
@@ -431,6 +433,29 @@ func collectBodySectionText(p *rfcparser.Parser) (string, error) {
 	}
 
 	return strings.ToLower(string(text.Value)), nil
+}
+
+func handleXExtensionFetchAttribute(p *rfcparser.Parser, name rfcparser.String) (FetchAttribute, error) {
+	// Handle X-GM-LABELS for the Gmail X-GM-EXT-1 extension.
+	// parseFetchAttributeName() only collected "x" (stopped at hyphen).
+	// Consume the rest: "-GM-LABELS".
+	if err := p.ConsumeBytesFold('-'); err != nil {
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown fetch attribute '%v'", name.Value), name.Offset)
+	}
+
+	if err := p.ConsumeBytesFold('G', 'M'); err != nil {
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown fetch attribute '%v'", name.Value), name.Offset)
+	}
+
+	if err := p.ConsumeBytesFold('-'); err != nil {
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown fetch attribute '%v'", name.Value), name.Offset)
+	}
+
+	if err := p.ConsumeBytesFold('L', 'A', 'B', 'E', 'L', 'S'); err != nil {
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown fetch attribute '%v'", name.Value), name.Offset)
+	}
+
+	return &FetchAttributeGmailLabels{}, nil
 }
 
 func parseHeaderList(p *rfcparser.Parser) ([]string, error) {

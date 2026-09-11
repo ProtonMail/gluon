@@ -234,6 +234,19 @@ func WithDisableIMAPAuthenticate() Option {
 	return &withDisableIMAPAuthenticate{}
 }
 
+type withGmailExtension struct{}
+
+func (withGmailExtension) config(builder *serverBuilder) {
+	builder.enableGmailExtension = true
+}
+
+// WithGmailExtension enables the non-standard Gmail X-GM-EXT-1 IMAP extension
+// (X-GM-LABELS via STORE/FETCH/SEARCH). When not set, the capability is not
+// advertised and the X-GM-LABELS commands are rejected.
+func WithGmailExtension() Option {
+	return &withGmailExtension{}
+}
+
 type withUIDValidityGenerator struct {
 	generator imap.UIDValidityGenerator
 }
