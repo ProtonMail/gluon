@@ -564,6 +564,28 @@ func TestSearchUID(t *testing.T) {
 	})
 }
 
+func TestSearchUIDEmptyMailbox(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, s *testSession) {
+		c.C(`A001 select inbox`).OK("A001")
+
+		// RFC 3501 section 6.4.8: "A non-existent unique identifier is
+		// ignored without any error message generated." In an empty mailbox
+		// every UID is non-existent, so a UID key matches nothing; it must
+		// not turn the SEARCH into a NO reply.
+		c.C(`A002 uid search uid 1`)
+		c.S("* SEARCH")
+		c.OK("A002")
+
+		c.C(`A003 search uid 1,3:5`)
+		c.S("* SEARCH")
+		c.OK("A003")
+
+		c.C(`A004 uid search uid 1:*`)
+		c.S("* SEARCH")
+		c.OK("A004")
+	})
+}
+
 func TestSearchUIDAfterDelete(t *testing.T) {
 	runOneToOneTestWithData(t, defaultServerOptions(t), func(c *testConnection, s *testSession, mbox string, mboxID imap.MailboxID) {
 		// Remove some messages to ensure sequence doesn't match uid
