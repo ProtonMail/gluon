@@ -11,6 +11,10 @@ import (
 var ErrOperationNotAllowed = errors.New("operation not allowed")
 var ErrMessageSizeExceedsLimits = errors.New("message size exceeds limits")
 
+// ErrGmailLabelsNotSupported is returned when an X-GM-LABELS operation is
+// attempted against a Connector that does not implement GmailLabelConnector.
+var ErrGmailLabelsNotSupported = errors.New("connector does not support the Gmail X-GM-EXT-1 extension")
+
 // Connector connects the gluon server to a remote mail store.
 type Connector interface {
 	// Init the connector. The cache pointer provide here should not be used with any of the other methods.
@@ -57,7 +61,23 @@ type Connector interface {
 	// MarkMessagesForwarded sets the forwarded value of the give messages.
 	MarkMessagesForwarded(ctx context.Context, cache IMAPStateWrite, messageIDs []imap.MessageID, forwarded bool) error
 
-	// MarkMessagesWithGmailLabels applies or removes Gmail-style labels (X-GM-EXT-1 extension).
+	// GetUpdates returns a stream of updates that the gluon server should apply.
+	GetUpdates() <-chan imap.Update
+
+	// Close the connector will no longer be used and all resources should be closed/released.
+	Close(ctx context.Context) error
+}
+
+// GmailLabelConnector is an optional interface that a Connector may additionally
+// implement to support the non-standard Gmail X-GM-EXT-1 extension (X-GM-LABELS
+// via STORE/FETCH/SEARCH).
+//
+// Implementing it is not sufficient on its own: the server must also be built
+// with WithGmailExtension(), which is what advertises the X-GM-EXT-1 capability.
+// If the extension is enabled but the Connector does not implement this
+// interface, X-GM-LABELS commands fail with ErrGmailLabelsNotSupported.
+type GmailLabelConnector interface {
+	// MarkMessagesWithGmailLabels applies or removes Gmail-style labels.
 	// Labels are identified by name. If add is true, labels are applied; if false, they are removed.
 	// This must NOT modify folder membership — messages stay in their current mailbox (e.g., INBOX).
 	MarkMessagesWithGmailLabels(ctx context.Context, cache IMAPStateWrite, messageIDs []imap.MessageID, labels []string, add bool) error
@@ -69,10 +89,4 @@ type Connector interface {
 	// GetGmailLabelMailboxID returns the IMAP mailbox ID for a given Gmail label name.
 	// Used for efficient SEARCH X-GM-LABELS operations via local DB lookups.
 	GetGmailLabelMailboxID(ctx context.Context, label string) (imap.MailboxID, bool)
-
-	// GetUpdates returns a stream of updates that the gluon server should apply.
-	GetUpdates() <-chan imap.Update
-
-	// Close the connector will no longer be used and all resources should be closed/released.
-	Close(ctx context.Context) error
 }

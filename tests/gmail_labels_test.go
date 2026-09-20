@@ -2,6 +2,10 @@ package tests
 
 import (
 	"testing"
+	"time"
+
+	"github.com/ProtonMail/gluon/connector"
+	"github.com/ProtonMail/gluon/imap"
 )
 
 // These integration tests exercise the X-GM-EXT-1 Gmail label extension
@@ -177,5 +181,56 @@ func TestGmailLabelsRejectedWhenDisabled(t *testing.T) {
 
 		c.C(`A005 SEARCH NOT X-GM-LABELS "Paperless"`)
 		c.Sx(`A005 BAD`)
+	})
+}
+
+// gmailUnawareConnector wraps a Connector but deliberately does not implement
+// connector.GmailLabelConnector: embedding the interface promotes only the core
+// methods, leaving the optional X-GM-EXT-1 interface unsatisfied.
+type gmailUnawareConnector struct {
+	Connector
+}
+
+type gmailUnawareConnectorBuilder struct{}
+
+func (*gmailUnawareConnectorBuilder) New(
+	usernames []string,
+	password []byte,
+	period time.Duration,
+	flags, permFlags, attrs imap.FlagSet,
+) Connector {
+	return &gmailUnawareConnector{
+		Connector: connector.NewDummy(usernames, password, period, flags, permFlags, attrs),
+	}
+}
+
+// TestGmailLabelsConnectorWithoutSupport covers the misconfiguration where the
+// server enables the extension but the connector does not implement
+// GmailLabelConnector. Every X-GM-LABELS operation must fail loudly rather than
+// answer with plausible-looking data — in particular SEARCH, where reporting "no
+// matches" would make NOT X-GM-LABELS match every message in the mailbox.
+func TestGmailLabelsConnectorWithoutSupport(t *testing.T) {
+	options := defaultServerOptions(t, withGmailExtension(), withConnectorBuilder(&gmailUnawareConnectorBuilder{}))
+
+	runOneToOneTestWithAuth(t, options, func(c *testConnection, _ *testSession) {
+		c.C("b001 CREATE saved-messages")
+		c.S("b001 OK CREATE")
+
+		c.doAppend(`saved-messages`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+
+		c.C(`A001 SELECT saved-messages`)
+		c.Se(`A001 OK [READ-WRITE] SELECT`)
+
+		c.C(`A002 STORE 1 +X-GM-LABELS ("Paperless")`)
+		c.Sx(`A002 NO`)
+
+		c.C(`A003 FETCH 1 (X-GM-LABELS)`)
+		c.Sx(`A003 NO`)
+
+		c.C(`A004 SEARCH X-GM-LABELS "Paperless"`)
+		c.Sx(`A004 NO`)
+
+		c.C(`A005 SEARCH NOT X-GM-LABELS "Paperless"`)
+		c.Sx(`A005 NO`)
 	})
 }

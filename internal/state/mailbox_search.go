@@ -838,7 +838,11 @@ func buildSearchOpGmailLabels(ctx context.Context, m *Mailbox, key *command.Sear
 	noMatch := func(s *searchData) (bool, error) { return false, nil }
 
 	// Get the mailbox ID for this label from the connector (reads in-memory label cache).
-	remoteMailboxID, ok := m.state.user.GetRemote().GetGmailLabelMailboxID(ctx, key.Value)
+	remoteMailboxID, ok, err := m.state.user.GetRemote().GetGmailLabelMailboxID(ctx, key.Value)
+	if err != nil {
+		return nil, err
+	}
+
 	if !ok {
 		return newBuildSearchOpResult(noMatch), nil
 	}

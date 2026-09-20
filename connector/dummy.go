@@ -276,6 +276,10 @@ func (conn *Dummy) MarkMessagesForwarded(ctx context.Context, cache IMAPStateWri
 	return nil
 }
 
+// Dummy opts into the X-GM-EXT-1 extension via the optional GmailLabelConnector
+// interface, so the assertion below is what keeps the two in sync.
+var _ GmailLabelConnector = (*Dummy)(nil)
+
 // MarkMessagesWithGmailLabels applies or removes Gmail-style labels. Each label
 // is backed by a non-exclusive mailbox; (un)labelling only (un)links the message
 // from that mailbox and never touches folder membership (e.g. INBOX), matching

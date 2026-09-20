@@ -94,5 +94,8 @@ type Connector interface {
 
 	// GetGmailLabelMailboxID returns the IMAP mailbox ID for a given Gmail label name.
 	// Used for efficient SEARCH X-GM-LABELS operations via local DB lookups.
-	GetGmailLabelMailboxID(ctx context.Context, label string) (imap.MailboxID, bool)
+	// The boolean reports whether the label exists; an error means the lookup could
+	// not be performed at all (e.g. the connector does not support the extension),
+	// which must not be confused with "no messages carry this label".
+	GetGmailLabelMailboxID(ctx context.Context, label string) (imap.MailboxID, bool, error)
 }
