@@ -2,8 +2,8 @@ package state
 
 import (
 	"fmt"
-
 	"slices"
+	"sync"
 
 	"github.com/ProtonMail/gluon/db"
 	"github.com/ProtonMail/gluon/imap"
@@ -27,8 +27,9 @@ type snapMsgWithSeq struct {
 
 // snapMsgList is an ordered list of messages inside a snapshot.
 type snapMsgList struct {
-	msg []*snapMsg
-	idx map[imap.InternalMessageID]*snapMsg
+	msg  []*snapMsg
+	idx  map[imap.InternalMessageID]*snapMsg
+	lock sync.RWMutex
 }
 
 func newMsgList(capacity int) *snapMsgList {
@@ -38,6 +39,23 @@ func newMsgList(capacity int) *snapMsgList {
 	}
 }
 
+// withLock runs fn while holding the write lock. Every method that mutates msg/idx must go through this.
+func (list *snapMsgList) withLock(fn func()) {
+	list.lock.Lock()
+	defer list.lock.Unlock()
+
+	fn()
+}
+
+// withRLock runs fn while holding the read lock. Every method that reads msg/idx must go through this.
+func (list *snapMsgList) withRLock(fn func()) {
+	list.lock.RLock()
+	defer list.lock.RUnlock()
+
+	fn()
+}
+
+// binarySearchByUID assumes the caller already holds list.lock.
 func (list *snapMsgList) binarySearchByUID(uid imap.UID) (int, bool) {
 	msg := snapMsg{UID: uid}
 
@@ -48,7 +66,15 @@ func (list *snapMsgList) binarySearchByUID(uid imap.UID) (int, bool) {
 	return index, ok
 }
 
-func (list *snapMsgList) insert(msgID db.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) error {
+func (list *snapMsgList) insert(msgID db.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) (err error) {
+	list.withLock(func() {
+		err = list.insertUnsafe(msgID, msgUID, flags)
+	})
+
+	return
+}
+
+func (list *snapMsgList) insertUnsafe(msgID db.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) error {
 	if len(list.msg) > 0 && list.msg[len(list.msg)-1].UID >= msgUID {
 		return fmt.Errorf("UID-Last=%v UID-Msg=%v: %w", list.msg[len(list.msg)-1].UID, msgUID, ErrOutOfOrderUIDInsertion)
 	}
@@ -61,13 +87,18 @@ func (list *snapMsgList) insert(msgID db.MessageIDPair, msgUID imap.UID, flags i
 	}
 
 	list.msg = append(list.msg, snapMsg)
-
 	list.idx[msgID.InternalID] = snapMsg
 
 	return nil
 }
 
 func (list *snapMsgList) insertOutOfOrder(msgID db.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
+	list.withLock(func() {
+		list.insertOutOfOrderUnsafe(msgID, msgUID, flags)
+	})
+}
+
+func (list *snapMsgList) insertOutOfOrderUnsafe(msgID db.MessageIDPair, msgUID imap.UID, flags imap.FlagSet) {
 	index, ok := list.binarySearchByUID(msgUID)
 	if ok {
 		panic("Duplicate UID added")
@@ -81,11 +112,18 @@ func (list *snapMsgList) insertOutOfOrder(msgID db.MessageIDPair, msgUID imap.UI
 	}
 
 	list.msg = slices.Insert(list.msg, index, snapMsg)
-
 	list.idx[msgID.InternalID] = snapMsg
 }
 
-func (list *snapMsgList) remove(msgID imap.InternalMessageID) bool {
+func (list *snapMsgList) remove(msgID imap.InternalMessageID) (removed bool) {
+	list.withLock(func() {
+		removed = list.removeUnsafe(msgID)
+	})
+
+	return
+}
+
+func (list *snapMsgList) removeUnsafe(msgID imap.InternalMessageID) bool {
 	snapshotMsg, ok := list.idx[msgID]
 	if !ok {
 		return false
@@ -106,7 +144,15 @@ func (list *snapMsgList) remove(msgID imap.InternalMessageID) bool {
 	return true
 }
 
-func (list *snapMsgList) update(internalID imap.InternalMessageID, remoteID imap.MessageID) bool {
+func (list *snapMsgList) update(internalID imap.InternalMessageID, remoteID imap.MessageID) (ok bool) {
+	list.withRLock(func() {
+		ok = list.updateUnsafe(internalID, remoteID)
+	})
+
+	return
+}
+
+func (list *snapMsgList) updateUnsafe(internalID imap.InternalMessageID, remoteID imap.MessageID) bool {
 	snapMsg, ok := list.idx[internalID]
 	if !ok {
 		return false
@@ -117,15 +163,39 @@ func (list *snapMsgList) update(internalID imap.InternalMessageID, remoteID imap
 	return true
 }
 
-func (list *snapMsgList) all() []*snapMsg {
+func (list *snapMsgList) all() (result []*snapMsg) {
+	list.withRLock(func() {
+		result = list.allUnsafe()
+	})
+
+	return
+}
+
+func (list *snapMsgList) allUnsafe() []*snapMsg {
 	return list.msg
 }
 
-func (list *snapMsgList) len() int {
+func (list *snapMsgList) len() (result int) {
+	list.withRLock(func() {
+		result = list.lenUnsafe()
+	})
+
+	return
+}
+
+func (list *snapMsgList) lenUnsafe() int {
 	return len(list.msg)
 }
 
-func (list *snapMsgList) where(fn func(seq snapMsgWithSeq) bool) []snapMsgWithSeq {
+func (list *snapMsgList) where(fn func(seq snapMsgWithSeq) bool) (result []snapMsgWithSeq) {
+	list.withRLock(func() {
+		result = list.whereUnsafe(fn)
+	})
+
+	return
+}
+
+func (list *snapMsgList) whereUnsafe(fn func(seq snapMsgWithSeq) bool) []snapMsgWithSeq {
 	var result []snapMsgWithSeq
 
 	for idx, i := range list.msg {
@@ -142,7 +212,15 @@ func (list *snapMsgList) where(fn func(seq snapMsgWithSeq) bool) []snapMsgWithSe
 	return result
 }
 
-func (list *snapMsgList) whereCount(fn func(seq snapMsgWithSeq) bool) int {
+func (list *snapMsgList) whereCount(fn func(seq snapMsgWithSeq) bool) (result int) {
+	list.withRLock(func() {
+		result = list.whereCountUnsafe(fn)
+	})
+
+	return
+}
+
+func (list *snapMsgList) whereCountUnsafe(fn func(seq snapMsgWithSeq) bool) int {
 	result := 0
 
 	for idx, i := range list.msg {
@@ -159,13 +237,53 @@ func (list *snapMsgList) whereCount(fn func(seq snapMsgWithSeq) bool) int {
 	return result
 }
 
-func (list *snapMsgList) has(msgID imap.InternalMessageID) bool {
+// firstWhere returns the first message (in sequence order) for which fn returns true.
+func (list *snapMsgList) firstWhere(fn func(seq snapMsgWithSeq) bool) (result snapMsgWithSeq, ok bool) {
+	list.withRLock(func() {
+		result, ok = list.firstWhereUnsafe(fn)
+	})
+
+	return
+}
+
+func (list *snapMsgList) firstWhereUnsafe(fn func(seq snapMsgWithSeq) bool) (snapMsgWithSeq, bool) {
+	for idx, i := range list.msg {
+		snapWithSeq := snapMsgWithSeq{
+			snapMsg: i,
+			Seq:     imap.SeqID(uint32(idx + 1)),
+		}
+
+		if fn(snapWithSeq) {
+			return snapWithSeq, true
+		}
+	}
+
+	return snapMsgWithSeq{}, false
+}
+
+func (list *snapMsgList) has(msgID imap.InternalMessageID) (ok bool) {
+	list.withRLock(func() {
+		ok = list.hasUnsafe(msgID)
+	})
+
+	return
+}
+
+func (list *snapMsgList) hasUnsafe(msgID imap.InternalMessageID) bool {
 	_, ok := list.idx[msgID]
 
 	return ok
 }
 
-func (list *snapMsgList) get(msgID imap.InternalMessageID) (snapMsgWithSeq, bool) {
+func (list *snapMsgList) get(msgID imap.InternalMessageID) (result snapMsgWithSeq, ok bool) {
+	list.withRLock(func() {
+		result, ok = list.getUnsafe(msgID)
+	})
+
+	return
+}
+
+func (list *snapMsgList) getUnsafe(msgID imap.InternalMessageID) (snapMsgWithSeq, bool) {
 	snapshotMsg, ok := list.idx[msgID]
 	if !ok {
 		return snapMsgWithSeq{}, false
@@ -182,7 +300,15 @@ func (list *snapMsgList) get(msgID imap.InternalMessageID) (snapMsgWithSeq, bool
 	}, ok
 }
 
-func (list *snapMsgList) seq(seq imap.SeqID) (snapMsgWithSeq, bool) {
+func (list *snapMsgList) seq(seq imap.SeqID) (result snapMsgWithSeq, ok bool) {
+	list.withRLock(func() {
+		result, ok = list.seqUnsafe(seq)
+	})
+
+	return
+}
+
+func (list *snapMsgList) seqUnsafe(seq imap.SeqID) (snapMsgWithSeq, bool) {
 	if imap.SeqID(uint32(len(list.msg))) < seq {
 		return snapMsgWithSeq{}, false
 	}
@@ -193,14 +319,30 @@ func (list *snapMsgList) seq(seq imap.SeqID) (snapMsgWithSeq, bool) {
 	}, true
 }
 
-func (list *snapMsgList) last() snapMsgWithSeq {
+func (list *snapMsgList) last() (result snapMsgWithSeq) {
+	list.withRLock(func() {
+		result = list.lastUnsafe()
+	})
+
+	return
+}
+
+func (list *snapMsgList) lastUnsafe() snapMsgWithSeq {
 	return snapMsgWithSeq{
 		Seq:     imap.SeqID(uint32(len(list.msg))),
 		snapMsg: list.msg[len(list.msg)-1],
 	}
 }
 
-func (list *snapMsgList) seqRange(seqLo, seqHi imap.SeqID) []snapMsgWithSeq {
+func (list *snapMsgList) seqRange(seqLo, seqHi imap.SeqID) (result []snapMsgWithSeq) {
+	list.withRLock(func() {
+		result = list.seqRangeUnsafe(seqLo, seqHi)
+	})
+
+	return
+}
+
+func (list *snapMsgList) seqRangeUnsafe(seqLo, seqHi imap.SeqID) []snapMsgWithSeq {
 	interval := list.msg[seqLo-1 : seqHi]
 	result := make([]snapMsgWithSeq, len(interval))
 
@@ -212,7 +354,15 @@ func (list *snapMsgList) seqRange(seqLo, seqHi imap.SeqID) []snapMsgWithSeq {
 	return result
 }
 
-func (list *snapMsgList) uidRange(uidLo, uidHi imap.UID) []snapMsgWithSeq {
+func (list *snapMsgList) uidRange(uidLo, uidHi imap.UID) (result []snapMsgWithSeq) {
+	list.withRLock(func() {
+		result = list.uidRangeUnsafe(uidLo, uidHi)
+	})
+
+	return
+}
+
+func (list *snapMsgList) uidRangeUnsafe(uidLo, uidHi imap.UID) []snapMsgWithSeq {
 	listLen := len(list.msg)
 
 	indexLo, _ := list.binarySearchByUID(uidLo)
@@ -241,7 +391,15 @@ func (list *snapMsgList) uidRange(uidLo, uidHi imap.UID) []snapMsgWithSeq {
 	return result
 }
 
-func (list *snapMsgList) getWithUID(uid imap.UID) (snapMsgWithSeq, bool) {
+func (list *snapMsgList) getWithUID(uid imap.UID) (result snapMsgWithSeq, ok bool) {
+	list.withRLock(func() {
+		result, ok = list.getWithUIDUnsafe(uid)
+	})
+
+	return
+}
+
+func (list *snapMsgList) getWithUIDUnsafe(uid imap.UID) (snapMsgWithSeq, bool) {
 	index, ok := list.binarySearchByUID(uid)
 	if !ok {
 		return snapMsgWithSeq{}, false
@@ -253,7 +411,15 @@ func (list *snapMsgList) getWithUID(uid imap.UID) (snapMsgWithSeq, bool) {
 	}, ok
 }
 
-func (list *snapMsgList) getWithSeqID(id imap.SeqID) (snapMsgWithSeq, bool) {
+func (list *snapMsgList) getWithSeqID(id imap.SeqID) (result snapMsgWithSeq, ok bool) {
+	list.withRLock(func() {
+		result, ok = list.getWithSeqIDUnsafe(id)
+	})
+
+	return
+}
+
+func (list *snapMsgList) getWithSeqIDUnsafe(id imap.SeqID) (snapMsgWithSeq, bool) {
 	index := int(id) - 1
 	listLen := len(list.msg)
 
@@ -267,7 +433,15 @@ func (list *snapMsgList) getWithSeqID(id imap.SeqID) (snapMsgWithSeq, bool) {
 	}, true
 }
 
-func (list *snapMsgList) existsWithSeqID(id imap.SeqID) bool {
+func (list *snapMsgList) existsWithSeqID(id imap.SeqID) (result bool) {
+	list.withRLock(func() {
+		result = list.existsWithSeqIDUnsafe(id)
+	})
+
+	return
+}
+
+func (list *snapMsgList) existsWithSeqIDUnsafe(id imap.SeqID) bool {
 	index := int(id) - 1
 	listLen := len(list.msg)
 
