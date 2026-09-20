@@ -83,4 +83,11 @@ type Connector interface {
 
 	// SetMessagesForwarded marks the message with the given ID as forwarded.
 	SetMessagesForwarded(ctx context.Context, tx db.Transaction, messageIDs []imap.MessageID, forwarded bool) ([]Update, error)
+
+	// GetQuota returns the quota for the given quota root name.
+	GetQuota(ctx context.Context, rootName string) (*imap.QuotaRoot, error)
+
+	// GetQuotaRoot returns the list of quota root names applicable to the given mailbox,
+	// along with the resource usage for each of those roots.
+	GetQuotaRoot(ctx context.Context, mailboxName string) ([]string, []*imap.QuotaRoot, error)
 }
