@@ -95,9 +95,12 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 			operations = append(operations, op)
 		case *command.FetchAttributeGmailLabels:
 			op := func(msg snapMsgWithSeq, _ *db.Message, _ []byte) (response.Item, error) {
+				// Report the failure rather than an empty label set: a client that
+				// dedups on X-GM-LABELS would treat "no labels" as "not yet
+				// processed" and act on the message again.
 				labels, err := m.state.user.GetRemote().GetGmailLabels(ctx, msg.ID.RemoteID)
 				if err != nil {
-					return response.ItemGmailLabels(nil), nil
+					return nil, err
 				}
 
 				return response.ItemGmailLabels(labels), nil
