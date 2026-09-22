@@ -139,7 +139,7 @@ func buildStructuralTestLiteral(outerBoundary, innerBoundary, attachmentBody str
 func expectPart(t *testing.T, literal []byte, wantType MIMEType, wantBody string, path ...int) {
 	t.Helper()
 
-	part, err := Parse(literal).Part(path...)
+	part, err := ParseNoAlloc(literal).Part(path...)
 	require.NoError(t, err, "part %v should exist", path)
 
 	mimeType, _, err := part.ContentType()

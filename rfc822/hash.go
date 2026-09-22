@@ -26,7 +26,7 @@ const gluonInternalHeaderKey = "X-Pm-Gluon-Id"
 // - the Content-Disposition header of each (leaf) part,
 // - the (decoded) body of each part.
 func GetMessageHash(b []byte) (string, error) {
-	section := Parse(b)
+	section := ParseNoAlloc(b)
 
 	header, err := section.ParseHeader()
 	if err != nil {
@@ -154,7 +154,7 @@ func writeContentTypeParams(w io.Writer, mimeType MIMEType, values map[string]st
 // decoded body, different encoding) will differ here even though GetMessageHash ignores
 // it. This is intentional for wire-metadata comparison.
 func GetMessageHeaderFingerprint(b []byte) (string, error) {
-	section := Parse(b)
+	section := ParseNoAlloc(b)
 
 	h := sha256.New()
 

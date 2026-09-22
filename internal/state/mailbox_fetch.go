@@ -22,13 +22,26 @@ import (
 
 var totalActiveFetchRequest int32
 
+type fetchContext struct {
+	literal       []byte
+	parsedSection *rfc822.Section
+}
+
+func (fc *fetchContext) parse() *rfc822.Section {
+	if fc.parsedSection == nil {
+		fc.parsedSection = rfc822.ParseNoAlloc(fc.literal)
+	}
+
+	return fc.parsedSection
+}
+
 func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan response.Response) error {
 	snapMessages, err := m.snap.getMessagesInRange(ctx, cmd.SeqSet)
 	if err != nil {
 		return err
 	}
 
-	operations := make([]func(snapMsgWithSeq, *db.Message, []byte) (response.Item, error), 0, len(cmd.Attributes))
+	operations := make([]func(snapMsgWithSeq, *db.Message, *fetchContext) (response.Item, error), 0, len(cmd.Attributes))
 
 	var (
 		needsLiteral bool
@@ -88,8 +101,8 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 				setSeen = true
 			}
 
-			op := func(_ snapMsgWithSeq, _ *db.Message, literal []byte) (response.Item, error) {
-				return fetchAttributeBodySection(attribute, literal)
+			op := func(_ snapMsgWithSeq, _ *db.Message, fc *fetchContext) (response.Item, error) {
+				return fetchAttributeBodySection(attribute, fc)
 			}
 
 			operations = append(operations, op)
@@ -126,21 +139,19 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 			return err
 		}
 
-		var literal []byte
-
+		var fc fetchContext
 		if needsLiteral {
 			l, err := m.state.getLiteral(ctx, msg.ID)
 			if err != nil {
 				return err
 			}
-
-			literal = l
+			fc.literal = l
 		}
 
 		items := make([]response.Item, 0, len(operations))
 
 		for _, op := range operations {
-			item, err := op(msg, message, literal)
+			item, err := op(msg, message, &fc)
 			if err != nil {
 				return err
 			}
@@ -190,52 +201,48 @@ func (m *Mailbox) Fetch(ctx context.Context, cmd *command.Fetch, ch chan respons
 	return nil
 }
 
-func fetchEnvelope(_ snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
+func fetchEnvelope(_ snapMsgWithSeq, message *db.Message, _ *fetchContext) (response.Item, error) {
 	return response.ItemEnvelope(message.Envelope), nil
 }
 
-func fetchFlags(msg snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
+func fetchFlags(msg snapMsgWithSeq, message *db.Message, _ *fetchContext) (response.Item, error) {
 	return response.ItemFlags(msg.flags), nil
 }
 
-func fetchInternalDate(_ snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
+func fetchInternalDate(_ snapMsgWithSeq, message *db.Message, _ *fetchContext) (response.Item, error) {
 	return response.ItemInternalDate(message.Date), nil
 }
 
-func fetchRFC822(_ snapMsgWithSeq, _ *db.Message, literal []byte) (response.Item, error) {
-	return response.ItemRFC822Literal(literal), nil
+func fetchRFC822(_ snapMsgWithSeq, _ *db.Message, fc *fetchContext) (response.Item, error) {
+	return response.ItemRFC822Literal(fc.literal), nil
 }
 
-func fetchRFC822Header(_ snapMsgWithSeq, _ *db.Message, literal []byte) (response.Item, error) {
-	section := rfc822.Parse(literal)
-
-	return response.ItemRFC822Header(section.Header()), nil
+func fetchRFC822Header(_ snapMsgWithSeq, _ *db.Message, fc *fetchContext) (response.Item, error) {
+	return response.ItemRFC822Header(fc.parse().Header()), nil
 }
 
-func fetchRFC822Size(_ snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
+func fetchRFC822Size(_ snapMsgWithSeq, message *db.Message, _ *fetchContext) (response.Item, error) {
 	return response.ItemRFC822Size(message.Size), nil
 }
 
-func fetchRFC822Text(_ snapMsgWithSeq, _ *db.Message, literal []byte) (response.Item, error) {
-	section := rfc822.Parse(literal)
-
-	return response.ItemRFC822Text(section.Body()), nil
+func fetchRFC822Text(_ snapMsgWithSeq, _ *db.Message, fc *fetchContext) (response.Item, error) {
+	return response.ItemRFC822Text(fc.parse().Body()), nil
 }
 
-func fetchBody(_ snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
+func fetchBody(_ snapMsgWithSeq, message *db.Message, _ *fetchContext) (response.Item, error) {
 	return response.ItemBody(message.Body), nil
 }
 
-func fetchBodyStructure(_ snapMsgWithSeq, message *db.Message, _ []byte) (response.Item, error) {
+func fetchBodyStructure(_ snapMsgWithSeq, message *db.Message, _ *fetchContext) (response.Item, error) {
 	return response.ItemBodyStructure(message.BodyStructure), nil
 }
 
-func fetchUID(msg snapMsgWithSeq, _ *db.Message, _ []byte) (response.Item, error) {
+func fetchUID(msg snapMsgWithSeq, _ *db.Message, _ *fetchContext) (response.Item, error) {
 	return response.ItemUID(msg.UID), nil
 }
 
-func fetchAttributeBodySection(attribute *command.FetchAttributeBodySection, literal []byte) (response.Item, error) {
-	b, section, err := fetchBodyLiteral(attribute.Section, literal)
+func fetchAttributeBodySection(attribute *command.FetchAttributeBodySection, fc *fetchContext) (response.Item, error) {
+	b, section, err := fetchBodyLiteral(attribute.Section, fc)
 	if err != nil {
 		return nil, err
 	}
@@ -249,12 +256,12 @@ func fetchAttributeBodySection(attribute *command.FetchAttributeBodySection, lit
 	return item, nil
 }
 
-func fetchBodyLiteral(section command.BodySection, literal []byte) ([]byte, string, error) {
+func fetchBodyLiteral(section command.BodySection, fc *fetchContext) ([]byte, string, error) {
 	if section == nil {
-		return literal, "", nil
+		return fc.literal, "", nil
 	}
 
-	b, err := fetchBodySection(section, literal)
+	b, err := fetchBodySection(section, fc)
 	if err != nil {
 		return nil, "", err
 	}
@@ -267,8 +274,8 @@ func fetchBodyLiteral(section command.BodySection, literal []byte) ([]byte, stri
 	return b, renderedSection, nil
 }
 
-func fetchBodySection(section command.BodySection, literal []byte) ([]byte, error) {
-	root := rfc822.Parse(literal)
+func fetchBodySection(section command.BodySection, fc *fetchContext) ([]byte, error) {
+	root := fc.parse()
 
 	switch v := section.(type) {
 	case *command.BodySectionPart:
@@ -296,7 +303,7 @@ func fetchBodySection(section command.BodySection, literal []byte) ([]byte, erro
 		}
 
 		if rfc822.MIMEType(contentType) == rfc822.MessageRFC822 {
-			root = rfc822.Parse(root.Body())
+			root = rfc822.ParseNoAlloc(root.Body())
 		}
 
 		return root, nil
