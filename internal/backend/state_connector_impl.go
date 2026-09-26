@@ -208,6 +208,61 @@ func (sc *stateConnectorImpl) SetMessagesForwarded(
 	return cache.stateUpdates, nil
 }
 
+// gmailLabelConnector reports whether the underlying connector opted into the
+// X-GM-EXT-1 extension by implementing connector.GmailLabelConnector.
+func (sc *stateConnectorImpl) gmailLabelConnector() (connector.GmailLabelConnector, bool) {
+	glc, ok := sc.connector.(connector.GmailLabelConnector)
+
+	return glc, ok
+}
+
+func (sc *stateConnectorImpl) SetGmailLabels(
+	ctx context.Context,
+	tx db.Transaction,
+	messageIDs []imap.MessageID,
+	labels []string,
+	add bool,
+) ([]state.Update, error) {
+	glc, ok := sc.gmailLabelConnector()
+	if !ok {
+		return nil, connector.ErrGmailLabelsNotSupported
+	}
+
+	ctx = sc.newContextWithMetadata(ctx)
+
+	cache := sc.newDBIMAPWrite(tx)
+
+	if err := glc.MarkMessagesWithGmailLabels(ctx, &cache, messageIDs, labels, add); err != nil {
+		return nil, err
+	}
+
+	return cache.stateUpdates, nil
+}
+
+func (sc *stateConnectorImpl) GetGmailLabels(ctx context.Context, messageID imap.MessageID) ([]string, error) {
+	glc, ok := sc.gmailLabelConnector()
+	if !ok {
+		return nil, connector.ErrGmailLabelsNotSupported
+	}
+
+	ctx = sc.newContextWithMetadata(ctx)
+
+	return glc.GetGmailLabels(ctx, messageID)
+}
+
+func (sc *stateConnectorImpl) GetGmailLabelMailboxID(ctx context.Context, label string) (imap.MailboxID, bool, error) {
+	glc, ok := sc.gmailLabelConnector()
+	if !ok {
+		return "", false, connector.ErrGmailLabelsNotSupported
+	}
+
+	ctx = sc.newContextWithMetadata(ctx)
+
+	mboxID, found := glc.GetGmailLabelMailboxID(ctx, label)
+
+	return mboxID, found, nil
+}
+
 func (sc *stateConnectorImpl) getMetadataValue(key string) any {
 	v, ok := sc.metadata[key]
 	if !ok {

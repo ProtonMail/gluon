@@ -21,6 +21,10 @@ func (s *Session) handleSearch(ctx context.Context, tag string, cmd *command.Sea
 		defer profiling.Stop(ctx, profiling.CmdTypeSearch)
 	}
 
+	if !s.enableGmailExtension && searchKeysHaveGmailLabels(cmd.Keys) {
+		return response.Bad(tag).WithError(errGmailExtensionDisabled), nil
+	}
+
 	var decoder *encoding.Decoder
 
 	if len(cmd.Charset) != 0 {
