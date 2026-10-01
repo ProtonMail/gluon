@@ -17,6 +17,7 @@ import (
 
 // gluonInternalHeaderKey mirrors internal/ids.InternalIDKey.
 const gluonInternalHeaderKey = "X-Pm-Gluon-Id"
+const xpmDateHeaderKey = "X-Pm-Date"
 
 // GetMessageHash returns the hash of the given message.
 // This takes into account:
@@ -172,7 +173,7 @@ func GetMessageHeaderFingerprint(b []byte) (string, error) {
 		var entries []string
 
 		header.Entries(func(key, val string) {
-			if strings.EqualFold(key, gluonInternalHeaderKey) {
+			if strings.EqualFold(key, gluonInternalHeaderKey) || strings.EqualFold(key, xpmDateHeaderKey) {
 				return
 			}
 
