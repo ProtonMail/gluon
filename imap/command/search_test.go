@@ -2,10 +2,13 @@ package command
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"time"
 	"unicode/utf8"
 
+	"github.com/ProtonMail/gluon/internal/unleash"
+	"github.com/ProtonMail/gluon/internal/unleash/featureflags"
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/encoding/htmlindex"
@@ -642,6 +645,51 @@ func TestParser_Search_ISO_8859_1_String(t *testing.T) {
 	cmd, err := testParseCommand(`tag SEARCH CHARSET ISO-8859-1 SUBJECT ` + string(textWithQuotes))
 	require.NoError(t, err)
 	require.Equal(t, expected, cmd)
+}
+
+// searchDepthTestInputs builds three search-key strings that each exceed the depth limit of 64.
+// Each does it in a separate way: nested parens, nested NOT, nested OR.
+func searchDepthTestInputs() map[string]string {
+	return map[string]string{
+		"parens": strings.Repeat("(", 70) + "ALL" + strings.Repeat(")", 70),
+		"not":    strings.Repeat("NOT ", 70) + "ALL",
+		"or":     strings.Repeat("OR ALL ", 70) + "ALL",
+	}
+}
+
+func TestParser_SearchKeyDepthExceeded_KillSwitch_Disabled(t *testing.T) {
+	unleash.Init(unleash.NewMockFeatureFlagValueProvider(map[string]bool{
+		featureflags.MaximumSearchKeyDepthDisabled: false,
+	}))
+	t.Cleanup(func() { unleash.Init(&unleash.NullFeatureFlagProvider{}) })
+
+	for name, key := range searchDepthTestInputs() {
+		_, err := testParseCommand(`tag SEARCH ` + key)
+		require.ErrorContains(t, err, "search key nesting depth", name)
+	}
+}
+
+func TestParser_SearchKeyDepthExceeded_KillSwitch_Enabled(t *testing.T) {
+	unleash.Init(unleash.NewMockFeatureFlagValueProvider(map[string]bool{
+		featureflags.MaximumSearchKeyDepthDisabled: true,
+	}))
+	t.Cleanup(func() { unleash.Init(&unleash.NullFeatureFlagProvider{}) })
+
+	for name, key := range searchDepthTestInputs() {
+		cmd, err := testParseCommand(`tag SEARCH ` + key)
+		require.NoError(t, err, name)
+		require.IsType(t, &Search{}, cmd.Payload, name)
+	}
+}
+
+func TestParser_SearchKeyDepthExceeded_NoFFProvider(t *testing.T) {
+	unleash.Init(nil)
+	t.Cleanup(func() { unleash.Init(&unleash.NullFeatureFlagProvider{}) })
+
+	for name, key := range searchDepthTestInputs() {
+		_, err := testParseCommand(`tag SEARCH ` + key)
+		require.ErrorContains(t, err, "search key nesting depth", name)
+	}
 }
 
 func enc(text, encoding string) []byte {
