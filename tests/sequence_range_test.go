@@ -149,3 +149,20 @@ func TestWildcard(t *testing.T) {
 		c.C("tag uid fetch * (flags)").OK("tag")
 	})
 }
+
+func TestSequenceRangeOutOfRangeNumber(t *testing.T) {
+	runOneToOneTestWithAuth(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		c.C("a001 CREATE mbox1")
+		c.S("a001 OK CREATE")
+		c.C(`A002 SELECT mbox1`)
+		c.Se(`A002 OK [READ-WRITE] SELECT`)
+
+		c.doAppend(`mbox1`, buildRFC5322TestLiteral(`To: 1@pm.me`)).expect("OK")
+
+		// numbers that do not fit in 32 bits must be rejected instead of wrapping around to an existing message
+		c.C(`A003 FETCH 4294967296 (FLAGS)`).BAD(`A003`)
+		c.C(`A004 UID STORE 4294967297 +FLAGS (\Deleted)`).BAD(`A004`)
+		c.C(`A005 UID FETCH 18446744073709551617 (FLAGS)`).BAD(`A005`)
+		c.C(`A006 FETCH 1 (BODY.PEEK[]<1.9223372036854775807>)`).BAD(`A006`)
+	})
+}
