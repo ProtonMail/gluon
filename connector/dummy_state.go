@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"time"
 
@@ -17,6 +18,11 @@ type dummyState struct {
 	messages   map[imap.MessageID]*dummyMessage
 	mailboxes  map[imap.MailboxID]*dummyMailbox
 	lastIMAPID imap.IMAPID
+
+	// labelMailboxes maps a Gmail label name to the (non-exclusive) mailbox
+	// that backs it. Used by the X-GM-EXT-1 extension: applying a label adds
+	// the message to this mailbox without touching folder membership.
+	labelMailboxes map[string]imap.MailboxID
 
 	lock sync.RWMutex
 }
@@ -36,16 +42,20 @@ type dummyMessage struct {
 	flags     imap.FlagSet
 
 	mboxIDs map[imap.MailboxID]struct{}
+
+	// labels holds the Gmail-style labels (X-GM-LABELS) applied to this message.
+	labels map[string]struct{}
 }
 
 func newDummyState(flags, permFlags, attrs imap.FlagSet) *dummyState {
 	return &dummyState{
-		flags:      flags,
-		permFlags:  permFlags,
-		attrs:      attrs,
-		messages:   make(map[imap.MessageID]*dummyMessage),
-		mailboxes:  make(map[imap.MailboxID]*dummyMailbox),
-		lastIMAPID: imap.NewIMAPID(),
+		flags:          flags,
+		permFlags:      permFlags,
+		attrs:          attrs,
+		messages:       make(map[imap.MessageID]*dummyMessage),
+		mailboxes:      make(map[imap.MailboxID]*dummyMailbox),
+		lastIMAPID:     imap.NewIMAPID(),
+		labelMailboxes: make(map[string]imap.MailboxID),
 	}
 }
 
@@ -222,6 +232,7 @@ func (state *dummyState) createMessage(
 		flags:   otherFlags,
 		date:    date,
 		mboxIDs: map[imap.MailboxID]struct{}{mboxID: {}},
+		labels:  make(map[string]struct{}),
 	}
 
 	return state.toMessage(messageID)
@@ -243,6 +254,79 @@ func (state *dummyState) removeMessageFromMailbox(messageID imap.MessageID, mbox
 	defer state.lock.Unlock()
 
 	delete(state.messages[messageID].mboxIDs, mboxID)
+}
+
+// getOrCreateLabelMailbox returns the (non-exclusive) mailbox backing the given
+// Gmail label, creating it on first use. The returned bool reports whether the
+// mailbox was newly created so the caller can emit a MailboxCreated update.
+func (state *dummyState) getOrCreateLabelMailbox(label string) (imap.MailboxID, imap.Mailbox, bool) {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	if mboxID, ok := state.labelMailboxes[label]; ok {
+		return mboxID, state.toMailbox(mboxID), false
+	}
+
+	mboxID := imap.MailboxID(uuid.NewString())
+
+	// Labels are non-exclusive: applying one must not evict the message from
+	// its folder (e.g. INBOX), matching real Bridge behaviour.
+	state.mailboxes[mboxID] = &dummyMailbox{
+		mboxName:  []string{label},
+		exclusive: false,
+	}
+	state.labelMailboxes[label] = mboxID
+
+	return mboxID, state.toMailbox(mboxID), true
+}
+
+func (state *dummyState) getLabelMailboxID(label string) (imap.MailboxID, bool) {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	mboxID, ok := state.labelMailboxes[label]
+
+	return mboxID, ok
+}
+
+func (state *dummyState) addGmailLabel(messageID imap.MessageID, label string) {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	msg := state.messages[messageID]
+	if msg.labels == nil {
+		msg.labels = make(map[string]struct{})
+	}
+
+	msg.labels[label] = struct{}{}
+}
+
+func (state *dummyState) removeGmailLabel(messageID imap.MessageID, label string) {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	if msg := state.messages[messageID]; msg.labels != nil {
+		delete(msg.labels, label)
+	}
+}
+
+func (state *dummyState) getGmailLabels(messageID imap.MessageID) []string {
+	state.lock.Lock()
+	defer state.lock.Unlock()
+
+	msg, ok := state.messages[messageID]
+	if !ok {
+		return nil
+	}
+
+	labels := make([]string, 0, len(msg.labels))
+	for label := range msg.labels {
+		labels = append(labels, label)
+	}
+
+	sort.Strings(labels)
+
+	return labels
 }
 
 func (state *dummyState) setSeen(messageID imap.MessageID, seen bool) {
