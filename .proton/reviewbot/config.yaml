@@ -11,6 +11,11 @@ scanners:
   grype:
     minSeverity: error
     ignoreRules:
-      - "GO-2026-5970"  # BRIDGE-638 — x/text norm.Iter infinite loop on invalid UTF-8 (uses x/text/encoding, not norm)
+      - "GO-2026-6617" # BRIDGE-683: HTTP/2 server crash due to HPACK encoder race in net/http.
+      - "GO-2026-6612" # BRIDGE-683: Double flow control refund on HTTP/2 server streams in net/http
+      - "GO-2026-6611" # BRIDGE-683: Excessive CPU consumption from repeated initial window changes in net/http.
+      - "GO-2026-6603" # BRIDGE-683: HTTP/2 server memory exchaustion due to Trailer headers in net/http.
+      - "GO-2026-6613" # BRIDGE-683: HTTP/1 server connection desynchronization after 2xx Connect response in net/http.
+      - "GO-2026-6607" # BRIDGE-683: Reject malformed ECH outer extension references in crypto/tls.
     # Convention: each ignored rule gets a JIRA ticket and reason
     #   - "GHSA-xxxx-yyyy"  # BRIDGE-NNNN — brief reason / remediation status
