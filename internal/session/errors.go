@@ -32,6 +32,8 @@ func shouldReportIMAPCommandError(err error) bool {
 		return false
 	case errors.Is(err, connector.ErrOperationNotAllowed):
 		return false
+	case errors.Is(err, connector.ErrOverQuota):
+		return false
 	case errors.Is(err, context.Canceled):
 		return false
 	case errors.As(err, &netErr):

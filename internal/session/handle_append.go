@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ProtonMail/gluon/connector"
 	"github.com/ProtonMail/gluon/imap/command"
 	"github.com/ProtonMail/gluon/internal/response"
 	"github.com/ProtonMail/gluon/internal/state"
@@ -62,6 +63,8 @@ func (s *Session) handleAppend(ctx context.Context, tag string, cmd *command.App
 		return nil
 	}); errors.Is(err, state.ErrNoSuchMailbox) {
 		return response.No(tag).WithError(err).WithItems(response.ItemTryCreate())
+	} else if errors.Is(err, connector.ErrOverQuota) {
+		return response.No(tag).WithError(err).WithItems(response.ItemOverQuota())
 	} else if err != nil {
 		return err
 	}
