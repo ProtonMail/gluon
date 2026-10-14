@@ -17,5 +17,6 @@ scanners:
       - "GO-2026-6603" # BRIDGE-683: HTTP/2 server memory exchaustion due to Trailer headers in net/http.
       - "GO-2026-6613" # BRIDGE-683: HTTP/1 server connection desynchronization after 2xx Connect response in net/http.
       - "GO-2026-6607" # BRIDGE-683: Reject malformed ECH outer extension references in crypto/tls.
+      - "GO-2026-6608" # BRIDGE-683: HTTP/1 client connection desynchronization after CONNECT rejection in net/http.
     # Convention: each ignored rule gets a JIRA ticket and reason
     #   - "GHSA-xxxx-yyyy"  # BRIDGE-NNNN — brief reason / remediation status
