@@ -9,7 +9,7 @@ import (
 
 // Group is forked and improved version of "github.com/bradenaw/juniper/xsync.Group".
 //
-// It manages a group of goroutines. The main change to original is posibility
+// It manages a group of goroutines. The main change to original is possibility
 // to wait passed function to finish without canceling it's context and adding
 // PanicHandler.
 type Group struct {

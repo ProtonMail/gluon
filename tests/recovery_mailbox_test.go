@@ -572,7 +572,7 @@ func (r *sizeExceededAppendConnector) CreateMessage(
 	_ []byte,
 	_ imap.FlagSet,
 	_ time.Time) (imap.Message, []byte, error) {
-	return imap.Message{}, nil, fmt.Errorf("messsage to large: %w", connector.ErrMessageSizeExceedsLimits)
+	return imap.Message{}, nil, fmt.Errorf("message to large: %w", connector.ErrMessageSizeExceedsLimits)
 }
 
 func (r *sizeExceededAppendConnector) AddMessagesToMailbox(
@@ -581,7 +581,7 @@ func (r *sizeExceededAppendConnector) AddMessagesToMailbox(
 	_ []imap.MessageID,
 	_ imap.MailboxID,
 ) error {
-	return fmt.Errorf("messsage to large: %w", connector.ErrMessageSizeExceedsLimits)
+	return fmt.Errorf("message to large: %w", connector.ErrMessageSizeExceedsLimits)
 }
 
 type sizeExceededAppendConnectorBuilder struct{}
