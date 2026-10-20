@@ -602,6 +602,89 @@ func TestParseGroup(t *testing.T) {
 	}
 }
 
+func TestParseAddressList_QuotedGroupDisplayName(t *testing.T) {
+	// https://github.com/ProtonMail/gluon/issues/482
+	tests := []struct {
+		name    string
+		input   string
+		want    []*mail.Address
+		wantErr bool
+	}{
+		{
+			name:  "reported header value",
+			input: `"undisclosed-recipients (utajeni adresati)":;`,
+		},
+		{
+			name:  "minimal quoted display name",
+			input: `"Group":;`,
+		},
+		{
+			name:  "unquoted display name control",
+			input: `Group:;`,
+		},
+		{
+			name:  "whole quoted group compatibility control",
+			input: `"Group:;"`,
+		},
+		{
+			name:  "quoted display name with member",
+			input: `"Group":alice@example.com;`,
+			want:  []*mail.Address{{Address: "alice@example.com"}},
+		},
+		{
+			name:  "quoted display name with quoted member",
+			input: `"Group":"Alice" <alice@example.com>;`,
+			want:  []*mail.Address{{Name: "Alice", Address: "alice@example.com"}},
+		},
+		{
+			name:  "quoted display name with colon and escaped quotes",
+			input: `"Team: \"One\"":alice@example.com;`,
+			want:  []*mail.Address{{Address: "alice@example.com"}},
+		},
+		{
+			name:  "whole quoted group with member compatibility control",
+			input: `"Group:alice@example.com;"`,
+			want:  []*mail.Address{{Address: "alice@example.com"}},
+		},
+		{
+			name:  "quoted empty group followed by address",
+			input: `"Group":;, bob@example.com`,
+			want:  []*mail.Address{{Address: "bob@example.com"}},
+		},
+		{
+			name:  "whole quoted group followed by address compatibility control",
+			input: `"Group:;", bob@example.com`,
+			want:  []*mail.Address{{Address: "bob@example.com"}},
+		},
+		{
+			name:    "unterminated whole quoted group",
+			input:   `"Group:;`,
+			wantErr: true,
+		},
+		{
+			name:    "missing group colon",
+			input:   `"Group";`,
+			wantErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			addresses, err := ParseAddressList(test.input)
+			if test.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if len(test.want) == 0 {
+				require.Empty(t, addresses)
+			} else {
+				require.Equal(t, test.want, addresses)
+			}
+		})
+	}
+}
+
 func TestParseSingleAddressEncodedWord(t *testing.T) {
 	tests := []struct {
 		input string

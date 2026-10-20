@@ -137,14 +137,22 @@ func parseGroup(p *Parser) ([]*mail.Address, bool, error) {
 	// mailbox-list    =   (mailbox *("," mailbox)) / obs-mbox-list
 	// obs-mbox-list   =   *([CFWS] ",") mailbox *("," [mailbox / CFWS])
 	//
-	// This version has been relaxed so that the ';' is optional. and that a group can be wrapped in `"`
-	hasQuotes, err := p.parser.Matches(rfcparser.TokenTypeDQuote)
-	if err != nil {
-		return nil, false, err
-	}
+	// This version allows an optional ';' and a group wrapped in quotes.
+	// Parse the display name first so its quotes are not mistaken for a group wrapper.
+	parserState := p.SaveState()
+	var hasQuotes bool
+	if _, err := parseDisplayName(p.parser); err != nil || !p.parser.Check(rfcparser.TokenTypeColon) {
+		p.RestoreState(parserState)
 
-	if _, err := parseDisplayName(p.parser); err != nil {
-		return nil, false, err
+		var err error
+		hasQuotes, err = p.parser.Matches(rfcparser.TokenTypeDQuote)
+		if err != nil {
+			return nil, false, err
+		}
+
+		if _, err := parseDisplayName(p.parser); err != nil {
+			return nil, false, err
+		}
 	}
 
 	if err := p.parser.Consume(rfcparser.TokenTypeColon, "expected ':' for group start"); err != nil {
@@ -172,9 +180,9 @@ func parseGroup(p *Parser) ([]*mail.Address, bool, error) {
 			}
 		}
 
-		// This section can optionally be one of the following: mailbox-list / CFWS / obs-group-list. So if
-		// we run out of input, we see semicolon or a double quote we should skip trying to parse this bit.
-		if !p.parser.Check(rfcparser.TokenTypeEOF) && !p.parser.Check(rfcparser.TokenTypeSemicolon) && !p.parser.Check(rfcparser.TokenTypeDQuote) {
+		// A quote can end a wrapped group or start a mailbox's quoted display name.
+		if !p.parser.Check(rfcparser.TokenTypeEOF) && !p.parser.Check(rfcparser.TokenTypeSemicolon) &&
+			(!hasQuotes || !p.parser.Check(rfcparser.TokenTypeDQuote)) {
 			// Mailbox
 			var parsedFirstMailbox bool
 
