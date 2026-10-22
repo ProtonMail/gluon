@@ -3,10 +3,15 @@ package rfcparser
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 )
 
 const DefaultContinuationMessage = "Ready"
+
+// maxNumber is the largest value accepted by ParseNumber. RFC3501 defines number as an unsigned 32-bit integer,
+// on 32-bit platforms this is further limited to what can be represented by an int.
+const maxNumber = min(math.MaxUint32, math.MaxInt)
 
 // Parser provide facilities to consumes tokens from a given scanner. Advance should be called at least once before
 // any checks in order to initialize the previousToken.
@@ -249,7 +254,7 @@ func (p *Parser) ParseStringAfterContinuation(continuationMessage string) (Strin
 	return p.ParseAString()
 }
 
-// ParseNumber parses a non decimal number without any signs.
+// ParseNumber parses a non decimal number without any signs. Numbers that exceed maxNumber are rejected.
 func (p *Parser) ParseNumber() (int, error) {
 	if err := p.Consume(TokenTypeDigit, "expected valid digit for number"); err != nil {
 		return 0, err
@@ -261,8 +266,14 @@ func (p *Parser) ParseNumber() (int, error) {
 		if ok, err := p.Matches(TokenTypeDigit); err != nil {
 			return 0, err
 		} else if ok {
+			digit := ByteToInt(p.previousToken.Value)
+
+			if number > (maxNumber-digit)/10 {
+				return 0, p.MakeError("number is out of range")
+			}
+
 			number *= 10
-			number += ByteToInt(p.previousToken.Value)
+			number += digit
 		} else {
 			break
 		}

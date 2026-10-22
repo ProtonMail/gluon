@@ -2,6 +2,7 @@ package rfcparser
 
 import (
 	"bytes"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,6 +32,28 @@ func TestParser_ParseNumberInvalid(t *testing.T) {
 		[]byte(`.1`),
 		[]byte(`a`),
 		[]byte(`+1`),
+	}
+	for _, i := range inputs {
+		p := newTestParser(i)
+
+		_, err := p.ParseNumber()
+		require.Error(t, err)
+	}
+}
+
+func TestParser_ParseNumberMax(t *testing.T) {
+	p := newTestParser([]byte(strconv.Itoa(maxNumber)))
+
+	v, err := p.ParseNumber()
+	require.NoError(t, err)
+	require.Equal(t, maxNumber, v)
+}
+
+func TestParser_ParseNumberOutOfRange(t *testing.T) {
+	inputs := [][]byte{
+		[]byte(`4294967296`),
+		[]byte(`18446744073709551617`),
+		[]byte(`99999999999999999999999999`),
 	}
 	for _, i := range inputs {
 		p := newTestParser(i)
