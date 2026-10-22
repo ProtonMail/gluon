@@ -62,7 +62,11 @@ func NewOnDiskStore(path string, pass []byte, opt ...Option) (Store, error) {
 }
 
 const blockSize = 64 * 4096
-const storeVersion = uint32(1)
+const (
+	// legacyStoreVersion files seal every block with the same nonce and are only read.
+	legacyStoreVersion = uint32(1)
+	storeVersion       = uint32(2)
+)
 
 func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error {
 	if err := os.MkdirAll(c.path, 0o700); err != nil {
@@ -119,8 +123,10 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error 
 		return fmt.Errorf("failed to write nonce to file: %w", err)
 	}
 
+	blockNonceBuf := make([]byte, len(nonce))
+
 	// Write encrypted blocks.
-	for {
+	for blockIndex := uint64(0); ; blockIndex++ {
 		// Read at least blockSize from the compressor.
 		bytesRead, err := io.ReadAtLeast(reader, compressedBlock, blockSize)
 		if err != nil {
@@ -136,7 +142,7 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error 
 
 		// Encrypt the compressed block.
 		encryptedBlock = encryptedBlock[:0] // Reset slice.
-		encrypted := c.gcm.Seal(encryptedBlock, nonce, compressedBlock[0:bytesRead], nil)
+		encrypted := c.gcm.Seal(encryptedBlock, blockNonce(blockNonceBuf, nonce, blockIndex), compressedBlock[0:bytesRead], nil)
 		encryptedLen := bytesRead + encryptionOverhead
 
 		// Write to disk.
@@ -176,7 +182,9 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 		return nil, err
 	}
 
-	if !bytes.Equal(header, storeHeaderBytes) {
+	perBlockNonce := bytes.Equal(header, storeHeaderBytes)
+
+	if !perBlockNonce && !bytes.Equal(header, legacyStoreHeaderBytes) {
 		if c.fallback != nil {
 			result, err := c.readFromFallback(file)
 			if err != nil {
@@ -210,9 +218,10 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 
 		readBuffer := make([]byte, encryptedBlockSize)
 		decryptBuffer := make([]byte, blockSize)
+		blockNonceBuf := make([]byte, len(nonce))
 		totalBytesRead := 0
 
-		for {
+		for blockIndex := uint64(0); ; blockIndex++ {
 			// Read up to encryptedBlockSize bytes from disk.
 			bytesRead, err := file.Read(readBuffer)
 			if err != nil {
@@ -226,7 +235,12 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 			// Decrypt read bytes.
 			decryptBuffer = decryptBuffer[:0] // Reset slice.
 
-			decrypted, err := c.gcm.Open(decryptBuffer, nonce, readBuffer[0:bytesRead], nil)
+			readNonce := nonce
+			if perBlockNonce {
+				readNonce = blockNonce(blockNonceBuf, nonce, blockIndex)
+			}
+
+			decrypted, err := c.gcm.Open(decryptBuffer, readNonce, readBuffer[0:bytesRead], nil)
 			if err != nil {
 				writer.CloseWithError(fmt.Errorf("failed to decrypt block (offset:%v): %w", totalBytesRead, err))
 				return
@@ -338,14 +352,34 @@ func getEncryptedBlockSize(aead cipher.AEAD, blockSize int) int {
 	return blockSize + aead.Overhead()
 }
 
-func makeGluonHeaderBytes() []byte {
+// blockNonce writes the nonce for the given block into dst: the file nonce with the block index
+// XORed into its last 8 bytes, so that no two blocks of a file are sealed under the same nonce.
+func blockNonce(dst, nonce []byte, blockIndex uint64) []byte {
+	copy(dst, nonce)
+
+	var counter [8]byte
+
+	binary.BigEndian.PutUint64(counter[:], blockIndex)
+
+	tail := dst[len(dst)-len(counter):]
+	for i := range counter {
+		tail[i] ^= counter[i]
+	}
+
+	return dst
+}
+
+func makeGluonHeaderBytes(headerVersion uint32) []byte {
 	const StoreHeaderID = "GLUON-CACHE"
 
 	version := make([]byte, 4)
 
-	binary.LittleEndian.PutUint32(version, storeVersion)
+	binary.LittleEndian.PutUint32(version, headerVersion)
 
 	return append([]byte(StoreHeaderID), version...)
 }
 
-var storeHeaderBytes = makeGluonHeaderBytes()
+var (
+	storeHeaderBytes       = makeGluonHeaderBytes(storeVersion)
+	legacyStoreHeaderBytes = makeGluonHeaderBytes(legacyStoreVersion)
+)
