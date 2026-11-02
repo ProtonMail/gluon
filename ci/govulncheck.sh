@@ -9,7 +9,7 @@ jq -r '.finding | select((.osv != null) and (.trace[0].function != null)) | .osv
 
 # Read GO- prefixed ignore rules from reviewbot config (single source of truth)
 if [ -f "$CONFIG" ]; then
-    grep -oE 'GO-[0-9]{4}-[0-9]+' "$CONFIG" | while read -r id; do
+    { grep -oE 'GO-[0-9]{4}-[0-9]+' "$CONFIG" || true; } | while read -r id; do
         echo "ignoring $id (tracked in $CONFIG)"
         grep -v "$id" < vulns_osv_ids.txt > tmp || true
         mv tmp vulns_osv_ids.txt
