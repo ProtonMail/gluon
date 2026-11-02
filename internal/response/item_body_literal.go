@@ -21,7 +21,7 @@ func (r *itemBodyLiteral) WithPartial(begin, count int) *itemBodyLiteral {
 
 	if literalLen := len(r.literal); begin >= literalLen {
 		r.literal = nil
-	} else if begin+count > literalLen {
+	} else if count > literalLen-begin {
 		r.literal = r.literal[begin:]
 	} else {
 		r.literal = r.literal[begin : begin+count]
