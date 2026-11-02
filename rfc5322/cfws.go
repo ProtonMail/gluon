@@ -1,8 +1,14 @@
 package rfc5322
 
-import "github.com/ProtonMail/gluon/rfcparser"
+import (
+	"github.com/ProtonMail/gluon/internal/unleash"
+	"github.com/ProtonMail/gluon/internal/unleash/featureflags"
+	"github.com/ProtonMail/gluon/rfcparser"
+)
 
 // Section 3.2.2 White space and Comments
+
+const maxCommentDepth = 64
 
 func tryParseCFWS(p *rfcparser.Parser) (bool, error) {
 	if !p.CheckWith(func(tokenType rfcparser.TokenType) bool {
@@ -30,7 +36,7 @@ func parseCFWS(p *rfcparser.Parser) error {
 		return nil
 	}
 
-	if err := parseComment(p); err != nil {
+	if err := parseComment(p, 0); err != nil {
 		return err
 	}
 
@@ -44,7 +50,7 @@ func parseCFWS(p *rfcparser.Parser) error {
 			break
 		}
 
-		if err := parseComment(p); err != nil {
+		if err := parseComment(p, 0); err != nil {
 			return err
 		}
 	}
@@ -126,7 +132,7 @@ func parseFWS(p *rfcparser.Parser) error {
 	return nil
 }
 
-func parseCContent(p *rfcparser.Parser) error {
+func parseCContent(p *rfcparser.Parser, depth int) error {
 	if ok, err := p.MatchesWith(isCText); err != nil {
 		return err
 	} else if ok {
@@ -140,13 +146,23 @@ func parseCContent(p *rfcparser.Parser) error {
 	}
 
 	if p.Check(rfcparser.TokenTypeLParen) {
-		return parseComment(p)
+		return parseComment(p, depth+1)
 	}
 
 	return p.MakeError("unexpected ccontent token")
 }
 
-func parseComment(p *rfcparser.Parser) error {
+func parseComment(p *rfcparser.Parser, depth int) error {
+	commentDepthLimitDisabled := true
+
+	if provider := unleash.Get(); provider != nil {
+		commentDepthLimitDisabled = provider.GetFlagValue(featureflags.MaximumRFC5322CommentDepthDisabled)
+	}
+
+	if !commentDepthLimitDisabled && depth > maxCommentDepth {
+		return p.MakeError("maximum comment nesting depth exceeded")
+	}
+
 	if err := p.Consume(rfcparser.TokenTypeLParen, "expected ( for comment start"); err != nil {
 		return err
 	}
@@ -162,7 +178,7 @@ func parseComment(p *rfcparser.Parser) error {
 			break
 		}
 
-		if err := parseCContent(p); err != nil {
+		if err := parseCContent(p, depth); err != nil {
 			return err
 		}
 	}
