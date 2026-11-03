@@ -418,6 +418,18 @@ func (s SearchKeyList) SanitizedString() string {
 	}), ""))
 }
 
+type SearchKeyGmailLabels struct {
+	Value string
+}
+
+func (s SearchKeyGmailLabels) String() string {
+	return fmt.Sprintf("X-GM-LABELS %v", s.Value)
+}
+
+func (s SearchKeyGmailLabels) SanitizedString() string {
+	return fmt.Sprintf("X-GM-LABELS %v", sanitizeString(s.Value))
+}
+
 type SearchKeySeqSet struct {
 	SeqSet []SeqRange
 }

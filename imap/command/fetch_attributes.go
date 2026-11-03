@@ -86,6 +86,12 @@ func (f FetchAttributeUID) String() string {
 	return "UID"
 }
 
+type FetchAttributeGmailLabels struct{}
+
+func (f FetchAttributeGmailLabels) String() string {
+	return "X-GM-LABELS"
+}
+
 type BodySection interface {
 	String() string
 }

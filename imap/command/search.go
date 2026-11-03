@@ -484,6 +484,9 @@ func handleSearchKey(keyword rfcparser.String, p *rfcparser.Parser, depth int) (
 	case "undraft":
 		return &SearchKeyUndraft{}, nil
 
+	case "x":
+		return handleXExtensionSearchKey(p, keyword)
+
 	default:
 		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown search key '%v'", keyword.Value), keyword.Offset)
 	}
@@ -524,4 +527,29 @@ func parseStringKeyAtom(p *rfcparser.Parser) (string, error) {
 	}
 
 	return p.ParseAtom()
+}
+
+func handleXExtensionSearchKey(p *rfcparser.Parser, name rfcparser.String) (SearchKey, error) {
+	if err := p.ConsumeBytesFold('-'); err != nil {
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown search key '%v'", name.Value), name.Offset)
+	}
+
+	if err := p.ConsumeBytesFold('G', 'M'); err != nil {
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown search key '%v'", name.Value), name.Offset)
+	}
+
+	if err := p.ConsumeBytesFold('-'); err != nil {
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown search key '%v'", name.Value), name.Offset)
+	}
+
+	if err := p.ConsumeBytesFold('L', 'A', 'B', 'E', 'L', 'S'); err != nil {
+		return nil, p.MakeErrorAtOffset(fmt.Sprintf("unknown search key '%v'", name.Value), name.Offset)
+	}
+
+	value, err := parseStringKeyAString(p)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SearchKeyGmailLabels{Value: value}, nil
 }
