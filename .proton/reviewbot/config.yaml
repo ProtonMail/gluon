@@ -1,0 +1,15 @@
+failOnOutOfDiff: true
+scanners:
+  golangci-lint:
+    enable: false
+  gofmt:
+    enable: false
+  shellcheck:
+    enable: true
+  gomodcheck:
+    enable: true
+  grype:
+    minSeverity: error
+    ignoreRules: []
+    # Convention: each ignored rule gets a JIRA ticket and reason
+    #   - "GHSA-xxxx-yyyy"  # BRIDGE-NNNN — brief reason / remediation status

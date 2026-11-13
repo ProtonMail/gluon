@@ -17,6 +17,17 @@ func MessageWithContext(ctx context.Context, message string, context Context) {
 	}
 }
 
+func MessageWithContextAndTags(ctx context.Context, message string, context Context, tags Tags) {
+	reporter, ok := GetReporterFromContext(ctx)
+	if !ok {
+		return
+	}
+
+	if err := reporter.ReportMessageWithContextAndTags(message, context, tags); err != nil {
+		logrus.WithError(err).Error("Failed to report message")
+	}
+}
+
 func ExceptionWithContext(ctx context.Context, message string, context Context) {
 	reporter, ok := GetReporterFromContext(ctx)
 	if !ok {

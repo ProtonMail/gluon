@@ -29,6 +29,14 @@ func Parse(literal []byte) *Section {
 	return parse(literalCopy, []int{}, 0, len(literal))
 }
 
+// ParseNoAlloc parses the literal without copying it. The returned
+// Section (and anything derived from it, e.g. Header()/Body()/ParseHeader())
+// references the original slice; callers must not mutate it, and must not
+// call mutating Header methods such as Del on the parsed header.
+func ParseNoAlloc(literal []byte) *Section {
+	return parse(literal, []int{}, 0, len(literal))
+}
+
 func (section *Section) Identifier() []int {
 	return section.identifier
 }

@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 	"unicode/utf8"
@@ -772,6 +773,18 @@ func TestSearchList(t *testing.T) {
 		c.C("A004 search (deleted seen draft)")
 		c.S("* SEARCH " + seq(20, 30))
 		c.OK("A004")
+	})
+}
+
+// Check if a SEARCH command with deeply nested search keys is parsed & rejected before auth.
+func TestSearchKeyDepthLimitPreAuth(t *testing.T) {
+	runOneToOneTest(t, defaultServerOptions(t), func(c *testConnection, _ *testSession) {
+		c.C("A001 SEARCH " + strings.Repeat("(", 70) + "ALL" + strings.Repeat(")", 70))
+		c.BAD("A001")
+
+		// The connection must still be usable.
+		c.C("A002 CAPABILITY")
+		c.OK("A002")
 	})
 }
 

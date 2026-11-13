@@ -1,9 +1,7 @@
 package unleash
 
-import "github.com/ProtonMail/gluon/imap"
-
 var CapabilityKillSwitchMap = map[string]string{
-	string(imap.IDLE): `InboxBridgeImapIdleCapabilityDisabled`,
+	"IDLE": `InboxBridgeImapIdleCapabilityDisabled`, // maps to `imap.Idle`, removed dependency due to circular import
 }
 
 type FeatureFlagValueProvider interface {

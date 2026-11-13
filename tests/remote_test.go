@@ -118,6 +118,9 @@ func TestRemoteDeletionPool(t *testing.T) {
 		c[2].Se(`* 1 FETCH (UID 1)`, `* 2 FETCH (UID 2)`)
 		c[2].OK("tag")
 
+		// Idle so that 2 waits for updates rather than pooling for them;
+		c[2].C(`idle idle`).Continue()
+
 		// Put the messages back in the mailbox.
 		// They'll get new UIDs.
 		s.messageAdded("user", messageID1, mboxID1)
@@ -126,8 +129,9 @@ func TestRemoteDeletionPool(t *testing.T) {
 		// Flush the updates.
 		s.flush("user")
 
-		// Receive updates.
-		c[2].C(`tag noop`).OK(`tag`)
+		// 2 Receive updates.
+		c[2].Se(`* 2 EXISTS`)
+		c[2].C(`DONE`).OK(`idle`)
 
 		// Second client sees the messages have new UIDs.
 		c[2].C(`tag fetch 1:* (uid)`)

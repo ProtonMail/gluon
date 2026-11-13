@@ -9,12 +9,11 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"slices"
 
 	"github.com/ProtonMail/gluon/async"
 	"github.com/ProtonMail/gluon/events"
@@ -174,7 +173,7 @@ func (s *Session) SetTLSConfig(cfg *tls.Config) {
 }
 
 func (s *Session) Serve(ctx context.Context) error {
-	defer s.done(ctx)
+	defer s.done() //nolint: contextcheck
 	defer s.handleWG.Wait()
 
 	if err := s.greet(); err != nil {
@@ -224,7 +223,8 @@ func (s *Session) serve(ctx context.Context) error {
 
 				if s.errorCount += 1; s.errorCount >= maxSessionError {
 					// there's no events like this in sentry so far.
-					reporter.MessageWithContext(ctx,
+					reporter.MessageWithContext(
+						ctx,
 						"Too many errors in session, closing connection",
 						reporter.Context{"ID": s.imapID.String()},
 					)
@@ -307,11 +307,15 @@ func (s *Session) logOutgoing(line string) {
 	writeLog(s.outLogger, "S", strconv.Itoa(s.sessionID), line)
 }
 
-func (s *Session) done(ctx context.Context) {
+func (s *Session) done() {
+	// use the parent context(from session) if there is a need to access context specific values like reporter
+	releaseContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	close(s.eventCh)
 
 	if s.state != nil {
-		if err := s.state.ReleaseState(ctx); err != nil {
+		if err := s.state.ReleaseState(releaseContext); err != nil {
 			s.log.WithError(err).Error("Failed to close state")
 		}
 	}

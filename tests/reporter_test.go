@@ -50,6 +50,10 @@ func (r *testReporter) ReportMessageWithContext(val string, ctx reporter.Context
 	return nil
 }
 
+func (r *testReporter) ReportMessageWithContextAndTags(val string, ctx reporter.Context, tags map[string]string) error {
+	return r.ReportMessageWithContext(val, ctx)
+}
+
 func (r *testReporter) ReportWarningWithContext(val string, ctx reporter.Context) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()

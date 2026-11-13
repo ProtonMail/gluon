@@ -61,8 +61,10 @@ func NewOnDiskStore(path string, pass []byte, opt ...Option) (Store, error) {
 	return store, nil
 }
 
-const blockSize = 64 * 4096
-const storeVersion = uint32(1)
+const (
+	blockSize    = 64 * 4096
+	storeVersion = uint32(1)
+)
 
 func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error {
 	if err := os.MkdirAll(c.path, 0o700); err != nil {
@@ -74,39 +76,48 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error 
 		defer c.sem.Unlock()
 	}
 
-	nonce := make([]byte, c.gcm.NonceSize())
-	if _, err := rand.Read(nonce); err != nil {
-		return err
-	}
-
 	fullPath := filepath.Join(c.path, messageID.String())
 
 	file, err := os.OpenFile(fullPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			logrus.WithError(err).Warn("Failed to close file")
+		}
+	}()
 
-	defer file.Close()
+	return c.writeLiteral(file, in)
+}
 
-	if written, err := file.Write(storeHeaderBytes); err != nil {
+func (c *onDiskStore) writeLiteral(out io.Writer, in io.Reader) error {
+	nonce := make([]byte, c.gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
 		return err
-	} else if written != len(storeHeaderBytes) {
-		return fmt.Errorf("failed to write store header to file")
+	}
+
+	if err := writeAll(out, storeHeaderBytes); err != nil {
+		return fmt.Errorf("failed to write store header: %w", err)
 	}
 
 	reader, writer := io.Pipe()
-	defer writer.Close()
+	defer func(reader *io.PipeReader, writer *io.PipeWriter) {
+		_ = reader.Close()
+		_ = writer.Close()
+	}(reader, writer)
 
 	compressor := lz4.NewWriter(writer)
 	if err := compressor.Apply(lz4.BlockSizeOption(lz4.Block64Kb), lz4.ChecksumOption(false)); err != nil {
 		return fmt.Errorf("failed to set compressor options: %w", err)
 	}
 
-	go func() {
+	go func(in io.Reader) {
 		_, err := compressor.ReadFrom(in)
-		compressor.Close()
-		writer.CloseWithError(err)
-	}()
+		_ = compressor.Close()
+		_ = writer.CloseWithError(err)
+	}(in)
 
 	encryptionOverhead := c.gcm.Overhead()
 	encryptedBlockSized := getEncryptedBlockSize(c.gcm, blockSize)
@@ -115,21 +126,20 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error 
 	encryptedBlock := make([]byte, encryptedBlockSized)
 
 	// Write nonce to file.
-	if bytesWritten, err := file.Write(nonce); err != nil || bytesWritten != len(nonce) {
+	if err := writeAll(out, nonce); err != nil {
 		return fmt.Errorf("failed to write nonce to file: %w", err)
 	}
 
 	// Write encrypted blocks.
 	for {
 		// Read at least blockSize from the compressor.
-		bytesRead, err := io.ReadAtLeast(reader, compressedBlock, blockSize)
+		bytesRead, err := io.ReadFull(reader, compressedBlock)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
 
-			// If there less bytes than expected we reached the end of the file.
-			if !errors.Is(err, io.ErrUnexpectedEOF) {
+			if !errors.Is(err, io.ErrUnexpectedEOF) || bytesRead == 0 {
 				return err
 			}
 		}
@@ -140,11 +150,22 @@ func (c *onDiskStore) Set(messageID imap.InternalMessageID, in io.Reader) error 
 		encryptedLen := bytesRead + encryptionOverhead
 
 		// Write to disk.
-		if bytesWritten, err := file.Write(encrypted[0:encryptedLen]); err != nil || bytesWritten != encryptedLen {
+		if err := writeAll(out, encrypted[:encryptedLen]); err != nil {
 			return fmt.Errorf("failed to write block to disk: %w", err)
 		}
 	}
 
+	return nil
+}
+
+func writeAll(out io.Writer, data []byte) error {
+	written, err := out.Write(data)
+	if err != nil {
+		return err
+	}
+	if written != len(data) {
+		return io.ErrShortWrite
+	}
 	return nil
 }
 
@@ -158,7 +179,9 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 
 	var fileSize int64
 
@@ -202,11 +225,18 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 
 	reader, writer := io.Pipe()
 
+	defer func(reader *io.PipeReader) {
+		// Writer is closed in the goroutine
+		_ = reader.Close()
+	}(reader)
+
 	encryptionOverhead := c.gcm.Overhead()
 	encryptedBlockSize := getEncryptedBlockSize(c.gcm, blockSize)
 
 	go func() {
-		defer writer.Close()
+		defer func(writer *io.PipeWriter) {
+			_ = writer.Close()
+		}(writer)
 
 		readBuffer := make([]byte, encryptedBlockSize)
 		decryptBuffer := make([]byte, blockSize)
@@ -214,13 +244,19 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 
 		for {
 			// Read up to encryptedBlockSize bytes from disk.
-			bytesRead, err := file.Read(readBuffer)
+			bytesRead, err := io.ReadFull(file, readBuffer)
 			if err != nil {
-				if !errors.Is(err, io.EOF) && bytesRead != 0 {
-					writer.CloseWithError(err)
+				if errors.Is(err, io.EOF) {
+					if totalBytesRead == 0 {
+						_ = writer.CloseWithError(fmt.Errorf("missing encrypted payload: %w", io.ErrUnexpectedEOF))
+					}
+					return
 				}
 
-				return
+				if !errors.Is(err, io.ErrUnexpectedEOF) {
+					_ = writer.CloseWithError(err)
+					return
+				}
 			}
 
 			// Decrypt read bytes.
@@ -228,7 +264,7 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 
 			decrypted, err := c.gcm.Open(decryptBuffer, nonce, readBuffer[0:bytesRead], nil)
 			if err != nil {
-				writer.CloseWithError(fmt.Errorf("failed to decrypt block (offset:%v): %w", totalBytesRead, err))
+				_ = writer.CloseWithError(fmt.Errorf("failed to decrypt block (offset:%v): %w", totalBytesRead, err))
 				return
 			}
 
@@ -236,7 +272,7 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 
 			// Write to pipe so they can be decompressed.
 			if _, err := writer.Write(decrypted[0:decryptedLen]); err != nil {
-				writer.CloseWithError(err)
+				_ = writer.CloseWithError(err)
 				return
 			}
 
@@ -251,9 +287,7 @@ func (c *onDiskStore) Get(messageID imap.InternalMessageID) ([]byte, error) {
 	b.Grow(int(fileSize))
 
 	if _, err := decompressor.WriteTo(&b); err != nil {
-		if !errors.Is(err, io.EOF) {
-			return nil, err
-		}
+		return nil, fmt.Errorf("failed to decompress block: %w", err)
 	}
 
 	return b.Bytes(), nil
@@ -294,6 +328,7 @@ func (c *onDiskStore) List() ([]imap.InternalMessageID, error) {
 		id, err := imap.InternalMessageIDFromString(info.Name())
 		if err != nil {
 			logrus.WithError(err).Errorf("Invalid id file in cache: %v", info.Name())
+			return nil
 		}
 
 		ids = append(ids, id)

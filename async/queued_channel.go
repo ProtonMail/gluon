@@ -3,6 +3,7 @@ package async
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/ProtonMail/gluon/logging"
 )
@@ -15,8 +16,8 @@ type QueuedChannel[T any] struct {
 	stopCh chan struct{}
 	items  []T
 	cond   *sync.Cond
-	closed atomicBool // Should use atomic.Bool once we use Go 1.19!
-	name   string     // for debugging
+	closed atomic.Bool
+	name   string // for debugging
 	wg     sync.WaitGroup
 }
 
@@ -30,7 +31,7 @@ func NewQueuedChannel[T any](chanBufferSize, queueCapacity int, panicHandler Pan
 	}
 
 	// The queue is initially not closed.
-	queue.closed.store(false)
+	queue.closed.Store(false)
 
 	queue.wg.Add(1)
 
@@ -59,7 +60,7 @@ func NewQueuedChannel[T any](chanBufferSize, queueCapacity int, panicHandler Pan
 }
 
 func (q *QueuedChannel[T]) Enqueue(items ...T) bool {
-	if q.closed.load() {
+	if q.closed.Load() {
 		return false
 	}
 
@@ -78,7 +79,7 @@ func (q *QueuedChannel[T]) GetChannel() <-chan T {
 }
 
 func (q *QueuedChannel[T]) Close() {
-	q.closed.store(true)
+	q.closed.Store(true)
 
 	q.cond.L.Lock()
 	defer q.cond.L.Unlock()
@@ -106,7 +107,7 @@ func (q *QueuedChannel[T]) pop() (T, bool) {
 	// This allows the queue to continue popping elements if it's closed,
 	// but will prevent it from hanging indefinitely once it runs out of items.
 	for len(q.items) == 0 {
-		if q.closed.load() {
+		if q.closed.Load() {
 			return item, false
 		}
 

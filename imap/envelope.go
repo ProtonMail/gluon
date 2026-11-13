@@ -80,7 +80,7 @@ func tryParseAddressList(val string) []*mail.Address {
 	addr, err := rfc5322.ParseAddressList(val)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to parse address")
-		return []*mail.Address{{Name: val}}
+		return nil // RFC3501 empty address list should return NIL
 	}
 
 	return addr

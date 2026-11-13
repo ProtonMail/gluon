@@ -374,7 +374,7 @@ func buildSearchOpBody(key *command.SearchKeyBody, decoder *encoding.Decoder) (*
 	keyBytesLower := bytes.ToLower(keyBytes)
 
 	op := func(s *searchData) (bool, error) {
-		section := rfc822.Parse(s.literal)
+		section := rfc822.ParseNoAlloc(s.literal)
 
 		return bytes.Contains(bytes.ToLower(section.Body()), keyBytesLower), nil
 	}

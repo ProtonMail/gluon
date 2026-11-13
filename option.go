@@ -286,7 +286,8 @@ func WithConnectionRollingCounter(connectionLimitThreshold, observabilityThresho
 			observabilityThreshold,
 			numberOfBuckets,
 			thresholdCheckInterval,
-		)}
+		),
+	}
 }
 
 type withFeatureFlagProvider struct {

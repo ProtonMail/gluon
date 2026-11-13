@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ProtonMail/gluon/internal/unleash"
+	"github.com/ProtonMail/gluon/internal/unleash/featureflags"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,20 +72,31 @@ hey there bro
 	require.NoError(t, err)
 	require.NotNil(t, parsed)
 
-	expected := "((\"text\" \"plain\" (\"charset\" \"utf-8\") NIL NIL \"quoted-printable\" 6 2)(\"message\" \"rfc822\" (\"name\" \"ISO-8859-1.eml\") NIL NIL NIL 127 (NIL \"ISO-8859-1\" ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail2\" \"pm.me\")) NIL NIL NIL NIL)(\"text\" \"plain\" (\"charset\" \"iso-8859-1\") NIL NIL NIL 14 1) 6) \"mixed\")"
+	expected := "((\"text\" \"plain\" (\"charset\" \"utf-8\") NIL NIL \"quoted-printable\" 6 2)(\"message\" \"rfc822\" (\"name\" \"ISO-8859-1.eml\") NIL NIL \"7BIT\" 127 (NIL \"ISO-8859-1\" ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail\" \"pm.me\")) ((NIL NIL \"random-mail2\" \"pm.me\")) NIL NIL NIL NIL)(\"text\" \"plain\" (\"charset\" \"iso-8859-1\") NIL NIL \"7BIT\" 14 1) 6) \"mixed\")"
+	require.Equal(t, expected, parsed.Body)
+}
+
+func TestStructureNoContentTypeParams(t *testing.T) {
+	const message = "Content-Type: text/plain\r\nContent-Transfer-Encoding: 7bit\r\n\r\nbody\r\n"
+
+	parsed, err := NewParsedMessage([]byte(message))
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+
+	expected := "(\"text\" \"plain\" NIL NIL NIL \"7bit\" 6 1)"
 	require.Equal(t, expected, parsed.Body)
 }
 
 func TestParseInvalidCharsInContenType(t *testing.T) {
-	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com> 
-To:  Ned Freed <ned@innosoft.com> 
-Subject: Sample message 
-MIME-Version: 1.0 
-Content-type: multipart/mixed; boundary="simple boundary" 
+	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com>
+To:  Ned Freed <ned@innosoft.com>
+Subject: Sample message
+MIME-Version: 1.0
+Content-type: multipart/mixed; boundary="simple boundary"
 
-This is the preamble.  It is to be ignored, though it 
-is a handy place for mail composers to include an 
-explanatory note to non-MIME compliant readers. 
+This is the preamble.  It is to be ignored, though it
+is a handy place for mail composers to include an
+explanatory note to non-MIME compliant readers.
 --simple boundary
 Content-type: text/plain; charset=us-ascii
 
@@ -95,7 +108,7 @@ X-Pm-Content-Encryption: on-import
 
 To: someone
 Subject: Fwd: embedded
-Content-type: multipart/mixed; boundary="embedded-boundary" 
+Content-type: multipart/mixed; boundary="embedded-boundary"
 
 --embedded-boundary
 Content-Type: GIF �ɮ�;
@@ -119,15 +132,15 @@ This is the epilogue.  It is also to be ignored.
 }
 
 func TestParseInvalidMimeType(t *testing.T) {
-	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com> 
-To:  Ned Freed <ned@innosoft.com> 
-Subject: Sample message 
-MIME-Version: 1.0 
-Content-type: multipart/mixed; boundary="simple boundary" 
+	const literal = `From: Nathaniel Borenstein <nsb@bellcore.com>
+To:  Ned Freed <ned@innosoft.com>
+Subject: Sample message
+MIME-Version: 1.0
+Content-type: multipart/mixed; boundary="simple boundary"
 
-This is the preamble.  It is to be ignored, though it 
-is a handy place for mail composers to include an 
-explanatory note to non-MIME compliant readers. 
+This is the preamble.  It is to be ignored, though it
+is a handy place for mail composers to include an
+explanatory note to non-MIME compliant readers.
 --simple boundary
 Content-type: text/plain; charset=us-ascii
 
@@ -139,7 +152,7 @@ X-Pm-Content-Encryption: on-import
 
 To: someone
 Subject: Fwd: embedded
-Content-type: multipart/mixed; boundary="embedded-boundary" 
+Content-type: multipart/mixed; boundary="embedded-boundary"
 
 --embedded-boundary
 Content-Type: application/;
@@ -180,7 +193,41 @@ func FuzzNewParsedMessage(f *testing.F) {
 	f.Add(inSeed2)
 
 	f.Fuzz(func(t *testing.T, inputData []byte) {
-
 		_, _ = NewParsedMessage(inputData)
+	})
+}
+
+func TestMaxMIMEStructureDepthExceeded_KillSwitch_Disabled(t *testing.T) {
+	flags := map[string]bool{
+		featureflags.MaximumMIMEStructureDepthDisabled: false,
+	}
+	mockProvider := unleash.NewMockFeatureFlagValueProvider(flags)
+	unleash.Init(mockProvider)
+
+	eml, err := os.ReadFile(filepath.Join("testdata", "mime-structure-depth.eml"))
+	require.NoError(t, err)
+	_, err = NewParsedMessage(eml)
+	require.Error(t, err)
+	require.ErrorIs(t, err, errorMaximumMIMEStructureDepthExceeded)
+
+	t.Cleanup(func() {
+		unleash.Init(&unleash.NullFeatureFlagProvider{})
+	})
+}
+
+func TestMaxMIMEStructureDepthExceeded_KillSwitch_Enabled(t *testing.T) {
+	flags := map[string]bool{
+		featureflags.MaximumMIMEStructureDepthDisabled: true,
+	}
+	mockProvider := unleash.NewMockFeatureFlagValueProvider(flags)
+	unleash.Init(mockProvider)
+
+	eml, err := os.ReadFile(filepath.Join("testdata", "mime-structure-depth.eml"))
+	require.NoError(t, err)
+	_, err = NewParsedMessage(eml)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		unleash.Init(&unleash.NullFeatureFlagProvider{})
 	})
 }

@@ -5,9 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/gluon/internal/unleash"
+	"github.com/ProtonMail/gluon/internal/unleash/featureflags"
 	"github.com/ProtonMail/gluon/rfcparser"
 	"github.com/bradenaw/juniper/xslices"
 )
+
+const maxSearchKeyDepth = 64
 
 type Search struct {
 	Charset string
@@ -66,7 +70,7 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 					return nil, err
 				}
 
-				key, err := handleSearchKey(rfcparser.String{Value: "cc", Offset: offset}, p)
+				key, err := handleSearchKey(rfcparser.String{Value: "cc", Offset: offset}, p, 0)
 				if err != nil {
 					return nil, err
 				}
@@ -103,7 +107,7 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 				Offset: firstChar.Offset,
 			}
 
-			key, err := handleSearchKey(keywordStr, p)
+			key, err := handleSearchKey(keywordStr, p, 0)
 			if err != nil {
 				return nil, err
 			}
@@ -111,7 +115,7 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 			keys = append(keys, key)
 		}
 	} else {
-		key, err := parseSearchKey(p)
+		key, err := parseSearchKey(p, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +130,7 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 			break
 		}
 
-		key, err := parseSearchKey(p)
+		key, err := parseSearchKey(p, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -144,11 +148,21 @@ func (scp *SearchCommandParser) FromParser(p *rfcparser.Parser) (Payload, error)
 	}, nil
 }
 
-func parseSearchKey(p *rfcparser.Parser) (SearchKey, error) {
+func parseSearchKey(p *rfcparser.Parser, depth int) (SearchKey, error) {
+	searchKeyDepthLimitDisabled := true
+
+	if provider := unleash.Get(); provider != nil {
+		searchKeyDepthLimitDisabled = provider.GetFlagValue(featureflags.MaximumSearchKeyDepthDisabled)
+	}
+
+	if !searchKeyDepthLimitDisabled && depth > maxSearchKeyDepth {
+		return nil, p.MakeError("maximum search key nesting depth exceeded")
+	}
+
 	if ok, err := p.Matches(rfcparser.TokenTypeLParen); err != nil {
 		return nil, err
 	} else if ok {
-		return parseSearchKeyList(p)
+		return parseSearchKeyList(p, depth)
 	}
 
 	if p.Check(rfcparser.TokenTypeDigit) || p.Check(rfcparser.TokenTypeAsterisk) {
@@ -165,15 +179,15 @@ func parseSearchKey(p *rfcparser.Parser) (SearchKey, error) {
 		return nil, err
 	}
 
-	return handleSearchKey(keyword, p)
+	return handleSearchKey(keyword, p, depth)
 }
 
-func parseSearchKeyList(p *rfcparser.Parser) (SearchKey, error) {
+func parseSearchKeyList(p *rfcparser.Parser, depth int) (SearchKey, error) {
 	// "(" search-key *(SP search-key) ")"
 	var searchKeys []SearchKey
 
 	{
-		firstKey, err := parseSearchKey(p)
+		firstKey, err := parseSearchKey(p, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -188,7 +202,7 @@ func parseSearchKeyList(p *rfcparser.Parser) (SearchKey, error) {
 			break
 		}
 
-		firstKey, err := parseSearchKey(p)
+		firstKey, err := parseSearchKey(p, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -214,7 +228,7 @@ func readSearchKeyword(p *rfcparser.Parser) (rfcparser.String, error) {
 	return keyword.IntoString().ToLower(), nil
 }
 
-func handleSearchKey(keyword rfcparser.String, p *rfcparser.Parser) (SearchKey, error) {
+func handleSearchKey(keyword rfcparser.String, p *rfcparser.Parser, depth int) (SearchKey, error) {
 	/*
 	  search-key      = "ALL" / "ANSWERED" / "BCC" SP astring /
 	                    "BEFORE" SP date / "BODY" SP astring /
@@ -395,7 +409,7 @@ func handleSearchKey(keyword rfcparser.String, p *rfcparser.Parser) (SearchKey, 
 			return nil, err
 		}
 
-		key, err := parseSearchKey(p)
+		key, err := parseSearchKey(p, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -407,7 +421,7 @@ func handleSearchKey(keyword rfcparser.String, p *rfcparser.Parser) (SearchKey, 
 			return nil, err
 		}
 
-		key1, err := parseSearchKey(p)
+		key1, err := parseSearchKey(p, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -416,7 +430,7 @@ func handleSearchKey(keyword rfcparser.String, p *rfcparser.Parser) (SearchKey, 
 			return nil, err
 		}
 
-		key2, err := parseSearchKey(p)
+		key2, err := parseSearchKey(p, depth+1)
 		if err != nil {
 			return nil, err
 		}
