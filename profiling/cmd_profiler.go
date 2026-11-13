@@ -31,6 +31,8 @@ const (
 	CmdTypeUIDStore
 	CmdTypeUIDFetch
 	CmdTypeUIDSearch
+	CmdTypeGetQuota
+	CmdTypeGetQuotaRoot
 	CmdTypeTotal
 )
 
@@ -96,6 +98,10 @@ func CmdTypeToString(cmdType int) string {
 		return "USTORE "
 	case CmdTypeUIDSearch:
 		return "USEARCH"
+	case CmdTypeGetQuota:
+		return "GQUOTA "
+	case CmdTypeGetQuotaRoot:
+		return "GQROOT "
 
 	default:
 		return "Unknown"
